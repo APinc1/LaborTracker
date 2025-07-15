@@ -1,0 +1,109 @@
+# Construction Management System
+
+## Overview
+
+This is a full-stack construction project management system built with React, Express.js, and PostgreSQL. The application provides comprehensive project management capabilities including budget tracking, location management, employee scheduling, and task assignment for construction projects.
+
+## User Preferences
+
+Preferred communication style: Simple, everyday language.
+
+## System Architecture
+
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **State Management**: TanStack Query (React Query) for server state management
+- **Routing**: Wouter for client-side routing
+- **Build Tool**: Vite for development and production builds
+- **Forms**: React Hook Form with Zod validation
+
+### Backend Architecture
+- **Framework**: Express.js with TypeScript
+- **Database**: PostgreSQL with Drizzle ORM
+- **Real-time**: WebSocket server for live updates
+- **Session Management**: connect-pg-simple for PostgreSQL session storage
+- **API Design**: RESTful API with CRUD operations
+
+### Database Layer
+- **ORM**: Drizzle ORM for type-safe database operations
+- **Database Provider**: Neon Database (PostgreSQL)
+- **Schema Management**: Centralized schema definitions in shared directory
+- **Migrations**: Drizzle Kit for database migrations
+
+## Key Components
+
+### Core Entities
+1. **Projects**: Main project entities with dates, managers, and superintendents
+2. **Budget Line Items**: Detailed budget tracking with cost codes and categories
+3. **Locations**: Project locations with budget allocations
+4. **Employees**: Staff management with roles and assignments
+5. **Tasks**: Work items with scheduling and assignment capabilities
+6. **Crews**: Team organization and management
+
+### Frontend Components
+- **Layout System**: Sidebar navigation with responsive design
+- **Dashboard**: Real-time project overview with metrics
+- **Management Modules**: Dedicated interfaces for projects, budgets, locations, employees
+- **Form Components**: Reusable form components with validation
+- **Export Functionality**: PDF and Excel export capabilities
+
+### Backend Services
+- **Storage Layer**: Abstract storage interface for data operations
+- **Route Handlers**: RESTful API endpoints for all entities
+- **WebSocket Service**: Real-time updates and notifications
+- **Session Management**: User authentication and session handling
+
+## Data Flow
+
+1. **Client Requests**: Frontend makes API calls through React Query
+2. **Server Processing**: Express routes handle requests and validate data
+3. **Database Operations**: Drizzle ORM executes type-safe database queries
+4. **Real-time Updates**: WebSocket broadcasts changes to connected clients
+5. **Client Updates**: React Query invalidates and refetches affected data
+
+### Authentication Flow
+- Session-based authentication with PostgreSQL session storage
+- User roles (Admin, Superintendent, Project Manager, Foreman)
+- Protected routes and role-based access control
+
+## External Dependencies
+
+### Frontend Dependencies
+- **UI Components**: Radix UI primitives with shadcn/ui
+- **Date Handling**: date-fns for date manipulation
+- **Form Validation**: Zod for schema validation
+- **Icons**: Lucide React for consistent iconography
+- **Styling**: Tailwind CSS with custom design tokens
+
+### Backend Dependencies
+- **Database**: @neondatabase/serverless for PostgreSQL connection
+- **WebSocket**: ws library for real-time communication
+- **Session Storage**: connect-pg-simple for PostgreSQL sessions
+- **Development**: tsx for TypeScript execution in development
+
+## Deployment Strategy
+
+### Build Process
+1. **Frontend Build**: Vite builds React app to `dist/public`
+2. **Backend Build**: esbuild bundles server code to `dist/index.js`
+3. **Database Setup**: Drizzle Kit pushes schema changes to database
+
+### Production Configuration
+- **Environment Variables**: DATABASE_URL for database connection
+- **Static Files**: Express serves built frontend from `dist/public`
+- **Process Management**: Single Node.js process handles both API and static files
+
+### Development Workflow
+- **Hot Reload**: Vite HMR for frontend development
+- **TypeScript**: tsx for backend development with auto-restart
+- **Database**: Drizzle Kit for schema management and migrations
+
+### Key Architectural Decisions
+
+1. **Monorepo Structure**: Shared schema definitions between frontend and backend
+2. **Type Safety**: Full TypeScript coverage with Drizzle ORM type generation
+3. **Real-time Features**: WebSocket integration for live project updates
+4. **Modular Design**: Separate management interfaces for different aspects
+5. **Responsive UI**: Mobile-first design with Tailwind CSS
+6. **Data Validation**: Zod schemas for runtime validation and type safety
