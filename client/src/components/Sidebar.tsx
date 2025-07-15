@@ -67,7 +67,7 @@ export default function Sidebar() {
                   className={`w-full justify-start space-x-3 ${
                     isActive(item.key)
                       ? "bg-primary text-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-hover"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent"
                   }`}
                   onClick={() => setActiveTab(item.key)}
                 >
