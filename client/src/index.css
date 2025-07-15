@@ -33,6 +33,11 @@
   --sidebar-accent-foreground: hsl(0, 0%, 100%);
   --sidebar-border: hsl(216, 34%, 17%);
   --sidebar-ring: hsl(216, 34%, 17%);
+  --chart-1: hsl(207, 90%, 54%);
+  --chart-2: hsl(153, 60%, 53%);
+  --chart-3: hsl(38, 92%, 50%);
+  --chart-4: hsl(0, 84%, 60%);
+  --chart-5: hsl(270, 95%, 75%);
 }
 
 .dark {
@@ -65,6 +70,25 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Ensure proper text contrast for all elements */
+@layer utilities {
+  .text-content {
+    @apply text-foreground;
+  }
+  
+  .text-muted {
+    @apply text-muted-foreground;
+  }
+  
+  .text-subtle {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+  
+  .text-strong {
+    @apply text-slate-900 dark:text-slate-100;
   }
 }
 

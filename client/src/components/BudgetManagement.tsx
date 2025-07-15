@@ -161,11 +161,11 @@ export default function BudgetManagement() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Budget Management</h2>
-            <p className="text-gray-600 mt-1">Track project budgets and line items</p>
+            <h2 className="text-2xl font-bold text-strong">Budget Management</h2>
+            <p className="text-subtle mt-1">Track project budgets and line items</p>
           </div>
           <div className="flex items-center space-x-4">
             <Button 
@@ -426,7 +426,7 @@ export default function BudgetManagement() {
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-5 h-5 text-green-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Total Budget</p>
+                        <p className="text-sm text-subtle">Total Budget</p>
                         <p className="text-2xl font-bold text-green-600">
                           {formatCurrency(getTotalBudget())}
                         </p>
@@ -439,7 +439,7 @@ export default function BudgetManagement() {
                     <div className="flex items-center space-x-2">
                       <Calculator className="w-5 h-5 text-blue-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Line Items</p>
+                        <p className="text-sm text-subtle">Line Items</p>
                         <p className="text-2xl font-bold text-blue-600">{budgetItems.length}</p>
                       </div>
                     </div>
@@ -450,7 +450,7 @@ export default function BudgetManagement() {
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-5 h-5 text-orange-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Labor Budget</p>
+                        <p className="text-sm text-subtle">Labor Budget</p>
                         <p className="text-2xl font-bold text-orange-600">
                           {formatCurrency(budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.laborCost) || 0), 0))}
                         </p>
@@ -463,7 +463,7 @@ export default function BudgetManagement() {
                     <div className="flex items-center space-x-2">
                       <DollarSign className="w-5 h-5 text-purple-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Material Budget</p>
+                        <p className="text-sm text-subtle">Material Budget</p>
                         <p className="text-2xl font-bold text-purple-600">
                           {formatCurrency(budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.materialCost) || 0), 0))}
                         </p>
@@ -483,7 +483,7 @@ export default function BudgetManagement() {
                     <Skeleton className="h-64" />
                   ) : budgetItems.length === 0 ? (
                     <div className="text-center py-8">
-                      <p className="text-gray-500">No budget items found for this project</p>
+                      <p className="text-muted">No budget items found for this project</p>
                       <Button className="mt-4" onClick={() => setShowAddDialog(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Line Item

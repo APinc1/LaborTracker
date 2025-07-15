@@ -42,11 +42,11 @@ export default function LocationManagement() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">Location Management</h2>
-            <p className="text-gray-600 mt-1">Manage project locations and progress</p>
+            <h2 className="text-2xl font-bold text-strong">Location Management</h2>
+            <p className="text-subtle mt-1">Manage project locations and progress</p>
           </div>
           <Button className="bg-primary hover:bg-primary/90">
             <Plus className="w-4 h-4 mr-2" />
@@ -87,7 +87,7 @@ export default function LocationManagement() {
                     <div className="flex items-center space-x-2">
                       <MapPin className="w-5 h-5 text-blue-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Total Locations</p>
+                        <p className="text-sm text-subtle">Total Locations</p>
                         <p className="text-2xl font-bold text-blue-600">{locations.length}</p>
                       </div>
                     </div>
@@ -98,7 +98,7 @@ export default function LocationManagement() {
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="w-5 h-5 text-green-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Completed</p>
+                        <p className="text-sm text-subtle">Completed</p>
                         <p className="text-2xl font-bold text-green-600">
                           {locations.filter((loc: any) => loc.isComplete).length}
                         </p>
@@ -111,7 +111,7 @@ export default function LocationManagement() {
                     <div className="flex items-center space-x-2">
                       <Circle className="w-5 h-5 text-orange-600" />
                       <div>
-                        <p className="text-sm text-gray-600">In Progress</p>
+                        <p className="text-sm text-subtle">In Progress</p>
                         <p className="text-2xl font-bold text-orange-600">
                           {locations.filter((loc: any) => !loc.isComplete).length}
                         </p>
@@ -124,7 +124,7 @@ export default function LocationManagement() {
                     <div className="flex items-center space-x-2">
                       <Calendar className="w-5 h-5 text-purple-600" />
                       <div>
-                        <p className="text-sm text-gray-600">Avg. Duration</p>
+                        <p className="text-sm text-subtle">Avg. Duration</p>
                         <p className="text-2xl font-bold text-purple-600">21 days</p>
                       </div>
                     </div>
@@ -141,7 +141,7 @@ export default function LocationManagement() {
                 ) : locations.length === 0 ? (
                   <Card className="col-span-full">
                     <CardContent className="text-center py-8">
-                      <p className="text-gray-500">No locations found for this project</p>
+                      <p className="text-muted">No locations found for this project</p>
                       <Button className="mt-4">
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Location

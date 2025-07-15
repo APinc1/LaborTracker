@@ -575,7 +575,7 @@ export default function EmployeeManagement() {
                 {crews.length === 0 ? (
                   <Card className="col-span-full">
                     <CardContent className="text-center py-8">
-                      <p className="text-gray-500">No crews found. Add your first crew to get started.</p>
+                      <p className="text-muted">No crews found. Add your first crew to get started.</p>
                     </CardContent>
                   </Card>
                 ) : (
@@ -608,25 +608,25 @@ export default function EmployeeManagement() {
                         <CardContent>
                           <div className="space-y-3">
                             <div className="flex items-center space-x-2">
-                              <Users className="w-4 h-4 text-gray-500" />
-                              <span className="text-sm text-gray-600">
+                              <Users className="w-4 h-4 text-subtle" />
+                              <span className="text-sm text-subtle">
                                 {crewMembers.length} members
                               </span>
                             </div>
                             <div className="space-y-2">
                               {crewMembers.slice(0, 3).map((member: any) => (
                                 <div key={member.id} className="flex items-center space-x-2">
-                                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <User className="text-gray-600 text-xs" />
+                                  <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                                    <User className="text-subtle text-xs" />
                                   </div>
-                                  <span className="text-sm text-gray-700">{member.name}</span>
+                                  <span className="text-sm text-content">{member.name}</span>
                                   <Badge variant="outline" className="text-xs">
                                     {member.employeeType}
                                   </Badge>
                                 </div>
                               ))}
                               {crewMembers.length > 3 && (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted">
                                   +{crewMembers.length - 3} more
                                 </p>
                               )}
