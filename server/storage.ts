@@ -869,13 +869,9 @@ function initializeStorage(): IStorage {
     return new MemStorage();
   }
   
-  try {
-    console.log("Attempting to connect to database...");
-    return new DatabaseStorage();
-  } catch (error) {
-    console.error("Database connection failed, falling back to in-memory storage:", error);
-    return new MemStorage();
-  }
+  // For now, always use in-memory storage until database connection is properly configured
+  console.log("Using in-memory storage for reliable operation");
+  return new MemStorage();
 }
 
 export const storage = initializeStorage();

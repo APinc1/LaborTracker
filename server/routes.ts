@@ -40,7 +40,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projects = await storage.getProjects();
       res.json(projects);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error fetching projects:', error);
       res.status(500).json({ error: 'Failed to fetch projects' });
     }
   });
@@ -62,8 +63,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertProjectSchema.parse(req.body);
       const project = await storage.createProject(validated);
       res.status(201).json(project);
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid project data' });
+    } catch (error: any) {
+      console.error('Error creating project:', error);
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid project data', details: error.errors });
+      } else {
+        res.status(500).json({ error: 'Failed to create project' });
+      }
     }
   });
 
