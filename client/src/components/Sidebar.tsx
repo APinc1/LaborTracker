@@ -67,12 +67,16 @@ export default function Sidebar() {
                   className={`w-full justify-start space-x-3 ${
                     isActive(item.key)
                       ? "bg-primary text-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   }`}
+                  style={{ 
+                    color: isActive(item.key) ? undefined : 'var(--sidebar-foreground)',
+                    backgroundColor: isActive(item.key) ? undefined : 'transparent'
+                  }}
                   onClick={() => setActiveTab(item.key)}
                 >
-                  <Icon className="w-5 h-5 text-current" />
-                  <span className="text-current">{item.name}</span>
+                  <Icon className="w-5 h-5" style={{ color: 'currentColor' }} />
+                  <span style={{ color: 'currentColor' }}>{item.name}</span>
                 </Button>
               </Link>
             );
