@@ -49,14 +49,14 @@ export default function Sidebar() {
             <HardHat className="text-white text-lg" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">BuildTracker</h1>
-            <p className="text-muted-foreground text-sm">Public Works Construction</p>
+            <h1 className="text-xl font-bold text-sidebar-foreground">BuildTracker</h1>
+            <p className="text-sidebar-foreground/70 text-sm">Public Works Construction</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 sidebar-scrollbar">
+      <div className="flex-1 overflow-y-auto sidebar-scrollbar">
         <nav className="p-4 space-y-2">
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -71,8 +71,8 @@ export default function Sidebar() {
                   }`}
                   onClick={() => setActiveTab(item.key)}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.name}</span>
+                  <Icon className="w-5 h-5 text-current" />
+                  <span className="text-current">{item.name}</span>
                 </Button>
               </Link>
             );
@@ -81,7 +81,7 @@ export default function Sidebar() {
 
         {/* Current Projects */}
         <div className="p-4 border-t border-sidebar-border">
-          <h3 className="text-muted-foreground text-sm font-medium mb-3">Active Projects</h3>
+          <h3 className="text-sidebar-foreground/70 text-sm font-medium mb-3">Active Projects</h3>
           <div className="space-y-2">
             {projects.slice(0, 3).map((project: any) => (
               <div
@@ -90,14 +90,14 @@ export default function Sidebar() {
               >
                 <div className="w-3 h-3 bg-accent rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">{project.name}</p>
-                  <p className="text-xs text-muted-foreground">{project.projectId}</p>
+                  <p className="text-sm font-medium text-sidebar-foreground">{project.name}</p>
+                  <p className="text-xs text-sidebar-foreground/70">{project.projectId}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* User Profile */}
       <div className="p-4 border-t border-sidebar-border">
@@ -106,8 +106,8 @@ export default function Sidebar() {
             <User className="text-sidebar-foreground" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium">John Smith</p>
-            <p className="text-xs text-muted-foreground">Superintendent</p>
+            <p className="text-sm font-medium text-sidebar-foreground">John Smith</p>
+            <p className="text-xs text-sidebar-foreground/70">Superintendent</p>
           </div>
           <Button variant="ghost" size="sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="w-4 h-4" />
