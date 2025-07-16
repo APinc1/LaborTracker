@@ -884,7 +884,8 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="relative w-full h-[500px] overflow-auto">
+              <div className="relative w-full max-h-[500px] overflow-auto overflow-x-auto">
+                <div className="w-full overflow-x-auto">
                       <Table className="min-w-[1400px]">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
@@ -1055,7 +1056,7 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   {formatCurrency(item.billing || 0)}
                                 </TableCell>
-                                <TableCell className="sticky right-0 bg-white">
+                                <TableCell className="sticky right-0 bg-white z-10 border-l border-gray-200">
                                   <div className="flex space-x-1">
                                     <Button 
                                       variant="ghost" 
