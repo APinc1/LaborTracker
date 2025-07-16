@@ -658,13 +658,14 @@ export default function BudgetManagement() {
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-20">Line Item</TableHead>
-                            <TableHead className="min-w-40">Description</TableHead>
+                            <TableHead className="min-w-60">Description</TableHead>
                             <TableHead className="w-16">Unit</TableHead>
                             <TableHead className="w-20">Qty</TableHead>
                             <TableHead className="w-24">Unit Cost</TableHead>
                             <TableHead className="w-20">Conv. UM</TableHead>
                             <TableHead className="w-24">Conv. Qty</TableHead>
-                            <TableHead className="w-20">Prod. Rate</TableHead>
+                            <TableHead className="w-20">PX</TableHead>
+                            <TableHead className="w-20">Hours</TableHead>
                             <TableHead className="w-24">Labor Cost</TableHead>
                             <TableHead className="w-24">Equipment</TableHead>
                             <TableHead className="w-24">Trucking</TableHead>
@@ -677,70 +678,87 @@ export default function BudgetManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {budgetItems.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
-                              <TableCell className="max-w-40 truncate" title={item.lineItemName}>
-                                {item.lineItemName}
-                              </TableCell>
-                              <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  value={item.unconvertedQty}
-                                  onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                  className="w-20 text-right"
-                                  step="0.01"
-                                />
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.unitCost)}
-                              </TableCell>
-                              <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
-                              <TableCell className="text-right">
-                                {item.convertedQty ? parseFloat(item.convertedQty).toFixed(2) : '0.00'}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {item.productionRate ? parseFloat(item.productionRate).toFixed(2) : '0.00'}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.laborCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.equipmentCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.truckingCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.dumpFeesCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.materialCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.subcontractorCost || 0)}
-                              </TableCell>
-                              <TableCell className="text-right font-medium">
-                                {formatCurrency(item.budgetTotal || 0)}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {formatCurrency(item.billing || 0)}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex space-x-1">
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => {
-                                      setEditingItem(item);
-                                      setShowEditDialog(true);
-                                    }}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button 
-                                    variant="ghost" 
+                          {budgetItems.map((item: any) => {
+                            const isParent = !item.lineItemNumber.includes('.');
+                            const isChild = item.lineItemNumber.includes('.');
+                            
+                            // Helper function to format numbers without unnecessary decimals
+                            const formatNumber = (value: string | number) => {
+                              const num = parseFloat(value?.toString() || '0');
+                              return num % 1 === 0 ? num.toString() : num.toFixed(2);
+                            };
+                            
+                            return (
+                              <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
+                                <TableCell className="font-medium">
+                                  {isChild ? `  ${item.lineItemNumber}` : item.lineItemNumber}
+                                </TableCell>
+                                <TableCell className="max-w-60" title={item.lineItemName}>
+                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
+                                    {item.lineItemName}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
+                                <TableCell>
+                                  <Input
+                                    type="number"
+                                    value={item.unconvertedQty}
+                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                    className="w-20 text-right"
+                                    step="0.01"
+                                  />
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.unitCost)}
+                                </TableCell>
+                                <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
+                                <TableCell className="text-right">
+                                  {formatNumber(item.convertedQty)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatNumber(item.productionRate)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {item.hours ? formatNumber(item.hours) : '0'}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.laborCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.equipmentCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.truckingCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.dumpFeesCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.materialCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.subcontractorCost || 0)}
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {formatCurrency(item.budgetTotal || 0)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {formatCurrency(item.billing || 0)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex space-x-1">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm"
+                                      onClick={() => {
+                                        setEditingItem(item);
+                                        setShowEditDialog(true);
+                                      }}
+                                    >
+                                      <Edit className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                      variant="ghost" 
                                     size="sm" 
                                     className="text-red-500 hover:text-red-700"
                                     onClick={() => handleDeleteBudgetItem(item.id)}
@@ -750,7 +768,8 @@ export default function BudgetManagement() {
                                 </div>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
