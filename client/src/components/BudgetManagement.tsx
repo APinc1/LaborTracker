@@ -10,7 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet } from "lucide-react";
+import * as XLSX from 'xlsx';
+import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,6 +29,7 @@ const budgetLineItemSchema = z.object({
   unitTotal: z.string().min(1, "Unit total is required"),
   convertedQty: z.string().optional(),
   convertedUnitOfMeasure: z.string().optional(),
+  conversionFactor: z.string().default("1"),
   costCode: z.string().min(1, "Cost code is required"),
   productionRate: z.string().optional(),
   hours: z.string().optional(),
@@ -90,6 +93,7 @@ export default function BudgetManagement() {
       unitTotal: "",
       convertedQty: "",
       convertedUnitOfMeasure: "",
+      conversionFactor: "1",
       costCode: "",
       productionRate: "",
       hours: "",
@@ -149,6 +153,33 @@ export default function BudgetManagement() {
     }
   };
 
+  const handleQuantityChange = async (itemId: number, newQuantity: string) => {
+    try {
+      const currentItem = budgetItems.find((item: any) => item.id === itemId);
+      if (!currentItem) return;
+
+      const recalculatedItem = recalculateOnQtyChange(currentItem, newQuantity);
+      
+      await apiRequest(`/api/budget/${itemId}`, {
+        method: "PUT",
+        body: JSON.stringify(recalculatedItem),
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Success",
+        description: "Budget item updated with new calculations",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget item",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleExcelImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -157,20 +188,74 @@ export default function BudgetManagement() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      if (!selectedProject) {
+      if (!selectedLocation) {
         toast({
           title: "Error",
-          description: "Please select a project first",
+          description: "Please select a location first",
           variant: "destructive",
         });
         return;
       }
 
-      // For now, show a message that Excel import is coming soon
-      toast({
-        title: "Coming Soon",
-        description: "Excel import functionality will be available in the next update",
-      });
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON array
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Skip header row and process data
+        const budgetItems = [];
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i] as any[];
+          const budgetItem = parseExcelRowToBudgetItem(row, parseInt(selectedLocation));
+          
+          if (budgetItem) {
+            budgetItems.push(budgetItem);
+          }
+        }
+        
+        if (budgetItems.length === 0) {
+          toast({
+            title: "Warning",
+            description: "No valid budget items found in the Excel file",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Import all budget items
+        let successCount = 0;
+        for (const item of budgetItems) {
+          try {
+            await apiRequest(`/api/locations/${selectedLocation}/budget`, {
+              method: "POST",
+              body: JSON.stringify(item),
+            });
+            successCount++;
+          } catch (error) {
+            console.error('Error importing budget item:', error);
+          }
+        }
+        
+        // Refresh the budget data
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+        
+        toast({
+          title: "Success",
+          description: `Successfully imported ${successCount} budget items from Excel`,
+        });
+        
+      } catch (error) {
+        console.error('Excel import error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to import Excel file. Please check the file format.",
+          variant: "destructive",
+        });
+      }
     };
     input.click();
   };
@@ -202,7 +287,7 @@ export default function BudgetManagement() {
               onClick={handleExcelImport}
               disabled={!selectedLocation}
             >
-              <Upload className="w-4 h-4" />
+              <FileSpreadsheet className="w-4 h-4" />
               <span>Import Excel</span>
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
@@ -570,7 +655,15 @@ export default function BudgetManagement() {
                                 <Badge variant="outline">{item.costCode}</Badge>
                               </TableCell>
                               <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
-                              <TableCell>{item.unconvertedQty}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  value={item.unconvertedQty}
+                                  onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                  className="w-20 text-right"
+                                  step="0.01"
+                                />
+                              </TableCell>
                               <TableCell>{formatCurrency(item.unitCost)}</TableCell>
                               <TableCell className="font-medium">
                                 {formatCurrency(item.budgetTotal)}

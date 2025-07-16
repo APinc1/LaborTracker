@@ -35,6 +35,7 @@ export const budgetLineItems = pgTable("budget_line_items", {
   unitTotal: decimal("unit_total", { precision: 10, scale: 2 }).notNull(),
   convertedQty: decimal("converted_qty", { precision: 10, scale: 2 }),
   convertedUnitOfMeasure: text("converted_unit_of_measure"),
+  conversionFactor: decimal("conversion_factor", { precision: 10, scale: 6 }).default("1"),
   costCode: text("cost_code").notNull(),
   productionRate: decimal("production_rate", { precision: 10, scale: 2 }),
   hours: decimal("hours", { precision: 10, scale: 2 }),

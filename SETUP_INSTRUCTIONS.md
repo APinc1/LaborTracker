@@ -58,11 +58,20 @@ DATABASE_URL=your_supabase_connection_string
 4. Add/edit/delete budget items
 5. Test the location budget allocation from Location Management
 
-### 9. Known Limitations
+### 9. Excel Import Feature
 
-- Excel import is temporarily disabled (shows "Coming Soon" message)
+**NEW**: Excel import is now fully functional with formula preservation:
+- Supports 21-column Excel format with automatic formula detection
+- Preserves conversion factors and recalculates formulas when quantities change
+- Automatically skips blank line items
+- Provides import success/failure reporting
+- See `EXCEL_IMPORT_GUIDE.md` for detailed instructions
+
+### 10. Known Limitations
+
 - Some database operations may still use in-memory storage as fallback
 - Budget items are now location-specific rather than project-specific
+- Labor rate is fixed at $80/hour (can be customized if needed)
 
 ## Next Steps
 
