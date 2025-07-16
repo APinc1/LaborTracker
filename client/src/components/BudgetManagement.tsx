@@ -918,7 +918,7 @@ export default function BudgetManagement() {
                                 </TableCell>
                                 <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                                 <TableCell>
-                                  {isParent ? (
+                                  {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
                                       {formatNumber(getParentQuantitySum(item))}
                                     </span>
