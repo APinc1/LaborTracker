@@ -8,10 +8,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
+import CreateTaskModal from "./CreateTaskModal";
 
 export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
@@ -67,7 +69,11 @@ export default function ScheduleManagement() {
             <h2 className="text-2xl font-bold text-gray-800">Schedule Management</h2>
             <p className="text-gray-600 mt-1">Plan and track project schedules</p>
           </div>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => setIsCreateTaskModalOpen(true)}
+            disabled={!selectedProject}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Task
           </Button>
@@ -276,6 +282,13 @@ export default function ScheduleManagement() {
           </div>
         </div>
       </main>
+      
+      <CreateTaskModal
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        selectedDate={format(selectedDate, 'yyyy-MM-dd')}
+        selectedProject={selectedProject ? parseInt(selectedProject) : undefined}
+      />
     </div>
   );
 }
