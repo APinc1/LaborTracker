@@ -345,6 +345,21 @@ export default function BudgetManagement() {
     return null;
   };
 
+  const hasChildren = (parentItem: any) => {
+    const items = budgetItems as any[];
+    return items.some(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+  };
+
+  const getParentQuantitySum = (parentItem: any) => {
+    const items = budgetItems as any[];
+    const children = items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+    return children.reduce((sum, child) => sum + (parseFloat(child.convertedQty) || 0), 0);
+  };
+
   const getVisibleItems = () => {
     const items = budgetItems as any[];
     const visibleItems = [];
@@ -824,7 +839,7 @@ export default function BudgetManagement() {
               </div>
 
               {/* Budget Items Table */}
-              <Card className="max-w-4xl">
+              <Card className="w-full">
                 <CardHeader>
                   <CardTitle>Budget Line Items</CardTitle>
                 </CardHeader>
@@ -840,28 +855,28 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto max-h-96">
-                      <Table className="min-w-[1400px]">
+                    <div className="overflow-y-auto max-h-[500px] w-full">
+                      <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
-                            <TableHead className="w-20 sticky top-0 bg-white">Line Item</TableHead>
-                            <TableHead className="min-w-60 sticky top-0 bg-white">Description</TableHead>
-                            <TableHead className="w-16 sticky top-0 bg-white">Unit</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Qty</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Unit Cost</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Conv. UM</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Conv. Qty</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">PX</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Hours</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Labor Cost</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Equipment</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Trucking</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Dump Fees</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Material</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Sub</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Budget</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Billings</TableHead>
-                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20">Actions</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white border-b">Line Item</TableHead>
+                            <TableHead className="min-w-60 sticky top-0 bg-white border-b">Description</TableHead>
+                            <TableHead className="w-16 sticky top-0 bg-white border-b">Unit</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white border-b">Qty</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Unit Cost</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white border-b">Conv. UM</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Conv. Qty</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white border-b">PX</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white border-b">Hours</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Labor Cost</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Equipment</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Trucking</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Dump Fees</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Material</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Sub</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Budget</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white border-b">Billings</TableHead>
+                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-b">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -879,7 +894,7 @@ export default function BudgetManagement() {
                               <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
                                 <TableCell className="font-medium">
                                   <div className="flex items-center">
-                                    {isParent && (
+                                    {isParent && hasChildren(item) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -892,7 +907,7 @@ export default function BudgetManagement() {
                                         }
                                       </Button>
                                     )}
-                                    {isChild && <span className="w-6"></span>}
+                                    {(isChild || (isParent && !hasChildren(item))) && <span className="w-6"></span>}
                                     {item.lineItemNumber}
                                   </div>
                                 </TableCell>
@@ -904,7 +919,9 @@ export default function BudgetManagement() {
                                 <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                                 <TableCell>
                                   {isParent ? (
-                                    <span className="text-gray-500 text-sm">N/A</span>
+                                    <span className="text-gray-600 font-medium">
+                                      {formatNumber(getParentQuantitySum(item))}
+                                    </span>
                                   ) : (
                                     <Input
                                       type="number"
