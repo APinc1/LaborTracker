@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet } from "lucide-react";
@@ -288,6 +288,35 @@ export default function BudgetManagement() {
       notes: item.notes || "",
     });
     setShowEditDialog(true);
+  };
+
+  const handleInlineUpdate = async (itemId: number, updatedItem: any) => {
+    try {
+      const response = await fetch(`/api/budget/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedItem),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Success",
+        description: "Budget item updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget item",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleExcelImport = () => {
@@ -762,9 +791,8 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto border rounded-lg">
-                      <div className="min-w-[1400px]">
-                        <Table>
+                    <div className="overflow-x-auto">
+                      <Table className="min-w-[1400px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-20">Line Item</TableHead>
@@ -784,7 +812,7 @@ export default function BudgetManagement() {
                             <TableHead className="w-24">Sub</TableHead>
                             <TableHead className="w-24">Budget</TableHead>
                             <TableHead className="w-24">Billings</TableHead>
-                            <TableHead className="w-20">Actions</TableHead>
+                            <TableHead className="w-24 sticky right-0 bg-white">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -826,10 +854,46 @@ export default function BudgetManagement() {
                                   {formatNumber(item.convertedQty)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {formatNumber(item.productionRate)}
+                                  <Input
+                                    type="number"
+                                    value={item.productionRate || ''}
+                                    onChange={(e) => {
+                                      const newPX = parseFloat(e.target.value || '0');
+                                      const convertedQty = parseFloat(item.convertedQty || '0');
+                                      if (newPX > 0 && convertedQty > 0) {
+                                        const newHours = convertedQty / newPX;
+                                        const updatedItem = {
+                                          ...item,
+                                          productionRate: e.target.value,
+                                          hours: newHours.toFixed(2)
+                                        };
+                                        handleInlineUpdate(item.id, updatedItem);
+                                      }
+                                    }}
+                                    className="w-20 text-right"
+                                    step="0.01"
+                                  />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {item.hours ? formatNumber(item.hours) : '0'}
+                                  <Input
+                                    type="number"
+                                    value={item.hours || ''}
+                                    onChange={(e) => {
+                                      const newHours = parseFloat(e.target.value || '0');
+                                      const convertedQty = parseFloat(item.convertedQty || '0');
+                                      if (newHours > 0 && convertedQty > 0) {
+                                        const newPX = convertedQty / newHours;
+                                        const updatedItem = {
+                                          ...item,
+                                          hours: e.target.value,
+                                          productionRate: newPX.toFixed(2)
+                                        };
+                                        handleInlineUpdate(item.id, updatedItem);
+                                      }
+                                    }}
+                                    className="w-20 text-right"
+                                    step="0.01"
+                                  />
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(item.laborCost || 0)}
@@ -855,7 +919,7 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   {formatCurrency(item.billing || 0)}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="sticky right-0 bg-white">
                                   <div className="flex space-x-1">
                                     <Button 
                                       variant="ghost" 
@@ -866,20 +930,19 @@ export default function BudgetManagement() {
                                     </Button>
                                     <Button 
                                       variant="ghost" 
-                                    size="sm" 
-                                    className="text-red-500 hover:text-red-700"
-                                    onClick={() => handleDeleteBudgetItem(item.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
+                                      size="sm" 
+                                      className="text-red-500 hover:text-red-700"
+                                      onClick={() => handleDeleteBudgetItem(item.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
                             </TableRow>
                             );
                           })}
                         </TableBody>
-                        </Table>
-                      </div>
+                      </Table>
                     </div>
                   )}
                 </CardContent>
@@ -894,6 +957,9 @@ export default function BudgetManagement() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Budget Line Item</DialogTitle>
+            <DialogDescription>
+              Edit the budget line item details including quantities, rates, and costs.
+            </DialogDescription>
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => {
@@ -976,6 +1042,112 @@ export default function BudgetManagement() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unit Cost</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="productionRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PX (Production Rate)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number" 
+                          step="0.01"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Auto-calculate hours when PX changes
+                            const convertedQty = parseFloat(editForm.getValues("convertedQty") || "0");
+                            const newPX = parseFloat(e.target.value || "0");
+                            if (newPX > 0 && convertedQty > 0) {
+                              const newHours = convertedQty / newPX;
+                              editForm.setValue("hours", newHours.toFixed(2));
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="hours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hours</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="number" 
+                          step="0.01"
+                          onChange={(e) => {
+                            field.onChange(e);
+                            // Auto-calculate PX when hours change
+                            const convertedQty = parseFloat(editForm.getValues("convertedQty") || "0");
+                            const newHours = parseFloat(e.target.value || "0");
+                            if (newHours > 0 && convertedQty > 0) {
+                              const newPX = convertedQty / newHours;
+                              editForm.setValue("productionRate", newPX.toFixed(2));
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="laborCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Labor Cost</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="equipmentCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Equipment Cost</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="materialCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Material Cost</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="subcontractorCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subcontractor Cost</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" step="0.01" />
                       </FormControl>
