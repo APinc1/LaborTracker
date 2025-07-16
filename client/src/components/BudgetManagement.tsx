@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
+import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -200,7 +201,9 @@ export default function BudgetManagement() {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
+        
+        // Use the "Line Items" sheet if available, otherwise first sheet
+        const sheetName = workbook.SheetNames.includes('Line Items') ? 'Line Items' : workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
         // Convert to JSON array
@@ -210,7 +213,12 @@ export default function BudgetManagement() {
         const budgetItems = [];
         for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
-          const budgetItem = parseExcelRowToBudgetItem(row, parseInt(selectedLocation));
+          
+          // Try SW62 format first, then fall back to standard format
+          let budgetItem = parseSW62ExcelRow(row, parseInt(selectedLocation));
+          if (!budgetItem) {
+            budgetItem = parseExcelRowToBudgetItem(row, parseInt(selectedLocation));
+          }
           
           if (budgetItem) {
             budgetItems.push(budgetItem);
