@@ -657,23 +657,31 @@ export default function BudgetManagement() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Line Item</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Cost Code</TableHead>
-                            <TableHead>Unit</TableHead>
-                            <TableHead>Quantity</TableHead>
-                            <TableHead>Unit Cost</TableHead>
-                            <TableHead>Total</TableHead>
-                            <TableHead>Actions</TableHead>
+                            <TableHead className="w-20">Line Item</TableHead>
+                            <TableHead className="min-w-40">Description</TableHead>
+                            <TableHead className="w-16">Unit</TableHead>
+                            <TableHead className="w-20">Qty</TableHead>
+                            <TableHead className="w-24">Unit Cost</TableHead>
+                            <TableHead className="w-20">Conv. UM</TableHead>
+                            <TableHead className="w-24">Conv. Qty</TableHead>
+                            <TableHead className="w-20">Prod. Rate</TableHead>
+                            <TableHead className="w-24">Labor Cost</TableHead>
+                            <TableHead className="w-24">Equipment</TableHead>
+                            <TableHead className="w-24">Trucking</TableHead>
+                            <TableHead className="w-24">Dump Fees</TableHead>
+                            <TableHead className="w-24">Material</TableHead>
+                            <TableHead className="w-24">Sub</TableHead>
+                            <TableHead className="w-24">Budget</TableHead>
+                            <TableHead className="w-24">Billings</TableHead>
+                            <TableHead className="w-20">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {budgetItems.map((item: any) => (
                             <TableRow key={item.id}>
                               <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
-                              <TableCell>{item.lineItemName}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{item.costCode}</Badge>
+                              <TableCell className="max-w-40 truncate" title={item.lineItemName}>
+                                {item.lineItemName}
                               </TableCell>
                               <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                               <TableCell>
@@ -685,9 +693,39 @@ export default function BudgetManagement() {
                                   step="0.01"
                                 />
                               </TableCell>
-                              <TableCell>{formatCurrency(item.unitCost)}</TableCell>
-                              <TableCell className="font-medium">
-                                {formatCurrency(item.budgetTotal)}
+                              <TableCell className="text-right">
+                                {formatCurrency(item.unitCost)}
+                              </TableCell>
+                              <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
+                              <TableCell className="text-right">
+                                {item.convertedQty ? parseFloat(item.convertedQty).toFixed(2) : '0.00'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {item.productionRate ? parseFloat(item.productionRate).toFixed(2) : '0.00'}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.laborCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.equipmentCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.truckingCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.dumpFeesCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.materialCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.subcontractorCost || 0)}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(item.budgetTotal || 0)}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(item.billing || 0)}
                               </TableCell>
                               <TableCell>
                                 <div className="flex space-x-1">
