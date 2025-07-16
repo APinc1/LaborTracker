@@ -202,8 +202,13 @@ export default function BudgetManagement() {
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         
-        // Use the "Line Items" sheet if available, otherwise first sheet
-        const sheetName = workbook.SheetNames.includes('Line Items') ? 'Line Items' : workbook.SheetNames[0];
+        // Use the "full location" sheet, "Line Items" sheet, or first sheet
+        let sheetName = workbook.SheetNames[0];
+        if (workbook.SheetNames.includes('full location')) {
+          sheetName = 'full location';
+        } else if (workbook.SheetNames.includes('Line Items')) {
+          sheetName = 'Line Items';
+        }
         const worksheet = workbook.Sheets[sheetName];
         
         // Convert to JSON array
@@ -238,10 +243,18 @@ export default function BudgetManagement() {
         let successCount = 0;
         for (const item of budgetItems) {
           try {
-            await apiRequest(`/api/locations/${selectedLocation}/budget`, {
+            const response = await fetch(`/api/locations/${selectedLocation}/budget`, {
               method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
               body: JSON.stringify(item),
             });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             successCount++;
           } catch (error) {
             console.error('Error importing budget item:', error);

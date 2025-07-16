@@ -2,7 +2,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 
 // Test script to examine Excel file structure
-const filePath = './attached_assets/SW62 - Site 4544 - 1st St - Initial Report 6.20_1752698018957.xlsx';
+const filePath = './attached_assets/HSIP Crenshaw - 76th and Crenshaw (NW) - QTY Change Log 3.18 (NO AC)_1752699781462.xlsx';
 
 try {
   // Read the Excel file
@@ -12,8 +12,16 @@ try {
   console.log('=====================');
   console.log('Sheet Names:', workbook.SheetNames);
   
-  // Get the "Line Items" sheet or first sheet
-  const sheetName = workbook.SheetNames.includes('Line Items') ? 'Line Items' : workbook.SheetNames[0];
+  // Get the "full location" sheet or "Line Items" sheet or first sheet
+  let sheetName = 'Sheet1';
+  if (workbook.SheetNames.includes('full location')) {
+    sheetName = 'full location';
+  } else if (workbook.SheetNames.includes('Line Items')) {
+    sheetName = 'Line Items';
+  } else {
+    sheetName = workbook.SheetNames[0];
+  }
+  
   const worksheet = workbook.Sheets[sheetName];
   
   console.log('Using sheet:', sheetName);
