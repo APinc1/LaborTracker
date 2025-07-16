@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
@@ -51,6 +51,7 @@ export default function BudgetManagement() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -317,6 +318,54 @@ export default function BudgetManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  const toggleExpanded = (itemId: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  const isParentItem = (item: any) => {
+    return item.lineItemNumber && !item.lineItemNumber.includes('.');
+  };
+
+  const isChildItem = (item: any) => {
+    return item.lineItemNumber && item.lineItemNumber.includes('.');
+  };
+
+  const getParentId = (item: any) => {
+    if (isChildItem(item)) {
+      return item.lineItemNumber.split('.')[0];
+    }
+    return null;
+  };
+
+  const getVisibleItems = () => {
+    const items = budgetItems as any[];
+    const visibleItems = [];
+    
+    for (const item of items) {
+      if (isParentItem(item)) {
+        visibleItems.push(item);
+        if (expandedItems.has(item.lineItemNumber)) {
+          // Add children
+          const children = items.filter(child => 
+            isChildItem(child) && getParentId(child) === item.lineItemNumber
+          );
+          visibleItems.push(...children);
+        }
+      } else if (!isChildItem(item)) {
+        // Items that are neither parent nor child (standalone items)
+        visibleItems.push(item);
+      }
+    }
+    
+    return visibleItems;
   };
 
   const handleExcelImport = () => {
@@ -775,7 +824,7 @@ export default function BudgetManagement() {
               </div>
 
               {/* Budget Items Table */}
-              <Card>
+              <Card className="max-w-4xl">
                 <CardHeader>
                   <CardTitle>Budget Line Items</CardTitle>
                 </CardHeader>
@@ -791,34 +840,34 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto max-h-96">
                       <Table className="min-w-[1400px]">
-                        <TableHeader>
+                        <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
-                            <TableHead className="w-20">Line Item</TableHead>
-                            <TableHead className="min-w-60">Description</TableHead>
-                            <TableHead className="w-16">Unit</TableHead>
-                            <TableHead className="w-20">Qty</TableHead>
-                            <TableHead className="w-24">Unit Cost</TableHead>
-                            <TableHead className="w-20">Conv. UM</TableHead>
-                            <TableHead className="w-24">Conv. Qty</TableHead>
-                            <TableHead className="w-20">PX</TableHead>
-                            <TableHead className="w-20">Hours</TableHead>
-                            <TableHead className="w-24">Labor Cost</TableHead>
-                            <TableHead className="w-24">Equipment</TableHead>
-                            <TableHead className="w-24">Trucking</TableHead>
-                            <TableHead className="w-24">Dump Fees</TableHead>
-                            <TableHead className="w-24">Material</TableHead>
-                            <TableHead className="w-24">Sub</TableHead>
-                            <TableHead className="w-24">Budget</TableHead>
-                            <TableHead className="w-24">Billings</TableHead>
-                            <TableHead className="w-24 sticky right-0 bg-white">Actions</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Line Item</TableHead>
+                            <TableHead className="min-w-60 sticky top-0 bg-white">Description</TableHead>
+                            <TableHead className="w-16 sticky top-0 bg-white">Unit</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Qty</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Unit Cost</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Conv. UM</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Conv. Qty</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">PX</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Hours</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Labor Cost</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Equipment</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Trucking</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Dump Fees</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Material</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Sub</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Budget</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Billings</TableHead>
+                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {(budgetItems as any[]).map((item: any) => {
-                            const isParent = !item.lineItemNumber.includes('.');
-                            const isChild = item.lineItemNumber.includes('.');
+                          {getVisibleItems().map((item: any) => {
+                            const isParent = isParentItem(item);
+                            const isChild = isChildItem(item);
                             
                             // Helper function to format numbers without unnecessary decimals
                             const formatNumber = (value: string | number) => {
@@ -829,7 +878,23 @@ export default function BudgetManagement() {
                             return (
                               <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
                                 <TableCell className="font-medium">
-                                  {isChild ? `  ${item.lineItemNumber}` : item.lineItemNumber}
+                                  <div className="flex items-center">
+                                    {isParent && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => toggleExpanded(item.lineItemNumber)}
+                                        className="p-0 h-auto w-4 mr-2"
+                                      >
+                                        {expandedItems.has(item.lineItemNumber) ? 
+                                          <ChevronDown className="w-4 h-4" /> : 
+                                          <ChevronRight className="w-4 h-4" />
+                                        }
+                                      </Button>
+                                    )}
+                                    {isChild && <span className="w-6"></span>}
+                                    {item.lineItemNumber}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="max-w-60" title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
@@ -838,13 +903,17 @@ export default function BudgetManagement() {
                                 </TableCell>
                                 <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                                 <TableCell>
-                                  <Input
-                                    type="number"
-                                    value={item.unconvertedQty}
-                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
-                                    className="w-20 text-right"
-                                    step="0.01"
-                                  />
+                                  {isParent ? (
+                                    <span className="text-gray-500 text-sm">N/A</span>
+                                  ) : (
+                                    <Input
+                                      type="number"
+                                      value={item.unconvertedQty}
+                                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                      className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      step="0.01"
+                                    />
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(item.unitCost)}
@@ -870,7 +939,7 @@ export default function BudgetManagement() {
                                         handleInlineUpdate(item.id, updatedItem);
                                       }
                                     }}
-                                    className="w-20 text-right"
+                                    className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     step="0.01"
                                   />
                                 </TableCell>
@@ -891,7 +960,7 @@ export default function BudgetManagement() {
                                         handleInlineUpdate(item.id, updatedItem);
                                       }
                                     }}
-                                    className="w-20 text-right"
+                                    className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                     step="0.01"
                                   />
                                 </TableCell>
@@ -1030,7 +1099,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Quantity</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1043,7 +1112,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Unit Cost</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1060,6 +1129,7 @@ export default function BudgetManagement() {
                           {...field} 
                           type="number" 
                           step="0.01"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           onChange={(e) => {
                             field.onChange(e);
                             // Auto-calculate hours when PX changes
@@ -1087,6 +1157,7 @@ export default function BudgetManagement() {
                           {...field} 
                           type="number" 
                           step="0.01"
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           onChange={(e) => {
                             field.onChange(e);
                             // Auto-calculate PX when hours change
@@ -1110,7 +1181,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Labor Cost</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1123,7 +1194,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Equipment Cost</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1136,7 +1207,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Material Cost</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1149,7 +1220,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Subcontractor Cost</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1162,7 +1233,7 @@ export default function BudgetManagement() {
                     <FormItem>
                       <FormLabel>Budget Total</FormLabel>
                       <FormControl>
-                        <Input {...field} type="number" step="0.01" />
+                        <Input {...field} type="number" step="0.01" className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
