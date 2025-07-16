@@ -855,7 +855,7 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="overflow-auto max-h-[500px] w-full">
+                    <div className="relative w-full h-[500px] overflow-auto">
                       <Table className="min-w-[1400px]">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
@@ -947,7 +947,8 @@ export default function BudgetManagement() {
                                       const newPX = parseFloat(e.target.value || '0');
                                       const convertedQty = parseFloat(item.convertedQty || '0');
                                       if (newPX > 0 && convertedQty > 0) {
-                                        const newHours = convertedQty / newPX;
+                                        // When PX is adjusted, calculate Hours = converted qty * PX (default method)
+                                        const newHours = convertedQty * newPX;
                                         const updatedItem = {
                                           ...item,
                                           productionRate: e.target.value,
