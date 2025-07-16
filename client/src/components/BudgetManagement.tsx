@@ -360,6 +360,35 @@ export default function BudgetManagement() {
     return children.reduce((sum, child) => sum + (parseFloat(child.convertedQty) || 0), 0);
   };
 
+  const getParentUnconvertedQtySum = (parentItem: any) => {
+    const items = budgetItems as any[];
+    const children = items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+    return children.reduce((sum, child) => sum + (parseFloat(child.unconvertedQty) || 0), 0);
+  };
+
+  const updateChildrenPXRate = async (parentItem: any, newPX: string) => {
+    const items = budgetItems as any[];
+    const children = items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+    
+    // Update all children with new PX rate
+    for (const child of children) {
+      const convertedQty = parseFloat(child.convertedQty || '0');
+      const newHours = convertedQty * parseFloat(newPX);
+      
+      const updatedChild = {
+        ...child,
+        productionRate: newPX,
+        hours: newHours.toFixed(2)
+      };
+      
+      await handleInlineUpdate(child.id, updatedChild);
+    }
+  };
+
   const getVisibleItems = () => {
     const items = budgetItems as any[];
     const visibleItems = [];
@@ -920,7 +949,7 @@ export default function BudgetManagement() {
                                 <TableCell>
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
-                                      {formatNumber(getParentQuantitySum(item))}
+                                      {formatNumber(getParentUnconvertedQtySum(item))}
                                     </span>
                                   ) : (
                                     <Input
@@ -937,15 +966,23 @@ export default function BudgetManagement() {
                                 </TableCell>
                                 <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
                                 <TableCell className="text-right">
-                                  {formatNumber(item.convertedQty)}
+                                  {isParent && hasChildren(item) ? (
+                                    <span className="text-gray-600 font-medium">
+                                      {formatNumber(getParentQuantitySum(item))}
+                                    </span>
+                                  ) : (
+                                    formatNumber(item.convertedQty)
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
                                     value={item.productionRate || ''}
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                       const newPX = parseFloat(e.target.value || '0');
-                                      const convertedQty = parseFloat(item.convertedQty || '0');
+                                      const convertedQty = isParent && hasChildren(item) ? 
+                                        getParentQuantitySum(item) : 
+                                        parseFloat(item.convertedQty || '0');
                                       if (newPX > 0 && convertedQty > 0) {
                                         // When PX is adjusted, calculate Hours = converted qty * PX (default method)
                                         const newHours = convertedQty * newPX;
@@ -954,7 +991,12 @@ export default function BudgetManagement() {
                                           productionRate: e.target.value,
                                           hours: newHours.toFixed(2)
                                         };
-                                        handleInlineUpdate(item.id, updatedItem);
+                                        await handleInlineUpdate(item.id, updatedItem);
+                                        
+                                        // If this is a parent with children, update all children PX rates
+                                        if (isParent && hasChildren(item)) {
+                                          await updateChildrenPXRate(item, e.target.value);
+                                        }
                                       }
                                     }}
                                     className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -965,9 +1007,11 @@ export default function BudgetManagement() {
                                   <Input
                                     type="number"
                                     value={item.hours || ''}
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                       const newHours = parseFloat(e.target.value || '0');
-                                      const convertedQty = parseFloat(item.convertedQty || '0');
+                                      const convertedQty = isParent && hasChildren(item) ? 
+                                        getParentQuantitySum(item) : 
+                                        parseFloat(item.convertedQty || '0');
                                       if (newHours > 0 && convertedQty > 0) {
                                         const newPX = newHours / convertedQty;
                                         const updatedItem = {
@@ -975,7 +1019,12 @@ export default function BudgetManagement() {
                                           hours: e.target.value,
                                           productionRate: newPX.toFixed(2)
                                         };
-                                        handleInlineUpdate(item.id, updatedItem);
+                                        await handleInlineUpdate(item.id, updatedItem);
+                                        
+                                        // If this is a parent with children, update all children PX rates
+                                        if (isParent && hasChildren(item)) {
+                                          await updateChildrenPXRate(item, newPX.toFixed(2));
+                                        }
                                       }
                                     }}
                                     className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
