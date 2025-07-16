@@ -79,7 +79,7 @@ export default function BudgetManagement() {
   };
 
   const getTotalBudget = () => {
-    return budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.budgetTotal) || 0), 0);
+    return (budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.budgetTotal) || 0), 0);
   };
 
   const form = useForm<z.infer<typeof budgetLineItemSchema>>({
@@ -110,12 +110,80 @@ export default function BudgetManagement() {
     },
   });
 
+  const editForm = useForm<z.infer<typeof budgetLineItemSchema>>({
+    resolver: zodResolver(budgetLineItemSchema),
+    defaultValues: {
+      lineItemNumber: "",
+      lineItemName: "",
+      unconvertedUnitOfMeasure: "",
+      unconvertedQty: "",
+      actualQty: "0",
+      unitCost: "",
+      unitTotal: "",
+      convertedQty: "",
+      convertedUnitOfMeasure: "",
+      conversionFactor: "1",
+      costCode: "",
+      productionRate: "",
+      hours: "",
+      budgetTotal: "",
+      billing: "0",
+      laborCost: "0",
+      equipmentCost: "0",
+      truckingCost: "0",
+      dumpFeesCost: "0",
+      materialCost: "0",
+      subcontractorCost: "0",
+      notes: "",
+    },
+  });
+
+  const updateBudgetItemMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: Partial<z.infer<typeof budgetLineItemSchema>> }) => {
+      const response = await fetch(`/api/budget/${data.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data.updates),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      setShowEditDialog(false);
+      setEditingItem(null);
+      editForm.reset();
+      toast({
+        title: "Success",
+        description: "Budget line item updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update budget line item",
+        variant: "destructive",
+      });
+    },
+  });
+
   const createBudgetItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof budgetLineItemSchema>) => {
-      return await apiRequest(`/api/locations/${selectedLocation}/budget`, {
+      const response = await fetch(`/api/locations/${selectedLocation}/budget`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
@@ -138,7 +206,12 @@ export default function BudgetManagement() {
   const handleDeleteBudgetItem = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this budget item?')) {
       try {
-        await apiRequest(`/api/budget/${id}`, { method: "DELETE" });
+        const response = await fetch(`/api/budget/${id}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
         toast({
           title: "Success",
@@ -156,15 +229,22 @@ export default function BudgetManagement() {
 
   const handleQuantityChange = async (itemId: number, newQuantity: string) => {
     try {
-      const currentItem = budgetItems.find((item: any) => item.id === itemId);
+      const currentItem = (budgetItems as any[]).find((item: any) => item.id === itemId);
       if (!currentItem) return;
 
       const recalculatedItem = recalculateOnQtyChange(currentItem, newQuantity);
       
-      await apiRequest(`/api/budget/${itemId}`, {
+      const response = await fetch(`/api/budget/${itemId}`, {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(recalculatedItem),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
       
@@ -179,6 +259,35 @@ export default function BudgetManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditItem = (item: any) => {
+    setEditingItem(item);
+    editForm.reset({
+      lineItemNumber: item.lineItemNumber,
+      lineItemName: item.lineItemName,
+      unconvertedUnitOfMeasure: item.unconvertedUnitOfMeasure,
+      unconvertedQty: item.unconvertedQty,
+      actualQty: item.actualQty || "0",
+      unitCost: item.unitCost,
+      unitTotal: item.unitTotal,
+      convertedQty: item.convertedQty || "",
+      convertedUnitOfMeasure: item.convertedUnitOfMeasure || "",
+      conversionFactor: item.conversionFactor || "1",
+      costCode: item.costCode,
+      productionRate: item.productionRate || "",
+      hours: item.hours || "",
+      budgetTotal: item.budgetTotal,
+      billing: item.billing || "0",
+      laborCost: item.laborCost || "0",
+      equipmentCost: item.equipmentCost || "0",
+      truckingCost: item.truckingCost || "0",
+      dumpFeesCost: item.dumpFeesCost || "0",
+      materialCost: item.materialCost || "0",
+      subcontractorCost: item.subcontractorCost || "0",
+      notes: item.notes || "",
+    });
+    setShowEditDialog(true);
   };
 
   const handleExcelImport = () => {
@@ -545,7 +654,7 @@ export default function BudgetManagement() {
                     <SelectValue placeholder="Choose a project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects.map((project: any) => (
+                    {(projects as any[]).map((project: any) => (
                       <SelectItem key={project.id} value={project.id.toString()}>
                         {project.name} ({project.projectId})
                       </SelectItem>
@@ -569,7 +678,7 @@ export default function BudgetManagement() {
                     <SelectValue placeholder="Choose a location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map((location: any) => (
+                    {(locations as any[]).map((location: any) => (
                       <SelectItem key={location.id} value={location.id.toString()}>
                         {location.name}
                       </SelectItem>
@@ -603,7 +712,7 @@ export default function BudgetManagement() {
                       <Calculator className="w-5 h-5 text-blue-600" />
                       <div>
                         <p className="text-sm text-subtle">Line Items</p>
-                        <p className="text-2xl font-bold text-blue-600">{budgetItems.length}</p>
+                        <p className="text-2xl font-bold text-blue-600">{(budgetItems as any[]).length}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -615,7 +724,7 @@ export default function BudgetManagement() {
                       <div>
                         <p className="text-sm text-subtle">Labor Budget</p>
                         <p className="text-2xl font-bold text-orange-600">
-                          {formatCurrency(budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.laborCost) || 0), 0))}
+                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.laborCost) || 0), 0))}
                         </p>
                       </div>
                     </div>
@@ -628,7 +737,7 @@ export default function BudgetManagement() {
                       <div>
                         <p className="text-sm text-subtle">Material Budget</p>
                         <p className="text-2xl font-bold text-purple-600">
-                          {formatCurrency(budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.materialCost) || 0), 0))}
+                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.materialCost) || 0), 0))}
                         </p>
                       </div>
                     </div>
@@ -644,7 +753,7 @@ export default function BudgetManagement() {
                 <CardContent>
                   {budgetLoading ? (
                     <Skeleton className="h-64" />
-                  ) : budgetItems.length === 0 ? (
+                  ) : (budgetItems as any[]).length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-muted">No budget items found for this project</p>
                       <Button className="mt-4" onClick={() => setShowAddDialog(true)}>
@@ -653,8 +762,9 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
+                    <div className="overflow-x-auto border rounded-lg">
+                      <div className="min-w-[1400px]">
+                        <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-20">Line Item</TableHead>
@@ -678,7 +788,7 @@ export default function BudgetManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {budgetItems.map((item: any) => {
+                          {(budgetItems as any[]).map((item: any) => {
                             const isParent = !item.lineItemNumber.includes('.');
                             const isChild = item.lineItemNumber.includes('.');
                             
@@ -750,10 +860,7 @@ export default function BudgetManagement() {
                                     <Button 
                                       variant="ghost" 
                                       size="sm"
-                                      onClick={() => {
-                                        setEditingItem(item);
-                                        setShowEditDialog(true);
-                                      }}
+                                      onClick={() => handleEditItem(item)}
                                     >
                                       <Edit className="w-4 h-4" />
                                     </Button>
@@ -771,7 +878,8 @@ export default function BudgetManagement() {
                             );
                           })}
                         </TableBody>
-                      </Table>
+                        </Table>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -780,6 +888,127 @@ export default function BudgetManagement() {
           )}
         </div>
       </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Budget Line Item</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit((data) => {
+              if (editingItem) {
+                updateBudgetItemMutation.mutate({
+                  id: editingItem.id,
+                  updates: data
+                });
+              }
+            })} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editForm.control}
+                  name="lineItemNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Line Item Number</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="costCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost Code</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="lineItemName"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="unconvertedUnitOfMeasure"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit of Measure</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="unconvertedQty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantity</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="unitCost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit Cost</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editForm.control}
+                  name="budgetTotal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Budget Total</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="number" step="0.01" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateBudgetItemMutation.isPending}>
+                  {updateBudgetItemMutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
