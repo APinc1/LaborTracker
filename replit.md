@@ -123,10 +123,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Current Status
 - Application is fully functional with comprehensive construction management features
-- Using in-memory storage for reliable operation (database connection ready when needed)
+- Using in-memory storage for reliable operation (data does not persist between server restarts)
 - All major modules implemented and tested
 - Budget system restructured to work with locations instead of projects
-- Ready for production deployment or database setup
+- Database connection configured but not active due to connection issues
+- Ready for production deployment with proper database setup
 
 ### July 16, 2025
 - ✅ Restructured budget system: budgets now belong to locations instead of projects

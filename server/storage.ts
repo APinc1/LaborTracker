@@ -869,8 +869,11 @@ function initializeStorage(): IStorage {
     return new MemStorage();
   }
   
-  // For now, always use in-memory storage until database connection is properly configured
-  console.log("Using in-memory storage for reliable operation");
+  // For development, we'll use in-memory storage to avoid database connection issues
+  // When you want to use persistent storage, you can set up your Supabase database
+  // and change this to use DatabaseStorage()
+  console.log("Using in-memory storage for development (data will not persist between server restarts)");
+  console.log("To use persistent storage, set up your Supabase database and modify this function");
   return new MemStorage();
 }
 
