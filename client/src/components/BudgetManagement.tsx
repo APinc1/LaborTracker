@@ -43,7 +43,10 @@ const budgetLineItemSchema = z.object({
 
 export default function BudgetManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -52,9 +55,15 @@ export default function BudgetManagement() {
     staleTime: 30000,
   });
 
-  const { data: budgetItems = [], isLoading: budgetLoading } = useQuery({
-    queryKey: ["/api/projects", selectedProject, "budget"],
+  const { data: locations = [] } = useQuery({
+    queryKey: ["/api/projects", selectedProject, "locations"],
     enabled: !!selectedProject,
+    staleTime: 30000,
+  });
+
+  const { data: budgetItems = [], isLoading: budgetLoading } = useQuery({
+    queryKey: ["/api/locations", selectedLocation, "budget"],
+    enabled: !!selectedLocation,
     staleTime: 30000,
   });
 
@@ -98,13 +107,13 @@ export default function BudgetManagement() {
 
   const createBudgetItemMutation = useMutation({
     mutationFn: async (data: z.infer<typeof budgetLineItemSchema>) => {
-      return await apiRequest(`/api/projects/${selectedProject}/budget`, {
+      return await apiRequest(`/api/locations/${selectedLocation}/budget`, {
         method: "POST",
         body: JSON.stringify(data),
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProject, "budget"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
       setShowAddDialog(false);
       form.reset();
       toast({
@@ -120,6 +129,25 @@ export default function BudgetManagement() {
       });
     },
   });
+
+  const handleDeleteBudgetItem = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this budget item?')) {
+      try {
+        await apiRequest(`/api/budget/${id}`, { method: "DELETE" });
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+        toast({
+          title: "Success",
+          description: "Budget item deleted successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete budget item",
+          variant: "destructive",
+        });
+      }
+    }
+  };
 
   const handleExcelImport = () => {
     const input = document.createElement('input');
@@ -172,7 +200,7 @@ export default function BudgetManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={handleExcelImport}
-              disabled={!selectedProject}
+              disabled={!selectedLocation}
             >
               <Upload className="w-4 h-4" />
               <span>Import Excel</span>
@@ -181,7 +209,7 @@ export default function BudgetManagement() {
               <DialogTrigger asChild>
                 <Button 
                   className="bg-primary hover:bg-primary/90"
-                  disabled={!selectedProject}
+                  disabled={!selectedLocation}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Line Item
@@ -396,28 +424,57 @@ export default function BudgetManagement() {
 
       <main className="p-6">
         <div className="space-y-6">
-          {/* Project Selection */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Select Project</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="w-full md:w-1/3">
-                  <SelectValue placeholder="Choose a project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project: any) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.name} ({project.projectId})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </CardContent>
-          </Card>
+          {/* Project and Location Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Project</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select value={selectedProject} onValueChange={(value) => {
+                  setSelectedProject(value);
+                  setSelectedLocation(""); // Reset location when project changes
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((project: any) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name} ({project.projectId})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
 
-          {selectedProject && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Select Location</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Select 
+                  value={selectedLocation} 
+                  onValueChange={setSelectedLocation}
+                  disabled={!selectedProject}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location: any) => (
+                      <SelectItem key={location.id} value={location.id.toString()}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </div>
+
+          {selectedLocation && (
             <>
               {/* Budget Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -520,10 +577,22 @@ export default function BudgetManagement() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex space-x-1">
-                                  <Button variant="ghost" size="sm">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingItem(item);
+                                      setShowEditDialog(true);
+                                    }}
+                                  >
                                     <Edit className="w-4 h-4" />
                                   </Button>
-                                  <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-red-500 hover:text-red-700"
+                                    onClick={() => handleDeleteBudgetItem(item.id)}
+                                  >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
                                 </div>

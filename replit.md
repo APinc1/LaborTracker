@@ -125,4 +125,17 @@ Preferred communication style: Simple, everyday language.
 - Application is fully functional with comprehensive construction management features
 - Using in-memory storage for reliable operation (database connection ready when needed)
 - All major modules implemented and tested
+- Budget system restructured to work with locations instead of projects
 - Ready for production deployment or database setup
+
+### July 16, 2025
+- ✅ Restructured budget system: budgets now belong to locations instead of projects
+- ✅ Created comprehensive Supabase SQL schema (supabase_schema.sql)
+- ✅ Updated database schema to support location-based budgets
+- ✅ Fixed "Add Task" button - now opens CreateTaskModal with proper functionality
+- ✅ Fixed "Add Location Budget" button - now opens budget allocation dialog
+- ✅ Added edit/delete functionality for budget line items
+- ✅ Fixed all SelectItem errors by replacing empty strings with proper values
+- ✅ Updated API routes to handle location-based budget endpoints
+- ✅ Added location selector to Budget Management page
+- ✅ Created detailed setup instructions for Supabase integration

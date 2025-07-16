@@ -22,7 +22,7 @@ export interface IStorage {
   deleteProject(id: number): Promise<void>;
   
   // Budget methods
-  getBudgetLineItems(projectId: number): Promise<BudgetLineItem[]>;
+  getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]>;
   createBudgetLineItem(budgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem>;
   updateBudgetLineItem(id: number, budgetLineItem: Partial<InsertBudgetLineItem>): Promise<BudgetLineItem>;
   deleteBudgetLineItem(id: number): Promise<void>;
@@ -182,7 +182,7 @@ export class MemStorage implements IStorage {
 
     // Create sample budget line items
     await this.createBudgetLineItem({
-      projectId: bridgeProject.id,
+      locationId: northSection.id,
       lineItemNumber: "1.1",
       lineItemName: "Concrete Forms",
       unconvertedUnitOfMeasure: "SF",
@@ -207,7 +207,7 @@ export class MemStorage implements IStorage {
     });
 
     await this.createBudgetLineItem({
-      projectId: bridgeProject.id,
+      locationId: northSection.id,
       lineItemNumber: "2.1",
       lineItemName: "Demolition Work",
       unconvertedUnitOfMeasure: "SF",
@@ -376,8 +376,8 @@ export class MemStorage implements IStorage {
   }
 
   // Budget methods
-  async getBudgetLineItems(projectId: number): Promise<BudgetLineItem[]> {
-    return Array.from(this.budgetLineItems.values()).filter(item => item.projectId === projectId);
+  async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
+    return Array.from(this.budgetLineItems.values()).filter(item => item.locationId === locationId);
   }
 
   async createBudgetLineItem(insertBudgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem> {
@@ -701,8 +701,8 @@ class DatabaseStorage implements IStorage {
   }
 
   // Budget methods
-  async getBudgetLineItems(projectId: number): Promise<BudgetLineItem[]> {
-    return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.projectId, projectId));
+  async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
+    return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.locationId, locationId));
   }
 
   async createBudgetLineItem(insertBudgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem> {

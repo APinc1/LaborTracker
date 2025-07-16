@@ -25,7 +25,7 @@ export const projects = pgTable("projects", {
 
 export const budgetLineItems = pgTable("budget_line_items", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").references(() => projects.id).notNull(),
+  locationId: integer("location_id").references(() => locations.id).notNull(),
   lineItemNumber: text("line_item_number").notNull(),
   lineItemName: text("line_item_name").notNull(),
   unconvertedUnitOfMeasure: text("unconverted_unit_of_measure").notNull(),
@@ -54,8 +54,11 @@ export const locations = pgTable("locations", {
   locationId: text("location_id").notNull().unique(),
   projectId: integer("project_id").references(() => projects.id).notNull(),
   name: text("name").notNull(),
+  description: text("description"),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
   isComplete: boolean("is_complete").default(false),
 });
 
@@ -63,9 +66,8 @@ export const locationBudgets = pgTable("location_budgets", {
   id: serial("id").primaryKey(),
   locationId: integer("location_id").references(() => locations.id).notNull(),
   budgetLineItemId: integer("budget_line_item_id").references(() => budgetLineItems.id).notNull(),
-  adjustedQty: decimal("adjusted_qty", { precision: 10, scale: 2 }),
-  adjustedHours: decimal("adjusted_hours", { precision: 10, scale: 2 }),
-  actualQty: decimal("actual_qty", { precision: 10, scale: 2 }).default("0"),
+  allocatedAmount: decimal("allocated_amount", { precision: 10, scale: 2 }).notNull(),
+  notes: text("notes"),
 });
 
 export const crews = pgTable("crews", {

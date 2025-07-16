@@ -93,20 +93,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Budget line item routes
-  app.get('/api/projects/:projectId/budget', async (req, res) => {
+  app.get('/api/locations/:locationId/budget', async (req, res) => {
     try {
-      const budgetItems = await storage.getBudgetLineItems(parseInt(req.params.projectId));
+      const budgetItems = await storage.getBudgetLineItems(parseInt(req.params.locationId));
       res.json(budgetItems);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch budget items' });
     }
   });
 
-  app.post('/api/projects/:projectId/budget', async (req, res) => {
+  app.post('/api/locations/:locationId/budget', async (req, res) => {
     try {
       const validated = insertBudgetLineItemSchema.parse({
         ...req.body,
-        projectId: parseInt(req.params.projectId)
+        locationId: parseInt(req.params.locationId)
       });
       const budgetItem = await storage.createBudgetLineItem(validated);
       res.status(201).json(budgetItem);
