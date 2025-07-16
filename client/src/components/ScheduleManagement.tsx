@@ -77,7 +77,7 @@ export default function ScheduleManagement() {
       <main className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {/* Project Selection */}
             <Card>
               <CardHeader>
@@ -146,7 +146,7 @@ export default function ScheduleManagement() {
                 {tasksLoading ? (
                   <Skeleton className="h-96" />
                 ) : (
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="grid grid-cols-7 gap-1">
                     {getWeekDays().map((day) => {
                       const dayTasks = getTasksForDay(day);
                       const isToday = isSameDay(day, new Date());
@@ -155,7 +155,7 @@ export default function ScheduleManagement() {
                       return (
                         <div
                           key={day.toISOString()}
-                          className={`border rounded-lg p-3 min-h-[200px] ${
+                          className={`border rounded-lg p-2 min-h-[180px] ${
                             isToday ? 'bg-blue-50 border-blue-200' : 
                             isSelected ? 'bg-gray-50 border-gray-300' : 
                             'bg-white border-gray-200'

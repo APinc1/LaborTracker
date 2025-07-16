@@ -3,17 +3,17 @@ import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  ChartLine, 
-  FolderOpen, 
-  Calculator, 
-  MapPin, 
-  Calendar, 
-  Users, 
-  CheckSquare, 
-  HardHat, 
-  User, 
-  LogOut 
+import {
+  ChartLine,
+  FolderOpen,
+  Calculator,
+  MapPin,
+  Calendar,
+  Users,
+  CheckSquare,
+  HardHat,
+  User,
+  LogOut,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -32,7 +32,12 @@ export default function Sidebar() {
     { name: "Locations", href: "/locations", icon: MapPin, key: "locations" },
     { name: "Schedule", href: "/schedule", icon: Calendar, key: "schedule" },
     { name: "Employees", href: "/employees", icon: Users, key: "employees" },
-    { name: "Assignments", href: "/assignments", icon: CheckSquare, key: "assignments" },
+    {
+      name: "Assignments",
+      href: "/assignments",
+      icon: CheckSquare,
+      key: "assignments",
+    },
   ];
 
   const isActive = (key: string) => {
@@ -50,7 +55,9 @@ export default function Sidebar() {
           </div>
           <div>
             <h1 className="text-xl font-bold">BuildTracker</h1>
-            <p className="text-muted-foreground text-sm">Public Works Construction</p>
+            <p className="text-muted-foreground text-sm">
+              Public Works Construction
+            </p>
           </div>
         </div>
       </div>
@@ -67,7 +74,7 @@ export default function Sidebar() {
                   className={`w-full justify-start space-x-3 ${
                     isActive(item.key)
                       ? "bg-primary text-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent"
+                      : "text-sidebar-foreground hover:bg-blue-100"
                   }`}
                   onClick={() => setActiveTab(item.key)}
                 >
@@ -81,17 +88,21 @@ export default function Sidebar() {
 
         {/* Current Projects */}
         <div className="p-4 border-t border-sidebar-border">
-          <h3 className="text-muted-foreground text-sm font-medium mb-3">Active Projects</h3>
+          <h3 className="text-muted-foreground text-sm font-medium mb-3">
+            Active Projects
+          </h3>
           <div className="space-y-2">
             {projects.slice(0, 3).map((project: any) => (
               <div
                 key={project.id}
-                className="flex items-center space-x-3 p-2 rounded hover:bg-sidebar-accent cursor-pointer"
+                className="flex items-center space-x-3 p-2 rounded hover:bg-blue-100 cursor-pointer"
               >
                 <div className="w-3 h-3 bg-accent rounded-full"></div>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{project.name}</p>
-                  <p className="text-xs text-muted-foreground">{project.projectId}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {project.projectId}
+                  </p>
                 </div>
               </div>
             ))}
@@ -109,7 +120,11 @@ export default function Sidebar() {
             <p className="text-sm font-medium">John Smith</p>
             <p className="text-xs text-muted-foreground">Superintendent</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-sidebar-foreground hover:bg-sidebar-accent">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-sidebar-foreground hover:bg-blue-100"
+          >
             <LogOut className="w-4 h-4" />
           </Button>
         </div>

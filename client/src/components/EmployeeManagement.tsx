@@ -365,7 +365,7 @@ export default function EmployeeManagement() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="">No Crew</SelectItem>
+                                  <SelectItem value="none">No Crew</SelectItem>
                                   {crews.map((crew: any) => (
                                     <SelectItem key={crew.id} value={crew.id.toString()}>
                                       {crew.name}

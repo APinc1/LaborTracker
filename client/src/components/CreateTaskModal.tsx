@@ -377,7 +377,7 @@ export default function CreateTaskModal({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No foreman assigned</SelectItem>
+                          <SelectItem value="none">No foreman assigned</SelectItem>
                           {getForemen().map((foreman: any) => (
                             <SelectItem key={foreman.id} value={foreman.id.toString()}>
                               {foreman.name} ({foreman.teamMemberId})

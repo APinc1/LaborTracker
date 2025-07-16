@@ -24,8 +24,8 @@ export default function AssignmentManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [filterCrew, setFilterCrew] = useState<string>("");
-  const [filterEmployeeType, setFilterEmployeeType] = useState<string>("");
+  const [filterCrew, setFilterCrew] = useState<string>("all");
+  const [filterEmployeeType, setFilterEmployeeType] = useState<string>("all");
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -192,8 +192,8 @@ export default function AssignmentManagement() {
     const employee = getEmployee(assignment.employeeId);
     const crew = getCrew(employee?.crewId);
     
-    if (filterCrew && crew?.name !== filterCrew) return false;
-    if (filterEmployeeType && employee?.employeeType !== filterEmployeeType) return false;
+    if (filterCrew && filterCrew !== "all" && crew?.name !== filterCrew) return false;
+    if (filterEmployeeType && filterEmployeeType !== "all" && employee?.employeeType !== filterEmployeeType) return false;
     
     return true;
   });
@@ -385,7 +385,7 @@ export default function AssignmentManagement() {
                       <SelectValue placeholder="All crews" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All crews</SelectItem>
+                      <SelectItem value="all">All crews</SelectItem>
                       {uniqueCrews.map((crewName) => (
                         <SelectItem key={crewName} value={crewName}>
                           {crewName}
@@ -401,7 +401,7 @@ export default function AssignmentManagement() {
                       <SelectValue placeholder="All types" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All types</SelectItem>
+                      <SelectItem value="all">All types</SelectItem>
                       {uniqueEmployeeTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
@@ -413,8 +413,8 @@ export default function AssignmentManagement() {
                 <Button 
                   variant="outline" 
                   onClick={() => {
-                    setFilterCrew("");
-                    setFilterEmployeeType("");
+                    setFilterCrew("all");
+                    setFilterEmployeeType("all");
                   }}
                 >
                   Clear Filters
