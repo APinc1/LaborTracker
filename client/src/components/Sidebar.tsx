@@ -79,14 +79,14 @@ export default function Sidebar() {
             <HardHat className="text-white text-lg" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">BuildTracker</h1>
+            <h1 className="text-xl font-bold">Access Pacific
+</h1>
             <p className="text-muted-foreground text-sm">
               Public Works Construction
             </p>
           </div>
         </div>
       </div>
-
       {/* Navigation */}
       <ScrollArea className="flex-1 sidebar-scrollbar">
         <nav className="p-4 space-y-2">
@@ -134,7 +134,6 @@ export default function Sidebar() {
           </div>
         </div>
       </ScrollArea>
-
       {/* User Profile */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center space-x-3">
