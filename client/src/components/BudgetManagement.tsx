@@ -1164,11 +1164,7 @@ export default function BudgetManagement() {
                         <>
                           <Button
                             variant="outline"
-                            onClick={() => {
-                              if (window.confirm('Are you sure you want to save all changes?')) {
-                                saveAllChanges();
-                              }
-                            }}
+                            onClick={saveAllChanges}
                             className="flex items-center gap-2"
                           >
                             Save
@@ -1227,7 +1223,9 @@ export default function BudgetManagement() {
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Sub</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Budget</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Billings</th>
-                            <th className="w-16 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
+                            {isEditMode && (
+                              <th className="w-16 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -1552,8 +1550,8 @@ export default function BudgetManagement() {
                                 <td className="text-right px-4 py-3">
                                   {formatCurrency(item.billing || 0)}
                                 </td>
-                                <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                  {isEditMode && (
+                                {isEditMode && (
+                                  <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
@@ -1562,8 +1560,8 @@ export default function BudgetManagement() {
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </Button>
-                                  )}
-                                </td>
+                                  </td>
+                                )}
                               </tr>
                             );
                           })}
