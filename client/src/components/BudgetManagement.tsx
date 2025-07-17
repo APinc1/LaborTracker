@@ -635,6 +635,13 @@ export default function BudgetManagement() {
     return children.reduce((sum, child) => sum + (parseFloat(child.hours) || 0), 0);
   };
 
+  const getChildren = (parentItem: any) => {
+    const items = budgetItems as any[];
+    return items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+  };
+
 
 
   const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
@@ -1264,7 +1271,7 @@ export default function BudgetManagement() {
                                 <td className="px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium text-right w-20 inline-block">
-                                      {formatNumber(getParentQuantitySum(item))}
+                                      {formatNumber(getInputValue(item.id, 'unconvertedQty', getParentUnconvertedQtySum(item).toString()))}
                                     </span>
                                   ) : isEditMode ? (
                                     <Input
@@ -1333,10 +1340,10 @@ export default function BudgetManagement() {
                                 <td className="text-right px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
-                                      {formatNumber(getParentQuantitySum(item))}
+                                      {formatNumber(getInputValue(item.id, 'convertedQty', getParentQuantitySum(item).toString()))}
                                     </span>
                                   ) : (
-                                    formatNumber(item.convertedQty)
+                                    formatNumber(getInputValue(item.id, 'convertedQty', item.convertedQty))
                                   )}
                                 </td>
                                 <td className="text-right px-4 py-3">
@@ -1393,7 +1400,7 @@ export default function BudgetManagement() {
                                     />
                                   ) : (
                                     <span className="text-right w-20 inline-block">
-                                      {formatNumber(item.productionRate || '0')}
+                                      {formatNumber(getInputValue(item.id, 'productionRate', item.productionRate || '0'))}
                                     </span>
                                   )}
                                 </td>
@@ -1464,8 +1471,8 @@ export default function BudgetManagement() {
                                   ) : (
                                     <span className="text-right w-20 inline-block">
                                       {isParentItem(item) && hasChildren(item) ? 
-                                        `${getParentHoursSum(item).toFixed(2)}` : 
-                                        formatNumber(item.hours || '0')
+                                        `${parseFloat(getInputValue(item.id, 'hours', getParentHoursSum(item).toString())).toFixed(2)}` : 
+                                        formatNumber(getInputValue(item.id, 'hours', item.hours || '0'))
                                       }
                                     </span>
                                   )}
