@@ -1205,29 +1205,29 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-              <div className="w-full overflow-x-auto">
-                <div className="min-w-[1400px] max-h-[500px] overflow-y-auto">
-                    <Table className="w-full">
-                        <TableHeader className="sticky top-0 bg-white z-10">
-                          <TableRow>
-                            <TableHead className="w-20 sticky left-0 top-0 bg-white border-b border-r z-20">Line Item</TableHead>
-                            <TableHead className="min-w-60 sticky left-20 top-0 bg-white border-b border-r z-20">Description</TableHead>
-                            <TableHead className="w-16 sticky top-0 bg-white border-b">Unit</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white border-b">Qty</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Unit Cost</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white border-b">Conv. UM</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Conv. Qty</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white border-b">PX</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white border-b">Hours</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Labor Cost</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Equipment</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Trucking</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Dump Fees</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Material</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Sub</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Budget</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white border-b">Billings</TableHead>
-                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-b border-l">Actions</TableHead>
+              <div className="w-full">
+                <div className="overflow-auto max-h-[500px] border rounded-lg">
+                    <Table className="w-full min-w-[1400px] relative">
+                        <TableHeader>
+                          <TableRow className="sticky top-0 bg-white z-10 border-b">
+                            <TableHead className="w-20 sticky left-0 top-0 bg-white border-r z-20">Line Item</TableHead>
+                            <TableHead className="min-w-60 sticky left-20 top-0 bg-white border-r z-20">Description</TableHead>
+                            <TableHead className="w-16 sticky top-0 bg-white">Unit</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Qty</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Unit Cost</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Conv. UM</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Conv. Qty</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">PX</TableHead>
+                            <TableHead className="w-20 sticky top-0 bg-white">Hours</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Labor Cost</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Equipment</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Trucking</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Dump Fees</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Material</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Sub</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Budget</TableHead>
+                            <TableHead className="w-24 sticky top-0 bg-white">Billings</TableHead>
+                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-l">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
