@@ -334,6 +334,9 @@ export default function BudgetManagement() {
 
   const recalculateParentFromChildren = async (parentItem: any) => {
     try {
+      // Wait for the query to refresh and get the updated data
+      await queryClient.refetchQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
       const parentHours = getParentHoursSum(parentItem);
       const parentConvertedQty = getParentQuantitySum(parentItem);
       
@@ -371,6 +374,9 @@ export default function BudgetManagement() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
+      // Invalidate queries first to get fresh data
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
       // If this is a child item, recalculate parent from children
       if (isChildItem(currentItem)) {
         const parentId = getParentId(currentItem);
@@ -379,8 +385,6 @@ export default function BudgetManagement() {
           await recalculateParentFromChildren(parentItem);
         }
       }
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
       
       toast({
         title: "Success",
