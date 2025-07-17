@@ -1411,7 +1411,6 @@ export default function BudgetManagement() {
                                       onChange={(e) => {
                                       // Update local input value immediately
                                       setInputValue(item.id, 'hours', e.target.value);
-                                      const isParent = isParentItem(item);
                                       const isChild = isChildItem(item);
                                       
                                       // Children cannot edit hours directly
@@ -1423,6 +1422,14 @@ export default function BudgetManagement() {
                                         });
                                         return;
                                       }
+                                    }}
+                                    
+                                    onBlur={(e) => {
+                                      // Only run calculations when user finishes editing (on blur)
+                                      const isParent = isParentItem(item);
+                                      const isChild = isChildItem(item);
+                                      
+                                      if (isChild) return;
 
                                       const newHours = parseFloat(e.target.value || '0');
                                       
@@ -1457,6 +1464,12 @@ export default function BudgetManagement() {
                                           const newPX = newHours / convertedQty;
                                           setInputValue(item.id, 'productionRate', newPX.toFixed(2));
                                         }
+                                      }
+                                    }}
+                                    
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        (e.target as HTMLInputElement).blur();
                                       }
                                     }}
 
