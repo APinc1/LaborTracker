@@ -58,6 +58,7 @@ export default function BudgetManagement() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
+  const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -684,21 +685,42 @@ export default function BudgetManagement() {
     
     for (const item of items) {
       if (isParentItem(item)) {
-        visibleItems.push(item);
-        if (expandedItems.has(item.lineItemNumber)) {
-          // Add children
-          const children = items.filter(child => 
-            isChildItem(child) && getParentId(child) === item.lineItemNumber
-          );
-          visibleItems.push(...children);
+        // Check if parent should be shown based on cost code filter
+        const shouldShowParent = selectedCostCodeFilter === 'all' || item.costCode === selectedCostCodeFilter;
+        
+        if (shouldShowParent) {
+          visibleItems.push(item);
+          if (expandedItems.has(item.lineItemNumber)) {
+            // Add children
+            const children = items.filter(child => 
+              isChildItem(child) && getParentId(child) === item.lineItemNumber
+            );
+            visibleItems.push(...children);
+          }
         }
       } else if (!isChildItem(item)) {
         // Items that are neither parent nor child (standalone items)
-        visibleItems.push(item);
+        const shouldShowStandalone = selectedCostCodeFilter === 'all' || item.costCode === selectedCostCodeFilter;
+        if (shouldShowStandalone) {
+          visibleItems.push(item);
+        }
       }
     }
     
     return visibleItems;
+  };
+
+  const getUniqueCostCodes = () => {
+    const items = budgetItems as any[];
+    const costCodes = new Set<string>();
+    
+    items.forEach(item => {
+      if (item.costCode) {
+        costCodes.add(item.costCode);
+      }
+    });
+    
+    return Array.from(costCodes).sort();
   };
 
   const handleExcelImport = () => {
@@ -1219,7 +1241,23 @@ export default function BudgetManagement() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Budget Line Items</CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium">Filter by Cost Code:</label>
+                        <Select value={selectedCostCodeFilter} onValueChange={setSelectedCostCodeFilter}>
+                          <SelectTrigger className="w-40">
+                            <SelectValue placeholder="All Cost Codes" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Cost Codes</SelectItem>
+                            {getUniqueCostCodes().map(costCode => (
+                              <SelectItem key={costCode} value={costCode}>
+                                {costCode}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       {!isEditMode ? (
                         <Button
                           variant="outline"
@@ -1273,29 +1311,29 @@ export default function BudgetManagement() {
               <div className="w-full border rounded-lg">
                 <div className="overflow-auto max-h-[500px] relative">
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
-                        <thead className="bg-white sticky top-0 z-10">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
-                            <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">PX</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Hours</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Equipment</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Trucking</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Dump Fees</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Material</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Sub</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Budget</th>
-                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Billings</th>
+                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
+                            <th className="w-16 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Qty</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">PX</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Hours</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Equipment</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Trucking</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Dump Fees</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Material</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Sub</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Budget</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Billings</th>
                             {isEditMode && (
-                              <th className="w-16 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
+                              <th className="w-16 sticky right-0 top-0 bg-gray-100 z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
                             )}
                           </tr>
                         </thead>
@@ -1312,7 +1350,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{position: 'sticky', left: '0px'}}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1331,7 +1369,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
@@ -1591,7 +1629,7 @@ export default function BudgetManagement() {
                                   {formatCurrency(item.billing || 0)}
                                 </td>
                                 {isEditMode && (
-                                  <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                  <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`}>
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
