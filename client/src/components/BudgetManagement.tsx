@@ -539,11 +539,6 @@ export default function BudgetManagement() {
       
       queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
       
-      toast({
-        title: "Success",
-        description: "Budget item updated with new calculations",
-      });
-      
       // Reset unsaved changes flag after successful update
       setHasUnsavedChanges(false);
     } catch (error) {
