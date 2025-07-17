@@ -15,6 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProjectSchema } from "@shared/schema";
+import { Link } from "wouter";
 
 export default function ProjectManagement() {
   const { toast } = useToast();
@@ -228,7 +229,11 @@ export default function ProjectManagement() {
             <Card key={project.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{project.name}</CardTitle>
+                  <Link href={`/projects/${project.id}`}>
+                    <CardTitle className="text-lg hover:text-blue-600 cursor-pointer transition-colors">
+                      {project.name}
+                    </CardTitle>
+                  </Link>
                   <div className="flex space-x-1">
                     <Button
                       variant="ghost"
