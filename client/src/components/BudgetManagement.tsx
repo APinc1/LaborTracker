@@ -885,7 +885,8 @@ export default function BudgetManagement() {
                     </div>
                   ) : (
               <div className="w-full overflow-x-auto">
-                <div className="min-w-[1400px] max-h-[500px] overflow-y-auto">
+                <div className="min-w-[1400px]">
+                  <div className="max-h-[500px] overflow-y-auto">
                     <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
@@ -1080,6 +1081,7 @@ export default function BudgetManagement() {
                           })}
                         </TableBody>
                         </Table>
+                      </div>
                     </div>
                   </div>
                   )}
