@@ -52,7 +52,7 @@ export default function BudgetManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [pendingUpdates, setPendingUpdates] = useState<Map<number, any>>(new Map());
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
@@ -94,25 +94,12 @@ export default function BudgetManagement() {
       clearTimeout(existingTimeout);
     }
 
-    // Update pending state immediately for UI responsiveness
-    setPendingUpdates(prev => new Map(prev).set(itemId, updatedItem));
-
-    // Set new timeout for actual API call
+    // Set new timeout for actual API call without updating pending state
     const timeout = setTimeout(async () => {
       try {
         await handleInlineUpdate(itemId, updatedItem);
-        setPendingUpdates(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(itemId);
-          return newMap;
-        });
       } catch (error) {
         console.error('Failed to update item:', error);
-        setPendingUpdates(prev => {
-          const newMap = new Map(prev);
-          newMap.delete(itemId);
-          return newMap;
-        });
       }
       updateTimeoutRef.current.delete(itemId);
     }, delay);
@@ -120,11 +107,7 @@ export default function BudgetManagement() {
     updateTimeoutRef.current.set(itemId, timeout);
   }, [handleInlineUpdate]);
 
-  // Get the current value for an item (pending or actual)
-  const getCurrentValue = useCallback((item: any, field: string) => {
-    const pendingItem = pendingUpdates.get(item.id);
-    return pendingItem?.[field] ?? item[field];
-  }, [pendingUpdates]);
+
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -418,6 +401,14 @@ export default function BudgetManagement() {
       isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
     );
     return children.reduce((sum, child) => sum + (parseFloat(child.unconvertedQty) || 0), 0);
+  };
+
+  const getParentHoursSum = (parentItem: any) => {
+    const items = budgetItems as any[];
+    const children = items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+    return children.reduce((sum, child) => sum + (parseFloat(child.hours) || 0), 0);
   };
 
   const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
@@ -1031,7 +1022,7 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={getCurrentValue(item, 'productionRate') || ''}
+                                    value={item.productionRate || ''}
                                     onChange={(e) => {
                                       const isParent = isParentItem(item);
                                       const isChild = isChildItem(item);
@@ -1084,59 +1075,59 @@ export default function BudgetManagement() {
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    value={getCurrentValue(item, 'hours') || ''}
-                                    onChange={(e) => {
-                                      const isParent = isParentItem(item);
-                                      const isChild = isChildItem(item);
-                                      
-                                      // Children cannot edit hours directly
-                                      if (isChild) {
-                                        toast({
-                                          title: "Cannot Edit",
-                                          description: "Child items inherit hours from parent calculations",
-                                          variant: "destructive"
-                                        });
-                                        return;
-                                      }
-
-                                      const newHours = parseFloat(e.target.value || '0');
-                                      const convertedQty = isParent && hasChildren(item) ? 
-                                        getParentQuantitySum(item) : 
-                                        parseFloat(item.convertedQty || '0');
-                                      
-                                      if (newHours > 0 && convertedQty > 0) {
-                                        // When hours change, calculate PX = hours / convertedQty
-                                        const newPX = newHours / convertedQty;
-                                        const updatedItem = {
-                                          ...item,
-                                          hours: e.target.value,
-                                          productionRate: newPX.toFixed(2)
-                                        };
+                                  {isParentItem(item) && hasChildren(item) ? (
+                                    // Parent with children - show sum of child hours (read-only)
+                                    <div className="w-20 text-right px-3 py-2 text-sm bg-blue-50 border border-blue-200 rounded">
+                                      {getParentHoursSum(item).toFixed(2)}
+                                    </div>
+                                  ) : (
+                                    <Input
+                                      type="number"
+                                      value={item.hours || ''}
+                                      onChange={(e) => {
+                                        const isParent = isParentItem(item);
+                                        const isChild = isChildItem(item);
                                         
-                                        // Use debounced update for better performance
-                                        debouncedUpdate(item.id, updatedItem);
-                                        
-                                        // If this is a parent with children, update all children PX rates
-                                        if (isParent && hasChildren(item)) {
-                                          updateChildrenPXRate(item, newPX.toFixed(2));
+                                        // Children cannot edit hours directly
+                                        if (isChild) {
+                                          toast({
+                                            title: "Cannot Edit",
+                                            description: "Child items inherit hours from parent calculations",
+                                            variant: "destructive"
+                                          });
+                                          return;
                                         }
-                                      } else {
-                                        // Just update the hours without PX calculation
-                                        const updatedItem = {
-                                          ...item,
-                                          hours: e.target.value
-                                        };
-                                        debouncedUpdate(item.id, updatedItem);
-                                      }
-                                    }}
-                                    className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                      isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
-                                    }`}
-                                    step="0.01"
-                                    disabled={isChildItem(item)}
-                                  />
+
+                                        const newHours = parseFloat(e.target.value || '0');
+                                        const convertedQty = parseFloat(item.convertedQty || '0');
+                                        
+                                        if (newHours > 0 && convertedQty > 0) {
+                                          // When hours change, calculate PX = hours / convertedQty
+                                          const newPX = newHours / convertedQty;
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value,
+                                            productionRate: newPX.toFixed(2)
+                                          };
+                                          
+                                          // Use debounced update for better performance
+                                          debouncedUpdate(item.id, updatedItem);
+                                        } else {
+                                          // Just update the hours without PX calculation
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value
+                                          };
+                                          debouncedUpdate(item.id, updatedItem);
+                                        }
+                                      }}
+                                      className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                        isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                      }`}
+                                      step="0.01"
+                                      disabled={isChildItem(item)}
+                                    />
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(item.laborCost || 0)}
