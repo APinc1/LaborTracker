@@ -335,15 +335,17 @@ export default function BudgetManagement() {
   const recalculateParentHours = async (parentItem: any) => {
     try {
       const parentHours = getParentHoursSum(parentItem);
+      const parentConvertedQty = getParentQuantitySum(parentItem);
       const updatedParent = {
         ...parentItem,
-        hours: parentHours.toFixed(2)
+        hours: parentHours.toFixed(2),
+        convertedQty: parentConvertedQty.toFixed(2)
       };
       
-      // Use immediate update for parent hours recalculation
+      // Use immediate update for parent hours and converted quantity recalculation
       await handleInlineUpdate(parentItem.id, updatedParent);
     } catch (error) {
-      console.error('Failed to recalculate parent hours:', error);
+      console.error('Failed to recalculate parent hours and converted quantity:', error);
     }
   };
 
@@ -474,6 +476,8 @@ export default function BudgetManagement() {
     );
     return children.reduce((sum, child) => sum + (parseFloat(child.hours) || 0), 0);
   };
+
+
 
   const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
     const items = budgetItems as any[];
