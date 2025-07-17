@@ -1207,11 +1207,11 @@ export default function BudgetManagement() {
                   ) : (
               <div className="w-full border rounded-lg">
                 <div className="overflow-auto max-h-[500px] relative">
-                    <table className="w-full min-w-[1400px] border-collapse">
+                    <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-white sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900">Line Item</th>
-                            <th className="min-w-60 sticky left-20 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{left: '80px'}}>Description</th>
+                            <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
                             <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
@@ -1227,7 +1227,7 @@ export default function BudgetManagement() {
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Sub</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Budget</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Billings</th>
-                            <th className="w-24 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                            <th className="w-16 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1243,7 +1243,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1262,7 +1262,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{left: '80px'}} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
@@ -1552,25 +1552,16 @@ export default function BudgetManagement() {
                                 <td className="text-right px-4 py-3">
                                   {formatCurrency(item.billing || 0)}
                                 </td>
-                                <td className={`sticky right-0 z-10 border-l border-gray-200 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                   {isEditMode && (
-                                    <div className="flex space-x-1">
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm"
-                                        onClick={() => handleEditItem(item)}
-                                      >
-                                        <Edit className="w-4 h-4" />
-                                      </Button>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="text-red-500 hover:text-red-700"
-                                        onClick={() => handleDeleteBudgetItem(item.id)}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </div>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-red-500 hover:text-red-700"
+                                      onClick={() => handleDeleteBudgetItem(item.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
                                   )}
                                 </td>
                               </tr>
