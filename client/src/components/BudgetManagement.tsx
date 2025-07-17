@@ -1272,15 +1272,50 @@ export default function BudgetManagement() {
                                       value={getInputValue(item.id, 'unconvertedQty', item.unconvertedQty)}
                                       onChange={(e) => {
                                         setInputValue(item.id, 'unconvertedQty', e.target.value);
+                                        
                                         // Recalculate derived values locally
                                         const newQty = parseFloat(e.target.value || '0');
                                         const conversionFactor = parseFloat(item.conversionFactor || '1');
                                         const newConvertedQty = newQty * conversionFactor;
-                                        const px = parseFloat(item.productionRate || '0');
+                                        const px = parseFloat(getInputValue(item.id, 'productionRate', item.productionRate) || '0');
                                         const newHours = newConvertedQty * px;
                                         
                                         setInputValue(item.id, 'convertedQty', newConvertedQty.toFixed(2));
                                         setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                        
+                                        // If this is a child item, update parent quantities and hours
+                                        if (isChildItem(item)) {
+                                          const parentId = getParentId(item);
+                                          const parentItem = (budgetItems as any[]).find((parent: any) => parent.lineItemNumber === parentId);
+                                          if (parentItem) {
+                                            const children = getChildren(parentItem);
+                                            
+                                            // Update parent converted quantity (sum of children converted qty)
+                                            const parentConvertedQty = children.reduce((sum, child) => {
+                                              const childId = child.id === item.id ? item.id : child.id;
+                                              const childConvQty = childId === item.id ? newConvertedQty : parseFloat(getInputValue(child.id, 'convertedQty', child.convertedQty) || '0');
+                                              return sum + childConvQty;
+                                            }, 0);
+                                            
+                                            // Update parent hours (sum of children hours)
+                                            const parentHours = children.reduce((sum, child) => {
+                                              const childId = child.id === item.id ? item.id : child.id;
+                                              const childHours = childId === item.id ? newHours : parseFloat(getInputValue(child.id, 'hours', child.hours) || '0');
+                                              return sum + childHours;
+                                            }, 0);
+                                            
+                                            setInputValue(parentItem.id, 'convertedQty', parentConvertedQty.toFixed(2));
+                                            setInputValue(parentItem.id, 'hours', parentHours.toFixed(2));
+                                            
+                                            // Update parent unconverted quantity if needed
+                                            const parentUnconvertedQty = children.reduce((sum, child) => {
+                                              const childId = child.id === item.id ? item.id : child.id;
+                                              const childUnconvQty = childId === item.id ? newQty : parseFloat(getInputValue(child.id, 'unconvertedQty', child.unconvertedQty) || '0');
+                                              return sum + childUnconvQty;
+                                            }, 0);
+                                            setInputValue(parentItem.id, 'unconvertedQty', parentUnconvertedQty.toFixed(2));
+                                          }
+                                        }
                                       }}
                                       className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       step="0.01"
@@ -1324,12 +1359,30 @@ export default function BudgetManagement() {
 
                                         setInputValue(item.id, 'productionRate', e.target.value);
                                         
-                                        // Recalculate hours locally
                                         const newPX = parseFloat(e.target.value || '0');
-                                        const convertedQty = parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty) || '0');
-                                        const newHours = convertedQty * newPX;
+                                        const isParent = isParentItem(item);
                                         
-                                        setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                        if (isParent && hasChildren(item)) {
+                                          // Parent PX change: update all children PX, then recalculate hours
+                                          const children = getChildren(item);
+                                          children.forEach(child => {
+                                            setInputValue(child.id, 'productionRate', newPX.toFixed(2));
+                                            const childConvertedQty = parseFloat(getInputValue(child.id, 'convertedQty', child.convertedQty) || '0');
+                                            const childNewHours = childConvertedQty * newPX;
+                                            setInputValue(child.id, 'hours', childNewHours.toFixed(2));
+                                          });
+                                          
+                                          // Parent hours = sum of children hours
+                                          const parentHours = children.reduce((sum, child) => {
+                                            return sum + parseFloat(getInputValue(child.id, 'hours', child.hours) || '0');
+                                          }, 0);
+                                          setInputValue(item.id, 'hours', parentHours.toFixed(2));
+                                        } else {
+                                          // Single item: Hours = Conv Qty × PX
+                                          const convertedQty = parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty) || '0');
+                                          const newHours = convertedQty * newPX;
+                                          setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                        }
                                       }}
 
                                       className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
@@ -1372,22 +1425,23 @@ export default function BudgetManagement() {
                                       const newHours = parseFloat(e.target.value || '0');
                                       
                                       if (isParent && hasChildren(item)) {
-                                        // Parent with children - manual hours change adjusts PX rate
+                                        // Parent with children - manual hours change adjusts parent PX, then children PX
                                         const parentQty = getParentQuantitySum(item);
                                         if (newHours > 0 && parentQty > 0) {
                                           const newPX = newHours / parentQty;
-                                          const updatedItem = {
-                                            ...item,
-                                            hours: e.target.value,
-                                            productionRate: newPX.toFixed(2)
-                                          };
-                                          
-                                          // Update parent with debounced update
-                                          // Update the PX input field to reflect the new value
                                           setInputValue(item.id, 'productionRate', newPX.toFixed(2));
+                                          
+                                          // Update all children with new PX rate
+                                          const children = getChildren(item);
+                                          children.forEach(child => {
+                                            setInputValue(child.id, 'productionRate', newPX.toFixed(2));
+                                            const childConvertedQty = parseFloat(getInputValue(child.id, 'convertedQty', child.convertedQty) || '0');
+                                            const childNewHours = childConvertedQty * newPX;
+                                            setInputValue(child.id, 'hours', childNewHours.toFixed(2));
+                                          });
                                         }
                                       } else {
-                                        // Single item or child - normal hours change
+                                        // Single item - normal hours change calculates PX = hours / convertedQty
                                         const convertedQty = parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty) || '0');
                                         
                                         if (newHours > 0 && convertedQty > 0) {

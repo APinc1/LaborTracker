@@ -160,3 +160,23 @@ Preferred communication style: Simple, everyday language.
 - ✅ Added sticky table headers and first two columns (Line Item, Description) to budget table
 - ✅ Enhanced table UX with proper sticky styling and background colors for child rows
 - ✅ Actions column remains sticky on the right side with proper background matching
+- ✅ Converted table to native HTML elements for better sticky positioning
+- ✅ Delete column only appears when in edit mode
+- ✅ Removed confirmation dialogs and toast notifications for cleaner UX
+- ✅ Removed automatic saving when typing in hours field
+
+### Budget Calculation Rules (User Specification)
+**For line items without children:**
+- By default Hours = Conv Qty × PX
+- If Qty changes: Hours = new Conv Qty × PX
+- If PX changes: Hours = Conv Qty × new PX
+- If Hours changes: PX = Hours ÷ Conv Qty
+- If PX or Qty change after Hours edit: reverts to Hours = Conv Qty × PX
+
+**For line items with children:**
+- Parent Qty = Conv Qty = sum of children Conv Qty
+- Parent Hours = sum of children Hours
+- If child Qty changes: updates child Conv Qty → parent Qty changes → child Hours change → parent Hours change
+- If parent PX changes: updates all children PX → children Hours change → parent Hours change
+- If parent Hours changes: updates parent PX → updates children PX → children Hours change → parent Hours = sum of children Hours
+- After parent Hours edit, if parent PX or child Qty changes: reverts to parent Hours = sum of children Hours
