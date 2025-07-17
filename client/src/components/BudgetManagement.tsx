@@ -19,6 +19,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { useNavigationProtection } from "@/contexts/NavigationProtectionContext";
 
 const budgetLineItemSchema = z.object({
   lineItemNumber: z.string().min(1, "Line item number is required"),
@@ -59,7 +61,9 @@ export default function BudgetManagement() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+  const { setHasUnsavedChanges: setGlobalUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
@@ -167,7 +171,8 @@ export default function BudgetManagement() {
     const key = `${itemId}-${field}`;
     setInputValues(prev => new Map(prev).set(key, value));
     setHasUnsavedChanges(true);
-  }, []);
+    setGlobalUnsavedChanges(true);
+  }, [setGlobalUnsavedChanges]);
 
   const clearInputValue = useCallback((itemId: number, field: string) => {
     const key = `${itemId}-${field}`;
@@ -214,6 +219,14 @@ export default function BudgetManagement() {
     setIsEditMode(true);
   };
 
+  // Register navigation handlers when component mounts
+  useEffect(() => {
+    setNavigationHandlers({
+      onSave: saveAllChanges,
+      onCancel: cancelChanges,
+    });
+  }, [setNavigationHandlers]);
+
   // Save all changes at once
   const saveAllChanges = async () => {
     try {
@@ -242,6 +255,7 @@ export default function BudgetManagement() {
       await Promise.all(promises);
       setIsEditMode(false);
       setHasUnsavedChanges(false);
+      setGlobalUnsavedChanges(false);
       setInputValues(new Map());
       
       toast({
@@ -261,6 +275,7 @@ export default function BudgetManagement() {
   const cancelChanges = () => {
     setIsEditMode(false);
     setHasUnsavedChanges(false);
+    setGlobalUnsavedChanges(false);
     setInputValues(new Map());
     queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
     
@@ -269,6 +284,8 @@ export default function BudgetManagement() {
       description: "All unsaved changes have been discarded",
     });
   };
+
+
 
 
 

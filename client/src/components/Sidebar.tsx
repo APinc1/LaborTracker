@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigationProtection } from "@/contexts/NavigationProtectionContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -16,6 +17,28 @@ import {
   LogOut,
 } from "lucide-react";
 
+// Protected navigation component
+const ProtectedNavLink = ({ 
+  href, 
+  children, 
+  onNavigate 
+}: { 
+  href: string; 
+  children: React.ReactNode; 
+  onNavigate: (path: string) => void; 
+}) => {
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onNavigate(href);
+  };
+
+  return (
+    <a href={href} onClick={handleClick}>
+      {children}
+    </a>
+  );
+};
+
 export default function Sidebar() {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -24,6 +47,8 @@ export default function Sidebar() {
     queryKey: ["/api/projects"],
     staleTime: 30000,
   });
+
+  const { protectedNavigate } = useNavigationProtection();
 
   const navigation = [
     { name: "Dashboard", href: "/", icon: ChartLine, key: "dashboard" },
@@ -68,7 +93,7 @@ export default function Sidebar() {
           {navigation.map((item) => {
             const Icon = item.icon;
             return (
-              <Link key={item.key} href={item.href}>
+              <ProtectedNavLink key={item.key} href={item.href} onNavigate={protectedNavigate}>
                 <Button
                   variant={isActive(item.key) ? "default" : "ghost"}
                   className={`w-full justify-start space-x-3 ${
@@ -81,7 +106,7 @@ export default function Sidebar() {
                   <Icon className="w-5 h-5" />
                   <span>{item.name}</span>
                 </Button>
-              </Link>
+              </ProtectedNavLink>
             );
           })}
         </nav>
