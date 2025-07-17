@@ -1083,6 +1083,7 @@ export default function BudgetManagement() {
                         </Table>
                       </div>
                     </div>
+                  </div>
                   )}
                 </CardContent>
               </Card>
