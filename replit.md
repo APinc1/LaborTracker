@@ -144,3 +144,11 @@ Preferred communication style: Simple, everyday language.
 - ✅ Added conversion factor storage and automatic formula calculations
 - ✅ Created editable quantity fields with real-time recalculation
 - ✅ Added comprehensive Excel import documentation and troubleshooting guide
+
+### July 17, 2025
+- ✅ Fixed PX and hours calculation issues for standalone budget items
+- ✅ Added proper data validation and error handling for budget updates
+- ✅ Implemented edit mode toggle for budget line items table
+- ✅ Budget items are now read-only by default with Edit/Save button to unlock editing
+- ✅ All inline editing controls (quantity, PX, hours) are disabled when not in edit mode
+- ✅ Action buttons (edit, delete, add, import) are disabled when not in edit mode

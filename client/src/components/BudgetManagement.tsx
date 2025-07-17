@@ -53,6 +53,7 @@ export default function BudgetManagement() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -705,7 +706,7 @@ export default function BudgetManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={handleExcelImport}
-              disabled={!selectedLocation}
+              disabled={!selectedLocation || !isEditMode}
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Import Excel</span>
@@ -714,7 +715,7 @@ export default function BudgetManagement() {
               <DialogTrigger asChild>
                 <Button 
                   className="bg-primary hover:bg-primary/90"
-                  disabled={!selectedLocation}
+                  disabled={!selectedLocation || !isEditMode}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Line Item
@@ -1038,7 +1039,29 @@ export default function BudgetManagement() {
               {/* Budget Items Table */}
               <Card className="w-full">
                 <CardHeader>
-                  <CardTitle>Budget Line Items</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Budget Line Items</CardTitle>
+                    <div className="flex gap-2">
+                      {!isEditMode ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsEditMode(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsEditMode(false)}
+                          className="flex items-center gap-2"
+                        >
+                          Save
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {budgetLoading ? (
@@ -1120,7 +1143,7 @@ export default function BudgetManagement() {
                                     <span className="text-gray-600 font-medium">
                                       {formatNumber(getParentQuantitySum(item))}
                                     </span>
-                                  ) : (
+                                  ) : isEditMode ? (
                                     <Input
                                       type="number"
                                       value={item.unconvertedQty}
@@ -1128,6 +1151,10 @@ export default function BudgetManagement() {
                                       className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       step="0.01"
                                     />
+                                  ) : (
+                                    <span className="text-right w-20 inline-block">
+                                      {formatNumber(item.unconvertedQty)}
+                                    </span>
                                   )}
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -1144,10 +1171,11 @@ export default function BudgetManagement() {
                                   )}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    value={getInputValue(item.id, 'productionRate', item.productionRate || '')}
-                                    onChange={(e) => {
+                                  {isEditMode ? (
+                                    <Input
+                                      type="number"
+                                      value={getInputValue(item.id, 'productionRate', item.productionRate || '')}
+                                      onChange={(e) => {
                                       // Update local input value immediately
                                       setInputValue(item.id, 'productionRate', e.target.value);
                                       const isParent = isParentItem(item);
@@ -1261,22 +1289,28 @@ export default function BudgetManagement() {
                                         clearInputValue(item.id, 'productionRate');
                                       }
                                     }}
-                                    className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                      isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
-                                    }`}
-                                    step="0.01"
-                                    disabled={isChildItem(item)}
-                                  />
+                                      className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                        isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                      }`}
+                                      step="0.01"
+                                      disabled={isChildItem(item)}
+                                    />
+                                  ) : (
+                                    <span className="text-right w-20 inline-block">
+                                      {formatNumber(item.productionRate || '0')}
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    value={getInputValue(item.id, 'hours', item.hours || '')}
-                                    placeholder={isParentItem(item) && hasChildren(item) ? 
-                                      `Sum: ${getParentHoursSum(item).toFixed(2)}` : 
-                                      undefined
-                                    }
-                                    onChange={(e) => {
+                                  {isEditMode ? (
+                                    <Input
+                                      type="number"
+                                      value={getInputValue(item.id, 'hours', item.hours || '')}
+                                      placeholder={isParentItem(item) && hasChildren(item) ? 
+                                        `Sum: ${getParentHoursSum(item).toFixed(2)}` : 
+                                        undefined
+                                      }
+                                      onChange={(e) => {
                                       // Update local input value immediately
                                       setInputValue(item.id, 'hours', e.target.value);
                                       const isParent = isParentItem(item);
@@ -1451,14 +1485,22 @@ export default function BudgetManagement() {
                                       }
                                       clearInputValue(item.id, 'hours');
                                     }}
-                                    className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                                      isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
-                                    } ${
-                                      isParentItem(item) && hasChildren(item) ? 'bg-blue-50 border-blue-200' : ''
-                                    }`}
-                                    step="0.01"
-                                    disabled={isChildItem(item)}
-                                  />
+                                      className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                        isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                      } ${
+                                        isParentItem(item) && hasChildren(item) ? 'bg-blue-50 border-blue-200' : ''
+                                      }`}
+                                      step="0.01"
+                                      disabled={isChildItem(item)}
+                                    />
+                                  ) : (
+                                    <span className="text-right w-20 inline-block">
+                                      {isParentItem(item) && hasChildren(item) ? 
+                                        `${getParentHoursSum(item).toFixed(2)}` : 
+                                        formatNumber(item.hours || '0')
+                                      }
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(item.laborCost || 0)}
@@ -1485,23 +1527,25 @@ export default function BudgetManagement() {
                                   {formatCurrency(item.billing || 0)}
                                 </TableCell>
                                 <TableCell className="sticky right-0 bg-white z-10 border-l border-gray-200">
-                                  <div className="flex space-x-1">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm"
-                                      onClick={() => handleEditItem(item)}
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-red-500 hover:text-red-700"
-                                      onClick={() => handleDeleteBudgetItem(item.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
+                                  {isEditMode && (
+                                    <div className="flex space-x-1">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm"
+                                        onClick={() => handleEditItem(item)}
+                                      >
+                                        <Edit className="w-4 h-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-red-500 hover:text-red-700"
+                                        onClick={() => handleDeleteBudgetItem(item.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  )}
                                 </TableCell>
                             </TableRow>
                             );
