@@ -138,6 +138,8 @@ export default function BudgetManagement() {
 
 
 
+
+
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
     staleTime: 30000,
@@ -311,6 +313,28 @@ export default function BudgetManagement() {
     }
   };
 
+  const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
+    const items = budgetItems as any[];
+    const children = items.filter(child => 
+      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
+    );
+    
+    // Update all children with new PX rate using debounced approach
+    for (const child of children) {
+      const convertedQty = parseFloat(child.convertedQty || '0');
+      const newHours = convertedQty * parseFloat(newPX);
+      
+      const updatedChild = {
+        ...child,
+        productionRate: newPX,
+        hours: newHours.toFixed(2)
+      };
+      
+      // Use debounced update for children too
+      debouncedUpdate(child.id, updatedChild);
+    }
+  }, [budgetItems, debouncedUpdate]);
+
   const recalculateParentHours = async (parentItem: any) => {
     try {
       const parentHours = getParentHoursSum(parentItem);
@@ -462,28 +486,6 @@ export default function BudgetManagement() {
     );
     return children.reduce((sum, child) => sum + (parseFloat(child.hours) || 0), 0);
   };
-
-  const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
-    const items = budgetItems as any[];
-    const children = items.filter(child => 
-      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
-    );
-    
-    // Update all children with new PX rate using debounced approach
-    for (const child of children) {
-      const convertedQty = parseFloat(child.convertedQty || '0');
-      const newHours = convertedQty * parseFloat(newPX);
-      
-      const updatedChild = {
-        ...child,
-        productionRate: newPX,
-        hours: newHours.toFixed(2)
-      };
-      
-      // Use debounced update for children too
-      debouncedUpdate(child.id, updatedChild);
-    }
-  }, [budgetItems, debouncedUpdate]);
 
   const getVisibleItems = () => {
     const items = budgetItems as any[];
