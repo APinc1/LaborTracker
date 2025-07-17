@@ -54,6 +54,7 @@ export default function BudgetManagement() {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
   const [isEditMode, setIsEditMode] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -105,6 +106,9 @@ export default function BudgetManagement() {
         title: "Success",
         description: "Budget item updated successfully",
       });
+      
+      // Reset unsaved changes flag after successful update
+      setHasUnsavedChanges(false);
     } catch (error) {
       console.error('Update error:', error);
       toast({
@@ -161,6 +165,7 @@ export default function BudgetManagement() {
   const setInputValue = useCallback((itemId: number, field: string, value: string) => {
     const key = `${itemId}-${field}`;
     setInputValues(prev => new Map(prev).set(key, value));
+    setHasUnsavedChanges(true);
   }, []);
 
   const clearInputValue = useCallback((itemId: number, field: string) => {
@@ -179,6 +184,24 @@ export default function BudgetManagement() {
       updateTimeoutRef.current.clear();
     };
   }, []);
+
+  // Warn about unsaved changes when navigating away
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+
+    if (hasUnsavedChanges) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [hasUnsavedChanges]);
 
 
 
@@ -436,6 +459,9 @@ export default function BudgetManagement() {
         title: "Success",
         description: "Budget item updated with new calculations",
       });
+      
+      // Reset unsaved changes flag after successful update
+      setHasUnsavedChanges(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -1052,13 +1078,46 @@ export default function BudgetManagement() {
                           Edit
                         </Button>
                       ) : (
-                        <Button
-                          variant="outline"
-                          onClick={() => setIsEditMode(false)}
-                          className="flex items-center gap-2"
-                        >
-                          Save
-                        </Button>
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (window.confirm('Are you sure you want to save all changes?')) {
+                                setIsEditMode(false);
+                                setHasUnsavedChanges(false);
+                                toast({
+                                  title: "Success",
+                                  description: "All changes have been saved",
+                                });
+                              }
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (hasUnsavedChanges) {
+                                if (window.confirm('You have unsaved changes. Are you sure you want to cancel without saving?')) {
+                                  setIsEditMode(false);
+                                  setHasUnsavedChanges(false);
+                                  setInputValues(new Map());
+                                  queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+                                  toast({
+                                    title: "Changes Cancelled",
+                                    description: "All unsaved changes have been discarded",
+                                  });
+                                }
+                              } else {
+                                setIsEditMode(false);
+                              }
+                            }}
+                            className="flex items-center gap-2"
+                          >
+                            Cancel
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1140,7 +1199,7 @@ export default function BudgetManagement() {
                                 <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                                 <TableCell>
                                   {isParent && hasChildren(item) ? (
-                                    <span className="text-gray-600 font-medium">
+                                    <span className="text-gray-600 font-medium text-right w-20 inline-block">
                                       {formatNumber(getParentQuantitySum(item))}
                                     </span>
                                   ) : isEditMode ? (
