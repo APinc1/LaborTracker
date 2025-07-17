@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,8 +52,87 @@ export default function BudgetManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [pendingUpdates, setPendingUpdates] = useState<Map<number, any>>(new Map());
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
+
+  // Debounced update function
+  const debouncedUpdate = useCallback((itemId: number, updatedItem: any, delay: number = 500) => {
+    // Clear existing timeout for this item
+    const existingTimeout = updateTimeoutRef.current.get(itemId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Update pending state immediately for UI responsiveness
+    setPendingUpdates(prev => new Map(prev).set(itemId, updatedItem));
+
+    // Set new timeout for actual API call
+    const timeout = setTimeout(async () => {
+      try {
+        await handleInlineUpdate(itemId, updatedItem);
+        setPendingUpdates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(itemId);
+          return newMap;
+        });
+      } catch (error) {
+        console.error('Failed to update item:', error);
+        setPendingUpdates(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(itemId);
+          return newMap;
+        });
+      }
+      updateTimeoutRef.current.delete(itemId);
+    }, delay);
+
+    updateTimeoutRef.current.set(itemId, timeout);
+  }, [handleInlineUpdate]);
+
+  // Get the current value for an item (pending or actual)
+  const getCurrentValue = useCallback((item: any, field: string) => {
+    const pendingItem = pendingUpdates.get(item.id);
+    return pendingItem?.[field] ?? item[field];
+  }, [pendingUpdates]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      updateTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      updateTimeoutRef.current.clear();
+    };
+  }, []);
+
+  const handleInlineUpdate = async (itemId: number, updatedItem: any) => {
+    try {
+      const response = await fetch(`/api/budget/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedItem),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Success",
+        description: "Budget item updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget item",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
@@ -291,35 +370,6 @@ export default function BudgetManagement() {
     setShowEditDialog(true);
   };
 
-  const handleInlineUpdate = async (itemId: number, updatedItem: any) => {
-    try {
-      const response = await fetch(`/api/budget/${itemId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedItem),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-      
-      toast({
-        title: "Success",
-        description: "Budget item updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update budget item",
-        variant: "destructive",
-      });
-    }
-  };
-
   const toggleExpanded = (itemId: string) => {
     const newExpanded = new Set(expandedItems);
     if (newExpanded.has(itemId)) {
@@ -368,13 +418,13 @@ export default function BudgetManagement() {
     return children.reduce((sum, child) => sum + (parseFloat(child.unconvertedQty) || 0), 0);
   };
 
-  const updateChildrenPXRate = async (parentItem: any, newPX: string) => {
+  const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
     const items = budgetItems as any[];
     const children = items.filter(child => 
       isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
     );
     
-    // Update all children with new PX rate
+    // Update all children with new PX rate using debounced approach
     for (const child of children) {
       const convertedQty = parseFloat(child.convertedQty || '0');
       const newHours = convertedQty * parseFloat(newPX);
@@ -385,9 +435,10 @@ export default function BudgetManagement() {
         hours: newHours.toFixed(2)
       };
       
-      await handleInlineUpdate(child.id, updatedChild);
+      // Use debounced update for children too
+      debouncedUpdate(child.id, updatedChild, 300);
     }
-  };
+  }, [budgetItems, debouncedUpdate]);
 
   const getVisibleItems = () => {
     const items = budgetItems as any[];
@@ -978,58 +1029,111 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={item.productionRate || ''}
-                                    onChange={async (e) => {
+                                    value={getCurrentValue(item, 'productionRate') || ''}
+                                    onChange={(e) => {
+                                      const isParent = isParentItem(item);
+                                      const isChild = isChildItem(item);
+                                      
+                                      // Children cannot edit PX rate directly
+                                      if (isChild) {
+                                        toast({
+                                          title: "Cannot Edit",
+                                          description: "Child items inherit PX rate from parent",
+                                          variant: "destructive"
+                                        });
+                                        return;
+                                      }
+
                                       const newPX = parseFloat(e.target.value || '0');
                                       const convertedQty = isParent && hasChildren(item) ? 
                                         getParentQuantitySum(item) : 
                                         parseFloat(item.convertedQty || '0');
+                                      
                                       if (newPX > 0 && convertedQty > 0) {
-                                        // When PX is adjusted, calculate Hours = converted qty * PX (default method)
+                                        // When PX is adjusted, calculate Hours = converted qty * PX
                                         const newHours = convertedQty * newPX;
                                         const updatedItem = {
                                           ...item,
                                           productionRate: e.target.value,
                                           hours: newHours.toFixed(2)
                                         };
-                                        await handleInlineUpdate(item.id, updatedItem);
+                                        
+                                        // Use debounced update for better performance
+                                        debouncedUpdate(item.id, updatedItem);
                                         
                                         // If this is a parent with children, update all children PX rates
                                         if (isParent && hasChildren(item)) {
-                                          await updateChildrenPXRate(item, e.target.value);
+                                          updateChildrenPXRate(item, e.target.value);
                                         }
+                                      } else {
+                                        // Just update the PX rate without hours calculation
+                                        const updatedItem = {
+                                          ...item,
+                                          productionRate: e.target.value
+                                        };
+                                        debouncedUpdate(item.id, updatedItem);
                                       }
                                     }}
-                                    className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                      isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                    }`}
                                     step="0.01"
+                                    disabled={isChildItem(item)}
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={item.hours || ''}
-                                    onChange={async (e) => {
+                                    value={getCurrentValue(item, 'hours') || ''}
+                                    onChange={(e) => {
+                                      const isParent = isParentItem(item);
+                                      const isChild = isChildItem(item);
+                                      
+                                      // Children cannot edit hours directly
+                                      if (isChild) {
+                                        toast({
+                                          title: "Cannot Edit",
+                                          description: "Child items inherit hours from parent calculations",
+                                          variant: "destructive"
+                                        });
+                                        return;
+                                      }
+
                                       const newHours = parseFloat(e.target.value || '0');
                                       const convertedQty = isParent && hasChildren(item) ? 
                                         getParentQuantitySum(item) : 
                                         parseFloat(item.convertedQty || '0');
+                                      
                                       if (newHours > 0 && convertedQty > 0) {
+                                        // When hours change, calculate PX = hours / convertedQty
                                         const newPX = newHours / convertedQty;
                                         const updatedItem = {
                                           ...item,
                                           hours: e.target.value,
                                           productionRate: newPX.toFixed(2)
                                         };
-                                        await handleInlineUpdate(item.id, updatedItem);
+                                        
+                                        // Use debounced update for better performance
+                                        debouncedUpdate(item.id, updatedItem);
                                         
                                         // If this is a parent with children, update all children PX rates
                                         if (isParent && hasChildren(item)) {
-                                          await updateChildrenPXRate(item, newPX.toFixed(2));
+                                          updateChildrenPXRate(item, newPX.toFixed(2));
                                         }
+                                      } else {
+                                        // Just update the hours without PX calculation
+                                        const updatedItem = {
+                                          ...item,
+                                          hours: e.target.value
+                                        };
+                                        debouncedUpdate(item.id, updatedItem);
                                       }
                                     }}
-                                    className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                      isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
+                                    }`}
                                     step="0.01"
+                                    disabled={isChildItem(item)}
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
