@@ -1211,8 +1211,8 @@ export default function BudgetManagement() {
                     <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
-                            <TableHead className="w-20 sticky top-0 bg-white border-b">Line Item</TableHead>
-                            <TableHead className="min-w-60 sticky top-0 bg-white border-b">Description</TableHead>
+                            <TableHead className="w-20 sticky left-0 top-0 bg-white border-b border-r z-20">Line Item</TableHead>
+                            <TableHead className="min-w-60 sticky left-20 top-0 bg-white border-b border-r z-20">Description</TableHead>
                             <TableHead className="w-16 sticky top-0 bg-white border-b">Unit</TableHead>
                             <TableHead className="w-20 sticky top-0 bg-white border-b">Qty</TableHead>
                             <TableHead className="w-24 sticky top-0 bg-white border-b">Unit Cost</TableHead>
@@ -1228,7 +1228,7 @@ export default function BudgetManagement() {
                             <TableHead className="w-24 sticky top-0 bg-white border-b">Sub</TableHead>
                             <TableHead className="w-24 sticky top-0 bg-white border-b">Budget</TableHead>
                             <TableHead className="w-24 sticky top-0 bg-white border-b">Billings</TableHead>
-                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-b">Actions</TableHead>
+                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-b border-l">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1244,7 +1244,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
-                                <TableCell className="font-medium">
+                                <TableCell className={`font-medium sticky left-0 border-r z-10 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1263,7 +1263,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </TableCell>
-                                <TableCell className="max-w-60" title={item.lineItemName}>
+                                <TableCell className={`max-w-60 sticky left-20 border-r z-10 ${isChild ? 'bg-gray-50' : 'bg-white'}`} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
@@ -1553,7 +1553,7 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   {formatCurrency(item.billing || 0)}
                                 </TableCell>
-                                <TableCell className="sticky right-0 bg-white z-10 border-l border-gray-200">
+                                <TableCell className={`sticky right-0 z-10 border-l border-gray-200 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                   {isEditMode && (
                                     <div className="flex space-x-1">
                                       <Button 

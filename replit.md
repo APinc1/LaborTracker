@@ -156,3 +156,7 @@ Preferred communication style: Simple, everyday language.
 - ✅ Added Cancel button with confirmation dialogs for Save/Cancel actions
 - ✅ Warn users about unsaved changes when navigating away or refreshing
 - ✅ Changes now only save when Save button is clicked, not on every keystroke
+- ✅ Implemented global navigation protection system with NavigationProtectionContext
+- ✅ Added sticky table headers and first two columns (Line Item, Description) to budget table
+- ✅ Enhanced table UX with proper sticky styling and background colors for child rows
+- ✅ Actions column remains sticky on the right side with proper background matching
