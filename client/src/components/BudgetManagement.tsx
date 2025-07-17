@@ -55,6 +55,7 @@ export default function BudgetManagement() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
@@ -86,14 +87,50 @@ export default function BudgetManagement() {
     }
   }, [queryClient, selectedLocation, toast]);
 
-  // Immediate update function without debouncing
+  // Debounced update function - only calls API after user stops typing
+  const debouncedUpdate = useCallback((itemId: number, updatedItem: any, delay: number = 800) => {
+    // Clear existing timeout for this item
+    const existingTimeout = updateTimeoutRef.current.get(itemId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Set new timeout for API call
+    const timeout = setTimeout(async () => {
+      try {
+        await handleInlineUpdate(itemId, updatedItem);
+      } catch (error) {
+        console.error('Failed to update item:', error);
+      }
+      updateTimeoutRef.current.delete(itemId);
+    }, delay);
+
+    updateTimeoutRef.current.set(itemId, timeout);
+  }, [handleInlineUpdate]);
+
+  // Immediate update function for when user presses Enter or clicks away
   const immediateUpdate = useCallback(async (itemId: number, updatedItem: any) => {
+    // Clear any pending timeout
+    const existingTimeout = updateTimeoutRef.current.get(itemId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      updateTimeoutRef.current.delete(itemId);
+    }
+    
     try {
       await handleInlineUpdate(itemId, updatedItem);
     } catch (error) {
       console.error('Failed to update item:', error);
     }
   }, [handleInlineUpdate]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      updateTimeoutRef.current.forEach(timeout => clearTimeout(timeout));
+      updateTimeoutRef.current.clear();
+    };
+  }, []);
 
 
 
@@ -443,10 +480,10 @@ export default function BudgetManagement() {
         hours: newHours.toFixed(2)
       };
       
-      // Use immediate update for children too
-      immediateUpdate(child.id, updatedChild);
+      // Use debounced update for children too
+      debouncedUpdate(child.id, updatedChild);
     }
-  }, [budgetItems, immediateUpdate]);
+  }, [budgetItems, debouncedUpdate]);
 
   const getVisibleItems = () => {
     const items = budgetItems as any[];
@@ -1066,8 +1103,8 @@ export default function BudgetManagement() {
                                           hours: newHours.toFixed(2)
                                         };
                                         
-                                        // Use immediate update for better responsiveness
-                                        immediateUpdate(item.id, updatedItem);
+                                        // Use debounced update for typing
+                                        debouncedUpdate(item.id, updatedItem);
                                         
                                         // If this is a parent with children, update all children PX rates
                                         if (isParent && hasChildren(item)) {
@@ -1075,6 +1112,73 @@ export default function BudgetManagement() {
                                         }
                                       } else {
                                         // Just update the PX rate without hours calculation
+                                        const updatedItem = {
+                                          ...item,
+                                          productionRate: e.target.value
+                                        };
+                                        debouncedUpdate(item.id, updatedItem);
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const isParent = isParentItem(item);
+                                        const isChild = isChildItem(item);
+                                        
+                                        if (isChild) return;
+
+                                        const newPX = parseFloat(e.currentTarget.value || '0');
+                                        const convertedQty = isParent && hasChildren(item) ? 
+                                          getParentQuantitySum(item) : 
+                                          parseFloat(item.convertedQty || '0');
+                                        
+                                        if (newPX > 0 && convertedQty > 0) {
+                                          const newHours = convertedQty * newPX;
+                                          const updatedItem = {
+                                            ...item,
+                                            productionRate: e.currentTarget.value,
+                                            hours: newHours.toFixed(2)
+                                          };
+                                          
+                                          immediateUpdate(item.id, updatedItem);
+                                          
+                                          if (isParent && hasChildren(item)) {
+                                            updateChildrenPXRate(item, e.currentTarget.value);
+                                          }
+                                        } else {
+                                          const updatedItem = {
+                                            ...item,
+                                            productionRate: e.currentTarget.value
+                                          };
+                                          immediateUpdate(item.id, updatedItem);
+                                        }
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const isParent = isParentItem(item);
+                                      const isChild = isChildItem(item);
+                                      
+                                      if (isChild) return;
+
+                                      const newPX = parseFloat(e.target.value || '0');
+                                      const convertedQty = isParent && hasChildren(item) ? 
+                                        getParentQuantitySum(item) : 
+                                        parseFloat(item.convertedQty || '0');
+                                      
+                                      if (newPX > 0 && convertedQty > 0) {
+                                        const newHours = convertedQty * newPX;
+                                        const updatedItem = {
+                                          ...item,
+                                          productionRate: e.target.value,
+                                          hours: newHours.toFixed(2)
+                                        };
+                                        
+                                        immediateUpdate(item.id, updatedItem);
+                                        
+                                        if (isParent && hasChildren(item)) {
+                                          updateChildrenPXRate(item, e.target.value);
+                                        }
+                                      } else {
                                         const updatedItem = {
                                           ...item,
                                           productionRate: e.target.value
@@ -1123,8 +1227,8 @@ export default function BudgetManagement() {
                                             productionRate: newPX.toFixed(2)
                                           };
                                           
-                                          // Update parent immediately
-                                          immediateUpdate(item.id, updatedItem);
+                                          // Update parent with debounced update
+                                          debouncedUpdate(item.id, updatedItem);
                                           
                                           // Update all children PX rates
                                           updateChildrenPXRate(item, newPX.toFixed(2));
@@ -1133,7 +1237,7 @@ export default function BudgetManagement() {
                                             ...item,
                                             hours: e.target.value
                                           };
-                                          immediateUpdate(item.id, updatedItem);
+                                          debouncedUpdate(item.id, updatedItem);
                                         }
                                       } else {
                                         // Single item or child - normal hours change
@@ -1148,9 +1252,108 @@ export default function BudgetManagement() {
                                             productionRate: newPX.toFixed(2)
                                           };
                                           
-                                          immediateUpdate(item.id, updatedItem);
+                                          debouncedUpdate(item.id, updatedItem);
                                         } else {
                                           // Just update the hours without PX calculation
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value
+                                          };
+                                          debouncedUpdate(item.id, updatedItem);
+                                        }
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const isParent = isParentItem(item);
+                                        const isChild = isChildItem(item);
+                                        
+                                        if (isChild) return;
+
+                                        const newHours = parseFloat(e.currentTarget.value || '0');
+                                        
+                                        if (isParent && hasChildren(item)) {
+                                          const parentQty = getParentQuantitySum(item);
+                                          if (newHours > 0 && parentQty > 0) {
+                                            const newPX = newHours / parentQty;
+                                            const updatedItem = {
+                                              ...item,
+                                              hours: e.currentTarget.value,
+                                              productionRate: newPX.toFixed(2)
+                                            };
+                                            
+                                            immediateUpdate(item.id, updatedItem);
+                                            updateChildrenPXRate(item, newPX.toFixed(2));
+                                          } else {
+                                            const updatedItem = {
+                                              ...item,
+                                              hours: e.currentTarget.value
+                                            };
+                                            immediateUpdate(item.id, updatedItem);
+                                          }
+                                        } else {
+                                          const convertedQty = parseFloat(item.convertedQty || '0');
+                                          
+                                          if (newHours > 0 && convertedQty > 0) {
+                                            const newPX = newHours / convertedQty;
+                                            const updatedItem = {
+                                              ...item,
+                                              hours: e.currentTarget.value,
+                                              productionRate: newPX.toFixed(2)
+                                            };
+                                            
+                                            immediateUpdate(item.id, updatedItem);
+                                          } else {
+                                            const updatedItem = {
+                                              ...item,
+                                              hours: e.currentTarget.value
+                                            };
+                                            immediateUpdate(item.id, updatedItem);
+                                          }
+                                        }
+                                        e.currentTarget.blur();
+                                      }
+                                    }}
+                                    onBlur={(e) => {
+                                      const isParent = isParentItem(item);
+                                      const isChild = isChildItem(item);
+                                      
+                                      if (isChild) return;
+
+                                      const newHours = parseFloat(e.target.value || '0');
+                                      
+                                      if (isParent && hasChildren(item)) {
+                                        const parentQty = getParentQuantitySum(item);
+                                        if (newHours > 0 && parentQty > 0) {
+                                          const newPX = newHours / parentQty;
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value,
+                                            productionRate: newPX.toFixed(2)
+                                          };
+                                          
+                                          immediateUpdate(item.id, updatedItem);
+                                          updateChildrenPXRate(item, newPX.toFixed(2));
+                                        } else {
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value
+                                          };
+                                          immediateUpdate(item.id, updatedItem);
+                                        }
+                                      } else {
+                                        const convertedQty = parseFloat(item.convertedQty || '0');
+                                        
+                                        if (newHours > 0 && convertedQty > 0) {
+                                          const newPX = newHours / convertedQty;
+                                          const updatedItem = {
+                                            ...item,
+                                            hours: e.target.value,
+                                            productionRate: newPX.toFixed(2)
+                                          };
+                                          
+                                          immediateUpdate(item.id, updatedItem);
+                                        } else {
                                           const updatedItem = {
                                             ...item,
                                             hours: e.target.value
