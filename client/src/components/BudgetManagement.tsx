@@ -57,6 +57,35 @@ export default function BudgetManagement() {
   const { toast } = useToast();
   const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
 
+  const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
+    try {
+      const response = await fetch(`/api/budget/${itemId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedItem),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Success",
+        description: "Budget item updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update budget item",
+        variant: "destructive",
+      });
+    }
+  }, [queryClient, selectedLocation, toast]);
+
   // Debounced update function
   const debouncedUpdate = useCallback((itemId: number, updatedItem: any, delay: number = 500) => {
     // Clear existing timeout for this item
@@ -105,34 +134,7 @@ export default function BudgetManagement() {
     };
   }, []);
 
-  const handleInlineUpdate = async (itemId: number, updatedItem: any) => {
-    try {
-      const response = await fetch(`/api/budget/${itemId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedItem),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-      
-      toast({
-        title: "Success",
-        description: "Budget item updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update budget item",
-        variant: "destructive",
-      });
-    }
-  };
+
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
