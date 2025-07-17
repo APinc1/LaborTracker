@@ -642,6 +642,57 @@ export default function BudgetManagement() {
     );
   };
 
+  // Function to group budget items by cost code and calculate aggregated data
+  const getCostCodeSummary = () => {
+    const items = budgetItems as any[];
+    const costCodeGroups: { [key: string]: any[] } = {};
+    
+    // Group items by cost code
+    items.forEach(item => {
+      const costCode = item.costCode || 'UNCATEGORIZED';
+      if (!costCodeGroups[costCode]) {
+        costCodeGroups[costCode] = [];
+      }
+      costCodeGroups[costCode].push(item);
+    });
+    
+    // Calculate aggregated data for each cost code
+    return Object.entries(costCodeGroups).map(([costCode, groupItems]) => {
+      const totalConvertedQty = groupItems.reduce((sum, item) => {
+        return sum + (parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty)) || 0);
+      }, 0);
+      
+      const totalHours = groupItems.reduce((sum, item) => {
+        return sum + (parseFloat(getInputValue(item.id, 'hours', item.hours)) || 0);
+      }, 0);
+      
+      const totalValue = groupItems.reduce((sum, item) => {
+        return sum + (parseFloat(item.unitTotal) || 0);
+      }, 0);
+      
+      // Calculate median PX rate
+      const pxRates = groupItems
+        .map(item => parseFloat(getInputValue(item.id, 'productionRate', item.productionRate)) || 0)
+        .filter(rate => rate > 0)
+        .sort((a, b) => a - b);
+      
+      const medianPX = pxRates.length > 0 ? 
+        pxRates.length % 2 === 0 ? 
+          (pxRates[pxRates.length / 2 - 1] + pxRates[pxRates.length / 2]) / 2 :
+          pxRates[Math.floor(pxRates.length / 2)] :
+        0;
+      
+      return {
+        costCode,
+        totalConvertedQty,
+        medianPX,
+        totalHours,
+        totalValue,
+        itemCount: groupItems.length
+      };
+    });
+  };
+
 
 
   const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
@@ -1093,58 +1144,45 @@ export default function BudgetManagement() {
 
           {selectedLocation && (
             <>
-              {/* Budget Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Total Budget</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {formatCurrency(getTotalBudget())}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Calculator className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Line Items</p>
-                        <p className="text-2xl font-bold text-blue-600">{(budgetItems as any[]).length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Labor Budget</p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.laborCost) || 0), 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Material Budget</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.materialCost) || 0), 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Cost Code Summary */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Cost Code Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {getCostCodeSummary().map((costCodeData) => (
+                    <Card key={costCodeData.costCode} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-blue-600">{costCodeData.costCode}</h4>
+                            <span className="text-sm text-gray-500">{costCodeData.itemCount} items</span>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Conv Qty:</span>
+                              <span className="font-medium">{costCodeData.totalConvertedQty.toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Median PX:</span>
+                              <span className="font-medium">{costCodeData.medianPX.toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-gray-600">Total Hours:</span>
+                              <span className="font-medium">{costCodeData.totalHours.toFixed(2)}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center border-t pt-2">
+                              <span className="text-sm font-medium text-gray-700">Value:</span>
+                              <span className="font-bold text-green-600">{formatCurrency(costCodeData.totalValue)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </div>
 
               {/* Budget Items Table */}
