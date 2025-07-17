@@ -863,18 +863,225 @@ class DatabaseStorage implements IStorage {
 }
 
 // Initialize storage with fallback to in-memory if database fails
-function initializeStorage(): IStorage {
+async function initializeStorage(): Promise<IStorage> {
   if (!process.env.DATABASE_URL) {
     console.log("No DATABASE_URL found, using in-memory storage");
-    return new MemStorage();
+    const memStorage = new MemStorage();
+    await seedEastWingBudget(memStorage);
+    return memStorage;
   }
   
-  // For development, we'll use in-memory storage to avoid database connection issues
-  // When you want to use persistent storage, you can set up your Supabase database
-  // and change this to use DatabaseStorage()
-  console.log("Using in-memory storage for development (data will not persist between server restarts)");
-  console.log("To use persistent storage, set up your Supabase database and modify this function");
-  return new MemStorage();
+  try {
+    console.log("Attempting to use database storage with persistent data");
+    const dbStorage = new DatabaseStorage();
+    // Test the connection with a simple query
+    await dbStorage.getProjects();
+    return dbStorage;
+  } catch (error) {
+    console.error("Failed to initialize database storage, falling back to in-memory:", error);
+    console.log("Using in-memory storage with East Wing budget data");
+    const memStorage = new MemStorage();
+    await seedEastWingBudget(memStorage);
+    return memStorage;
+  }
 }
 
-export const storage = initializeStorage();
+// Seed East Wing budget data
+async function seedEastWingBudget(storage: IStorage): Promise<void> {
+  try {
+    // Create sample project if it doesn't exist
+    const projects = await storage.getProjects();
+    let project;
+    if (projects.length === 0) {
+      project = await storage.createProject({
+        projectId: "PRJ-2024-001",
+        name: "Main St Bridge Construction",
+        description: "Major infrastructure project",
+        projectManager: "John Smith",
+        superintendent: "Mike Johnson",
+        startDate: "2024-01-15",
+        endDate: "2024-12-31",
+        budget: "2500000",
+        status: "active"
+      });
+    } else {
+      project = projects[0];
+    }
+
+    // Create East Wing location
+    const locations = await storage.getLocations(project.id);
+    let eastWingLocation = locations.find(loc => loc.name === "East Wing");
+    
+    if (!eastWingLocation) {
+      eastWingLocation = await storage.createLocation({
+        projectId: project.id,
+        name: "East Wing",
+        description: "East wing construction area",
+        address: "123 Main Street, East Wing",
+        budget: "500000"
+      });
+    }
+
+    // Check if East Wing budget items already exist
+    const existingItems = await storage.getBudgetLineItems(eastWingLocation.id);
+    if (existingItems.length > 0) {
+      console.log("East Wing budget data already exists, skipping seeding");
+      return;
+    }
+
+    // Sample budget line items for East Wing (representing typical construction budget)
+    const budgetItems = [
+      {
+        locationId: eastWingLocation.id,
+        lineItemNumber: "01",
+        lineItemName: "Site Preparation",
+        unconvertedUnitOfMeasure: "SF",
+        unconvertedQty: "5000",
+        unitCost: "2.50",
+        unitTotal: "12500.00",
+        convertedQty: "5000",
+        convertedUnitOfMeasure: "SF",
+        conversionFactor: "1.0",
+        costCode: "01100",
+        productionRate: "0.05",
+        hours: "250.00",
+        budgetTotal: "12500.00",
+        actualQty: "0",
+        billing: "0",
+        laborCost: "8000.00",
+        equipmentCost: "2000.00",
+        truckingCost: "1500.00",
+        dumpFeesCost: "500.00",
+        materialCost: "500.00",
+        subcontractorCost: "0",
+        notes: "Initial site preparation and clearing"
+      },
+      {
+        locationId: eastWingLocation.id,
+        lineItemNumber: "02",
+        lineItemName: "Foundation Work",
+        unconvertedUnitOfMeasure: "CY",
+        unconvertedQty: "150",
+        unitCost: "125.00",
+        unitTotal: "18750.00",
+        convertedQty: "150",
+        convertedUnitOfMeasure: "CY",
+        conversionFactor: "1.0",
+        costCode: "03100",
+        productionRate: "2.5",
+        hours: "375.00",
+        budgetTotal: "18750.00",
+        actualQty: "0",
+        billing: "0",
+        laborCost: "12000.00",
+        equipmentCost: "3000.00",
+        truckingCost: "2000.00",
+        dumpFeesCost: "750.00",
+        materialCost: "1000.00",
+        subcontractorCost: "0",
+        notes: "Concrete foundation and footings"
+      },
+      {
+        locationId: eastWingLocation.id,
+        lineItemNumber: "03",
+        lineItemName: "Framing",
+        unconvertedUnitOfMeasure: "SF",
+        unconvertedQty: "4500",
+        unitCost: "8.50",
+        unitTotal: "38250.00",
+        convertedQty: "4500",
+        convertedUnitOfMeasure: "SF",
+        conversionFactor: "1.0",
+        costCode: "06100",
+        productionRate: "0.15",
+        hours: "675.00",
+        budgetTotal: "38250.00",
+        actualQty: "0",
+        billing: "0",
+        laborCost: "20000.00",
+        equipmentCost: "5000.00",
+        truckingCost: "3000.00",
+        dumpFeesCost: "250.00",
+        materialCost: "10000.00",
+        subcontractorCost: "0",
+        notes: "Structural framing and supports"
+      },
+      {
+        locationId: eastWingLocation.id,
+        lineItemNumber: "04",
+        lineItemName: "Roofing",
+        unconvertedUnitOfMeasure: "SF",
+        unconvertedQty: "4200",
+        unitCost: "12.00",
+        unitTotal: "50400.00",
+        convertedQty: "4200",
+        convertedUnitOfMeasure: "SF",
+        conversionFactor: "1.0",
+        costCode: "07100",
+        productionRate: "0.08",
+        hours: "336.00",
+        budgetTotal: "50400.00",
+        actualQty: "0",
+        billing: "0",
+        laborCost: "15000.00",
+        equipmentCost: "8000.00",
+        truckingCost: "2000.00",
+        dumpFeesCost: "400.00",
+        materialCost: "25000.00",
+        subcontractorCost: "0",
+        notes: "Complete roofing system"
+      },
+      {
+        locationId: eastWingLocation.id,
+        lineItemNumber: "05",
+        lineItemName: "Electrical",
+        unconvertedUnitOfMeasure: "SF",
+        unconvertedQty: "4500",
+        unitCost: "6.75",
+        unitTotal: "30375.00",
+        convertedQty: "4500",
+        convertedUnitOfMeasure: "SF",
+        conversionFactor: "1.0",
+        costCode: "16100",
+        productionRate: "0.12",
+        hours: "540.00",
+        budgetTotal: "30375.00",
+        actualQty: "0",
+        billing: "0",
+        laborCost: "18000.00",
+        equipmentCost: "2000.00",
+        truckingCost: "1000.00",
+        dumpFeesCost: "0",
+        materialCost: "8000.00",
+        subcontractorCost: "1375.00",
+        notes: "Electrical systems and fixtures"
+      }
+    ];
+
+    // Create all budget items
+    for (const item of budgetItems) {
+      await storage.createBudgetLineItem(item);
+    }
+
+    console.log(`Successfully seeded East Wing budget with ${budgetItems.length} line items`);
+  } catch (error) {
+    console.error("Error seeding East Wing budget:", error);
+  }
+}
+
+// Initialize storage instance - will be set after async initialization
+let storageInstance: IStorage | null = null;
+
+export const initializeStorageInstance = async (): Promise<IStorage> => {
+  if (!storageInstance) {
+    storageInstance = await initializeStorage();
+  }
+  return storageInstance;
+};
+
+export const getStorage = (): IStorage => {
+  if (!storageInstance) {
+    throw new Error("Storage not initialized. Call initializeStorageInstance first.");
+  }
+  return storageInstance;
+};
