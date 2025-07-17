@@ -884,8 +884,10 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-              <div className="w-full overflow-x-auto border rounded">
+              <div className="w-full overflow-x-auto">
                 <div className="min-w-[1400px]">
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
                             <TableHead className="w-20 sticky top-0 bg-white border-b">Line Item</TableHead>
@@ -1078,8 +1080,7 @@ export default function BudgetManagement() {
                             );
                           })}
                         </TableBody>
-                          </Table>
-                        </div>
+                        </Table>
                       </div>
                     </div>
                   )}
