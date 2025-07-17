@@ -332,10 +332,33 @@ export default function BudgetManagement() {
     }
   };
 
-  const recalculateParentFromChildren = async (parentItem: any) => {
+  const recalculateParentFromChildren = async (parentItem: any, updatedChild?: any) => {
     try {
-      const parentHours = getParentHoursSum(parentItem);
-      const parentConvertedQty = getParentQuantitySum(parentItem);
+      // Get fresh budget items to ensure we have the latest data
+      const freshBudgetResponse = await fetch(`/api/locations/${selectedLocation}/budget`);
+      const freshBudgetItems = await freshBudgetResponse.json();
+      
+      // If we have an updated child, use it in the calculation
+      let itemsToUse = freshBudgetItems;
+      if (updatedChild) {
+        itemsToUse = freshBudgetItems.map((item: any) => 
+          item.id === updatedChild.id ? updatedChild : item
+        );
+      }
+      
+      // Calculate parent sums using fresh data
+      const children = itemsToUse.filter((child: any) => 
+        child.lineItemNumber?.includes('.') && 
+        child.lineItemNumber?.split('.')[0] === parentItem.lineItemNumber
+      );
+      
+      const parentHours = children.reduce((sum: number, child: any) => 
+        sum + (parseFloat(child.hours) || 0), 0
+      );
+      
+      const parentConvertedQty = children.reduce((sum: number, child: any) => 
+        sum + (parseFloat(child.convertedQty) || 0), 0
+      );
       
       // Parent QTY = Parent Conv QTY = Sum of children Conv QTY
       const updatedParent = {
@@ -376,7 +399,7 @@ export default function BudgetManagement() {
         const parentId = getParentId(currentItem);
         const parentItem = (budgetItems as any[]).find((item: any) => item.lineItemNumber === parentId);
         if (parentItem) {
-          await recalculateParentFromChildren(parentItem);
+          await recalculateParentFromChildren(parentItem, recalculatedItem);
         }
       }
       
