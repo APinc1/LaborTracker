@@ -1118,11 +1118,27 @@ export default function BudgetManagement() {
 
                     const costCodeGroups = items.reduce((groups: any, item: any) => {
                       if (!item) return groups;
-                      const costCode = item.costCode || 'No Code';
-                      if (!groups[costCode]) {
-                        groups[costCode] = [];
+                      
+                      // Only include items that are either:
+                      // 1. Parent items (have children)
+                      // 2. Standalone items (no children and not a child)
+                      // Skip child items to avoid double counting
+                      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+                      const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+                      const hasChildren = items.some(child => 
+                        child.lineItemNumber && child.lineItemNumber.includes('.') && 
+                        child.lineItemNumber.split('.')[0] === item.lineItemNumber
+                      );
+                      
+                      // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+                      if (isParent || (!isChild && !hasChildren)) {
+                        const costCode = item.costCode || 'No Code';
+                        if (!groups[costCode]) {
+                          groups[costCode] = [];
+                        }
+                        groups[costCode].push(item);
                       }
-                      groups[costCode].push(item);
+                      
                       return groups;
                     }, {});
 
