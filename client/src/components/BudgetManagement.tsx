@@ -332,20 +332,23 @@ export default function BudgetManagement() {
     }
   };
 
-  const recalculateParentHours = async (parentItem: any) => {
+  const recalculateParentFromChildren = async (parentItem: any) => {
     try {
       const parentHours = getParentHoursSum(parentItem);
       const parentConvertedQty = getParentQuantitySum(parentItem);
+      
+      // Parent QTY = Parent Conv QTY = Sum of children Conv QTY
       const updatedParent = {
         ...parentItem,
         hours: parentHours.toFixed(2),
-        convertedQty: parentConvertedQty.toFixed(2)
+        convertedQty: parentConvertedQty.toFixed(2),
+        unconvertedQty: parentConvertedQty.toFixed(2) // QTY should equal Conv QTY for parent
       };
       
-      // Use immediate update for parent hours and converted quantity recalculation
+      // Use immediate update for parent recalculation
       await handleInlineUpdate(parentItem.id, updatedParent);
     } catch (error) {
-      console.error('Failed to recalculate parent hours and converted quantity:', error);
+      console.error('Failed to recalculate parent from children:', error);
     }
   };
 
@@ -368,12 +371,12 @@ export default function BudgetManagement() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      // If this is a child item, recalculate parent hours
+      // If this is a child item, recalculate parent from children
       if (isChildItem(currentItem)) {
         const parentId = getParentId(currentItem);
         const parentItem = (budgetItems as any[]).find((item: any) => item.lineItemNumber === parentId);
         if (parentItem) {
-          await recalculateParentHours(parentItem);
+          await recalculateParentFromChildren(parentItem);
         }
       }
       
@@ -1066,7 +1069,7 @@ export default function BudgetManagement() {
                                 <TableCell>
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
-                                      {formatNumber(getParentUnconvertedQtySum(item))}
+                                      {formatNumber(getParentQuantitySum(item))}
                                     </span>
                                   ) : (
                                     <Input
