@@ -190,10 +190,9 @@ export default function BudgetManagement() {
   }, []);
 
   // Function to apply all pending updates
-  const applyPendingUpdates = useCallback(async () => {
+  const applyPendingUpdates = useCallback(async (items: any[]) => {
     if (pendingUpdates.size === 0) return;
     
-    const items = budgetItems as any[];
     const updates = Array.from(pendingUpdates.entries());
     
     for (const [itemId, pendingFields] of updates) {
@@ -254,7 +253,7 @@ export default function BudgetManagement() {
     
     // Clear all pending updates after successful save
     setPendingUpdates(new Map());
-  }, [pendingUpdates, budgetItems, handleInlineUpdate, updateChildrenPXRate, isParentItem, hasChildren, isChildItem, getParentId, getParentQuantitySum, recalculateParentFromChildren]);
+  }, [pendingUpdates, handleInlineUpdate, updateChildrenPXRate, isParentItem, hasChildren, isChildItem, getParentId, getParentQuantitySum, recalculateParentFromChildren]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -1163,7 +1162,7 @@ export default function BudgetManagement() {
                             onClick={async () => {
                               if (window.confirm('Are you sure you want to save all changes?')) {
                                 try {
-                                  await applyPendingUpdates();
+                                  await applyPendingUpdates(budgetItems as any[]);
                                   setIsEditMode(false);
                                   setHasUnsavedChanges(false);
                                   setInputValues(new Map());
