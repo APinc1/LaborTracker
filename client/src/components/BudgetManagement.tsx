@@ -1196,9 +1196,10 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={isParentItem(item) && hasChildren(item) ? 
-                                      getParentHoursSum(item).toFixed(2) : 
-                                      (item.hours || '')
+                                    value={item.hours || ''}
+                                    placeholder={isParentItem(item) && hasChildren(item) ? 
+                                      `Sum: ${getParentHoursSum(item).toFixed(2)}` : 
+                                      undefined
                                     }
                                     onChange={(e) => {
                                       const isParent = isParentItem(item);
