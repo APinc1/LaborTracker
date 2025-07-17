@@ -1205,32 +1205,32 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-              <div className="w-full">
-                <div className="overflow-auto max-h-[500px] border rounded-lg">
-                    <Table className="w-full min-w-[1400px] relative">
-                        <TableHeader>
-                          <TableRow className="sticky top-0 bg-white z-10 border-b">
-                            <TableHead className="w-20 sticky left-0 top-0 bg-white border-r z-20">Line Item</TableHead>
-                            <TableHead className="min-w-60 sticky left-20 top-0 bg-white border-r z-20">Description</TableHead>
-                            <TableHead className="w-16 sticky top-0 bg-white">Unit</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Qty</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Unit Cost</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Conv. UM</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Conv. Qty</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">PX</TableHead>
-                            <TableHead className="w-20 sticky top-0 bg-white">Hours</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Labor Cost</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Equipment</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Trucking</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Dump Fees</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Material</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Sub</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Budget</TableHead>
-                            <TableHead className="w-24 sticky top-0 bg-white">Billings</TableHead>
-                            <TableHead className="w-24 sticky right-0 top-0 bg-white z-20 border-l">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+              <div className="w-full border rounded-lg">
+                <div className="overflow-auto max-h-[500px] relative">
+                    <table className="w-full min-w-[1400px] border-collapse">
+                        <thead className="bg-white sticky top-0 z-10">
+                          <tr className="border-b">
+                            <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900">Line Item</th>
+                            <th className="min-w-60 sticky left-20 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900">Description</th>
+                            <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">PX</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Hours</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Equipment</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Trucking</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Dump Fees</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Material</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Sub</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Budget</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Billings</th>
+                            <th className="w-24 sticky right-0 top-0 bg-white z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
                           {getVisibleItems().map((item: any) => {
                             const isParent = isParentItem(item);
                             const isChild = isChildItem(item);
@@ -1242,8 +1242,8 @@ export default function BudgetManagement() {
                             };
                             
                             return (
-                              <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
-                                <TableCell className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium sticky left-0 border-r z-10 bg-[#d4eaff]">
+                              <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1261,14 +1261,14 @@ export default function BudgetManagement() {
                                     {(isChild || (isParent && !hasChildren(item))) && <span className="w-6"></span>}
                                     {item.lineItemNumber}
                                   </div>
-                                </TableCell>
-                                <TableCell className="p-4 align-middle [&:has([role=checkbox])]:pr-0 max-w-60 sticky left-20 border-r z-10 bg-[#d4eaff]" title={item.lineItemName}>
-                                  <div className="p-4 align-middle [&:has([role=checkbox])]:pr-0 max-w-60 sticky left-20 border-r z-10 bg-[#d4eaff]">
+                                </td>
+                                <td className={`max-w-60 sticky left-20 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} title={item.lineItemName}>
+                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
-                                </TableCell>
-                                <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
-                                <TableCell>
+                                </td>
+                                <td className="px-4 py-3">{item.unconvertedUnitOfMeasure}</td>
+                                <td className="px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium text-right w-20 inline-block">
                                       {formatNumber(getParentQuantitySum(item))}
@@ -1297,12 +1297,12 @@ export default function BudgetManagement() {
                                       {formatNumber(item.unconvertedQty)}
                                     </span>
                                   )}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.unitCost)}
-                                </TableCell>
-                                <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="px-4 py-3">{item.convertedUnitOfMeasure || '-'}</td>
+                                <td className="text-right px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
                                       {formatNumber(getParentQuantitySum(item))}
@@ -1310,8 +1310,8 @@ export default function BudgetManagement() {
                                   ) : (
                                     formatNumber(item.convertedQty)
                                   )}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {isEditMode ? (
                                     <Input
                                       type="number"
@@ -1350,8 +1350,8 @@ export default function BudgetManagement() {
                                       {formatNumber(item.productionRate || '0')}
                                     </span>
                                   )}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {isEditMode ? (
                                     <Input
                                       type="number"
@@ -1527,32 +1527,32 @@ export default function BudgetManagement() {
                                       }
                                     </span>
                                   )}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.laborCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.equipmentCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.truckingCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.dumpFeesCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.materialCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.subcontractorCost || 0)}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
+                                </td>
+                                <td className="text-right font-medium">
                                   {formatCurrency(item.budgetTotal || 0)}
-                                </TableCell>
-                                <TableCell className="text-right">
+                                </td>
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.billing || 0)}
-                                </TableCell>
-                                <TableCell className={`sticky right-0 z-10 border-l border-gray-200 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                </td>
+                                <td className={`sticky right-0 z-10 border-l border-gray-200 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                   {isEditMode && (
                                     <div className="flex space-x-1">
                                       <Button 
@@ -1572,12 +1572,12 @@ export default function BudgetManagement() {
                                       </Button>
                                     </div>
                                   )}
-                                </TableCell>
-                              </TableRow>
+                                </td>
+                              </tr>
                             );
                           })}
-                        </TableBody>
-                        </Table>
+                        </tbody>
+                        </table>
                     </div>
                   </div>
                   )}
