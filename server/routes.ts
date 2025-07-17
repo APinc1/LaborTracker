@@ -117,11 +117,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/budget/:id', async (req, res) => {
     try {
+      console.log('Budget update request:', req.params.id, req.body);
       const validated = insertBudgetLineItemSchema.partial().parse(req.body);
       const budgetItem = await storage.updateBudgetLineItem(parseInt(req.params.id), validated);
       res.json(budgetItem);
     } catch (error) {
-      res.status(400).json({ error: 'Invalid budget item data' });
+      console.error('Budget update error:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Invalid budget item data' });
+      }
     }
   });
 

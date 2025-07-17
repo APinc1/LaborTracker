@@ -61,15 +61,40 @@ export default function BudgetManagement() {
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
     try {
+      // Clean up the data to ensure proper string formatting for decimal fields
+      const cleanedItem = {
+        ...updatedItem,
+        // Ensure all decimal fields are strings
+        productionRate: updatedItem.productionRate?.toString() || '0',
+        hours: updatedItem.hours?.toString() || '0',
+        unconvertedQty: updatedItem.unconvertedQty?.toString() || '0',
+        convertedQty: updatedItem.convertedQty?.toString() || '0',
+        unitCost: updatedItem.unitCost?.toString() || '0',
+        unitTotal: updatedItem.unitTotal?.toString() || '0',
+        budgetTotal: updatedItem.budgetTotal?.toString() || '0',
+        conversionFactor: updatedItem.conversionFactor?.toString() || '1',
+        // Remove undefined/null values
+        ...(updatedItem.laborCost !== undefined && { laborCost: updatedItem.laborCost.toString() }),
+        ...(updatedItem.equipmentCost !== undefined && { equipmentCost: updatedItem.equipmentCost.toString() }),
+        ...(updatedItem.truckingCost !== undefined && { truckingCost: updatedItem.truckingCost.toString() }),
+        ...(updatedItem.dumpFeesCost !== undefined && { dumpFeesCost: updatedItem.dumpFeesCost.toString() }),
+        ...(updatedItem.materialCost !== undefined && { materialCost: updatedItem.materialCost.toString() }),
+        ...(updatedItem.subcontractorCost !== undefined && { subcontractorCost: updatedItem.subcontractorCost.toString() }),
+        ...(updatedItem.billing !== undefined && { billing: updatedItem.billing.toString() }),
+        ...(updatedItem.actualQty !== undefined && { actualQty: updatedItem.actualQty.toString() }),
+      };
+      
       const response = await fetch(`/api/budget/${itemId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(updatedItem),
+        body: JSON.stringify(cleanedItem),
       });
       
       if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Update failed:', errorData);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
@@ -80,6 +105,7 @@ export default function BudgetManagement() {
         description: "Budget item updated successfully",
       });
     } catch (error) {
+      console.error('Update error:', error);
       toast({
         title: "Error",
         description: "Failed to update budget item",
@@ -1304,6 +1330,9 @@ export default function BudgetManagement() {
                                             productionRate: newPX.toFixed(2)
                                           };
                                           
+                                          // Update the PX input field to reflect the new value
+                                          setInputValue(item.id, 'productionRate', newPX.toFixed(2));
+                                          
                                           debouncedUpdate(item.id, updatedItem);
                                         } else {
                                           // Just update the hours without PX calculation
@@ -1353,6 +1382,9 @@ export default function BudgetManagement() {
                                               hours: e.currentTarget.value,
                                               productionRate: newPX.toFixed(2)
                                             };
+                                            
+                                            // Update the PX input field to reflect the new value
+                                            setInputValue(item.id, 'productionRate', newPX.toFixed(2));
                                             
                                             immediateUpdate(item.id, updatedItem);
                                           } else {
@@ -1404,6 +1436,9 @@ export default function BudgetManagement() {
                                             hours: e.target.value,
                                             productionRate: newPX.toFixed(2)
                                           };
+                                          
+                                          // Update the PX input field to reflect the new value
+                                          setInputValue(item.id, 'productionRate', newPX.toFixed(2));
                                           
                                           immediateUpdate(item.id, updatedItem);
                                         } else {
