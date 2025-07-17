@@ -52,6 +52,7 @@ export default function BudgetManagement() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -88,7 +89,7 @@ export default function BudgetManagement() {
   }, [queryClient, selectedLocation, toast]);
 
   // Debounced update function - only calls API after user stops typing
-  const debouncedUpdate = useCallback((itemId: number, updatedItem: any, delay: number = 800) => {
+  const debouncedUpdate = useCallback((itemId: number, updatedItem: any, delay: number = 500) => {
     // Clear existing timeout for this item
     const existingTimeout = updateTimeoutRef.current.get(itemId);
     if (existingTimeout) {
@@ -123,6 +124,26 @@ export default function BudgetManagement() {
       console.error('Failed to update item:', error);
     }
   }, [handleInlineUpdate]);
+
+  // Helper functions for input values
+  const getInputValue = useCallback((itemId: number, field: string, defaultValue: string) => {
+    const key = `${itemId}-${field}`;
+    return inputValues.get(key) ?? defaultValue;
+  }, [inputValues]);
+
+  const setInputValue = useCallback((itemId: number, field: string, value: string) => {
+    const key = `${itemId}-${field}`;
+    setInputValues(prev => new Map(prev).set(key, value));
+  }, []);
+
+  const clearInputValue = useCallback((itemId: number, field: string) => {
+    const key = `${itemId}-${field}`;
+    setInputValues(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(key);
+      return newMap;
+    });
+  }, []);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -319,17 +340,8 @@ export default function BudgetManagement() {
         hours: parentHours.toFixed(2)
       };
       
-      const response = await fetch(`/api/budget/${parentItem.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(updatedParent),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      // Use immediate update for parent hours recalculation
+      await handleInlineUpdate(parentItem.id, updatedParent);
     } catch (error) {
       console.error('Failed to recalculate parent hours:', error);
     }
@@ -469,7 +481,7 @@ export default function BudgetManagement() {
       isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
     );
     
-    // Update all children with new PX rate using debounced approach
+    // Update all children with new PX rate immediately
     for (const child of children) {
       const convertedQty = parseFloat(child.convertedQty || '0');
       const newHours = convertedQty * parseFloat(newPX);
@@ -480,10 +492,14 @@ export default function BudgetManagement() {
         hours: newHours.toFixed(2)
       };
       
-      // Use debounced update for children too
-      debouncedUpdate(child.id, updatedChild);
+      // Use immediate update for children when parent PX changes
+      try {
+        await handleInlineUpdate(child.id, updatedChild);
+      } catch (error) {
+        console.error('Failed to update child:', error);
+      }
     }
-  }, [budgetItems, debouncedUpdate]);
+  }, [budgetItems, handleInlineUpdate]);
 
   const getVisibleItems = () => {
     const items = budgetItems as any[];
@@ -1074,8 +1090,10 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={item.productionRate || ''}
+                                    value={getInputValue(item.id, 'productionRate', item.productionRate || '')}
                                     onChange={(e) => {
+                                      // Update local input value immediately
+                                      setInputValue(item.id, 'productionRate', e.target.value);
                                       const isParent = isParentItem(item);
                                       const isChild = isChildItem(item);
                                       
@@ -1184,6 +1202,7 @@ export default function BudgetManagement() {
                                           productionRate: e.target.value
                                         };
                                         immediateUpdate(item.id, updatedItem);
+                                        clearInputValue(item.id, 'productionRate');
                                       }
                                     }}
                                     className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
@@ -1196,12 +1215,14 @@ export default function BudgetManagement() {
                                 <TableCell className="text-right">
                                   <Input
                                     type="number"
-                                    value={item.hours || ''}
+                                    value={getInputValue(item.id, 'hours', item.hours || '')}
                                     placeholder={isParentItem(item) && hasChildren(item) ? 
                                       `Sum: ${getParentHoursSum(item).toFixed(2)}` : 
                                       undefined
                                     }
                                     onChange={(e) => {
+                                      // Update local input value immediately
+                                      setInputValue(item.id, 'hours', e.target.value);
                                       const isParent = isParentItem(item);
                                       const isChild = isChildItem(item);
                                       
@@ -1312,6 +1333,7 @@ export default function BudgetManagement() {
                                             immediateUpdate(item.id, updatedItem);
                                           }
                                         }
+                                        clearInputValue(item.id, 'hours');
                                         e.currentTarget.blur();
                                       }
                                     }}
@@ -1362,6 +1384,7 @@ export default function BudgetManagement() {
                                           immediateUpdate(item.id, updatedItem);
                                         }
                                       }
+                                      clearInputValue(item.id, 'hours');
                                     }}
                                     className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                                       isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
