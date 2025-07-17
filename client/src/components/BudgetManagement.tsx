@@ -1263,7 +1263,7 @@ export default function BudgetManagement() {
                                   </div>
                                 </TableCell>
                                 <TableCell className={`max-w-60 sticky left-20 border-r z-10 ${isChild ? 'bg-gray-50' : 'bg-white'}`} title={item.lineItemName}>
-                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
+                                  <div className="p-4 align-middle [&:has([role=checkbox])]:pr-0 max-w-60 sticky left-20 border-r z-10 bg-[#d4eaff]">
                                     {item.lineItemName}
                                   </div>
                                 </TableCell>
