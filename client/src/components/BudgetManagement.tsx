@@ -232,10 +232,7 @@ export default function BudgetManagement() {
       try {
         await handleInlineUpdate(itemId, updatedItem);
         
-        // If this is a parent with children, update children PX rates
-        if (pendingFields.productionRate !== undefined && isParentItem(currentItem) && hasChildren(currentItem)) {
-          await updateChildrenPXRate(currentItem, pendingFields.productionRate);
-        }
+        // Note: Children PX rates will be updated when their parent's PX changes are applied
         
         // If this is a child item, recalculate parent from children
         if (pendingFields.unconvertedQty !== undefined && isChildItem(currentItem)) {
