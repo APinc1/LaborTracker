@@ -1211,7 +1211,7 @@ export default function BudgetManagement() {
                         <thead className="bg-white sticky top-0 z-10">
                           <tr className="border-b">
                             <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900">Line Item</th>
-                            <th className="min-w-60 sticky left-20 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900">Description</th>
+                            <th className="min-w-60 sticky left-20 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{left: '80px'}}>Description</th>
                             <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
@@ -1262,7 +1262,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky left-20 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-white'}`} style={{left: '80px'}} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
