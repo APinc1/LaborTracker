@@ -1148,6 +1148,11 @@ export default function BudgetManagement() {
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
                         
+                        // Skip cards where total converted quantity is 0
+                        if (totalConvertedQty === 0) {
+                          return null;
+                        }
+                        
                         // Calculate median PX rate
                         const pxRates = items.map(item => parseFloat(item.productionRate) || 0).filter(rate => rate > 0).sort((a, b) => a - b);
                         const medianPX = pxRates.length > 0 ? 
@@ -1163,7 +1168,7 @@ export default function BudgetManagement() {
                                   <h3 className="font-semibold text-sm text-gray-900">{costCode}</h3>
                                   <span className="text-xs text-gray-500">{items.length} items</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="grid grid-cols-2 gap-2 text-sm">
                                   <div>
                                     <p className="text-gray-600">Conv. Qty</p>
                                     <p className="font-medium">{formatNumber(totalConvertedQty.toFixed(2))}</p>
@@ -1195,7 +1200,7 @@ export default function BudgetManagement() {
                           </Card>
                         );
                       }
-                    });
+                    }).filter(card => card !== null);
                   } catch (error) {
                     console.error('Error in cost code cards:', error);
                     return (
