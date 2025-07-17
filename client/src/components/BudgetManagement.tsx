@@ -706,7 +706,7 @@ export default function BudgetManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={handleExcelImport}
-              disabled={!selectedLocation || !isEditMode}
+              disabled={!selectedLocation}
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Import Excel</span>
@@ -715,7 +715,7 @@ export default function BudgetManagement() {
               <DialogTrigger asChild>
                 <Button 
                   className="bg-primary hover:bg-primary/90"
-                  disabled={!selectedLocation || !isEditMode}
+                  disabled={!selectedLocation}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Line Item

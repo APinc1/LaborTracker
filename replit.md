@@ -151,4 +151,5 @@ Preferred communication style: Simple, everyday language.
 - ✅ Implemented edit mode toggle for budget line items table
 - ✅ Budget items are now read-only by default with Edit/Save button to unlock editing
 - ✅ All inline editing controls (quantity, PX, hours) are disabled when not in edit mode
-- ✅ Action buttons (edit, delete, add, import) are disabled when not in edit mode
+- ✅ Inline editing action buttons (edit, delete) are disabled when not in edit mode
+- ✅ Excel import and Add Line Item buttons remain available without edit mode
