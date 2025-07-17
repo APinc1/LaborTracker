@@ -55,6 +55,7 @@ export default function BudgetManagement() {
   const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
   const [isEditMode, setIsEditMode] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -202,6 +203,72 @@ export default function BudgetManagement() {
       };
     }
   }, [hasUnsavedChanges]);
+
+  // Store original values when entering edit mode
+  const enterEditMode = () => {
+    const originalValues = new Map();
+    (budgetItems as any[]).forEach(item => {
+      originalValues.set(item.id, { ...item });
+    });
+    setOriginalValues(originalValues);
+    setIsEditMode(true);
+  };
+
+  // Save all changes at once
+  const saveAllChanges = async () => {
+    try {
+      const items = budgetItems as any[];
+      const promises = [];
+      
+      for (const item of items) {
+        const hasChanges = 
+          getInputValue(item.id, 'unconvertedQty', '') !== '' ||
+          getInputValue(item.id, 'productionRate', '') !== '' ||
+          getInputValue(item.id, 'hours', '') !== '';
+        
+        if (hasChanges) {
+          const updatedItem = {
+            ...item,
+            unconvertedQty: getInputValue(item.id, 'unconvertedQty', item.unconvertedQty),
+            productionRate: getInputValue(item.id, 'productionRate', item.productionRate),
+            hours: getInputValue(item.id, 'hours', item.hours),
+            convertedQty: getInputValue(item.id, 'convertedQty', item.convertedQty)
+          };
+          
+          promises.push(handleInlineUpdate(item.id, updatedItem));
+        }
+      }
+      
+      await Promise.all(promises);
+      setIsEditMode(false);
+      setHasUnsavedChanges(false);
+      setInputValues(new Map());
+      
+      toast({
+        title: "Success",
+        description: "All changes have been saved",
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to save changes",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cancel changes and restore original values
+  const cancelChanges = () => {
+    setIsEditMode(false);
+    setHasUnsavedChanges(false);
+    setInputValues(new Map());
+    queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+    
+    toast({
+      title: "Changes Cancelled",
+      description: "All unsaved changes have been discarded",
+    });
+  };
 
 
 
@@ -1071,7 +1138,7 @@ export default function BudgetManagement() {
                       {!isEditMode ? (
                         <Button
                           variant="outline"
-                          onClick={() => setIsEditMode(true)}
+                          onClick={enterEditMode}
                           className="flex items-center gap-2"
                         >
                           <Edit className="w-4 h-4" />
@@ -1083,12 +1150,7 @@ export default function BudgetManagement() {
                             variant="outline"
                             onClick={() => {
                               if (window.confirm('Are you sure you want to save all changes?')) {
-                                setIsEditMode(false);
-                                setHasUnsavedChanges(false);
-                                toast({
-                                  title: "Success",
-                                  description: "All changes have been saved",
-                                });
+                                saveAllChanges();
                               }
                             }}
                             className="flex items-center gap-2"
@@ -1100,17 +1162,10 @@ export default function BudgetManagement() {
                             onClick={() => {
                               if (hasUnsavedChanges) {
                                 if (window.confirm('You have unsaved changes. Are you sure you want to cancel without saving?')) {
-                                  setIsEditMode(false);
-                                  setHasUnsavedChanges(false);
-                                  setInputValues(new Map());
-                                  queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-                                  toast({
-                                    title: "Changes Cancelled",
-                                    description: "All unsaved changes have been discarded",
-                                  });
+                                  cancelChanges();
                                 }
                               } else {
-                                setIsEditMode(false);
+                                cancelChanges();
                               }
                             }}
                             className="flex items-center gap-2"
@@ -1205,8 +1260,19 @@ export default function BudgetManagement() {
                                   ) : isEditMode ? (
                                     <Input
                                       type="number"
-                                      value={item.unconvertedQty}
-                                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                      value={getInputValue(item.id, 'unconvertedQty', item.unconvertedQty)}
+                                      onChange={(e) => {
+                                        setInputValue(item.id, 'unconvertedQty', e.target.value);
+                                        // Recalculate derived values locally
+                                        const newQty = parseFloat(e.target.value || '0');
+                                        const conversionFactor = parseFloat(item.conversionFactor || '1');
+                                        const newConvertedQty = newQty * conversionFactor;
+                                        const px = parseFloat(item.productionRate || '0');
+                                        const newHours = newConvertedQty * px;
+                                        
+                                        setInputValue(item.id, 'convertedQty', newConvertedQty.toFixed(2));
+                                        setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                      }}
                                       className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                       step="0.01"
                                     />
@@ -1235,119 +1301,28 @@ export default function BudgetManagement() {
                                       type="number"
                                       value={getInputValue(item.id, 'productionRate', item.productionRate || '')}
                                       onChange={(e) => {
-                                      // Update local input value immediately
-                                      setInputValue(item.id, 'productionRate', e.target.value);
-                                      const isParent = isParentItem(item);
-                                      const isChild = isChildItem(item);
-                                      
-                                      // Children cannot edit PX rate directly
-                                      if (isChild) {
-                                        toast({
-                                          title: "Cannot Edit",
-                                          description: "Child items inherit PX rate from parent",
-                                          variant: "destructive"
-                                        });
-                                        return;
-                                      }
-
-                                      const newPX = parseFloat(e.target.value || '0');
-                                      const convertedQty = isParent && hasChildren(item) ? 
-                                        getParentQuantitySum(item) : 
-                                        parseFloat(item.convertedQty || '0');
-                                      
-                                      if (newPX > 0 && convertedQty > 0) {
-                                        // When PX is adjusted, calculate Hours = converted qty * PX
-                                        const newHours = convertedQty * newPX;
-                                        const updatedItem = {
-                                          ...item,
-                                          productionRate: e.target.value,
-                                          hours: newHours.toFixed(2)
-                                        };
-                                        
-                                        // Use debounced update for typing
-                                        debouncedUpdate(item.id, updatedItem);
-                                        
-                                        // If this is a parent with children, update all children PX rates
-                                        if (isParent && hasChildren(item)) {
-                                          updateChildrenPXRate(item, e.target.value);
-                                        }
-                                      } else {
-                                        // Just update the PX rate without hours calculation
-                                        const updatedItem = {
-                                          ...item,
-                                          productionRate: e.target.value
-                                        };
-                                        debouncedUpdate(item.id, updatedItem);
-                                      }
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        const isParent = isParentItem(item);
                                         const isChild = isChildItem(item);
                                         
-                                        if (isChild) return;
-
-                                        const newPX = parseFloat(e.currentTarget.value || '0');
-                                        const convertedQty = isParent && hasChildren(item) ? 
-                                          getParentQuantitySum(item) : 
-                                          parseFloat(item.convertedQty || '0');
-                                        
-                                        if (newPX > 0 && convertedQty > 0) {
-                                          const newHours = convertedQty * newPX;
-                                          const updatedItem = {
-                                            ...item,
-                                            productionRate: e.currentTarget.value,
-                                            hours: newHours.toFixed(2)
-                                          };
-                                          
-                                          immediateUpdate(item.id, updatedItem);
-                                          
-                                          if (isParent && hasChildren(item)) {
-                                            updateChildrenPXRate(item, e.currentTarget.value);
-                                          }
-                                        } else {
-                                          const updatedItem = {
-                                            ...item,
-                                            productionRate: e.currentTarget.value
-                                          };
-                                          immediateUpdate(item.id, updatedItem);
+                                        // Children cannot edit PX rate directly
+                                        if (isChild) {
+                                          toast({
+                                            title: "Cannot Edit",
+                                            description: "Child items inherit PX rate from parent",
+                                            variant: "destructive"
+                                          });
+                                          return;
                                         }
-                                        e.currentTarget.blur();
-                                      }
-                                    }}
-                                    onBlur={(e) => {
-                                      const isParent = isParentItem(item);
-                                      const isChild = isChildItem(item);
-                                      
-                                      if (isChild) return;
 
-                                      const newPX = parseFloat(e.target.value || '0');
-                                      const convertedQty = isParent && hasChildren(item) ? 
-                                        getParentQuantitySum(item) : 
-                                        parseFloat(item.convertedQty || '0');
-                                      
-                                      if (newPX > 0 && convertedQty > 0) {
+                                        setInputValue(item.id, 'productionRate', e.target.value);
+                                        
+                                        // Recalculate hours locally
+                                        const newPX = parseFloat(e.target.value || '0');
+                                        const convertedQty = parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty) || '0');
                                         const newHours = convertedQty * newPX;
-                                        const updatedItem = {
-                                          ...item,
-                                          productionRate: e.target.value,
-                                          hours: newHours.toFixed(2)
-                                        };
                                         
-                                        immediateUpdate(item.id, updatedItem);
-                                        
-                                        if (isParent && hasChildren(item)) {
-                                          updateChildrenPXRate(item, e.target.value);
-                                        }
-                                      } else {
-                                        const updatedItem = {
-                                          ...item,
-                                          productionRate: e.target.value
-                                        };
-                                        immediateUpdate(item.id, updatedItem);
-                                        clearInputValue(item.id, 'productionRate');
-                                      }
-                                    }}
+                                        setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                      }}
+
                                       className={`w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                                         isChildItem(item) ? 'bg-gray-100 cursor-not-allowed' : ''
                                       }`}
@@ -1399,41 +1374,17 @@ export default function BudgetManagement() {
                                           };
                                           
                                           // Update parent with debounced update
-                                          debouncedUpdate(item.id, updatedItem);
-                                          
-                                          // Update all children PX rates
-                                          updateChildrenPXRate(item, newPX.toFixed(2));
-                                        } else {
-                                          const updatedItem = {
-                                            ...item,
-                                            hours: e.target.value
-                                          };
-                                          debouncedUpdate(item.id, updatedItem);
+                                          // Update the PX input field to reflect the new value
+                                          setInputValue(item.id, 'productionRate', newPX.toFixed(2));
                                         }
                                       } else {
                                         // Single item or child - normal hours change
-                                        const convertedQty = parseFloat(item.convertedQty || '0');
+                                        const convertedQty = parseFloat(getInputValue(item.id, 'convertedQty', item.convertedQty) || '0');
                                         
                                         if (newHours > 0 && convertedQty > 0) {
                                           // When hours change, calculate PX = hours / convertedQty
                                           const newPX = newHours / convertedQty;
-                                          const updatedItem = {
-                                            ...item,
-                                            hours: e.target.value,
-                                            productionRate: newPX.toFixed(2)
-                                          };
-                                          
-                                          // Update the PX input field to reflect the new value
                                           setInputValue(item.id, 'productionRate', newPX.toFixed(2));
-                                          
-                                          debouncedUpdate(item.id, updatedItem);
-                                        } else {
-                                          // Just update the hours without PX calculation
-                                          const updatedItem = {
-                                            ...item,
-                                            hours: e.target.value
-                                          };
-                                          debouncedUpdate(item.id, updatedItem);
                                         }
                                       }
                                     }}

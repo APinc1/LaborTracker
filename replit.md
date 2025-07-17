@@ -153,3 +153,6 @@ Preferred communication style: Simple, everyday language.
 - ✅ All inline editing controls (quantity, PX, hours) are disabled when not in edit mode
 - ✅ Inline editing action buttons (edit, delete) are disabled when not in edit mode
 - ✅ Excel import and Add Line Item buttons remain available without edit mode
+- ✅ Added Cancel button with confirmation dialogs for Save/Cancel actions
+- ✅ Warn users about unsaved changes when navigating away or refreshing
+- ✅ Changes now only save when Save button is clicked, not on every keystroke
