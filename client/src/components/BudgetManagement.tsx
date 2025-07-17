@@ -1093,58 +1093,63 @@ export default function BudgetManagement() {
 
           {selectedLocation && (
             <>
-              {/* Budget Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Total Budget</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {formatCurrency(getTotalBudget())}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Calculator className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Line Items</p>
-                        <p className="text-2xl font-bold text-blue-600">{(budgetItems as any[]).length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Labor Budget</p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.laborCost) || 0), 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Material Budget</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {formatCurrency((budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.materialCost) || 0), 0))}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Cost Code Summary Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {(() => {
+                  const items = budgetItems as any[];
+                  const costCodeGroups = items.reduce((groups: any, item: any) => {
+                    const costCode = item.costCode || 'No Code';
+                    if (!groups[costCode]) {
+                      groups[costCode] = [];
+                    }
+                    groups[costCode].push(item);
+                    return groups;
+                  }, {});
+
+                  return Object.entries(costCodeGroups).map(([costCode, items]: [string, any[]]) => {
+                    const totalConvertedQty = items.reduce((sum, item) => sum + (parseFloat(item.convertedQty) || 0), 0);
+                    const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
+                    const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
+                    
+                    // Calculate median PX rate
+                    const pxRates = items.map(item => parseFloat(item.productionRate) || 0).filter(rate => rate > 0).sort((a, b) => a - b);
+                    const medianPX = pxRates.length > 0 ? 
+                      pxRates.length % 2 === 0 ? 
+                        (pxRates[pxRates.length / 2 - 1] + pxRates[pxRates.length / 2]) / 2 : 
+                        pxRates[Math.floor(pxRates.length / 2)] : 0;
+
+                    return (
+                      <Card key={costCode} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-sm text-gray-900">{costCode}</h3>
+                              <span className="text-xs text-gray-500">{items.length} items</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <p className="text-gray-600">Conv. Qty</p>
+                                <p className="font-medium">{formatNumber(totalConvertedQty.toFixed(2))}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Median PX</p>
+                                <p className="font-medium">{formatNumber(medianPX.toFixed(2))}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Hours</p>
+                                <p className="font-medium">{formatNumber(totalHours.toFixed(2))}</p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Value</p>
+                                <p className="font-medium text-blue-600">{formatCurrency(totalValue)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  });
+                })()}
               </div>
 
               {/* Budget Items Table */}
