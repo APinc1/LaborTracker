@@ -1213,8 +1213,10 @@ export default function BudgetManagement() {
                             <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
+                            <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">PX</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Hours</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
@@ -1331,6 +1333,9 @@ export default function BudgetManagement() {
                                 <td className="text-right px-4 py-3">
                                   {formatCurrency(item.unitCost)}
                                 </td>
+                                <td className="text-right px-4 py-3">
+                                  {formatCurrency(item.unitTotal)}
+                                </td>
                                 <td className="px-4 py-3">{item.convertedUnitOfMeasure || '-'}</td>
                                 <td className="text-right px-4 py-3">
                                   {isParent && hasChildren(item) ? (
@@ -1340,6 +1345,9 @@ export default function BudgetManagement() {
                                   ) : (
                                     formatNumber(getInputValue(item.id, 'convertedQty', item.convertedQty))
                                   )}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {item.costCode || '-'}
                                 </td>
                                 <td className="text-right px-4 py-3">
                                   {isEditMode ? (
