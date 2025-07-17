@@ -1210,13 +1210,13 @@ export default function BudgetManagement() {
                           <tr className="border-b">
                             <th className="w-20 sticky left-0 top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
                             <th className="min-w-60 sticky top-0 bg-white border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-16 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Qty</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
-                            <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">PX</th>
                             <th className="w-20 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Hours</th>
                             <th className="w-24 sticky top-0 bg-white px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
@@ -1268,6 +1268,9 @@ export default function BudgetManagement() {
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  {item.costCode || '-'}
                                 </td>
                                 <td className="px-4 py-3">{item.unconvertedUnitOfMeasure}</td>
                                 <td className="px-4 py-3">
@@ -1345,9 +1348,6 @@ export default function BudgetManagement() {
                                   ) : (
                                     formatNumber(getInputValue(item.id, 'convertedQty', item.convertedQty))
                                   )}
-                                </td>
-                                <td className="px-4 py-3">
-                                  {item.costCode || '-'}
                                 </td>
                                 <td className="text-right px-4 py-3">
                                   {isEditMode ? (
