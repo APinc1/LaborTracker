@@ -1037,7 +1037,6 @@ export default function BudgetManagement() {
           </div>
         </div>
       </header>
-
       <main className="p-6">
         <div className="space-y-6">
           {/* Project and Location Selection */}
@@ -1244,7 +1243,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <TableRow key={item.id} className={isChild ? 'bg-gray-50' : ''}>
-                                <TableCell className={`font-medium sticky left-0 border-r z-10 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                                <TableCell className="p-4 align-middle [&:has([role=checkbox])]:pr-0 font-medium sticky left-0 border-r z-10 bg-[#d4eaff]">
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1574,7 +1573,7 @@ export default function BudgetManagement() {
                                     </div>
                                   )}
                                 </TableCell>
-                            </TableRow>
+                              </TableRow>
                             );
                           })}
                         </TableBody>
@@ -1588,7 +1587,6 @@ export default function BudgetManagement() {
           )}
         </div>
       </main>
-
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl">
