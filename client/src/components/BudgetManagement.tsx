@@ -368,33 +368,6 @@ export default function BudgetManagement() {
     return children.reduce((sum, child) => sum + (parseFloat(child.unconvertedQty) || 0), 0);
   };
 
-  const getParentHoursSum = (parentItem: any) => {
-    const items = budgetItems as any[];
-    const children = items.filter(child => 
-      isChildItem(child) && getParentId(child) === parentItem.lineItemNumber
-    );
-    return children.reduce((sum, child) => sum + (parseFloat(child.hours) || 0), 0);
-  };
-
-  const updateParentHours = async (childItem: any) => {
-    const items = budgetItems as any[];
-    const parentId = getParentId(childItem);
-    if (!parentId) return;
-    
-    const parent = items.find(item => item.lineItemNumber === parentId);
-    if (!parent) return;
-    
-    const newParentHours = getParentHoursSum(parent);
-    
-    // Update the parent with the new hours sum
-    const updatedParent = {
-      ...parent,
-      hours: newParentHours.toFixed(2)
-    };
-    
-    await handleInlineUpdate(parent.id, updatedParent);
-  };
-
   const updateChildrenPXRate = async (parentItem: any, newPX: string) => {
     const items = budgetItems as any[];
     const children = items.filter(child => 
@@ -414,14 +387,6 @@ export default function BudgetManagement() {
       
       await handleInlineUpdate(child.id, updatedChild);
     }
-    
-    // Update parent hours to reflect the new sum of child hours
-    const newParentHours = getParentHoursSum(parentItem);
-    const updatedParent = {
-      ...parentItem,
-      hours: newParentHours.toFixed(2)
-    };
-    await handleInlineUpdate(parentItem.id, updatedParent);
   };
 
   const getVisibleItems = () => {
@@ -920,9 +885,8 @@ export default function BudgetManagement() {
                     </div>
                   ) : (
               <div className="w-full overflow-x-auto">
-                <div className="min-w-[1400px] ">
-                  <div className="max-h-[500px] overflow-y-auto">
-                    <Table className="w-full ">
+                <div className="min-w-[1400px] max-h-[500px] overflow-y-auto">
+                    <Table className="w-full">
                         <TableHeader className="sticky top-0 bg-white z-10">
                           <TableRow>
                             <TableHead className="w-20 sticky top-0 bg-white border-b">Line Item</TableHead>
@@ -1041,36 +1005,32 @@ export default function BudgetManagement() {
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {isParent && hasChildren(item) ? (
-                                    <span className="text-gray-600 font-medium">
-                                      {formatNumber(getParentHoursSum(item))}
-                                    </span>
-                                  ) : (
-                                    <Input
-                                      type="number"
-                                      value={item.hours || ''}
-                                      onChange={async (e) => {
-                                        const newHours = parseFloat(e.target.value || '0');
-                                        const convertedQty = parseFloat(item.convertedQty || '0');
-                                        if (newHours > 0 && convertedQty > 0) {
-                                          const newPX = newHours / convertedQty;
-                                          const updatedItem = {
-                                            ...item,
-                                            hours: e.target.value,
-                                            productionRate: newPX.toFixed(2)
-                                          };
-                                          await handleInlineUpdate(item.id, updatedItem);
-                                          
-                                          // If this is a child item, update parent hours
-                                          if (isChild) {
-                                            await updateParentHours(item);
-                                          }
+                                  <Input
+                                    type="number"
+                                    value={item.hours || ''}
+                                    onChange={async (e) => {
+                                      const newHours = parseFloat(e.target.value || '0');
+                                      const convertedQty = isParent && hasChildren(item) ? 
+                                        getParentQuantitySum(item) : 
+                                        parseFloat(item.convertedQty || '0');
+                                      if (newHours > 0 && convertedQty > 0) {
+                                        const newPX = newHours / convertedQty;
+                                        const updatedItem = {
+                                          ...item,
+                                          hours: e.target.value,
+                                          productionRate: newPX.toFixed(2)
+                                        };
+                                        await handleInlineUpdate(item.id, updatedItem);
+                                        
+                                        // If this is a parent with children, update all children PX rates
+                                        if (isParent && hasChildren(item)) {
+                                          await updateChildrenPXRate(item, newPX.toFixed(2));
                                         }
-                                      }}
-                                      className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                      step="0.01"
-                                    />
-                                  )}
+                                      }
+                                    }}
+                                    className="w-20 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    step="0.01"
+                                  />
                                 </TableCell>
                                 <TableCell className="text-right">
                                   {formatCurrency(item.laborCost || 0)}
@@ -1120,7 +1080,6 @@ export default function BudgetManagement() {
                           })}
                         </TableBody>
                         </Table>
-                      </div>
                     </div>
                   </div>
                   )}
