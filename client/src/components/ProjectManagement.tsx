@@ -44,8 +44,12 @@ export default function ProjectManagement() {
       toast({ title: "Success", description: "Project created successfully" });
       setIsCreateDialogOpen(false);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create project", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create project", 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -59,8 +63,12 @@ export default function ProjectManagement() {
       toast({ title: "Success", description: "Project updated successfully" });
       setEditingProject(null);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update project", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update project", 
+        variant: "destructive" 
+      });
     },
   });
 
@@ -72,8 +80,12 @@ export default function ProjectManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({ title: "Success", description: "Project deleted successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete project", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to delete project", 
+        variant: "destructive" 
+      });
     },
   });
 
