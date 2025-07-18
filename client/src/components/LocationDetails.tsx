@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
@@ -18,6 +18,7 @@ interface LocationDetailsProps {
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedCostCode, setSelectedCostCode] = useState<string | null>(null);
   const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
@@ -131,6 +132,29 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Get items for selected cost code
   const selectedCostCodeItems = selectedCostCode ? costCodeSummaries[selectedCostCode]?.items || [] : [];
+
+  // Helper functions for collapsible functionality
+  const toggleExpanded = (itemId: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  const hasChildren = (itemId: string) => {
+    return selectedCostCodeItems.some((item: any) => item.parentId === itemId);
+  };
+
+  const getChildren = (parentId: string) => {
+    return selectedCostCodeItems.filter((item: any) => item.parentId === parentId);
+  };
+
+  const getParentItems = () => {
+    return selectedCostCodeItems.filter((item: any) => !item.parentId);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -439,48 +463,100 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
 
               {/* Line Items Table */}
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-20">Line #</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">PX</TableHead>
-                      <TableHead className="text-right">Budget</TableHead>
-                      <TableHead className="text-right">Billings</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedCostCodeItems.map((item: any) => {
+              <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-white border-b z-10">
+                    <tr>
+                      <th className="text-left p-3 font-medium text-gray-900 w-20">Line #</th>
+                      <th className="text-left p-3 font-medium text-gray-900">Description</th>
+                      <th className="text-right p-3 font-medium text-gray-900">Quantity</th>
+                      <th className="text-right p-3 font-medium text-gray-900">PX</th>
+                      <th className="text-right p-3 font-medium text-gray-900">Budget</th>
+                      <th className="text-right p-3 font-medium text-gray-900">Billings</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getParentItems().map((item: any) => {
+                      const itemHasChildren = hasChildren(item.id);
+                      const isExpanded = expandedItems.has(item.id);
+                      const children = getChildren(item.id);
+                      
                       return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.lineItemName}</p>
-                              {item.notes && (
-                                <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(item.convertedQty || 0).toLocaleString()} {item.convertedUnitOfMeasure}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {parseFloat(item.px || 0).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${parseFloat(item.budgetTotal || 0).toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right text-red-600">
-                            ${parseFloat(item.billing || 0).toLocaleString()}
-                          </TableCell>
-                        </TableRow>
+                        <React.Fragment key={item.id}>
+                          {/* Parent Row */}
+                          <tr className="border-b hover:bg-gray-50">
+                            <td className="p-3 font-medium">
+                              <div className="flex items-center gap-2">
+                                {itemHasChildren && (
+                                  <button
+                                    onClick={() => toggleExpanded(item.id)}
+                                    className="p-1 hover:bg-gray-200 rounded"
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )}
+                                <span>{item.lineItemNumber}</span>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div>
+                                <p className="font-medium">{item.lineItemName}</p>
+                                {item.notes && (
+                                  <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 text-right">
+                              {parseFloat(item.convertedQty || 0).toLocaleString()} {item.convertedUnitOfMeasure}
+                            </td>
+                            <td className="p-3 text-right">
+                              {parseFloat(item.px || 0).toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right font-medium">
+                              ${parseFloat(item.budgetTotal || 0).toLocaleString()}
+                            </td>
+                            <td className="p-3 text-right text-red-600">
+                              ${parseFloat(item.billing || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                          
+                          {/* Children Rows */}
+                          {itemHasChildren && isExpanded && children.map((child: any) => (
+                            <tr key={child.id} className="border-b hover:bg-gray-50 bg-gray-25">
+                              <td className="p-3 font-medium pl-12">
+                                {child.lineItemNumber}
+                              </td>
+                              <td className="p-3">
+                                <div>
+                                  <p className="font-medium text-gray-700">{child.lineItemName}</p>
+                                  {child.notes && (
+                                    <p className="text-sm text-gray-600 mt-1">{child.notes}</p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                {parseFloat(child.convertedQty || 0).toLocaleString()} {child.convertedUnitOfMeasure}
+                              </td>
+                              <td className="p-3 text-right">
+                                {parseFloat(child.px || 0).toLocaleString()}
+                              </td>
+                              <td className="p-3 text-right font-medium">
+                                ${parseFloat(child.budgetTotal || 0).toLocaleString()}
+                              </td>
+                              <td className="p-3 text-right text-red-600">
+                                ${parseFloat(child.billing || 0).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
                       );
                     })}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
