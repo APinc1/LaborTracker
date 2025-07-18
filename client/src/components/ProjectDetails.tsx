@@ -143,7 +143,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{location.name}</h3>
+                          <Link href={`/locations/${location.id}`}>
+                            <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
+                          </Link>
                           <p className="text-gray-600 text-sm mt-1">{location.description}</p>
                           <div className="flex items-center gap-4 mt-2">
                             <Badge variant="outline">{location.locationId}</Badge>
@@ -156,11 +158,6 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/locations/${location.id}`}>
-                            <Button variant="outline" size="sm">
-                              View Location
-                            </Button>
-                          </Link>
                           <Link href={`/budgets?locationId=${location.id}`}>
                             <Button variant="outline" size="sm">
                               View Budget
