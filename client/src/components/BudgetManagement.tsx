@@ -1408,42 +1408,30 @@ export default function BudgetManagement() {
                   ) : (
               <div className="w-full border rounded-lg">
                 <div className="overflow-auto max-h-[500px] relative">
-                    <style dangerouslySetInnerHTML={{__html: `
-                      .compact-table td, .compact-table th {
-                        margin: 0 !important;
-                        padding-left: 4px !important;
-                        padding-right: 4px !important;
-                        border-spacing: 0 !important;
-                      }
-                      .compact-table {
-                        border-collapse: collapse !important;
-                        border-spacing: 0 !important;
-                      }
-                    `}} />
-                    <table className="w-full min-w-[1400px] sticky-table compact-table" style={{borderCollapse: 'collapse', borderSpacing: '0', tableLayout: 'fixed'}}>
+                    <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Cost Code</th>
-                            <th className="w-16 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Unit</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Qty</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Unit Cost</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Unit Total</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Conv. UM</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Conv. Qty</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">PX</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Hours</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Labor Cost</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Equipment</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Trucking</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Dump Fees</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Material</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Sub</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Budget</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 py-2 text-left font-medium text-gray-900">Billings</th>
+                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-3 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-3 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Cost Code</th>
+                            <th className="w-16 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Qty</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit Total</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Conv. UM</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Conv. Qty</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">PX</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Hours</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Labor Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Equipment</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Trucking</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Dump Fees</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Material</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Sub</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Budget</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Billings</th>
                             {isEditMode && (
-                              <th className="w-16 sticky right-0 top-0 bg-gray-100 z-20 border-l py-2 text-left font-medium text-gray-900">Delete</th>
+                              <th className="w-16 sticky right-0 top-0 bg-gray-100 z-20 border-l px-3 py-2 text-left font-medium text-gray-900">Delete</th>
                             )}
                           </tr>
                         </thead>
