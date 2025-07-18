@@ -1166,15 +1166,7 @@ export default function BudgetManagement() {
         </div>
       </header>
       <main className="p-6">
-        <div className="space-y-6" onClick={(e) => {
-          // Clear filter when clicking outside of cost code cards
-          const target = e.target as HTMLElement;
-          const isClickingOnCard = target.closest('[data-cost-code-card]');
-          
-          if (!isClickingOnCard && selectedCostCodeFilter !== 'all') {
-            setSelectedCostCodeFilter('all');
-          }
-        }}>
+        <div className="space-y-6">
           {/* Project and Location Selection - Only show when not accessed directly */}
           {!isDirectAccess && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1309,8 +1301,7 @@ export default function BudgetManagement() {
                             className={`hover:shadow-md transition-all cursor-pointer ${
                               selectedCostCodeFilter === costCode ? 'ring-2 ring-blue-500 bg-blue-50' : ''
                             }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               if (selectedCostCodeFilter === costCode) {
                                 setSelectedCostCodeFilter('all');
                               } else {
