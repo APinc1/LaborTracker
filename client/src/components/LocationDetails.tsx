@@ -362,15 +362,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           
+          const taskId = `${locationId}_${taskType.replace(/[\/\s]/g, '')}_Day${day}_${Date.now()}`;
+          
           tasksToCreate.push({
+            taskId: taskId,
             name: taskName,
             taskType: taskType,
-            workDescription: workDescription,
             taskDate: format(currentDate, 'yyyy-MM-dd'),
+            startDate: format(currentDate, 'yyyy-MM-dd'),
+            finishDate: format(currentDate, 'yyyy-MM-dd'),
+            costCode: group.costCodes[0], // Use first cost code as primary
+            workDescription: workDescription,
             scheduledHours: Math.min(40, group.totalHours / group.days),
-            assignedTo: null,
             actualHours: null,
-            isComplete: false
+            superintendentId: null,
+            foremanId: null,
+            startTime: null,
+            finishTime: null,
+            notes: null
           });
           
           // Move to next day
