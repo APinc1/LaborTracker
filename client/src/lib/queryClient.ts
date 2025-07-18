@@ -11,9 +11,8 @@ async function throwIfResNotOk(res: Response) {
       // Otherwise use the JSON as string or status text
       throw new Error(JSON.stringify(jsonError) || res.statusText);
     } catch (parseError) {
-      // If JSON parsing fails, fall back to text
-      const text = (await res.text()) || res.statusText;
-      throw new Error(`${res.status}: ${text}`);
+      // If JSON parsing fails, use status text (don't try to read body again)
+      throw new Error(`${res.status}: ${res.statusText}`);
     }
   }
 }
