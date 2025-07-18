@@ -1281,21 +1281,7 @@ export default function BudgetManagement() {
                             pxRates[Math.floor(pxRates.length / 2)] : 0;
 
                         return (
-                          <Card 
-                            key={costCode} 
-                            className={`cursor-pointer transition-all ${
-                              selectedCostCodeFilter === costCode 
-                                ? 'ring-2 ring-blue-500 bg-blue-50' 
-                                : 'hover:shadow-md hover:bg-gray-50'
-                            }`}
-                            onClick={() => {
-                              if (selectedCostCodeFilter === costCode) {
-                                setSelectedCostCodeFilter('all');
-                              } else {
-                                setSelectedCostCodeFilter(costCode);
-                              }
-                            }}
-                          >
+                          <Card key={costCode} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
@@ -1425,8 +1411,8 @@ export default function BudgetManagement() {
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px', width: '112px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '112px', top: '0px'}}>Description</th>
+                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
                             <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-16 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Qty</th>
@@ -1462,7 +1448,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px', width: '112px'}}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1481,7 +1467,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '112px'}} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
