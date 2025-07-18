@@ -672,10 +672,10 @@ export class MemStorage implements IStorage {
     const employee = this.employees.get(employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Create the user account with a temporary password
+    // Create the user account with default password
     const user = await this.createUser({
       username,
-      password: 'temp_password_to_be_reset', // Temporary password
+      password: 'AccessPacific2835', // Default password
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone,
@@ -1012,10 +1012,10 @@ class DatabaseStorage implements IStorage {
     const employee = await this.getEmployee(employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Create the user account with a temporary password
+    // Create the user account with default password
     const user = await this.createUser({
       username,
-      password: 'temp_password_to_be_reset', // Temporary password
+      password: 'AccessPacific2835', // Default password
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone,

@@ -48,7 +48,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/users', async (req, res) => {
     try {
-      const userData = req.body;
+      const userData = {
+        ...req.body,
+        password: 'AccessPacific2835', // Default password
+        isPasswordSet: false // Force password change on first login
+      };
       const user = await storage.createUser(userData);
       res.status(201).json(user);
     } catch (error: any) {
@@ -368,28 +372,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role
       );
       
-      // Generate password reset token and send email
-      const { emailService } = await import('./emailService');
-      const resetToken = emailService.generateResetToken();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
-      await storage.setPasswordResetToken(result.user.id, resetToken, expiresAt);
-      
-      // Send password reset email
-      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
-      const emailSent = await emailService.sendPasswordResetEmail({
-        name: result.user.name,
-        email: result.user.email,
-        resetToken,
-        resetUrl
-      });
-      
       res.status(201).json({
         ...result,
-        emailSent,
-        message: emailSent 
-          ? 'User created successfully. Password reset email sent.' 
-          : 'User created successfully. Email not configured - provide reset link manually.'
+        message: 'User created successfully. Default password: AccessPacific2835. User will be prompted to change password on first login.'
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -520,6 +505,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete assignment' });
+    }
+  });
+
+  // Authentication routes
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+
+      // Find user by username
+      const users = await storage.getUsers();
+      const user = users.find(u => u.username === username);
+      
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+
+      res.json({ 
+        user: {
+          id: user.id,
+          username: user.username,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isPasswordSet: user.isPasswordSet
+        },
+        requirePasswordChange: !user.isPasswordSet
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Login failed' });
+    }
+  });
+
+  app.post('/api/auth/change-password', async (req, res) => {
+    try {
+      const { userId, currentPassword, newPassword } = req.body;
+      
+      if (!userId || !currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'User ID, current password, and new password are required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || user.password !== currentPassword) {
+        return res.status(401).json({ error: 'Invalid current password' });
+      }
+
+      await storage.updateUser(userId, { 
+        password: newPassword, 
+        isPasswordSet: true 
+      });
+
+      res.json({ message: 'Password changed successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to change password' });
     }
   });
 

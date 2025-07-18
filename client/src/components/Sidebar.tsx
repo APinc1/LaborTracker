@@ -39,7 +39,11 @@ const ProtectedNavLink = ({
   );
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+  onLogout?: () => void;
+}
+
+export default function Sidebar({ onLogout }: SidebarProps) {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -149,6 +153,8 @@ export default function Sidebar() {
             variant="ghost"
             size="sm"
             className="text-sidebar-foreground hover:bg-blue-100"
+            onClick={onLogout}
+            title="Logout"
           >
             <LogOut className="w-4 h-4" />
           </Button>

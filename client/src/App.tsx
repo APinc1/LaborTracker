@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -15,6 +16,8 @@ import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
 import UserManagement from "@/components/UserManagement";
 import PasswordReset from "@/components/PasswordReset";
+import Login from "@/components/Login";
+import ChangePassword from "@/components/ChangePassword";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -44,14 +47,62 @@ function Router() {
 }
 
 function App() {
+  const [user, setUser] = useState<any>(null);
+  const [requirePasswordChange, setRequirePasswordChange] = useState(false);
+
+  // Check for existing session on app load
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        setRequirePasswordChange(!parsedUser.isPasswordSet);
+      } catch (error) {
+        localStorage.removeItem('currentUser');
+      }
+    }
+  }, []);
+
+  const handleLoginSuccess = (loggedInUser: any, needsPasswordChange: boolean) => {
+    setUser(loggedInUser);
+    setRequirePasswordChange(needsPasswordChange);
+    localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
+  };
+
+  const handlePasswordChanged = () => {
+    setRequirePasswordChange(false);
+    if (user) {
+      const updatedUser = { ...user, isPasswordSet: true };
+      setUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    }
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setRequirePasswordChange(false);
+    localStorage.removeItem('currentUser');
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <NavigationProtectionProvider>
           <Toaster />
-          <Layout>
-            <Router />
-          </Layout>
+          {!user ? (
+            <Login onLoginSuccess={handleLoginSuccess} />
+          ) : requirePasswordChange ? (
+            <ChangePassword 
+              user={user} 
+              onPasswordChanged={handlePasswordChanged} 
+              isFirstLogin={true}
+            />
+          ) : (
+            <Layout onLogout={handleLogout}>
+              <Router />
+            </Layout>
+          )}
         </NavigationProtectionProvider>
       </TooltipProvider>
     </QueryClientProvider>

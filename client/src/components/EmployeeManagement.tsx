@@ -175,9 +175,7 @@ export default function EmployeeManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ 
         title: "Success", 
-        description: result.emailSent 
-          ? `User account created for ${result.employee.name}. Password reset email sent.`
-          : `User account created for ${result.employee.name}. ${result.message || 'Email not configured - provide reset link manually.'}`
+        description: `User account created for ${result.employee.name}. Default password: AccessPacific2835`
       });
       setIsCreateUserOpen(false);
       setSelectedEmployeeForUser(null);
@@ -732,7 +730,7 @@ export default function EmployeeManagement() {
               Create User Account
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Create a user account for {selectedEmployeeForUser?.name}. They will receive an email to set their password.
+              Create a user account for {selectedEmployeeForUser?.name}. They will receive the default password and be prompted to change it on first login.
             </p>
           </DialogHeader>
           <Form {...createUserForm}>

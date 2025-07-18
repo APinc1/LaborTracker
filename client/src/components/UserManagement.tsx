@@ -43,7 +43,6 @@ import { useToast } from "@/hooks/use-toast";
 
 const userSchema = z.object({
   username: z.string().min(1, "Username is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
@@ -65,7 +64,6 @@ export default function UserManagement() {
     resolver: zodResolver(userSchema),
     defaultValues: {
       username: "",
-      password: "",
       name: "",
       email: "",
       phone: "",
@@ -156,7 +154,6 @@ export default function UserManagement() {
     setEditingUser(user);
     form.reset({
       username: user.username,
-      password: "",
       name: user.name,
       email: user.email,
       phone: user.phone || "",
@@ -216,21 +213,15 @@ export default function UserManagement() {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Password {editingUser && "(leave empty to keep current)"}
-                      </FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+{!editingUser && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      New users will receive the default password: <strong>AccessPacific2835</strong>
+                      <br />
+                      They will be prompted to change it on first login.
+                    </p>
+                  </div>
+                )}
                 <FormField
                   control={form.control}
                   name="name"
