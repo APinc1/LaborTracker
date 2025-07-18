@@ -61,8 +61,8 @@ export default function ProjectManagement() {
         name: '',
         startDate: '',
         endDate: '',
-        defaultSuperintendent: null,
-        defaultProjectManager: null,
+        defaultSuperintendent: undefined,
+        defaultProjectManager: undefined,
       });
     },
     onError: (error: any) => {
@@ -122,8 +122,8 @@ export default function ProjectManagement() {
       name: '',
       startDate: '',
       endDate: '',
-      defaultSuperintendent: null,
-      defaultProjectManager: null,
+      defaultSuperintendent: undefined,
+      defaultProjectManager: undefined,
     },
   });
 

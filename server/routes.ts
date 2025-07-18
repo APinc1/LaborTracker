@@ -150,8 +150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectData = {
         projectId: req.body.projectId,
         name: req.body.name,
-        startDate: req.body.startDate || new Date().toISOString().split('T')[0],
-        endDate: req.body.endDate || null,
+        startDate: req.body.startDate && req.body.startDate.trim() !== '' ? req.body.startDate : null,
+        endDate: req.body.endDate && req.body.endDate.trim() !== '' ? req.body.endDate : null,
         defaultSuperintendent: req.body.defaultSuperintendent || null,
         defaultProjectManager: req.body.defaultProjectManager || null
       };
