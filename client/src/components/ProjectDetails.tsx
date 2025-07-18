@@ -58,26 +58,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       });
     },
     onError: (error: any) => {
-      console.error('Location creation error details:', {
-        error,
-        message: error?.message,
-        stack: error?.stack,
-        stringified: JSON.stringify(error)
-      });
+      console.error('Location creation error:', error?.message || error);
       
-      let errorMessage = "Failed to add location";
-      
-      // Extract specific error message from server response
-      // React Query wraps the error, so check multiple possible locations
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error?.response?.error) {
-        errorMessage = error.response.error;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
+      const errorMessage = error?.message || "Failed to add location";
       
       toast({
         title: "Error",
