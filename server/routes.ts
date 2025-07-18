@@ -135,6 +135,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/projects', async (req, res) => {
     try {
       const validated = insertProjectSchema.parse(req.body);
+      
+      // Check for duplicate project ID
+      const existingProjects = await storage.getProjects();
+      const duplicateProject = existingProjects.find(p => p.projectId === validated.projectId);
+      if (duplicateProject) {
+        return res.status(400).json({ error: `Project ID "${validated.projectId}" already exists` });
+      }
+      
       const project = await storage.createProject(validated);
       res.status(201).json(project);
     } catch (error: any) {
@@ -238,14 +246,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/projects/:projectId/locations', async (req, res) => {
     try {
-      const validated = insertLocationSchema.parse({
+      const projectId = parseInt(req.params.projectId);
+      
+      // Check for duplicate location name within the project
+      const existingLocations = await storage.getLocations(projectId);
+      const duplicateLocation = existingLocations.find(loc => 
+        loc.name.toLowerCase() === req.body.name?.toLowerCase()
+      );
+      if (duplicateLocation) {
+        return res.status(400).json({ error: `Location name "${req.body.name}" already exists in this project` });
+      }
+      
+      // Generate a unique locationId
+      const locationId = `${projectId}_${req.body.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')}`;
+      
+      // Prepare location data with required fields
+      const locationData = {
         ...req.body,
-        projectId: parseInt(req.params.projectId)
-      });
+        projectId: projectId,
+        locationId: locationId,
+        // If no start date provided, use current date
+        startDate: req.body.startDate || new Date().toISOString().split('T')[0]
+      };
+      
+      const validated = insertLocationSchema.parse(locationData);
+      
       const location = await storage.createLocation(validated);
       res.status(201).json(location);
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid location data' });
+    } catch (error: any) {
+      console.error('Error creating location:', error);
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid location data', details: error.errors });
+      } else {
+        res.status(500).json({ error: error.message || 'Failed to create location' });
+      }
     }
   });
 
