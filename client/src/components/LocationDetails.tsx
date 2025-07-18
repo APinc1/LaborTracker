@@ -298,15 +298,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     const dates: Date[] = [];
     const current = new Date(startDate);
     
+    console.log('addWorkdays - startDate:', startDate, 'totalDays:', totalDays);
+    
     while (dates.length < totalDays) {
       const dayOfWeek = current.getDay();
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         dates.push(new Date(current));
+        console.log('Added workday:', new Date(current));
       }
       current.setDate(current.getDate() + 1);
     }
     
+    console.log('Generated workdays:', dates);
     return dates;
   };
 
@@ -324,7 +328,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         return;
       }
 
-      let currentDate = new Date(startDate);
+      console.log('Start date input:', startDate);
+      let currentDate = new Date(startDate + 'T00:00:00'); // Add time to avoid timezone issues
+      console.log('Parsed start date:', currentDate);
       const tasksToCreate = [];
 
       // Group cost codes by task type and calculate days needed
@@ -334,27 +340,34 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         // Map cost code to task type (simplified mapping)
         let taskType = summary.costCode;
         
-        // You can enhance this mapping based on your cost code naming convention
-        if (summary.costCode.toLowerCase().includes('demo') || summary.costCode.toLowerCase().includes('demolition')) {
+        // Enhanced mapping based on cost code naming convention
+        const codeUpper = summary.costCode.toUpperCase();
+        
+        if (codeUpper.includes('DEMO') || codeUpper.includes('DEMOLITION') || codeUpper.includes('EX')) {
           taskType = 'Demo/Ex';
-        } else if (summary.costCode.toLowerCase().includes('form')) {
-          taskType = 'Form';
-        } else if (summary.costCode.toLowerCase().includes('pour') || summary.costCode.toLowerCase().includes('concrete')) {
-          taskType = 'Pour';
-        } else if (summary.costCode.toLowerCase().includes('base') || summary.costCode.toLowerCase().includes('grade')) {
-          taskType = 'Base/Grading';
-        } else if (summary.costCode.toLowerCase().includes('asphalt')) {
-          taskType = 'Asphalt';
-        } else if (summary.costCode.toLowerCase().includes('traffic')) {
+        } else if (codeUpper.includes('TRAFFIC')) {
           taskType = 'Traffic Control';
-        } else if (summary.costCode.toLowerCase().includes('landscape')) {
+        } else if (codeUpper.includes('BASE') || codeUpper.includes('GRADE') || codeUpper.includes('GRADING')) {
+          taskType = 'Base/Grading';
+        } else if (codeUpper === 'AC' || codeUpper.includes('ASPHALT')) {
+          taskType = 'Asphalt';
+        } else if (codeUpper.includes('CONCRETE') || codeUpper.includes('CONC')) {
+          // For concrete cost codes, determine if Form or Pour based on context
+          if (codeUpper.includes('FORM')) {
+            taskType = 'Form';
+          } else {
+            taskType = 'Pour'; // Default concrete work to Pour
+          }
+        } else if (codeUpper.includes('FORM')) {
+          taskType = 'Form';
+        } else if (codeUpper.includes('LANDSCAPE')) {
           taskType = 'Landscaping';
-        } else if (summary.costCode.toLowerCase().includes('utility')) {
+        } else if (codeUpper.includes('UTILITY')) {
           taskType = 'Utility Adjustment';
-        } else if (summary.costCode.toLowerCase().includes('punchlist')) {
-          if (summary.costCode.toLowerCase().includes('demo')) {
+        } else if (codeUpper.includes('PUNCHLIST')) {
+          if (codeUpper.includes('DEMO')) {
             taskType = 'Punchlist Demo';
-          } else if (summary.costCode.toLowerCase().includes('concrete')) {
+          } else if (codeUpper.includes('CONCRETE')) {
             taskType = 'Punchlist Concrete';
           } else {
             taskType = 'Punchlist General Labor';
@@ -394,24 +407,54 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       console.log('Has Form:', !!taskGroups['Form']);
       console.log('Has Pour:', !!taskGroups['Pour']);
 
-      if (combineFormPour && taskGroups['Form'] && taskGroups['Pour']) {
-        console.log('Combining Form + Pour');
-        const combinedHours = taskGroups['Form'].totalHours + taskGroups['Pour'].totalHours;
-        const combinedCostCodes = [...taskGroups['Form'].costCodes, ...taskGroups['Pour'].costCodes];
-        taskGroups['Form + Pour'] = {
-          costCodes: combinedCostCodes,
-          totalHours: combinedHours,
-          days: Math.max(1, Math.ceil(combinedHours / 40))
-        };
-        delete taskGroups['Form'];
-        delete taskGroups['Pour'];
+      // Handle Form + Pour logic for concrete work
+      if (taskGroups['Form'] || taskGroups['Pour']) {
+        // If we have concrete work, treat it as Form/Pour alternating
+        const concreteHours = (taskGroups['Form']?.totalHours || 0) + (taskGroups['Pour']?.totalHours || 0);
+        const concreteCostCodes = [...(taskGroups['Form']?.costCodes || []), ...(taskGroups['Pour']?.costCodes || [])];
+        
+        if (combineFormPour) {
+          console.log('Combining Form + Pour');
+          taskGroups['Form + Pour'] = {
+            costCodes: concreteCostCodes,
+            totalHours: concreteHours,
+            days: Math.max(1, Math.ceil(concreteHours / 40))
+          };
+          delete taskGroups['Form'];
+          delete taskGroups['Pour'];
+        } else {
+          console.log('Alternating Form and Pour');
+          // Create alternating Form/Pour tasks
+          const totalDays = Math.max(1, Math.ceil(concreteHours / 40));
+          
+          // Clear existing Form/Pour groups
+          delete taskGroups['Form'];
+          delete taskGroups['Pour'];
+          
+          // Create alternating schedule
+          for (let day = 1; day <= totalDays; day++) {
+            const isFormDay = (day % 2 === 1); // Odd days are Form, even days are Pour
+            const taskType = isFormDay ? 'Form' : 'Pour';
+            
+            if (!taskGroups[taskType]) {
+              taskGroups[taskType] = { costCodes: concreteCostCodes, totalHours: 0, days: 0 };
+            }
+            taskGroups[taskType].days++;
+            taskGroups[taskType].totalHours = Math.min(40, concreteHours / totalDays);
+          }
+          
+          // If odd number of days, extra day goes to Pour
+          if (totalDays % 2 === 1 && totalDays > 1) {
+            taskGroups['Pour'].days++;
+          }
+        }
       }
 
       // Calculate total days needed for all tasks
       const totalDaysNeeded = Object.values(taskGroups).reduce((sum: number, group: any) => sum + group.days, 0);
       
       // Generate all workdays first
-      const allWorkDays = addWorkdays(new Date(startDate), totalDaysNeeded);
+      const allWorkDays = addWorkdays(new Date(startDate + 'T00:00:00'), totalDaysNeeded);
       
       // Create tasks in proper order
       const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
