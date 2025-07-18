@@ -73,10 +73,7 @@ export default function UserManagement() {
 
   const createUserMutation = useMutation({
     mutationFn: (userData: UserFormData) =>
-      apiRequest("/api/users", {
-        method: "POST",
-        body: JSON.stringify(userData),
-      }),
+      apiRequest("POST", "/api/users", userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
@@ -98,10 +95,7 @@ export default function UserManagement() {
 
   const updateUserMutation = useMutation({
     mutationFn: (userData: UserFormData & { id: number }) =>
-      apiRequest(`/api/users/${userData.id}`, {
-        method: "PUT",
-        body: JSON.stringify(userData),
-      }),
+      apiRequest("PUT", `/api/users/${userData.id}`, userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
@@ -123,9 +117,7 @@ export default function UserManagement() {
 
   const deleteUserMutation = useMutation({
     mutationFn: (userId: number) =>
-      apiRequest(`/api/users/${userId}`, {
-        method: "DELETE",
-      }),
+      apiRequest("DELETE", `/api/users/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
