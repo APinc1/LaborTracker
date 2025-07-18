@@ -237,17 +237,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </nav>
         </div>
         
-        <div className="flex items-center gap-4">
-          <Link href="/locations">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Locations
-            </Button>
-          </Link>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{location.name}</h2>
-            <p className="text-gray-600 mt-1">Location overview and details</p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">{location.name}</h2>
+          <p className="text-gray-600 mt-1">Location overview and details</p>
         </div>
       </header>
 

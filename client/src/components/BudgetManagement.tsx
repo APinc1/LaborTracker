@@ -67,13 +67,23 @@ export default function BudgetManagement() {
   const { setHasUnsavedChanges: setGlobalUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
   
   // Handle URL parameters for direct location budget access
+  const [isDirectAccess, setIsDirectAccess] = useState(false);
+  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const locationId = urlParams.get('locationId');
     if (locationId) {
       setSelectedLocation(locationId);
+      setIsDirectAccess(true);
     }
   }, []);
+  
+  // Auto-set project when accessing via direct location access
+  useEffect(() => {
+    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
+      setSelectedProject(currentLocation.projectId.toString());
+    }
+  }, [isDirectAccess, currentLocation, selectedProject]);
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
@@ -1157,55 +1167,57 @@ export default function BudgetManagement() {
       </header>
       <main className="p-6">
         <div className="space-y-6">
-          {/* Project and Location Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Project</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select value={selectedProject} onValueChange={(value) => {
-                  setSelectedProject(value);
-                  setSelectedLocation(""); // Reset location when project changes
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(projects as any[]).map((project: any) => (
-                      <SelectItem key={project.id} value={project.id.toString()}>
-                        {project.name} ({project.projectId})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
+          {/* Project and Location Selection - Only show when not accessed directly */}
+          {!isDirectAccess && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Project</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Select value={selectedProject} onValueChange={(value) => {
+                    setSelectedProject(value);
+                    setSelectedLocation(""); // Reset location when project changes
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(projects as any[]).map((project: any) => (
+                        <SelectItem key={project.id} value={project.id.toString()}>
+                          {project.name} ({project.projectId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Location</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Select 
-                  value={selectedLocation} 
-                  onValueChange={setSelectedLocation}
-                  disabled={!selectedProject}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(locations as any[]).map((location: any) => (
-                      <SelectItem key={location.id} value={location.id.toString()}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardContent>
-            </Card>
-          </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Select Location</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Select 
+                    value={selectedLocation} 
+                    onValueChange={setSelectedLocation}
+                    disabled={!selectedProject}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(locations as any[]).map((location: any) => (
+                        <SelectItem key={location.id} value={location.id.toString()}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {selectedLocation && (
             <>
