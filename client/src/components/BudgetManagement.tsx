@@ -1285,26 +1285,22 @@ export default function BudgetManagement() {
                             key={costCode} 
                             className={`cursor-pointer transition-all ${
                               selectedCostCodeFilter === costCode 
-                                ? 'ring-2 ring-blue-500 bg-blue-50 hover:bg-blue-100' 
+                                ? 'ring-2 ring-blue-500 bg-blue-50' 
                                 : 'hover:shadow-md hover:bg-gray-50'
                             }`}
                             onClick={() => {
                               if (selectedCostCodeFilter === costCode) {
-                                setSelectedCostCodeFilter('all'); // Toggle off if same cost code clicked
+                                setSelectedCostCodeFilter('all');
                               } else {
-                                setSelectedCostCodeFilter(costCode); // Filter by this cost code
+                                setSelectedCostCodeFilter(costCode);
                               }
                             }}
                           >
                             <CardContent className="p-4">
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <h3 className={`font-semibold text-sm ${
-                                    selectedCostCodeFilter === costCode ? 'text-blue-900' : 'text-gray-900'
-                                  }`}>{costCode}</h3>
-                                  <span className={`text-xs ${
-                                    selectedCostCodeFilter === costCode ? 'text-blue-600' : 'text-gray-500'
-                                  }`}>{items.length} items</span>
+                                  <h3 className="font-semibold text-sm text-gray-900">{costCode}</h3>
+                                  <span className="text-xs text-gray-500">{items.length} items</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   <div>
@@ -1424,32 +1420,13 @@ export default function BudgetManagement() {
                       </Button>
                     </div>
                   ) : (
-                    <>
-                      {/* Filter Status Indicator */}
-                      {selectedCostCodeFilter !== 'all' && (
-                        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-blue-800 font-medium">Filtering by Cost Code:</span>
-                            <Badge variant="secondary" className="bg-blue-100 text-blue-800">{selectedCostCodeFilter}</Badge>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedCostCodeFilter('all')}
-                            className="text-blue-700 border-blue-300 hover:bg-blue-100"
-                          >
-                            Clear Filter
-                          </Button>
-                        </div>
-                      )}
-
-                      <div className="w-full border rounded-lg">
+              <div className="w-full border rounded-lg">
                 <div className="overflow-auto max-h-[500px] relative">
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-gray-100 z-20 px-4 py-3 text-left font-medium text-gray-900 border-r" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-gray-100 z-20 px-4 py-3 text-left font-medium text-gray-900 border-r" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                            <th className="sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px', width: '112px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '112px', top: '0px'}}>Description</th>
                             <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-16 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Qty</th>
@@ -1485,7 +1462,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 z-10 px-4 py-3 border-r ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px', width: '112px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1504,7 +1481,7 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky z-10 px-4 py-3 border-r ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '112px'}} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
@@ -1780,9 +1757,8 @@ export default function BudgetManagement() {
                           })}
                         </tbody>
                         </table>
-                      </div>
                     </div>
-                    </>
+                  </div>
                   )}
                 </CardContent>
               </Card>
