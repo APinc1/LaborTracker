@@ -58,9 +58,19 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       });
     },
     onError: (error: any) => {
+      console.error('Location creation error:', error);
+      let errorMessage = "Failed to add location";
+      
+      // Extract specific error message from server response
+      if (error?.response?.error) {
+        errorMessage = error.response.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to add location",
+        description: errorMessage,
         variant: "destructive",
       });
     },
