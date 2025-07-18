@@ -178,7 +178,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <div>
                   <p className="text-sm text-gray-600">Duration</p>
                   <p className="font-medium">
-                    {format(new Date(project.startDate), 'MMM d, yyyy')} - {format(new Date(project.endDate), 'MMM d, yyyy')}
+                    {format(new Date(project.startDate + 'T00:00:00'), 'MMM d, yyyy')} - {format(new Date(project.endDate + 'T00:00:00'), 'MMM d, yyyy')}
                   </p>
                 </div>
               </div>

@@ -144,10 +144,10 @@ export default function ProjectManagement() {
     form.reset({
       projectId: project.projectId,
       name: project.name,
-      startDate: project.startDate,
-      endDate: project.endDate,
-      defaultSuperintendent: superintendent?.id || null,
-      defaultProjectManager: projectManager?.id || null,
+      startDate: project.startDate || '',
+      endDate: project.endDate || '',
+      defaultSuperintendent: superintendent?.id || undefined,
+      defaultProjectManager: projectManager?.id || undefined,
     });
   };
 
@@ -361,7 +361,7 @@ export default function ProjectManagement() {
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      {project.startDate ? format(new Date(project.startDate), 'MMM d, yyyy') : 'No start date'} - {project.endDate ? format(new Date(project.endDate), 'MMM d, yyyy') : 'No end date'}
+                      {project.startDate ? format(new Date(project.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {project.endDate ? format(new Date(project.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">

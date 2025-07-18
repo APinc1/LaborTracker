@@ -24,7 +24,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Safe date formatting helper
   const safeFormatDate = (date: Date | string | number, formatStr: string = 'yyyy-MM-dd'): string => {
     try {
-      const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+      let dateObj: Date;
+      if (typeof date === 'string') {
+        // Fix timezone offset by adding time component for date strings
+        dateObj = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
+      } else if (typeof date === 'number') {
+        dateObj = new Date(date);
+      } else {
+        dateObj = date;
+      }
+      
       if (!dateObj || isNaN(dateObj.getTime())) {
         console.warn('Invalid date provided to safeFormatDate:', date);
         return '2025-07-16';
