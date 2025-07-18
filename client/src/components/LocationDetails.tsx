@@ -492,7 +492,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               {/* Line Items Table */}
               <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
                 <table className="w-full">
-                  <thead className="sticky top-0 bg-white border-b z-10">
+                  <thead className="sticky top-0 bg-gray-50 border-b z-10">
                     <tr>
                       <th className="text-left p-3 font-medium text-gray-900 w-20">Line #</th>
                       <th className="text-left p-3 font-medium text-gray-900">Description</th>
