@@ -23,6 +23,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationDescription, setNewLocationDescription] = useState("");
+  const [newLocationStartDate, setNewLocationStartDate] = useState("");
+  const [newLocationEndDate, setNewLocationEndDate] = useState("");
   const { toast } = useToast();
   
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -47,6 +49,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       setShowAddLocationDialog(false);
       setNewLocationName("");
       setNewLocationDescription("");
+      setNewLocationStartDate("");
+      setNewLocationEndDate("");
       toast({
         title: "Location added",
         description: "New location has been created successfully",
@@ -71,11 +75,21 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       return;
     }
 
-    addLocationMutation.mutate({
+    const locationData: any = {
       name: newLocationName.trim(),
       description: newLocationDescription.trim(),
       projectId: parseInt(projectId),
-    });
+    };
+
+    // Add start and end dates if provided
+    if (newLocationStartDate) {
+      locationData.startDate = newLocationStartDate;
+    }
+    if (newLocationEndDate) {
+      locationData.endDate = newLocationEndDate;
+    }
+
+    addLocationMutation.mutate(locationData);
   };
 
   if (projectLoading) {
@@ -281,6 +295,26 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   value={newLocationDescription}
                   onChange={(e) => setNewLocationDescription(e.target.value)}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="locationStartDate">Start Date (Optional)</Label>
+                  <Input
+                    id="locationStartDate"
+                    type="date"
+                    value={newLocationStartDate}
+                    onChange={(e) => setNewLocationStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="locationEndDate">End Date (Optional)</Label>
+                  <Input
+                    id="locationEndDate"
+                    type="date"
+                    value={newLocationEndDate}
+                    onChange={(e) => setNewLocationEndDate(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="flex justify-end gap-2">
                 <Button 
