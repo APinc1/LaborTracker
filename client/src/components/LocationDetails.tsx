@@ -97,6 +97,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         costCode,
         totalBudgetHours: 0,
         totalActualHours: 0,
+        totalConvertedQty: 0,
+        convertedUnitOfMeasure: '',
         items: [],
         itemCount: 0
       };
@@ -107,6 +109,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     if (!hasChildren) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
       acc[costCode].totalActualHours += parseFloat(item.actualHours) || 0;
+      acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
+      // Use the unit of measure from the first item, assuming they're consistent within cost code
+      if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
+        acc[costCode].convertedUnitOfMeasure = item.convertedUnitOfMeasure;
+      }
     }
     
     acc[costCode].items.push(item);
@@ -114,7 +121,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
-  const costCodeArray = Object.values(costCodeSummaries);
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => summary.totalConvertedQty > 0);
 
   // Handle cost code card click
   const handleCostCodeClick = (costCode: string) => {
@@ -280,6 +287,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             </div>
                             <div className="space-y-2">
                               <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Total Qty:</span>
+                                <span className="font-medium">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Budget Hours:</span>
                                 <span className="font-medium">{summary.totalBudgetHours.toLocaleString()} hrs</span>
                               </div>
@@ -435,24 +446,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                       <TableHead className="w-20">Line #</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">PX (hrs/unit)</TableHead>
-                      <TableHead className="text-right">Budget Hours</TableHead>
-                      <TableHead className="text-right">Actual Hours</TableHead>
-                      <TableHead className="text-right">Remaining Hours</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">PX</TableHead>
+                      <TableHead className="text-right">Budget</TableHead>
+                      <TableHead className="text-right">Billings</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedCostCodeItems.map((item: any) => {
-                      const budgetHours = parseFloat(item.hours) || 0;
-                      const actualHours = parseFloat(item.actualHours) || 0;
-                      const remainingHours = budgetHours - actualHours;
-                      const hoursPercentage = budgetHours > 0 ? (actualHours / budgetHours) * 100 : 0;
-                      
-                      // Only show leaf nodes (items without children)
-                      const hasChildren = selectedCostCodeItems.some((child: any) => child.parentId === item.id);
-                      if (hasChildren) return null;
-                      
                       return (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
@@ -465,29 +465,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            {item.convertedQty} {item.convertedUnitOfMeasure}
+                            {parseFloat(item.convertedQty || 0).toLocaleString()} {item.convertedUnitOfMeasure}
                           </TableCell>
                           <TableCell className="text-right">
                             {parseFloat(item.px || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            {budgetHours.toLocaleString()} hrs
+                            ${parseFloat(item.budgetTotal || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right text-red-600">
-                            {actualHours.toLocaleString()} hrs
-                          </TableCell>
-                          <TableCell className={`text-right font-medium ${
-                            remainingHours >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {remainingHours.toLocaleString()} hrs
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge 
-                              variant={hoursPercentage >= 100 ? "destructive" : hoursPercentage >= 80 ? "secondary" : "outline"}
-                              className="text-xs"
-                            >
-                              {Math.round(hoursPercentage)}%
-                            </Badge>
+                            ${parseFloat(item.billing || 0).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       );
