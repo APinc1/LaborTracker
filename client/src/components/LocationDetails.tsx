@@ -144,16 +144,43 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     setExpandedItems(newExpanded);
   };
 
-  const hasChildren = (itemId: string) => {
-    return selectedCostCodeItems.some((item: any) => item.parentId === itemId);
+  const hasChildren = (itemLineNumber: string) => {
+    return selectedCostCodeItems.some((item: any) => 
+      item.lineItemNumber && item.lineItemNumber.startsWith(itemLineNumber + ".")
+    );
   };
 
-  const getChildren = (parentId: string) => {
-    return selectedCostCodeItems.filter((item: any) => item.parentId === parentId);
+  const getChildren = (parentLineNumber: string) => {
+    return selectedCostCodeItems.filter((item: any) => 
+      item.lineItemNumber && 
+      item.lineItemNumber.startsWith(parentLineNumber + ".") &&
+      item.lineItemNumber !== parentLineNumber
+    );
   };
 
   const getParentItems = () => {
-    return selectedCostCodeItems.filter((item: any) => !item.parentId);
+    return selectedCostCodeItems.filter((item: any) => {
+      if (!item.lineItemNumber) return true;
+      // Check if this is a parent by seeing if any other items start with this number + "."
+      const hasChildrenItems = selectedCostCodeItems.some((other: any) => 
+        other.lineItemNumber && 
+        other.lineItemNumber.startsWith(item.lineItemNumber + ".") &&
+        other.lineItemNumber !== item.lineItemNumber
+      );
+      // If it has children, it's a parent. If not, check if it's a child of another item
+      if (hasChildrenItems) return true;
+      
+      // Check if this item is a child (contains a decimal point and there's a parent)
+      const parts = item.lineItemNumber.split(".");
+      if (parts.length > 1) {
+        const potentialParent = parts[0];
+        const parentExists = selectedCostCodeItems.some((parent: any) => 
+          parent.lineItemNumber === potentialParent
+        );
+        return !parentExists; // Only show as parent if the actual parent doesn't exist
+      }
+      return true; // Show standalone items
+    });
   };
 
   return (
@@ -471,15 +498,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                       <th className="text-left p-3 font-medium text-gray-900">Description</th>
                       <th className="text-right p-3 font-medium text-gray-900">Quantity</th>
                       <th className="text-right p-3 font-medium text-gray-900">PX</th>
-                      <th className="text-right p-3 font-medium text-gray-900">Budget</th>
+                      <th className="text-right p-3 font-medium text-gray-900">Budget Hours</th>
                       <th className="text-right p-3 font-medium text-gray-900">Billings</th>
                     </tr>
                   </thead>
                   <tbody>
                     {getParentItems().map((item: any) => {
-                      const itemHasChildren = hasChildren(item.id);
-                      const isExpanded = expandedItems.has(item.id);
-                      const children = getChildren(item.id);
+                      const itemHasChildren = hasChildren(item.lineItemNumber);
+                      const isExpanded = expandedItems.has(item.lineItemNumber);
+                      const children = getChildren(item.lineItemNumber);
                       
                       return (
                         <React.Fragment key={item.id}>
@@ -489,7 +516,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               <div className="flex items-center gap-2">
                                 {itemHasChildren && (
                                   <button
-                                    onClick={() => toggleExpanded(item.id)}
+                                    onClick={() => toggleExpanded(item.lineItemNumber)}
                                     className="p-1 hover:bg-gray-200 rounded"
                                   >
                                     {isExpanded ? (
@@ -514,10 +541,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               {parseFloat(item.convertedQty || 0).toLocaleString()} {item.convertedUnitOfMeasure}
                             </td>
                             <td className="p-3 text-right">
-                              {parseFloat(item.px || 0).toLocaleString()}
+                              {parseFloat(item.productionRate || item.px || 0).toLocaleString()}
                             </td>
                             <td className="p-3 text-right font-medium">
-                              ${parseFloat(item.budgetTotal || 0).toLocaleString()}
+                              {parseFloat(item.hours || 0).toLocaleString()} hrs
                             </td>
                             <td className="p-3 text-right text-red-600">
                               ${parseFloat(item.billing || 0).toLocaleString()}
@@ -542,10 +569,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                                 {parseFloat(child.convertedQty || 0).toLocaleString()} {child.convertedUnitOfMeasure}
                               </td>
                               <td className="p-3 text-right">
-                                {parseFloat(child.px || 0).toLocaleString()}
+                                {parseFloat(child.productionRate || child.px || 0).toLocaleString()}
                               </td>
                               <td className="p-3 text-right font-medium">
-                                ${parseFloat(child.budgetTotal || 0).toLocaleString()}
+                                {parseFloat(child.hours || 0).toLocaleString()} hrs
                               </td>
                               <td className="p-3 text-right text-red-600">
                                 ${parseFloat(child.billing || 0).toLocaleString()}
