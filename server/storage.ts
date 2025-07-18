@@ -106,11 +106,12 @@ export class MemStorage implements IStorage {
     // Create sample users
     const admin = await this.createUser({
       username: "admin",
-      password: "password",
+      password: "AccessPacific2835",
       name: "John Smith",
       email: "admin@buildtracker.com",
       phone: "(555) 123-4567",
-      role: "Superintendent"
+      role: "Superintendent",
+      isPasswordSet: true // Admin account is pre-configured
     });
 
     const projectManager = await this.createUser({

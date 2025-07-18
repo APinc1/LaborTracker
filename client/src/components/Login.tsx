@@ -72,13 +72,13 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Username or Email</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input 
                           className="pl-10" 
-                          placeholder="Enter your username" 
+                          placeholder="Enter your username or email" 
                           {...field} 
                         />
                       </div>
