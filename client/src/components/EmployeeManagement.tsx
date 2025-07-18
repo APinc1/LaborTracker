@@ -28,8 +28,8 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   employeeType: z.string().min(1, "Employee type is required"),
   crewId: z.string().min(1, "Crew selection is required"),
   primaryTrade: z.string().min(1, "Primary trade is required"),
-  tertiaryTrade: z.string().min(1, "Tertiary trade is required"),
   secondaryTrade: z.string().optional(), // Optional field
+  tertiaryTrade: z.string().optional(), // Optional field
   isForeman: z.boolean().optional(),
   isUnion: z.boolean().optional(),
 });
@@ -47,6 +47,20 @@ export default function EmployeeManagement() {
     queryKey: ["/api/employees"],
     staleTime: 30000,
   });
+
+  // Create dynamic validation schema that checks for unique team member IDs
+  const createEmployeeFormSchema = (existingEmployees: any[], editingId?: number) => {
+    return employeeFormSchema.extend({
+      teamMemberId: z.string()
+        .min(1, "Team Member ID is required")
+        .refine((value) => {
+          const existingIds = existingEmployees
+            .filter(emp => editingId ? emp.id !== editingId : true)
+            .map(emp => emp.teamMemberId);
+          return !existingIds.includes(value);
+        }, "Team Member ID must be unique"),
+    });
+  };
 
   const { data: crews = [], isLoading: crewsLoading } = useQuery({
     queryKey: ["/api/crews"],
@@ -143,8 +157,10 @@ export default function EmployeeManagement() {
     },
   });
 
+  const currentValidationSchema = createEmployeeFormSchema(employees, editingEmployee?.id);
+  
   const employeeForm = useForm({
-    resolver: zodResolver(employeeFormSchema),
+    resolver: zodResolver(currentValidationSchema),
     defaultValues: {
       teamMemberId: '',
       name: '',
@@ -176,7 +192,7 @@ export default function EmployeeManagement() {
       isForeman: data.employeeType === "Core" ? data.isForeman : false,
       primaryTrade: data.primaryTrade || null,
       secondaryTrade: data.secondaryTrade === "none" || !data.secondaryTrade ? null : data.secondaryTrade,
-      tertiaryTrade: data.tertiaryTrade || null,
+      tertiaryTrade: data.tertiaryTrade === "none" || !data.tertiaryTrade ? null : data.tertiaryTrade,
     };
     
     if (editingEmployee) {
@@ -196,6 +212,9 @@ export default function EmployeeManagement() {
 
   const handleEditEmployee = (employee: any) => {
     setEditingEmployee(employee);
+    // Update validation schema for editing
+    const editValidationSchema = createEmployeeFormSchema(employees, employee.id);
+    
     employeeForm.reset({
       teamMemberId: employee.teamMemberId,
       name: employee.name,
@@ -210,6 +229,7 @@ export default function EmployeeManagement() {
       secondaryTrade: employee.secondaryTrade || '',
       tertiaryTrade: employee.tertiaryTrade || '',
     });
+    setIsCreateEmployeeOpen(true);
   };
 
   const handleEditCrew = (crew: any) => {
@@ -487,14 +507,15 @@ export default function EmployeeManagement() {
                           name="tertiaryTrade"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Tertiary Trade *</FormLabel>
+                              <FormLabel>Tertiary Trade</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Select trade" />
+                                    <SelectValue placeholder="Select trade (optional)" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
                                   <SelectItem value="Mason">Mason</SelectItem>
                                   <SelectItem value="Formsetter">Formsetter</SelectItem>
                                   <SelectItem value="Laborer">Laborer</SelectItem>
@@ -552,7 +573,20 @@ export default function EmployeeManagement() {
                         <Button type="button" variant="outline" onClick={() => {
                           setIsCreateEmployeeOpen(false);
                           setEditingEmployee(null);
-                          employeeForm.reset();
+                          employeeForm.reset({
+                            teamMemberId: '',
+                            name: '',
+                            email: '',
+                            phone: '',
+                            crewId: '',
+                            employeeType: 'Core',
+                            apprenticeLevel: null,
+                            isForeman: false,
+                            isUnion: false,
+                            primaryTrade: '',
+                            secondaryTrade: '',
+                            tertiaryTrade: '',
+                          });
                         }}>
                           Cancel
                         </Button>

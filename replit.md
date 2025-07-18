@@ -177,6 +177,12 @@ Preferred communication style: Simple, everyday language.
 - ✅ Enhanced form validation with conditional field visibility
 - ✅ Added sample employee data with new fields for testing
 - ✅ Expanded dialog size for better form layout with additional fields
+- ✅ Made Tertiary Trade optional (removed asterisk and added "None" option)
+- ✅ Implemented unique Team Member ID validation across all employees
+- ✅ Required fields: Team Member ID, Name, Email, Phone, Employee Type, Crew, Primary Trade
+- ✅ Optional fields: Secondary Trade, Tertiary Trade, Is Foreman, Is Union checkboxes
+- ✅ Added comprehensive form validation with dynamic schema based on existing employees
+- ✅ Fixed sample data to ensure all Team Member IDs are unique (EMP-001 through EMP-005)
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**

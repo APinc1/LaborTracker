@@ -189,7 +189,7 @@ export class MemStorage implements IStorage {
 
     const apprentice = await this.createEmployee({
       teamMemberId: "EMP-004",
-      name: "Jake Thompson",
+      name: "Jake Thompson", 
       email: "jake@buildtracker.com",
       phone: "(555) 567-8901",
       crewId: concreteCrew.id,
@@ -199,6 +199,21 @@ export class MemStorage implements IStorage {
       isUnion: true,
       primaryTrade: "Mason",
       secondaryTrade: "Laborer",
+      tertiaryTrade: null
+    });
+
+    const freelancer = await this.createEmployee({
+      teamMemberId: "EMP-005",
+      name: "Alex Rodriguez",
+      email: "alex@buildtracker.com", 
+      phone: "(555) 678-9012",
+      crewId: demoCrew.id,
+      employeeType: "Freelancer",
+      apprenticeLevel: null,
+      isForeman: false,
+      isUnion: false,
+      primaryTrade: "Operator",
+      secondaryTrade: null,
       tertiaryTrade: null
     });
 
