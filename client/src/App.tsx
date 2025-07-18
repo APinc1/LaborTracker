@@ -11,6 +11,7 @@ import ProjectManagement from "@/components/ProjectManagement";
 import ProjectDetails from "@/components/ProjectDetails";
 import BudgetManagement from "@/components/BudgetManagement";
 import LocationManagement from "@/components/LocationManagement";
+import LocationDetails from "@/components/LocationDetails";
 import ScheduleManagement from "@/components/ScheduleManagement";
 import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
@@ -30,6 +31,9 @@ function Router() {
       </Route>
       <Route path="/budgets" component={BudgetManagement} />
       <Route path="/locations" component={LocationManagement} />
+      <Route path="/locations/:locationId">
+        {(params) => <LocationDetails locationId={params.locationId} />}
+      </Route>
       <Route path="/schedule" component={ScheduleManagement} />
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />

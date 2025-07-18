@@ -65,6 +65,15 @@ export default function BudgetManagement() {
   const [location, setLocation] = useLocation();
   const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const { setHasUnsavedChanges: setGlobalUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
+  
+  // Handle URL parameters for direct location budget access
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const locationId = urlParams.get('locationId');
+    if (locationId) {
+      setSelectedLocation(locationId);
+    }
+  }, []);
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {

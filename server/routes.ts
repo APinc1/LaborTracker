@@ -268,6 +268,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Location tasks route
+  app.get('/api/locations/:locationId/tasks', async (req, res) => {
+    try {
+      const tasks = await storage.getTasks(parseInt(req.params.locationId));
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
+
   // Crew routes
   app.get('/api/crews', async (req, res) => {
     try {

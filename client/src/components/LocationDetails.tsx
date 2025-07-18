@@ -1,0 +1,295 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { format } from "date-fns";
+import { Link } from "wouter";
+
+interface LocationDetailsProps {
+  locationId: string;
+}
+
+export default function LocationDetails({ locationId }: LocationDetailsProps) {
+  const { data: location, isLoading: locationLoading } = useQuery({
+    queryKey: ["/api/locations", locationId],
+    staleTime: 30000,
+  });
+
+  const { data: budgetItems = [], isLoading: budgetLoading } = useQuery({
+    queryKey: ["/api/locations", locationId, "budget"],
+    enabled: !!locationId,
+    staleTime: 30000,
+  });
+
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+    queryKey: ["/api/locations", locationId, "tasks"],
+    enabled: !!locationId,
+    staleTime: 30000,
+  });
+
+  if (locationLoading) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <Skeleton className="h-8 w-64" />
+        </header>
+        <main className="p-6">
+          <Skeleton className="h-64 w-full" />
+        </main>
+      </div>
+    );
+  }
+
+  if (!location) {
+    return (
+      <div className="flex-1 overflow-y-auto">
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Link href="/locations">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Locations
+              </Button>
+            </Link>
+            <h2 className="text-2xl font-bold text-gray-800">Location Not Found</h2>
+          </div>
+        </header>
+        <main className="p-6">
+          <p className="text-gray-600">The requested location could not be found.</p>
+        </main>
+      </div>
+    );
+  }
+
+  // Calculate budget totals
+  const totalBudget = budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.budgetTotal) || 0), 0);
+  const totalSpent = budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.billing) || 0), 0);
+  const remainingBudget = totalBudget - totalSpent;
+
+  // Calculate progress
+  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <Link href="/locations">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Locations
+            </Button>
+          </Link>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">{location.name}</h2>
+            <p className="text-gray-600 mt-1">Location overview and details</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-6">
+        {/* Location Overview */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Location Overview
+              <Badge variant="outline">{location.locationId}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Duration</p>
+                  <p className="font-medium">
+                    {format(new Date(location.startDate), 'MMM d, yyyy')} - {format(new Date(location.endDate), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <DollarSign className="w-4 h-4 text-gray-500" />
+                <div>
+                  <p className="text-sm text-gray-600">Budget Allocation</p>
+                  <p className="font-medium">${location.budgetAllocated?.toLocaleString() || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {location.isComplete ? (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                ) : (
+                  <Clock className="w-4 h-4 text-orange-600" />
+                )}
+                <div>
+                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="font-medium">{location.isComplete ? 'Completed' : 'In Progress'}</p>
+                </div>
+              </div>
+            </div>
+            
+            {location.description && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-700">{location.description}</p>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Overall Progress</span>
+                <span className="text-sm text-gray-600">{Math.round(progressPercentage)}%</span>
+              </div>
+              <Progress value={progressPercentage} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Budget Summary */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Budget Summary
+              <Badge variant="secondary">{budgetItems.length} items</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {budgetLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : budgetItems.length === 0 ? (
+              <div className="text-center py-8">
+                <DollarSign className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500">No budget items found for this location</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Budget items will appear here once they are added
+                </p>
+                <Link href={`/budgets?locationId=${location.id}`}>
+                  <Button className="mt-4">
+                    Manage Budget
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-600 font-medium">Total Budget</p>
+                    <p className="text-2xl font-bold text-blue-800">${totalBudget.toLocaleString()}</p>
+                  </div>
+                  <div className="p-4 bg-red-50 rounded-lg">
+                    <p className="text-sm text-red-600 font-medium">Total Spent</p>
+                    <p className="text-2xl font-bold text-red-800">${totalSpent.toLocaleString()}</p>
+                  </div>
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <p className="text-sm text-green-600 font-medium">Remaining</p>
+                    <p className="text-2xl font-bold text-green-800">${remainingBudget.toLocaleString()}</p>
+                  </div>
+                </div>
+                
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Budget Items</h4>
+                    <Link href={`/budgets?locationId=${location.id}`}>
+                      <Button variant="outline" size="sm">
+                        View Full Budget
+                      </Button>
+                    </Link>
+                  </div>
+                  <div className="space-y-2">
+                    {budgetItems.slice(0, 5).map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{item.lineItemName}</p>
+                          <p className="text-sm text-gray-600">{item.costCode}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">${parseFloat(item.budgetTotal).toLocaleString()}</p>
+                          <p className="text-sm text-gray-600">${parseFloat(item.billing).toLocaleString()} spent</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Tasks */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              Tasks
+              <Badge variant="secondary">{tasks.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {tasksLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500">No tasks found for this location</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Tasks will appear here once they are scheduled
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tasks.map((task: any) => (
+                  <Card key={task.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{task.name}</h3>
+                          <p className="text-gray-600 text-sm mt-1">{task.workDescription}</p>
+                          <div className="flex items-center gap-4 mt-2">
+                            <Badge variant="outline">{task.taskType}</Badge>
+                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                              <Calendar className="w-4 h-4" />
+                              <span>{format(new Date(task.taskDate), 'MMM d, yyyy')}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-gray-600">
+                              <Clock className="w-4 h-4" />
+                              <span>{task.scheduledHours}h scheduled</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {task.actualHours ? (
+                            <Badge variant="default" className="bg-green-100 text-green-800">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Completed
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-orange-600">
+                              <Clock className="w-3 h-3 mr-1" />
+                              In Progress
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

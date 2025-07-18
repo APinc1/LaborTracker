@@ -156,7 +156,12 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Link href={`/budget-management`}>
+                          <Link href={`/locations/${location.id}`}>
+                            <Button variant="outline" size="sm">
+                              View Location
+                            </Button>
+                          </Link>
+                          <Link href={`/budgets?locationId=${location.id}`}>
                             <Button variant="outline" size="sm">
                               View Budget
                             </Button>
