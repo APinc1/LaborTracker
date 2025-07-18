@@ -330,10 +330,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
 
       console.log('Start date input:', startDate);
-      // Parse start date more carefully to avoid timezone shifts
-      const [year, month, day] = startDate.split('-').map(Number);
-      let currentDate = new Date(year, month - 1, day); // month is 0-indexed
-      console.log('Parsed start date:', currentDate, 'Day of week:', currentDate.getDay());
+      // Parse start date as UTC to avoid timezone shifts that cause off-by-one errors
+      const startDateParts = startDate.split('-');
+      const parsedDate = new Date(parseInt(startDateParts[0]), parseInt(startDateParts[1]) - 1, parseInt(startDateParts[2]));
+      console.log('Parsed start date:', parsedDate, 'Day of week:', parsedDate.getDay());
+      console.log('Expected start date should be:', startDate);
       const tasksToCreate = [];
 
       // Group cost codes by task type and calculate days needed
@@ -435,11 +436,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           delete taskGroups['Pour'];
           
           // Create Form and Pour groups with proper alternating structure
-          const formDays = Math.ceil(totalDays / 2);
-          const pourDays = Math.floor(totalDays / 2);
-          
-          // If total days is odd, we get extra Pour day (as specified)
-          const actualPourDays = totalDays % 2 === 1 && totalDays > 1 ? pourDays + 1 : pourDays;
+          // For odd number of days, extra day goes to Pour
+          const formDays = Math.floor(totalDays / 2);
+          const pourDays = Math.ceil(totalDays / 2);
           
           if (formDays > 0) {
             taskGroups['Form'] = {
@@ -450,11 +449,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             };
           }
           
-          if (actualPourDays > 0) {
+          if (pourDays > 0) {
             taskGroups['Pour'] = {
               costCodes: concreteCostCodes,
               totalHours: concreteHours / 2,
-              days: actualPourDays,
+              days: pourDays,
               alternatingWith: 'Form'
             };
           }
@@ -464,10 +463,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       // Calculate total days needed for all tasks
       const totalDaysNeeded = Object.values(taskGroups).reduce((sum: number, group: any) => sum + group.days, 0);
       
-      // Generate all workdays first
-      const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
-      const startDateObj = new Date(startYear, startMonth - 1, startDay);
-      const allWorkDays = addWorkdays(startDateObj, totalDaysNeeded);
+      // Generate all workdays first using the correctly parsed start date
+      const allWorkDays = addWorkdays(parsedDate, totalDaysNeeded);
       
       // Create tasks in proper order
       const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
@@ -484,12 +481,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         const pourGroup = taskGroups['Pour'];
         const totalConcreteDays = formGroup.days + pourGroup.days;
         
-        // Remove Form/Pour from normal processing
-        const filteredOrderedTypes = orderedTaskTypes.filter(type => type !== 'Form' && type !== 'Pour');
+        // Remove Form/Pour from normal processing but keep them in proper sequence
+        const beforeFormPourTypes = orderedTaskTypes.filter(type => 
+          type !== 'Form' && type !== 'Pour' && 
+          (taskTypeOrder.indexOf(type) < taskTypeOrder.indexOf('Form'))
+        );
+        const afterFormPourTypes = orderedTaskTypes.filter(type => 
+          type !== 'Form' && type !== 'Pour' && 
+          (taskTypeOrder.indexOf(type) > taskTypeOrder.indexOf('Pour'))
+        );
         const filteredAdditionalTypes = additionalTaskTypes.filter(type => type !== 'Form' && type !== 'Pour');
         
-        // Process other task types first
-        [...filteredOrderedTypes, ...filteredAdditionalTypes].forEach(taskType => {
+        // Process task types that come before Form/Pour first
+        beforeFormPourTypes.forEach(taskType => {
           const group = taskGroups[taskType];
           const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
@@ -577,6 +581,40 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           
           globalDayIndex++;
         }
+        
+        // Now process task types that come after Form/Pour
+        [...afterFormPourTypes, ...filteredAdditionalTypes].forEach(taskType => {
+          const group = taskGroups[taskType];
+          const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
+          
+          for (let day = 1; day <= group.days; day++) {
+            const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
+            const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
+            
+            const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
+            const taskDate = allWorkDays[globalDayIndex];
+            
+            tasksToCreate.push({
+              taskId: taskId,
+              name: taskName,
+              taskType: taskType,
+              taskDate: format(taskDate, 'yyyy-MM-dd'),
+              startDate: format(taskDate, 'yyyy-MM-dd'),
+              finishDate: format(taskDate, 'yyyy-MM-dd'),
+              costCode: group.costCodes[0].costCode,
+              workDescription: workDescription,
+              scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
+              actualHours: null,
+              superintendentId: null,
+              foremanId: null,
+              startTime: null,
+              finishTime: null,
+              notes: null
+            });
+            
+            globalDayIndex++;
+          }
+        });
       } else {
         // Normal processing for non-alternating tasks
         [...orderedTaskTypes, ...additionalTaskTypes].forEach(taskType => {
