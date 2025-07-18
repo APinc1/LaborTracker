@@ -7,9 +7,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2 } from "lucide-react";
-import { format } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus } from "lucide-react";
+import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -20,6 +25,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [locationPath, setLocationPath] = useLocation();
+  const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
+  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [combineFormPour, setCombineFormPour] = useState(false);
+  const [combineDemoBase, setCombineDemoBase] = useState(false);
+  const { toast } = useToast();
 
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
@@ -231,6 +241,172 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
       return true; // Show standalone items
     });
+  };
+
+  // Task generation logic
+  const taskTypeOrder = [
+    'Traffic Control',
+    'Demo/Ex', 
+    'Base/Grading',
+    'Form',
+    'Pour', 
+    'Asphalt',
+    'General Labor',
+    'Landscaping',
+    'Utility Adjustment',
+    'Punchlist Demo',
+    'Punchlist Concrete',
+    'Punchlist General Labor'
+  ];
+
+  const generateTasks = async () => {
+    try {
+      // Get cost codes with total qty > 0
+      const validCostCodes = costCodeArray.filter(summary => summary.totalConvertedQty > 0);
+      
+      if (validCostCodes.length === 0) {
+        toast({
+          title: "No valid cost codes",
+          description: "No cost codes found with quantity greater than 0",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      let currentDate = new Date(startDate);
+      const tasksToCreate = [];
+
+      // Group cost codes by task type and calculate days needed
+      const taskGroups: { [key: string]: { costCodes: any[], totalHours: number, days: number } } = {};
+
+      validCostCodes.forEach(summary => {
+        // Map cost code to task type (simplified mapping)
+        let taskType = summary.costCode;
+        
+        // You can enhance this mapping based on your cost code naming convention
+        if (summary.costCode.toLowerCase().includes('demo') || summary.costCode.toLowerCase().includes('demolition')) {
+          taskType = 'Demo/Ex';
+        } else if (summary.costCode.toLowerCase().includes('form')) {
+          taskType = 'Form';
+        } else if (summary.costCode.toLowerCase().includes('pour') || summary.costCode.toLowerCase().includes('concrete')) {
+          taskType = 'Pour';
+        } else if (summary.costCode.toLowerCase().includes('base') || summary.costCode.toLowerCase().includes('grade')) {
+          taskType = 'Base/Grading';
+        } else if (summary.costCode.toLowerCase().includes('asphalt')) {
+          taskType = 'Asphalt';
+        } else if (summary.costCode.toLowerCase().includes('traffic')) {
+          taskType = 'Traffic Control';
+        } else if (summary.costCode.toLowerCase().includes('landscape')) {
+          taskType = 'Landscaping';
+        } else if (summary.costCode.toLowerCase().includes('utility')) {
+          taskType = 'Utility Adjustment';
+        } else if (summary.costCode.toLowerCase().includes('punchlist')) {
+          if (summary.costCode.toLowerCase().includes('demo')) {
+            taskType = 'Punchlist Demo';
+          } else if (summary.costCode.toLowerCase().includes('concrete')) {
+            taskType = 'Punchlist Concrete';
+          } else {
+            taskType = 'Punchlist General Labor';
+          }
+        } else {
+          taskType = 'General Labor';
+        }
+
+        if (!taskGroups[taskType]) {
+          taskGroups[taskType] = { costCodes: [], totalHours: 0, days: 0 };
+        }
+        
+        taskGroups[taskType].costCodes.push(summary);
+        taskGroups[taskType].totalHours += summary.totalBudgetHours;
+      });
+
+      // Calculate days for each task type (total hours / 20)
+      Object.keys(taskGroups).forEach(taskType => {
+        taskGroups[taskType].days = Math.max(1, Math.ceil(taskGroups[taskType].totalHours / 20));
+      });
+
+      // Handle combining options
+      if (combineDemoBase && taskGroups['Demo/Ex'] && taskGroups['Base/Grading']) {
+        const combinedHours = taskGroups['Demo/Ex'].totalHours + taskGroups['Base/Grading'].totalHours;
+        const combinedCostCodes = [...taskGroups['Demo/Ex'].costCodes, ...taskGroups['Base/Grading'].costCodes];
+        taskGroups['Demo/Ex + Base/Grading'] = {
+          costCodes: combinedCostCodes,
+          totalHours: combinedHours,
+          days: Math.max(1, Math.ceil(combinedHours / 20))
+        };
+        delete taskGroups['Demo/Ex'];
+        delete taskGroups['Base/Grading'];
+      }
+
+      if (combineFormPour && taskGroups['Form'] && taskGroups['Pour']) {
+        const combinedHours = taskGroups['Form'].totalHours + taskGroups['Pour'].totalHours;
+        const combinedCostCodes = [...taskGroups['Form'].costCodes, ...taskGroups['Pour'].costCodes];
+        taskGroups['Form + Pour'] = {
+          costCodes: combinedCostCodes,
+          totalHours: combinedHours,
+          days: Math.max(1, Math.ceil(combinedHours / 20))
+        };
+        delete taskGroups['Form'];
+        delete taskGroups['Pour'];
+      }
+
+      // Create tasks in order, handling alternating Form/Pour if not combined
+      const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
+      const additionalTaskTypes = Object.keys(taskGroups).filter(type => !taskTypeOrder.includes(type));
+      
+      [...orderedTaskTypes, ...additionalTaskTypes].forEach(taskType => {
+        const group = taskGroups[taskType];
+        const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
+        
+        for (let day = 1; day <= group.days; day++) {
+          const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
+          const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
+          
+          tasksToCreate.push({
+            locationId: locationId,
+            name: taskName,
+            taskType: taskType,
+            workDescription: workDescription,
+            taskDate: format(currentDate, 'yyyy-MM-dd'),
+            scheduledHours: Math.min(20, group.totalHours / group.days),
+            assignedTo: null,
+            actualHours: null,
+            isComplete: false
+          });
+          
+          // Move to next day
+          currentDate = addDays(currentDate, 1);
+        }
+      });
+
+      // Create all tasks
+      const createPromises = tasksToCreate.map(task => 
+        fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(task)
+        })
+      );
+
+      await Promise.all(createPromises);
+      
+      // Refresh tasks data
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+      
+      toast({
+        title: "Tasks generated successfully",
+        description: `Created ${tasksToCreate.length} tasks starting from ${format(new Date(startDate), 'MMM d, yyyy')}`
+      });
+      
+      setShowGenerateTasksDialog(false);
+    } catch (error) {
+      console.error('Error generating tasks:', error);
+      toast({
+        title: "Error generating tasks",
+        description: "An error occurred while creating tasks. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -462,10 +638,20 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         {/* Tasks */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5" />
-              Tasks
-              <Badge variant="secondary">{tasks.length}</Badge>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                Tasks
+                <Badge variant="secondary">{tasks.length}</Badge>
+              </div>
+              <Button 
+                onClick={() => setShowGenerateTasksDialog(true)}
+                size="sm"
+                className="ml-auto"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Generate Tasks
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -672,6 +858,94 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Generate Tasks Dialog */}
+      <Dialog open={showGenerateTasksDialog} onOpenChange={setShowGenerateTasksDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              Generate Tasks
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Starting Date */}
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Starting Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            {/* Combining Options */}
+            <div className="space-y-4">
+              <h4 className="font-medium text-sm">Combine Task Types</h4>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="combineFormPour"
+                  checked={combineFormPour}
+                  onCheckedChange={(checked) => setCombineFormPour(checked as boolean)}
+                />
+                <Label htmlFor="combineFormPour" className="text-sm">
+                  Combine Form and Pour tasks
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="combineDemoBase"
+                  checked={combineDemoBase}
+                  onCheckedChange={(checked) => setCombineDemoBase(checked as boolean)}
+                />
+                <Label htmlFor="combineDemoBase" className="text-sm">
+                  Combine Demo/Ex and Base/Grading tasks
+                </Label>
+              </div>
+            </div>
+
+            {/* Task Preview */}
+            {costCodeArray.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Available Cost Codes</h4>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {costCodeArray.map((summary: any) => (
+                    <div key={summary.costCode} className="flex justify-between text-xs bg-gray-50 p-2 rounded">
+                      <span className="font-medium">{summary.costCode}</span>
+                      <span className="text-gray-600">{summary.totalBudgetHours} hrs</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600 mt-2">
+                  Tasks will be estimated at 20 hours per day per cost code type.
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateTasksDialog(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={generateTasks}
+                disabled={costCodeArray.length === 0}
+                className="flex-1"
+              >
+                Generate Tasks
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
