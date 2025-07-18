@@ -1,12 +1,18 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -14,6 +20,10 @@ interface ProjectDetailsProps {
 
 export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [location, setLocation] = useLocation();
+  const [showAddLocationDialog, setShowAddLocationDialog] = useState(false);
+  const [newLocationName, setNewLocationName] = useState("");
+  const [newLocationDescription, setNewLocationDescription] = useState("");
+  const { toast } = useToast();
   
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["/api/projects", projectId],
@@ -24,6 +34,49 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     queryKey: ["/api/projects", projectId, "locations"],
     staleTime: 30000,
   });
+
+  // Add location mutation
+  const addLocationMutation = useMutation({
+    mutationFn: (locationData: any) => 
+      apiRequest(`/api/projects/${projectId}/locations`, {
+        method: "POST",
+        body: JSON.stringify(locationData),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
+      setShowAddLocationDialog(false);
+      setNewLocationName("");
+      setNewLocationDescription("");
+      toast({
+        title: "Location added",
+        description: "New location has been created successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add location",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddLocation = () => {
+    if (!newLocationName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Location name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    addLocationMutation.mutate({
+      name: newLocationName.trim(),
+      description: newLocationDescription.trim(),
+      projectId: parseInt(projectId),
+    });
+  };
 
   if (projectLoading) {
     return (
@@ -136,11 +189,21 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         {/* Locations */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Project Locations
-              <Badge variant="secondary">{locations.length}</Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Project Locations
+                <Badge variant="secondary">{locations.length}</Badge>
+              </CardTitle>
+              <Button 
+                onClick={() => setShowAddLocationDialog(true)}
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Location
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {locationsLoading ? (
@@ -193,6 +256,50 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             )}
           </CardContent>
         </Card>
+
+        {/* Add Location Dialog */}
+        <Dialog open={showAddLocationDialog} onOpenChange={setShowAddLocationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Location</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="locationName">Location Name</Label>
+                <Input
+                  id="locationName"
+                  placeholder="Enter location name"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="locationDescription">Description (Optional)</Label>
+                <Textarea
+                  id="locationDescription"
+                  placeholder="Enter location description"
+                  value={newLocationDescription}
+                  onChange={(e) => setNewLocationDescription(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAddLocationDialog(false)}
+                  disabled={addLocationMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddLocation}
+                  disabled={addLocationMutation.isPending}
+                >
+                  {addLocationMutation.isPending ? "Adding..." : "Add Location"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
