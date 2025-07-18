@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Edit, Trash2, Calendar, User } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,6 +26,11 @@ export default function ProjectManagement() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["/api/projects"],
+    staleTime: 30000,
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
     staleTime: 30000,
   });
 
@@ -93,13 +99,17 @@ export default function ProjectManagement() {
 
   const handleEdit = (project: any) => {
     setEditingProject(project);
+    // Find the user IDs for the names (since the API returns names, but we need IDs for the form)
+    const superintendent = users.find((user: any) => user.name === project.defaultSuperintendent);
+    const projectManager = users.find((user: any) => user.name === project.defaultProjectManager);
+    
     form.reset({
       projectId: project.projectId,
       name: project.name,
       startDate: project.startDate,
       endDate: project.endDate,
-      defaultSuperintendent: project.defaultSuperintendent,
-      defaultProjectManager: project.defaultProjectManager,
+      defaultSuperintendent: superintendent?.id || null,
+      defaultProjectManager: projectManager?.id || null,
     });
   };
 
@@ -199,6 +209,58 @@ export default function ProjectManagement() {
                           <FormControl>
                             <Input type="date" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="defaultSuperintendent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Superintendent</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} value={field.value?.toString() || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select superintendent" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              {users.filter((user: any) => user.role === 'Superintendent' || user.role === 'Admin').map((user: any) => (
+                                <SelectItem key={user.id} value={user.id.toString()}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="defaultProjectManager"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Manager</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} value={field.value?.toString() || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select project manager" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">None</SelectItem>
+                              {users.filter((user: any) => user.role === 'Project Manager' || user.role === 'Admin').map((user: any) => (
+                                <SelectItem key={user.id} value={user.id.toString()}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

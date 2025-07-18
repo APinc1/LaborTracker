@@ -10,6 +10,7 @@ import { eq, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
+  getUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
@@ -322,6 +323,10 @@ export class MemStorage implements IStorage {
   }
 
   // User methods
+  async getUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
@@ -661,6 +666,11 @@ class DatabaseStorage implements IStorage {
   }
 
   // User methods
+  async getUsers(): Promise<User[]> {
+    const result = await this.db.select().from(users);
+    return result;
+  }
+
   async getUser(id: number): Promise<User | undefined> {
     const result = await this.db.select().from(users).where(eq(users.id, id));
     return result[0];
