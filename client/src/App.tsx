@@ -14,6 +14,7 @@ import ScheduleManagement from "@/components/ScheduleManagement";
 import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
 import UserManagement from "@/components/UserManagement";
+import PasswordReset from "@/components/PasswordReset";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,13 @@ function Router() {
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />
       <Route path="/users" component={UserManagement} />
+      <Route path="/reset-password">
+        {() => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const token = urlParams.get('token');
+          return token ? <PasswordReset token={token} /> : <NotFound />;
+        }}
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

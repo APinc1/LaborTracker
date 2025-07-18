@@ -10,6 +10,9 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   phone: text("phone"),
   role: text("role").notNull(), // Admin, Superintendent, Project Manager, Foreman
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  isPasswordSet: boolean("is_password_set").default(false),
 });
 
 export const projects = pgTable("projects", {

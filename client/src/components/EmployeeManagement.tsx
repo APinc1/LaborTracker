@@ -37,7 +37,6 @@ const employeeFormSchema = insertEmployeeSchema.extend({
 // Validation schema for creating user from employee
 const createUserFormSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.string().min(1, "Role is required"),
 });
 
@@ -176,7 +175,9 @@ export default function EmployeeManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({ 
         title: "Success", 
-        description: `User account created for ${result.employee.name}` 
+        description: result.emailSent 
+          ? `User account created for ${result.employee.name}. Password reset email sent.`
+          : `User account created for ${result.employee.name}. ${result.message || 'Email not configured - provide reset link manually.'}`
       });
       setIsCreateUserOpen(false);
       setSelectedEmployeeForUser(null);
@@ -222,7 +223,6 @@ export default function EmployeeManagement() {
     resolver: zodResolver(createUserFormSchema),
     defaultValues: {
       username: '',
-      password: '',
       role: '',
     },
   });
@@ -270,7 +270,6 @@ export default function EmployeeManagement() {
     
     createUserForm.reset({
       username: username,
-      password: '',
       role: employee.isForeman ? 'Foreman' : 'Employee',
     });
   };
@@ -733,7 +732,7 @@ export default function EmployeeManagement() {
               Create User Account
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Create a user account for {selectedEmployeeForUser?.name}
+              Create a user account for {selectedEmployeeForUser?.name}. They will receive an email to set their password.
             </p>
           </DialogHeader>
           <Form {...createUserForm}>
@@ -751,19 +750,7 @@ export default function EmployeeManagement() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={createUserForm.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Enter password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
               <FormField
                 control={createUserForm.control}
                 name="role"

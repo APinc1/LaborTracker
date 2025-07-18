@@ -356,20 +356,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/employees/:id/create-user', async (req, res) => {
     try {
-      const { username, password, role } = req.body;
+      const { username, role } = req.body;
       
-      if (!username || !password || !role) {
-        return res.status(400).json({ error: 'Username, password, and role are required' });
+      if (!username || !role) {
+        return res.status(400).json({ error: 'Username and role are required' });
       }
 
       const result = await storage.createUserFromEmployee(
         parseInt(req.params.id),
         username,
-        password,
         role
       );
       
-      res.status(201).json(result);
+      // Generate password reset token and send email
+      const { emailService } = await import('./emailService');
+      const resetToken = emailService.generateResetToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      await storage.setPasswordResetToken(result.user.id, resetToken, expiresAt);
+      
+      // Send password reset email
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+      const emailSent = await emailService.sendPasswordResetEmail({
+        name: result.user.name,
+        email: result.user.email,
+        resetToken,
+        resetUrl
+      });
+      
+      res.status(201).json({
+        ...result,
+        emailSent,
+        message: emailSent 
+          ? 'User created successfully. Password reset email sent.' 
+          : 'User created successfully. Email not configured - provide reset link manually.'
+      });
     } catch (error) {
       if (error instanceof Error) {
         res.status(400).json({ error: error.message });
@@ -499,6 +520,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete assignment' });
+    }
+  });
+
+  // Password reset routes
+  app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ error: 'Token and new password are required' });
+      }
+
+      const user = await storage.getUserByResetToken(token);
+      if (!user) {
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+
+      // Update user password and clear reset token
+      await storage.updateUser(user.id, { password: newPassword });
+      await storage.clearPasswordResetToken(user.id);
+
+      res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to reset password' });
+    }
+  });
+
+  app.get('/api/auth/verify-reset-token/:token', async (req, res) => {
+    try {
+      const user = await storage.getUserByResetToken(req.params.token);
+      if (!user) {
+        return res.status(400).json({ error: 'Invalid or expired reset token' });
+      }
+      
+      res.json({ 
+        valid: true, 
+        userName: user.name,
+        email: user.email 
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to verify reset token' });
     }
   });
 

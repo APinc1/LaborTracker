@@ -13,9 +13,12 @@ export interface IStorage {
   getUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
   deleteUser(id: number): Promise<boolean>;
+  setPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void>;
+  clearPasswordResetToken(userId: number): Promise<void>;
   
   // Project methods
   getProjects(): Promise<Project[]>;
@@ -54,7 +57,7 @@ export interface IStorage {
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: number): Promise<void>;
-  createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }>;
+  createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }>;
   
   // Task methods
   getTasks(locationId: number): Promise<Task[]>;
@@ -440,6 +443,39 @@ export class MemStorage implements IStorage {
     return this.users.delete(id);
   }
 
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => 
+      user.passwordResetToken === token && 
+      user.passwordResetExpires && 
+      user.passwordResetExpires > new Date()
+    );
+  }
+
+  async setPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      const updated = { 
+        ...user, 
+        passwordResetToken: token, 
+        passwordResetExpires: expiresAt 
+      };
+      this.users.set(userId, updated);
+    }
+  }
+
+  async clearPasswordResetToken(userId: number): Promise<void> {
+    const user = this.users.get(userId);
+    if (user) {
+      const updated = { 
+        ...user, 
+        passwordResetToken: null, 
+        passwordResetExpires: null,
+        isPasswordSet: true
+      };
+      this.users.set(userId, updated);
+    }
+  }
+
   // Project methods
   async getProjects(): Promise<Project[]> {
     return Array.from(this.projects.values());
@@ -632,18 +668,19 @@ export class MemStorage implements IStorage {
     this.employees.delete(id);
   }
 
-  async createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }> {
+  async createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }> {
     const employee = this.employees.get(employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Create the user account
+    // Create the user account with a temporary password
     const user = await this.createUser({
       username,
-      password,
+      password: 'temp_password_to_be_reset', // Temporary password
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone,
-      role
+      role,
+      isPasswordSet: false
     });
 
     // Update the employee to link to the user
@@ -817,6 +854,35 @@ class DatabaseStorage implements IStorage {
     return true;
   }
 
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const result = await this.db.select().from(users).where(
+      and(
+        eq(users.passwordResetToken, token),
+        gte(users.passwordResetExpires, new Date())
+      )
+    );
+    return result[0];
+  }
+
+  async setPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+    await this.db.update(users)
+      .set({ 
+        passwordResetToken: token, 
+        passwordResetExpires: expiresAt 
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async clearPasswordResetToken(userId: number): Promise<void> {
+    await this.db.update(users)
+      .set({ 
+        passwordResetToken: null, 
+        passwordResetExpires: null,
+        isPasswordSet: true 
+      })
+      .where(eq(users.id, userId));
+  }
+
   // Project methods
   async getProjects(): Promise<Project[]> {
     return await this.db.select().from(projects);
@@ -942,18 +1008,19 @@ class DatabaseStorage implements IStorage {
     await this.db.delete(employees).where(eq(employees.id, id));
   }
 
-  async createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }> {
+  async createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }> {
     const employee = await this.getEmployee(employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Create the user account
+    // Create the user account with a temporary password
     const user = await this.createUser({
       username,
-      password,
+      password: 'temp_password_to_be_reset', // Temporary password
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone,
-      role
+      role,
+      isPasswordSet: false
     });
 
     // Update the employee to link to the user
