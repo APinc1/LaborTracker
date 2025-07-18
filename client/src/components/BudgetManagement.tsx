@@ -1411,7 +1411,7 @@ export default function BudgetManagement() {
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-2 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="w-20 sticky left-0 top-0 bg-gray-100 z-20 px-2 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
                             <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-2 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>
                               Description
                             </th>
@@ -1450,7 +1450,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 border-r z-10 px-2 py-2 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
+                                <td className={`font-medium sticky left-0 z-10 px-2 py-2 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
