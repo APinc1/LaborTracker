@@ -320,9 +320,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         taskGroups[taskType].totalHours += summary.totalBudgetHours;
       });
 
-      // Calculate days for each task type (total hours / 20)
+      // Calculate days for each task type (total hours / 40)
       Object.keys(taskGroups).forEach(taskType => {
-        taskGroups[taskType].days = Math.max(1, Math.ceil(taskGroups[taskType].totalHours / 20));
+        taskGroups[taskType].days = Math.max(1, Math.ceil(taskGroups[taskType].totalHours / 40));
       });
 
       // Handle combining options
@@ -332,7 +332,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         taskGroups['Demo/Ex + Base/Grading'] = {
           costCodes: combinedCostCodes,
           totalHours: combinedHours,
-          days: Math.max(1, Math.ceil(combinedHours / 20))
+          days: Math.max(1, Math.ceil(combinedHours / 40))
         };
         delete taskGroups['Demo/Ex'];
         delete taskGroups['Base/Grading'];
@@ -344,7 +344,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         taskGroups['Form + Pour'] = {
           costCodes: combinedCostCodes,
           totalHours: combinedHours,
-          days: Math.max(1, Math.ceil(combinedHours / 20))
+          days: Math.max(1, Math.ceil(combinedHours / 40))
         };
         delete taskGroups['Form'];
         delete taskGroups['Pour'];
@@ -363,12 +363,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           
           tasksToCreate.push({
-            locationId: locationId,
+            locationId: location?.locationId || locationId,
             name: taskName,
             taskType: taskType,
             workDescription: workDescription,
             taskDate: format(currentDate, 'yyyy-MM-dd'),
-            scheduledHours: Math.min(20, group.totalHours / group.days),
+            scheduledHours: Math.min(40, group.totalHours / group.days),
             assignedTo: null,
             actualHours: null,
             isComplete: false
@@ -380,18 +380,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       });
 
       // Create all tasks
-      const createPromises = tasksToCreate.map(task => 
-        fetch('/api/tasks', {
+      console.log('Creating tasks:', tasksToCreate);
+      
+      const createPromises = tasksToCreate.map(async (task) => {
+        const response = await fetch('/api/tasks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(task)
-        })
-      );
+        });
+        const result = await response.json();
+        console.log('Task created:', result);
+        return result;
+      });
 
       await Promise.all(createPromises);
       
       // Refresh tasks data
       queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId, "tasks"] });
       
       toast({
         title: "Tasks generated successfully",
@@ -923,7 +929,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   ))}
                 </div>
                 <p className="text-xs text-gray-600 mt-2">
-                  Tasks will be estimated at 20 hours per day per cost code type.
+                  Tasks will be estimated at 40 hours per day per cost code type.
                 </p>
               </div>
             )}
