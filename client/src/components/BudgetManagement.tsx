@@ -861,43 +861,68 @@ export default function BudgetManagement() {
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="bg-card border-b border-border px-6 py-4">
-        {/* Breadcrumb Navigation */}
-        {currentLocation && currentProject && (
-          <div className="mb-4">
-            <nav className="flex items-center space-x-2 text-sm text-gray-600">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/")}
-                className="p-1 h-auto hover:bg-gray-100"
-              >
-                <Home className="w-4 h-4" />
-              </Button>
-              <span>/</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation(`/projects/${currentProject.projectId}`)}
-                className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
-              >
-                <Building2 className="w-4 h-4 mr-1" />
-                {currentProject.name}
-              </Button>
-              <span>/</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
-                className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
-              >
-                <MapPin className="w-4 h-4 mr-1" />
-                {currentLocation.name}
-              </Button>
-              <span>/</span>
-              <span className="text-gray-900 font-medium">Budget</span>
-            </nav>
-          </div>
-        )}
+        {/* Breadcrumb Navigation - Always Visible */}
+        <div className="mb-4">
+          <nav className="flex items-center space-x-2 text-sm text-gray-600">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/")}
+              className="p-1 h-auto hover:bg-gray-100"
+            >
+              <Home className="w-4 h-4" />
+            </Button>
+            <span>/</span>
+            
+            {currentProject ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation(`/projects/${currentProject.projectId}`)}
+                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+                >
+                  <Building2 className="w-4 h-4 mr-1" />
+                  {currentProject.name}
+                </Button>
+                <span>/</span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-400">
+                  <Building2 className="w-4 h-4 mr-1 inline" />
+                  Project
+                </span>
+                <span>/</span>
+              </>
+            )}
+            
+            {currentLocation ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
+                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+                >
+                  <MapPin className="w-4 h-4 mr-1" />
+                  {currentLocation.name}
+                </Button>
+                <span>/</span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-400">
+                  <MapPin className="w-4 h-4 mr-1 inline" />
+                  Location
+                </span>
+                <span>/</span>
+              </>
+            )}
+            
+            <span className="text-gray-900 font-medium">Budget</span>
+          </nav>
+        </div>
         
         <div className="flex items-center justify-between">
           <div>
