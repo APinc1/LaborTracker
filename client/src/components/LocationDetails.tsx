@@ -363,7 +363,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           
           tasksToCreate.push({
-            locationId: location?.locationId || locationId,
             name: taskName,
             taskType: taskType,
             workDescription: workDescription,
@@ -383,7 +382,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       console.log('Creating tasks:', tasksToCreate);
       
       const createPromises = tasksToCreate.map(async (task) => {
-        const response = await fetch('/api/tasks', {
+        const response = await fetch(`/api/locations/${locationId}/tasks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(task)
