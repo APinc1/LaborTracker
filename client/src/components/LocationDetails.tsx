@@ -354,9 +354,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
 
       console.log('Start date input:', startDate);
-      // Parse start date as UTC to avoid timezone shifts that cause off-by-one errors
-      const startDateParts = startDate.split('-');
-      const parsedDate = new Date(parseInt(startDateParts[0]), parseInt(startDateParts[1]) - 1, parseInt(startDateParts[2]));
+      // Parse start date properly to avoid timezone shifts that cause off-by-one errors
+      const parsedDate = new Date(startDate + 'T00:00:00');
       console.log('Parsed start date:', parsedDate, 'Day of week:', parsedDate.getDay());
       console.log('Expected start date should be:', startDate);
       const tasksToCreate = [];

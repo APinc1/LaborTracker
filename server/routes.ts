@@ -445,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task routes
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const tasks = await storage.getTasks(parseInt(req.params.locationId));
+      const tasks = await storage.getTasks(req.params.locationId);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -477,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validated = insertTaskSchema.parse({
         ...req.body,
-        locationId: parseInt(req.params.locationId)
+        locationId: req.params.locationId
       });
       const task = await storage.createTask(validated);
       res.status(201).json(task);

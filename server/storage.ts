@@ -60,7 +60,7 @@ export interface IStorage {
   createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }>;
   
   // Task methods
-  getTasks(locationId: number): Promise<Task[]>;
+  getTasks(locationId: string | number): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
@@ -753,7 +753,7 @@ export class MemStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: number): Promise<Task[]> {
+  async getTasks(locationId: string | number): Promise<Task[]> {
     return Array.from(this.tasks.values()).filter(task => task.locationId === locationId);
   }
 
@@ -1092,7 +1092,7 @@ class DatabaseStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: number): Promise<Task[]> {
+  async getTasks(locationId: string | number): Promise<Task[]> {
     return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
   }
 
