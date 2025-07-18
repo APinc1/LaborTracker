@@ -17,6 +17,22 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertEmployeeSchema, insertCrewSchema } from "@shared/schema";
+import { z } from "zod";
+
+// Custom validation schema for employee form with required fields
+const employeeFormSchema = insertEmployeeSchema.extend({
+  teamMemberId: z.string().min(1, "Team Member ID is required"),
+  name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(1, "Phone number is required"),
+  employeeType: z.string().min(1, "Employee type is required"),
+  crewId: z.string().min(1, "Crew selection is required"),
+  primaryTrade: z.string().min(1, "Primary trade is required"),
+  tertiaryTrade: z.string().min(1, "Tertiary trade is required"),
+  secondaryTrade: z.string().optional(), // Optional field
+  isForeman: z.boolean().optional(),
+  isUnion: z.boolean().optional(),
+});
 
 export default function EmployeeManagement() {
   const { toast } = useToast();
@@ -128,20 +144,20 @@ export default function EmployeeManagement() {
   });
 
   const employeeForm = useForm({
-    resolver: zodResolver(insertEmployeeSchema),
+    resolver: zodResolver(employeeFormSchema),
     defaultValues: {
       teamMemberId: '',
       name: '',
       email: '',
       phone: '',
-      crewId: null,
+      crewId: '',
       employeeType: 'Core',
       apprenticeLevel: null,
       isForeman: false,
       isUnion: false,
-      primaryTrade: null,
-      secondaryTrade: null,
-      tertiaryTrade: null,
+      primaryTrade: '',
+      secondaryTrade: '',
+      tertiaryTrade: '',
     },
   });
 
@@ -155,12 +171,12 @@ export default function EmployeeManagement() {
   const onSubmitEmployee = (data: any) => {
     const processedData = {
       ...data,
-      crewId: data.crewId && data.crewId !== "none" ? parseInt(data.crewId) : null,
+      crewId: data.crewId ? parseInt(data.crewId) : null,
       apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
       isForeman: data.employeeType === "Core" ? data.isForeman : false,
-      primaryTrade: data.primaryTrade === "none" ? null : data.primaryTrade,
-      secondaryTrade: data.secondaryTrade === "none" ? null : data.secondaryTrade,
-      tertiaryTrade: data.tertiaryTrade === "none" ? null : data.tertiaryTrade,
+      primaryTrade: data.primaryTrade || null,
+      secondaryTrade: data.secondaryTrade === "none" || !data.secondaryTrade ? null : data.secondaryTrade,
+      tertiaryTrade: data.tertiaryTrade || null,
     };
     
     if (editingEmployee) {
@@ -185,14 +201,14 @@ export default function EmployeeManagement() {
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone || '',
-      crewId: employee.crewId?.toString() || null,
+      crewId: employee.crewId?.toString() || '',
       employeeType: employee.employeeType,
       apprenticeLevel: employee.apprenticeLevel,
       isForeman: employee.isForeman,
       isUnion: employee.isUnion,
-      primaryTrade: employee.primaryTrade,
-      secondaryTrade: employee.secondaryTrade,
-      tertiaryTrade: employee.tertiaryTrade,
+      primaryTrade: employee.primaryTrade || '',
+      secondaryTrade: employee.secondaryTrade || '',
+      tertiaryTrade: employee.tertiaryTrade || '',
     });
   };
 
@@ -293,7 +309,7 @@ export default function EmployeeManagement() {
                         name="teamMemberId"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Team Member ID</FormLabel>
+                            <FormLabel>Team Member ID *</FormLabel>
                             <FormControl>
                               <Input placeholder="EMP-001" {...field} />
                             </FormControl>
@@ -306,7 +322,7 @@ export default function EmployeeManagement() {
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
+                            <FormLabel>Full Name *</FormLabel>
                             <FormControl>
                               <Input placeholder="John Smith" {...field} />
                             </FormControl>
@@ -320,7 +336,7 @@ export default function EmployeeManagement() {
                           name="email"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel>Email *</FormLabel>
                               <FormControl>
                                 <Input type="email" placeholder="john@example.com" {...field} />
                               </FormControl>
@@ -333,7 +349,7 @@ export default function EmployeeManagement() {
                           name="phone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone</FormLabel>
+                              <FormLabel>Phone *</FormLabel>
                               <FormControl>
                                 <Input placeholder="(555) 123-4567" {...field} />
                               </FormControl>
@@ -348,7 +364,7 @@ export default function EmployeeManagement() {
                           name="employeeType"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Employee Type</FormLabel>
+                              <FormLabel>Employee Type *</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -394,7 +410,7 @@ export default function EmployeeManagement() {
                           name="crewId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Crew</FormLabel>
+                              <FormLabel>Crew *</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -422,7 +438,7 @@ export default function EmployeeManagement() {
                           name="primaryTrade"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Primary Trade</FormLabel>
+                              <FormLabel>Primary Trade *</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -430,7 +446,6 @@ export default function EmployeeManagement() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="none">None</SelectItem>
                                   <SelectItem value="Mason">Mason</SelectItem>
                                   <SelectItem value="Formsetter">Formsetter</SelectItem>
                                   <SelectItem value="Laborer">Laborer</SelectItem>
@@ -451,7 +466,7 @@ export default function EmployeeManagement() {
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Select trade" />
+                                    <SelectValue placeholder="Select trade (optional)" />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -472,7 +487,7 @@ export default function EmployeeManagement() {
                           name="tertiaryTrade"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Tertiary Trade</FormLabel>
+                              <FormLabel>Tertiary Trade *</FormLabel>
                               <Select onValueChange={field.onChange} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -480,7 +495,6 @@ export default function EmployeeManagement() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="none">None</SelectItem>
                                   <SelectItem value="Mason">Mason</SelectItem>
                                   <SelectItem value="Formsetter">Formsetter</SelectItem>
                                   <SelectItem value="Laborer">Laborer</SelectItem>
