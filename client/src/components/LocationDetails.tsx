@@ -70,29 +70,45 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     );
   }
 
-  // Calculate budget totals
-  const totalBudget = budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.budgetTotal) || 0), 0);
-  const totalSpent = budgetItems.reduce((sum: number, item: any) => sum + (parseFloat(item.billing) || 0), 0);
-  const remainingBudget = totalBudget - totalSpent;
+  // Calculate budget totals in hours
+  const totalBudgetHours = budgetItems.reduce((sum: number, item: any) => {
+    // Only include items without children (leaf nodes)
+    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
+    return hasChildren ? sum : sum + (parseFloat(item.hours) || 0);
+  }, 0);
+  
+  const totalActualHours = budgetItems.reduce((sum: number, item: any) => {
+    // Only include items without children (leaf nodes)
+    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
+    return hasChildren ? sum : sum + (parseFloat(item.actualHours) || 0);
+  }, 0);
+  
+  const remainingHours = totalBudgetHours - totalActualHours;
 
   // Calculate progress
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  // Calculate cost code summaries
+  // Calculate cost code summaries by hours
   const costCodeSummaries = budgetItems.reduce((acc: any, item: any) => {
     const costCode = item.costCode || 'UNCATEGORIZED';
     if (!acc[costCode]) {
       acc[costCode] = {
         costCode,
-        totalBudget: 0,
-        totalSpent: 0,
+        totalBudgetHours: 0,
+        totalActualHours: 0,
         items: [],
         itemCount: 0
       };
     }
-    acc[costCode].totalBudget += parseFloat(item.budgetTotal) || 0;
-    acc[costCode].totalSpent += parseFloat(item.billing) || 0;
+    
+    // Only include items without children (leaf nodes)
+    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
+    if (!hasChildren) {
+      acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
+      acc[costCode].totalActualHours += parseFloat(item.actualHours) || 0;
+    }
+    
     acc[costCode].items.push(item);
     acc[costCode].itemCount++;
     return acc;
@@ -217,16 +233,18 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 {/* Overall Budget Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-600 font-medium">Total Budget</p>
-                    <p className="text-2xl font-bold text-blue-800">${totalBudget.toLocaleString()}</p>
+                    <p className="text-sm text-blue-600 font-medium">Total Budget Hours</p>
+                    <p className="text-2xl font-bold text-blue-800">{totalBudgetHours.toLocaleString()} hrs</p>
                   </div>
                   <div className="p-4 bg-red-50 rounded-lg">
-                    <p className="text-sm text-red-600 font-medium">Total Spent</p>
-                    <p className="text-2xl font-bold text-red-800">${totalSpent.toLocaleString()}</p>
+                    <p className="text-sm text-red-600 font-medium">Actual Hours Worked</p>
+                    <p className="text-2xl font-bold text-red-800">{totalActualHours.toLocaleString()} hrs</p>
                   </div>
                   <div className="p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-green-600 font-medium">Remaining</p>
-                    <p className="text-2xl font-bold text-green-800">${remainingBudget.toLocaleString()}</p>
+                    <p className="text-sm text-green-600 font-medium">Remaining Hours</p>
+                    <p className={`text-2xl font-bold ${remainingHours >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                      {remainingHours.toLocaleString()} hrs
+                    </p>
                   </div>
                 </div>
 
@@ -242,8 +260,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {costCodeArray.map((summary: any) => {
-                      const remaining = summary.totalBudget - summary.totalSpent;
-                      const spentPercentage = summary.totalBudget > 0 ? (summary.totalSpent / summary.totalBudget) * 100 : 0;
+                      const remainingHours = summary.totalBudgetHours - summary.totalActualHours;
+                      const hoursPercentage = summary.totalBudgetHours > 0 ? (summary.totalActualHours / summary.totalBudgetHours) * 100 : 0;
                       
                       return (
                         <Card 
@@ -262,25 +280,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             </div>
                             <div className="space-y-2">
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Budget:</span>
-                                <span className="font-medium">${summary.totalBudget.toLocaleString()}</span>
+                                <span className="text-gray-600">Budget Hours:</span>
+                                <span className="font-medium">{summary.totalBudgetHours.toLocaleString()} hrs</span>
                               </div>
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Spent:</span>
-                                <span className="font-medium text-red-600">${summary.totalSpent.toLocaleString()}</span>
+                                <span className="text-gray-600">Actual Hours:</span>
+                                <span className="font-medium text-red-600">{summary.totalActualHours.toLocaleString()} hrs</span>
                               </div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Remaining:</span>
-                                <span className={`font-medium ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                  ${remaining.toLocaleString()}
+                                <span className={`font-medium ${remainingHours >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {remainingHours.toLocaleString()} hrs
                                 </span>
                               </div>
                               <div className="mt-2">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-xs text-gray-500">Progress</span>
-                                  <span className="text-xs text-gray-500">{Math.round(spentPercentage)}%</span>
+                                  <span className="text-xs text-gray-500">{Math.round(hoursPercentage)}%</span>
                                 </div>
-                                <Progress value={Math.min(spentPercentage, 100)} className="h-2" />
+                                <Progress value={Math.min(hoursPercentage, 100)} className="h-2" />
                               </div>
                             </div>
                           </CardContent>
@@ -380,31 +398,31 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               {/* Cost Code Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="text-sm text-gray-600">Total Budget</p>
+                  <p className="text-sm text-gray-600">Total Budget Hours</p>
                   <p className="text-lg font-bold text-blue-600">
-                    ${costCodeSummaries[selectedCostCode]?.totalBudget.toLocaleString()}
+                    {costCodeSummaries[selectedCostCode]?.totalBudgetHours.toLocaleString()} hrs
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Spent</p>
+                  <p className="text-sm text-gray-600">Actual Hours Worked</p>
                   <p className="text-lg font-bold text-red-600">
-                    ${costCodeSummaries[selectedCostCode]?.totalSpent.toLocaleString()}
+                    {costCodeSummaries[selectedCostCode]?.totalActualHours.toLocaleString()} hrs
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Remaining</p>
+                  <p className="text-sm text-gray-600">Remaining Hours</p>
                   <p className={`text-lg font-bold ${
-                    (costCodeSummaries[selectedCostCode]?.totalBudget - costCodeSummaries[selectedCostCode]?.totalSpent) >= 0 
+                    (costCodeSummaries[selectedCostCode]?.totalBudgetHours - costCodeSummaries[selectedCostCode]?.totalActualHours) >= 0 
                       ? 'text-green-600' 
                       : 'text-red-600'
                   }`}>
-                    ${(costCodeSummaries[selectedCostCode]?.totalBudget - costCodeSummaries[selectedCostCode]?.totalSpent).toLocaleString()}
+                    {(costCodeSummaries[selectedCostCode]?.totalBudgetHours - costCodeSummaries[selectedCostCode]?.totalActualHours).toLocaleString()} hrs
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Progress</p>
                   <p className="text-lg font-bold text-purple-600">
-                    {Math.round((costCodeSummaries[selectedCostCode]?.totalSpent / costCodeSummaries[selectedCostCode]?.totalBudget) * 100)}%
+                    {Math.round((costCodeSummaries[selectedCostCode]?.totalActualHours / costCodeSummaries[selectedCostCode]?.totalBudgetHours) * 100)}%
                   </p>
                 </div>
               </div>
@@ -417,19 +435,23 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                       <TableHead className="w-20">Line #</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
-                      <TableHead className="text-right">Unit Cost</TableHead>
-                      <TableHead className="text-right">Budget Total</TableHead>
-                      <TableHead className="text-right">Spent</TableHead>
-                      <TableHead className="text-right">Remaining</TableHead>
+                      <TableHead className="text-right">PX (hrs/unit)</TableHead>
+                      <TableHead className="text-right">Budget Hours</TableHead>
+                      <TableHead className="text-right">Actual Hours</TableHead>
+                      <TableHead className="text-right">Remaining Hours</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedCostCodeItems.map((item: any) => {
-                      const budgetTotal = parseFloat(item.budgetTotal) || 0;
-                      const spent = parseFloat(item.billing) || 0;
-                      const remaining = budgetTotal - spent;
-                      const spentPercentage = budgetTotal > 0 ? (spent / budgetTotal) * 100 : 0;
+                      const budgetHours = parseFloat(item.hours) || 0;
+                      const actualHours = parseFloat(item.actualHours) || 0;
+                      const remainingHours = budgetHours - actualHours;
+                      const hoursPercentage = budgetHours > 0 ? (actualHours / budgetHours) * 100 : 0;
+                      
+                      // Only show leaf nodes (items without children)
+                      const hasChildren = selectedCostCodeItems.some((child: any) => child.parentId === item.id);
+                      if (hasChildren) return null;
                       
                       return (
                         <TableRow key={item.id}>
@@ -446,25 +468,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             {item.convertedQty} {item.convertedUnitOfMeasure}
                           </TableCell>
                           <TableCell className="text-right">
-                            ${parseFloat(item.unitCost).toLocaleString()}
+                            {parseFloat(item.px || 0).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-right font-medium">
-                            ${budgetTotal.toLocaleString()}
+                            {budgetHours.toLocaleString()} hrs
                           </TableCell>
                           <TableCell className="text-right text-red-600">
-                            ${spent.toLocaleString()}
+                            {actualHours.toLocaleString()} hrs
                           </TableCell>
                           <TableCell className={`text-right font-medium ${
-                            remaining >= 0 ? 'text-green-600' : 'text-red-600'
+                            remainingHours >= 0 ? 'text-green-600' : 'text-red-600'
                           }`}>
-                            ${remaining.toLocaleString()}
+                            {remainingHours.toLocaleString()} hrs
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge 
-                              variant={spentPercentage >= 100 ? "destructive" : spentPercentage >= 80 ? "secondary" : "outline"}
+                              variant={hoursPercentage >= 100 ? "destructive" : hoursPercentage >= 80 ? "secondary" : "outline"}
                               className="text-xs"
                             >
-                              {Math.round(spentPercentage)}%
+                              {Math.round(hoursPercentage)}%
                             </Badge>
                           </TableCell>
                         </TableRow>
