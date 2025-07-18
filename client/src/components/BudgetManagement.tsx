@@ -1471,8 +1471,7 @@ export default function BudgetManagement() {
                                   </div>
                                 </td>
                                 <td className="min-w-60 sticky left-[104px] bg-gray-100 border-r z-10 px-3 py-2">
-                                    <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`} title={item.lineItemName}>
-                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
+                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`} title={item.lineItemName}>
                                     {item.lineItemName}
                                   </div>
                                 </td>
