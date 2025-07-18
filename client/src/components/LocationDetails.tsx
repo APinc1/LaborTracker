@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,38 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [combineFormPour, setCombineFormPour] = useState(false);
   const [combineDemoBase, setCombineDemoBase] = useState(false);
   const { toast } = useToast();
+
+  // Task edit and delete functions
+  const handleEditTask = (task: any) => {
+    toast({
+      title: "Edit Task",
+      description: "Task editing functionality coming soon",
+    });
+  };
+
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
+        toast({
+          title: "Task deleted",
+          description: "Task has been removed successfully",
+        });
+      } else {
+        throw new Error('Failed to delete task');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete task",
+        variant: "destructive"
+      });
+    }
+  };
 
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
@@ -246,8 +278,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Task generation logic
   const taskTypeOrder = [
     'Traffic Control',
+    'Demo/Ex + Base/Grading',
     'Demo/Ex', 
     'Base/Grading',
+    'Form + Pour',
     'Form',
     'Pour', 
     'Asphalt',
@@ -258,6 +292,23 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     'Punchlist Concrete',
     'Punchlist General Labor'
   ];
+
+  // Helper function to skip weekends
+  const addWorkdays = (startDate: Date, days: number): Date[] => {
+    const dates: Date[] = [];
+    const current = new Date(startDate);
+    
+    while (dates.length < days) {
+      const dayOfWeek = current.getDay();
+      // Skip weekends (0 = Sunday, 6 = Saturday)
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        dates.push(new Date(current));
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return dates;
+  };
 
   const generateTasks = async () => {
     try {
@@ -354,26 +405,32 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
       const additionalTaskTypes = Object.keys(taskGroups).filter(type => !taskTypeOrder.includes(type));
       
+      let dayCounter = 0;
+      
       [...orderedTaskTypes, ...additionalTaskTypes].forEach(taskType => {
         const group = taskGroups[taskType];
         const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
+        
+        // Calculate workdays needed for this task type
+        const workDays = addWorkdays(new Date(startDate), dayCounter + group.days);
         
         for (let day = 1; day <= group.days; day++) {
           const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           
-          const taskId = `${locationId}_${taskType.replace(/[\/\s]/g, '')}_Day${day}_${Date.now()}`;
+          const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
+          const taskDate = workDays[dayCounter + day - 1];
           
           tasksToCreate.push({
             taskId: taskId,
             name: taskName,
             taskType: taskType,
-            taskDate: format(currentDate, 'yyyy-MM-dd'),
-            startDate: format(currentDate, 'yyyy-MM-dd'),
-            finishDate: format(currentDate, 'yyyy-MM-dd'),
+            taskDate: format(taskDate, 'yyyy-MM-dd'),
+            startDate: format(taskDate, 'yyyy-MM-dd'),
+            finishDate: format(taskDate, 'yyyy-MM-dd'),
             costCode: group.costCodes[0].costCode, // Use first cost code string value
             workDescription: workDescription,
-            scheduledHours: Math.min(40, group.totalHours / group.days).toString(),
+            scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
             actualHours: null,
             superintendentId: null,
             foremanId: null,
@@ -381,10 +438,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             finishTime: null,
             notes: null
           });
-          
-          // Move to next day
-          currentDate = addDays(currentDate, 1);
         }
+        
+        dayCounter += group.days;
       });
 
       // Create all tasks
@@ -725,6 +781,21 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               In Progress
                             </Badge>
                           )}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditTask(task)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
