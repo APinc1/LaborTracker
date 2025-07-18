@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -245,8 +246,26 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
                           </Link>
                           <p className="text-gray-600 text-sm mt-1">{location.description}</p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">{location.locationId}</Badge>
+                          <div className="space-y-3 mt-3">
+                            {/* Date Range */}
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <Calendar className="w-4 h-4" />
+                              <span>
+                                {location.startDate ? format(new Date(location.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {location.endDate ? format(new Date(location.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
+                              </span>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-gray-600">Progress</span>
+                                <span className="text-gray-800 font-medium">0%</span>
+                              </div>
+                              <Progress value={0} className="h-2" />
+                              <p className="text-xs text-gray-500">Based on completed tasks</p>
+                            </div>
+
+                            {/* Budget Info */}
                             {location.budgetAllocated && (
                               <div className="flex items-center gap-1 text-sm text-gray-600">
                                 <DollarSign className="w-4 h-4" />
