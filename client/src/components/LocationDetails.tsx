@@ -1017,7 +1017,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{task.name}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-lg">{task.name}</h3>
+                            <Badge variant="secondary" className="text-xs">{task.taskId}</Badge>
+                          </div>
                           <p className="text-gray-600 text-sm mt-1">{task.workDescription}</p>
                           <div className="flex items-center gap-4 mt-2">
                             <Badge variant="outline">{task.taskType}</Badge>
