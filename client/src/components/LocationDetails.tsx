@@ -371,9 +371,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             taskDate: format(currentDate, 'yyyy-MM-dd'),
             startDate: format(currentDate, 'yyyy-MM-dd'),
             finishDate: format(currentDate, 'yyyy-MM-dd'),
-            costCode: group.costCodes[0], // Use first cost code as primary
+            costCode: group.costCodes[0].costCode, // Use first cost code string value
             workDescription: workDescription,
-            scheduledHours: Math.min(40, group.totalHours / group.days),
+            scheduledHours: Math.min(40, group.totalHours / group.days).toString(),
             actualHours: null,
             superintendentId: null,
             foremanId: null,
