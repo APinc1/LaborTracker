@@ -77,13 +77,6 @@ export default function BudgetManagement() {
       setIsDirectAccess(true);
     }
   }, []);
-  
-  // Auto-set project when accessing via direct location access
-  useEffect(() => {
-    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
-      setSelectedProject(currentLocation.projectId.toString());
-    }
-  }, [isDirectAccess, currentLocation, selectedProject]);
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
@@ -343,6 +336,13 @@ export default function BudgetManagement() {
     enabled: !!selectedLocation,
     staleTime: 30000,
   });
+
+  // Auto-set project when accessing via direct location access
+  useEffect(() => {
+    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
+      setSelectedProject(currentLocation.projectId.toString());
+    }
+  }, [isDirectAccess, currentLocation, selectedProject]);
 
   const formatCurrency = (amount: string | number) => {
     return new Intl.NumberFormat('en-US', {
