@@ -90,6 +90,7 @@ export const employees = pgTable("employees", {
   primaryTrade: text("primary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
   secondaryTrade: text("secondary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
   tertiaryTrade: text("tertiary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
+  userId: integer("user_id").references(() => users.id), // Optional link to user account
 });
 
 export const tasks = pgTable("tasks", {

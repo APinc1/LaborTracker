@@ -354,6 +354,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/employees/:id/create-user', async (req, res) => {
+    try {
+      const { username, password, role } = req.body;
+      
+      if (!username || !password || !role) {
+        return res.status(400).json({ error: 'Username, password, and role are required' });
+      }
+
+      const result = await storage.createUserFromEmployee(
+        parseInt(req.params.id),
+        username,
+        password,
+        role
+      );
+      
+      res.status(201).json(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'Failed to create user from employee' });
+      }
+    }
+  });
+
   // Task routes
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {

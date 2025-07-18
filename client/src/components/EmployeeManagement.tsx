@@ -34,6 +34,13 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   isUnion: z.boolean().optional(),
 });
 
+// Validation schema for creating user from employee
+const createUserFormSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.string().min(1, "Role is required"),
+});
+
 export default function EmployeeManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -42,6 +49,8 @@ export default function EmployeeManagement() {
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [editingCrew, setEditingCrew] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"employees" | "crews">("employees");
+  const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
+  const [selectedEmployeeForUser, setSelectedEmployeeForUser] = useState<any>(null);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
@@ -157,6 +166,31 @@ export default function EmployeeManagement() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: async ({ employeeId, data }: { employeeId: number; data: any }) => {
+      const response = await apiRequest('POST', `/api/employees/${employeeId}/create-user`, data);
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      toast({ 
+        title: "Success", 
+        description: `User account created for ${result.employee.name}` 
+      });
+      setIsCreateUserOpen(false);
+      setSelectedEmployeeForUser(null);
+      createUserForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create user account", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const currentValidationSchema = createEmployeeFormSchema(employees, editingEmployee?.id);
   
   const employeeForm = useForm({
@@ -184,6 +218,15 @@ export default function EmployeeManagement() {
     },
   });
 
+  const createUserForm = useForm({
+    resolver: zodResolver(createUserFormSchema),
+    defaultValues: {
+      username: '',
+      password: '',
+      role: '',
+    },
+  });
+
   const onSubmitEmployee = (data: any) => {
     const processedData = {
       ...data,
@@ -208,6 +251,22 @@ export default function EmployeeManagement() {
     } else {
       createCrewMutation.mutate(data);
     }
+  };
+
+  const onSubmitCreateUser = (data: any) => {
+    if (selectedEmployeeForUser) {
+      createUserMutation.mutate({ employeeId: selectedEmployeeForUser.id, data });
+    }
+  };
+
+  const handleCreateUser = (employee: any) => {
+    setSelectedEmployeeForUser(employee);
+    setIsCreateUserOpen(true);
+    createUserForm.reset({
+      username: employee.teamMemberId.toLowerCase(),
+      password: '',
+      role: employee.isForeman ? 'Foreman' : 'Employee',
+    });
   };
 
   const handleEditEmployee = (employee: any) => {
@@ -654,6 +713,92 @@ export default function EmployeeManagement() {
         </div>
       </header>
 
+      {/* Create User Dialog */}
+      <Dialog open={isCreateUserOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsCreateUserOpen(false);
+          setSelectedEmployeeForUser(null);
+          createUserForm.reset();
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Create User Account
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Create a user account for {selectedEmployeeForUser?.name}
+            </p>
+          </DialogHeader>
+          <Form {...createUserForm}>
+            <form onSubmit={createUserForm.handleSubmit(onSubmitCreateUser)} className="space-y-4">
+              <FormField
+                control={createUserForm.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="username" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createUserForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="Enter password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={createUserForm.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Admin">Admin</SelectItem>
+                        <SelectItem value="Superintendent">Superintendent</SelectItem>
+                        <SelectItem value="Project Manager">Project Manager</SelectItem>
+                        <SelectItem value="Foreman">Foreman</SelectItem>
+                        <SelectItem value="Employee">Employee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsCreateUserOpen(false);
+                  setSelectedEmployeeForUser(null);
+                  createUserForm.reset();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createUserMutation.isPending}>
+                  Create User
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <main className="p-6">
         {activeTab === "employees" ? (
           <Card>
@@ -727,6 +872,9 @@ export default function EmployeeManagement() {
                               {employee.isUnion && (
                                 <Badge variant="outline" className="text-xs">Union</Badge>
                               )}
+                              {employee.userId && (
+                                <Badge variant="default" className="text-xs bg-green-100 text-green-800">User Account</Badge>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -753,6 +901,15 @@ export default function EmployeeManagement() {
                                 onClick={() => handleEditEmployee(employee)}
                               >
                                 <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCreateUser(employee)}
+                                disabled={!!employee.userId}
+                                title={employee.userId ? "User account already exists" : "Create user account"}
+                              >
+                                <User className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"

@@ -54,6 +54,7 @@ export interface IStorage {
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: number): Promise<void>;
+  createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }>;
   
   // Task methods
   getTasks(locationId: number): Promise<Task[]>;
@@ -631,6 +632,27 @@ export class MemStorage implements IStorage {
     this.employees.delete(id);
   }
 
+  async createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }> {
+    const employee = this.employees.get(employeeId);
+    if (!employee) throw new Error('Employee not found');
+
+    // Create the user account
+    const user = await this.createUser({
+      username,
+      password,
+      name: employee.name,
+      email: employee.email || '',
+      phone: employee.phone,
+      role
+    });
+
+    // Update the employee to link to the user
+    const updatedEmployee = { ...employee, userId: user.id };
+    this.employees.set(employeeId, updatedEmployee);
+
+    return { user, employee: updatedEmployee };
+  }
+
   // Task methods
   async getTasks(locationId: number): Promise<Task[]> {
     return Array.from(this.tasks.values()).filter(task => task.locationId === locationId);
@@ -918,6 +940,26 @@ class DatabaseStorage implements IStorage {
 
   async deleteEmployee(id: number): Promise<void> {
     await this.db.delete(employees).where(eq(employees.id, id));
+  }
+
+  async createUserFromEmployee(employeeId: number, username: string, password: string, role: string): Promise<{ user: User; employee: Employee }> {
+    const employee = await this.getEmployee(employeeId);
+    if (!employee) throw new Error('Employee not found');
+
+    // Create the user account
+    const user = await this.createUser({
+      username,
+      password,
+      name: employee.name,
+      email: employee.email || '',
+      phone: employee.phone,
+      role
+    });
+
+    // Update the employee to link to the user
+    const updatedEmployee = await this.updateEmployee(employeeId, { userId: user.id });
+
+    return { user, employee: updatedEmployee };
   }
 
   // Task methods
