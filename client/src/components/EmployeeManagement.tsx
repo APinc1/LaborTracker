@@ -263,8 +263,13 @@ export default function EmployeeManagement() {
     console.log('Creating user for employee:', employee);
     setSelectedEmployeeForUser(employee);
     setIsCreateUserOpen(true);
+    
+    // Generate username from first_last name format
+    const nameParts = employee.name.toLowerCase().split(' ');
+    const username = nameParts.length >= 2 ? `${nameParts[0]}_${nameParts[nameParts.length - 1]}` : nameParts[0];
+    
     createUserForm.reset({
-      username: employee.teamMemberId.toLowerCase(),
+      username: username,
       password: '',
       role: employee.isForeman ? 'Foreman' : 'Employee',
     });
