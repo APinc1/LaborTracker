@@ -221,14 +221,14 @@ export default function ProjectManagement() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Superintendent</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} value={field.value?.toString() || ""}>
+                          <Select onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} value={field.value?.toString() || "none"}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select superintendent" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
                               {users.filter((user: any) => user.role === 'Superintendent' || user.role === 'Admin').map((user: any) => (
                                 <SelectItem key={user.id} value={user.id.toString()}>
                                   {user.name}
@@ -246,14 +246,14 @@ export default function ProjectManagement() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Project Manager</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : null)} value={field.value?.toString() || ""}>
+                          <Select onValueChange={(value) => field.onChange(value === "none" ? null : parseInt(value))} value={field.value?.toString() || "none"}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select project manager" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">None</SelectItem>
+                              <SelectItem value="none">None</SelectItem>
                               {users.filter((user: any) => user.role === 'Project Manager' || user.role === 'Admin').map((user: any) => (
                                 <SelectItem key={user.id} value={user.id.toString()}>
                                   {user.name}
