@@ -260,6 +260,7 @@ export default function EmployeeManagement() {
   };
 
   const handleCreateUser = (employee: any) => {
+    console.log('Creating user for employee:', employee);
     setSelectedEmployeeForUser(employee);
     setIsCreateUserOpen(true);
     createUserForm.reset({
@@ -905,9 +906,15 @@ export default function EmployeeManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleCreateUser(employee)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log('User button clicked for:', employee.name);
+                                  handleCreateUser(employee);
+                                }}
                                 disabled={!!employee.userId}
                                 title={employee.userId ? "User account already exists" : "Create user account"}
+                                className="hover:bg-blue-50 hover:text-blue-600"
                               >
                                 <User className="w-4 h-4" />
                               </Button>
