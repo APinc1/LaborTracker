@@ -36,16 +36,34 @@ export default function ProjectManagement() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('/api/projects', {
+      const response = await fetch('/api/projects', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
-      return response.json();
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create project');
+      }
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({ title: "Success", description: "Project created successfully" });
       setIsCreateDialogOpen(false);
+      form.reset({
+        projectId: '',
+        name: '',
+        startDate: '',
+        endDate: '',
+        defaultSuperintendent: null,
+        defaultProjectManager: null,
+      });
     },
     onError: (error: any) => {
       toast({ 
@@ -343,7 +361,7 @@ export default function ProjectManagement() {
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      {format(new Date(project.startDate), 'MMM d, yyyy')} - {format(new Date(project.endDate), 'MMM d, yyyy')}
+                      {project.startDate ? format(new Date(project.startDate), 'MMM d, yyyy') : 'No start date'} - {project.endDate ? format(new Date(project.endDate), 'MMM d, yyyy') : 'No end date'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">

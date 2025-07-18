@@ -134,16 +134,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/projects', async (req, res) => {
     try {
-      const validated = insertProjectSchema.parse(req.body);
+      // Validate required fields first
+      if (!req.body.projectId || !req.body.name) {
+        return res.status(400).json({ error: 'Project ID and name are required' });
+      }
       
       // Check for duplicate project ID
       const existingProjects = await storage.getProjects();
-      const duplicateProject = existingProjects.find(p => p.projectId === validated.projectId);
+      const duplicateProject = existingProjects.find(p => p.projectId === req.body.projectId);
       if (duplicateProject) {
-        return res.status(400).json({ error: `Project ID "${validated.projectId}" already exists` });
+        return res.status(400).json({ error: `Project ID "${req.body.projectId}" already exists` });
       }
       
-      const project = await storage.createProject(validated);
+      // Prepare project data with defaults
+      const projectData = {
+        projectId: req.body.projectId,
+        name: req.body.name,
+        startDate: req.body.startDate || new Date().toISOString().split('T')[0],
+        endDate: req.body.endDate || null,
+        defaultSuperintendent: req.body.defaultSuperintendent || null,
+        defaultProjectManager: req.body.defaultProjectManager || null
+      };
+      
+      const project = await storage.createProject(projectData);
       res.status(201).json(project);
     } catch (error: any) {
       console.error('Error creating project:', error);

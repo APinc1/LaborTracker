@@ -20,7 +20,7 @@ export const projects = pgTable("projects", {
   projectId: text("project_id").notNull().unique(),
   name: text("name").notNull(),
   startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
+  endDate: date("end_date"),
   defaultSuperintendent: integer("default_superintendent").references(() => users.id),
   defaultProjectManager: integer("default_project_manager").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -128,7 +128,10 @@ export const employeeAssignments = pgTable("employee_assignments", {
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
-export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true });
+export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true }).extend({
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable()
+});
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true });
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
 export const insertLocationBudgetSchema = createInsertSchema(locationBudgets).omit({ id: true });
