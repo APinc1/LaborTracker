@@ -788,7 +788,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <div>
                   <p className="text-sm text-gray-600">Duration</p>
                   <p className="font-medium">
-                    {format(new Date(location.startDate), 'MMM d, yyyy')} - {format(new Date(location.endDate), 'MMM d, yyyy')}
+                    {location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No start date'} - {location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No end date'}
                   </p>
                 </div>
               </div>

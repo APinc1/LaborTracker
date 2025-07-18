@@ -202,6 +202,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ Updated storage interface to handle both string and numeric location lookups
 - ✅ Resolved "Location not found" errors when clicking on location links
 - ✅ Updated location schema to make startDate and endDate optional fields
+- ✅ Fixed "Invalid time value" error in LocationDetails component when dates are null/undefined
+- ✅ Updated date formatting to safely handle optional start/end dates in location display
+- ✅ Location pages now open properly without React errors when clicking location links
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
