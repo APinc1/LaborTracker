@@ -294,11 +294,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   ];
 
   // Helper function to skip weekends
-  const addWorkdays = (startDate: Date, days: number): Date[] => {
+  const addWorkdays = (startDate: Date, totalDays: number): Date[] => {
     const dates: Date[] = [];
     const current = new Date(startDate);
     
-    while (dates.length < days) {
+    while (dates.length < totalDays) {
       const dayOfWeek = current.getDay();
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -389,7 +389,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         delete taskGroups['Base/Grading'];
       }
 
+      console.log('Task groups before combining:', Object.keys(taskGroups));
+      console.log('combineFormPour:', combineFormPour);
+      console.log('Has Form:', !!taskGroups['Form']);
+      console.log('Has Pour:', !!taskGroups['Pour']);
+
       if (combineFormPour && taskGroups['Form'] && taskGroups['Pour']) {
+        console.log('Combining Form + Pour');
         const combinedHours = taskGroups['Form'].totalHours + taskGroups['Pour'].totalHours;
         const combinedCostCodes = [...taskGroups['Form'].costCodes, ...taskGroups['Pour'].costCodes];
         taskGroups['Form + Pour'] = {
@@ -401,25 +407,28 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         delete taskGroups['Pour'];
       }
 
-      // Create tasks in order, handling alternating Form/Pour if not combined
+      // Calculate total days needed for all tasks
+      const totalDaysNeeded = Object.values(taskGroups).reduce((sum: number, group: any) => sum + group.days, 0);
+      
+      // Generate all workdays first
+      const allWorkDays = addWorkdays(new Date(startDate), totalDaysNeeded);
+      
+      // Create tasks in proper order
       const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
       const additionalTaskTypes = Object.keys(taskGroups).filter(type => !taskTypeOrder.includes(type));
       
-      let dayCounter = 0;
+      let globalDayIndex = 0;
       
       [...orderedTaskTypes, ...additionalTaskTypes].forEach(taskType => {
         const group = taskGroups[taskType];
         const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
-        
-        // Calculate workdays needed for this task type
-        const workDays = addWorkdays(new Date(startDate), dayCounter + group.days);
         
         for (let day = 1; day <= group.days; day++) {
           const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           
           const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
-          const taskDate = workDays[dayCounter + day - 1];
+          const taskDate = allWorkDays[globalDayIndex];
           
           tasksToCreate.push({
             taskId: taskId,
@@ -438,9 +447,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             finishTime: null,
             notes: null
           });
+          
+          globalDayIndex++;
         }
-        
-        dayCounter += group.days;
       });
 
       // Create all tasks
