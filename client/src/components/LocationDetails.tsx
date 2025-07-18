@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
@@ -14,6 +16,9 @@ interface LocationDetailsProps {
 }
 
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
+  const [selectedCostCode, setSelectedCostCode] = useState<string | null>(null);
+  const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
+
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
     staleTime: 30000,
@@ -73,6 +78,36 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Calculate progress
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+
+  // Calculate cost code summaries
+  const costCodeSummaries = budgetItems.reduce((acc: any, item: any) => {
+    const costCode = item.costCode || 'UNCATEGORIZED';
+    if (!acc[costCode]) {
+      acc[costCode] = {
+        costCode,
+        totalBudget: 0,
+        totalSpent: 0,
+        items: [],
+        itemCount: 0
+      };
+    }
+    acc[costCode].totalBudget += parseFloat(item.budgetTotal) || 0;
+    acc[costCode].totalSpent += parseFloat(item.billing) || 0;
+    acc[costCode].items.push(item);
+    acc[costCode].itemCount++;
+    return acc;
+  }, {});
+
+  const costCodeArray = Object.values(costCodeSummaries);
+
+  // Handle cost code card click
+  const handleCostCodeClick = (costCode: string) => {
+    setSelectedCostCode(costCode);
+    setShowCostCodeDialog(true);
+  };
+
+  // Get items for selected cost code
+  const selectedCostCodeItems = selectedCostCode ? costCodeSummaries[selectedCostCode]?.items || [] : [];
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -178,7 +213,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Overall Budget Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <p className="text-sm text-blue-600 font-medium">Total Budget</p>
@@ -193,29 +229,64 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                     <p className="text-2xl font-bold text-green-800">${remainingBudget.toLocaleString()}</p>
                   </div>
                 </div>
-                
-                <div className="mt-6">
+
+                {/* Cost Code Summary Cards */}
+                <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium">Budget Items</h4>
+                    <h4 className="font-medium">Cost Code Summary</h4>
                     <Link href={`/budgets?locationId=${location.id}`}>
                       <Button variant="outline" size="sm">
                         View Full Budget
                       </Button>
                     </Link>
                   </div>
-                  <div className="space-y-2">
-                    {budgetItems.slice(0, 5).map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{item.lineItemName}</p>
-                          <p className="text-sm text-gray-600">{item.costCode}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">${parseFloat(item.budgetTotal).toLocaleString()}</p>
-                          <p className="text-sm text-gray-600">${parseFloat(item.billing).toLocaleString()} spent</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {costCodeArray.map((summary: any) => {
+                      const remaining = summary.totalBudget - summary.totalSpent;
+                      const spentPercentage = summary.totalBudget > 0 ? (summary.totalSpent / summary.totalBudget) * 100 : 0;
+                      
+                      return (
+                        <Card 
+                          key={summary.costCode} 
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleCostCodeClick(summary.costCode)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge variant="outline" className="font-medium">
+                                {summary.costCode}
+                              </Badge>
+                              <span className="text-sm text-gray-600">
+                                {summary.itemCount} items
+                              </span>
+                            </div>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Budget:</span>
+                                <span className="font-medium">${summary.totalBudget.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Spent:</span>
+                                <span className="font-medium text-red-600">${summary.totalSpent.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Remaining:</span>
+                                <span className={`font-medium ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  ${remaining.toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="mt-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-gray-500">Progress</span>
+                                  <span className="text-xs text-gray-500">{Math.round(spentPercentage)}%</span>
+                                </div>
+                                <Progress value={Math.min(spentPercentage, 100)} className="h-2" />
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -290,6 +361,122 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </CardContent>
         </Card>
       </main>
+
+      {/* Cost Code Dialog */}
+      <Dialog open={showCostCodeDialog} onOpenChange={setShowCostCodeDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge variant="outline">{selectedCostCode}</Badge>
+              Cost Code Details
+              <span className="text-sm text-gray-500 font-normal">
+                ({selectedCostCodeItems.length} items)
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedCostCode && (
+            <div className="space-y-4">
+              {/* Cost Code Summary */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="text-sm text-gray-600">Total Budget</p>
+                  <p className="text-lg font-bold text-blue-600">
+                    ${costCodeSummaries[selectedCostCode]?.totalBudget.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Spent</p>
+                  <p className="text-lg font-bold text-red-600">
+                    ${costCodeSummaries[selectedCostCode]?.totalSpent.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Remaining</p>
+                  <p className={`text-lg font-bold ${
+                    (costCodeSummaries[selectedCostCode]?.totalBudget - costCodeSummaries[selectedCostCode]?.totalSpent) >= 0 
+                      ? 'text-green-600' 
+                      : 'text-red-600'
+                  }`}>
+                    ${(costCodeSummaries[selectedCostCode]?.totalBudget - costCodeSummaries[selectedCostCode]?.totalSpent).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Progress</p>
+                  <p className="text-lg font-bold text-purple-600">
+                    {Math.round((costCodeSummaries[selectedCostCode]?.totalSpent / costCodeSummaries[selectedCostCode]?.totalBudget) * 100)}%
+                  </p>
+                </div>
+              </div>
+
+              {/* Line Items Table */}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-20">Line #</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
+                      <TableHead className="text-right">Unit Cost</TableHead>
+                      <TableHead className="text-right">Budget Total</TableHead>
+                      <TableHead className="text-right">Spent</TableHead>
+                      <TableHead className="text-right">Remaining</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedCostCodeItems.map((item: any) => {
+                      const budgetTotal = parseFloat(item.budgetTotal) || 0;
+                      const spent = parseFloat(item.billing) || 0;
+                      const remaining = budgetTotal - spent;
+                      const spentPercentage = budgetTotal > 0 ? (spent / budgetTotal) * 100 : 0;
+                      
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.lineItemName}</p>
+                              {item.notes && (
+                                <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {item.convertedQty} {item.convertedUnitOfMeasure}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${parseFloat(item.unitCost).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            ${budgetTotal.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right text-red-600">
+                            ${spent.toLocaleString()}
+                          </TableCell>
+                          <TableCell className={`text-right font-medium ${
+                            remaining >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            ${remaining.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant={spentPercentage >= 100 ? "destructive" : spentPercentage >= 80 ? "secondary" : "outline"}
+                              className="text-xs"
+                            >
+                              {Math.round(spentPercentage)}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
