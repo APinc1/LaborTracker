@@ -41,9 +41,10 @@ const ProtectedNavLink = ({
 
 interface SidebarProps {
   onLogout?: () => void;
+  user?: any;
 }
 
-export default function Sidebar({ onLogout }: SidebarProps) {
+export default function Sidebar({ onLogout, user }: SidebarProps) {
   const [location] = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -146,8 +147,8 @@ export default function Sidebar({ onLogout }: SidebarProps) {
             <User className="text-sidebar-foreground" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium">John Smith</p>
-            <p className="text-xs text-muted-foreground">Superintendent</p>
+            <p className="text-sm font-medium">{user?.name || "Unknown User"}</p>
+            <p className="text-xs text-muted-foreground">{user?.role || "No Role"}</p>
           </div>
           <Button
             variant="ghost"

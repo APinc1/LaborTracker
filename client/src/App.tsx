@@ -99,7 +99,7 @@ function App() {
               isFirstLogin={true}
             />
           ) : (
-            <Layout onLogout={handleLogout}>
+            <Layout onLogout={handleLogout} user={user}>
               <Router />
             </Layout>
           )}
