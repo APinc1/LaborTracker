@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
@@ -305,6 +305,20 @@ export default function BudgetManagement() {
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
+    staleTime: 30000,
+  });
+
+  // Fetch current location details for breadcrumbs
+  const { data: currentLocation, isLoading: locationLoading } = useQuery({
+    queryKey: ["/api/locations", selectedLocation],
+    enabled: !!selectedLocation,
+    staleTime: 30000,
+  });
+
+  // Fetch current project details for breadcrumbs
+  const { data: currentProject, isLoading: projectLoading } = useQuery({
+    queryKey: ["/api/projects", currentLocation?.projectId],
+    enabled: !!currentLocation?.projectId,
     staleTime: 30000,
   });
 
@@ -847,6 +861,44 @@ export default function BudgetManagement() {
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="bg-card border-b border-border px-6 py-4">
+        {/* Breadcrumb Navigation */}
+        {currentLocation && currentProject && (
+          <div className="mb-4">
+            <nav className="flex items-center space-x-2 text-sm text-gray-600">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/")}
+                className="p-1 h-auto hover:bg-gray-100"
+              >
+                <Home className="w-4 h-4" />
+              </Button>
+              <span>/</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation(`/projects/${currentProject.projectId}`)}
+                className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+              >
+                <Building2 className="w-4 h-4 mr-1" />
+                {currentProject.name}
+              </Button>
+              <span>/</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
+                className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+              >
+                <MapPin className="w-4 h-4 mr-1" />
+                {currentLocation.name}
+              </Button>
+              <span>/</span>
+              <span className="text-gray-900 font-medium">Budget</span>
+            </nav>
+          </div>
+        )}
+        
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-strong">Budget Management</h2>
