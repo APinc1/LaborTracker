@@ -296,21 +296,22 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Helper function to skip weekends
   const addWorkdays = (startDate: Date, totalDays: number): Date[] => {
     const dates: Date[] = [];
-    const current = new Date(startDate);
+    const current = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
     
     console.log('addWorkdays - startDate:', startDate, 'totalDays:', totalDays);
+    console.log('Starting from date:', current, 'Day of week:', current.getDay());
     
     while (dates.length < totalDays) {
       const dayOfWeek = current.getDay();
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         dates.push(new Date(current));
-        console.log('Added workday:', new Date(current));
+        console.log('Added workday:', new Date(current), 'Day of week:', dayOfWeek);
       }
       current.setDate(current.getDate() + 1);
     }
     
-    console.log('Generated workdays:', dates);
+    console.log('Final generated workdays:', dates);
     return dates;
   };
 
@@ -329,8 +330,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
 
       console.log('Start date input:', startDate);
-      let currentDate = new Date(startDate + 'T00:00:00'); // Add time to avoid timezone issues
-      console.log('Parsed start date:', currentDate);
+      // Parse start date more carefully to avoid timezone shifts
+      const [year, month, day] = startDate.split('-').map(Number);
+      let currentDate = new Date(year, month - 1, day); // month is 0-indexed
+      console.log('Parsed start date:', currentDate, 'Day of week:', currentDate.getDay());
       const tasksToCreate = [];
 
       // Group cost codes by task type and calculate days needed
@@ -454,7 +457,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       const totalDaysNeeded = Object.values(taskGroups).reduce((sum: number, group: any) => sum + group.days, 0);
       
       // Generate all workdays first
-      const allWorkDays = addWorkdays(new Date(startDate + 'T00:00:00'), totalDaysNeeded);
+      const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+      const startDateObj = new Date(startYear, startMonth - 1, startDay);
+      const allWorkDays = addWorkdays(startDateObj, totalDaysNeeded);
       
       // Create tasks in proper order
       const orderedTaskTypes = taskTypeOrder.filter(type => taskGroups[type]);
@@ -802,7 +807,38 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {tasks.map((task: any) => (
+                {tasks
+                  .sort((a: any, b: any) => {
+                    // First sort by date
+                    const dateA = new Date(a.taskDate);
+                    const dateB = new Date(b.taskDate);
+                    if (dateA.getTime() !== dateB.getTime()) {
+                      return dateA.getTime() - dateB.getTime();
+                    }
+                    
+                    // Then sort by task type order
+                    const taskTypeOrder = [
+                      'Traffic Control',
+                      'Demo/Ex + Base/Grading',
+                      'Demo/Ex', 
+                      'Base/Grading',
+                      'Form + Pour',
+                      'Form',
+                      'Pour', 
+                      'Asphalt',
+                      'General Labor',
+                      'Landscaping',
+                      'Utility Adjustment',
+                      'Punchlist Demo',
+                      'Punchlist Concrete',
+                      'Punchlist General Labor'
+                    ];
+                    
+                    const indexA = taskTypeOrder.indexOf(a.taskType);
+                    const indexB = taskTypeOrder.indexOf(b.taskType);
+                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                  })
+                  .map((task: any) => (
                   <Card key={task.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
