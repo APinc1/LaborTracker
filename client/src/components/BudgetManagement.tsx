@@ -1412,7 +1412,10 @@ export default function BudgetManagement() {
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
                             <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-3 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-3 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '104px', top: '0px'}}>Description</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-3 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '104px', top: '0px'}}>
+                              Description
+                            </th>
+
                             <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Cost Code</th>
                             <th className="w-16 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit</th>
                             <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Qty</th>
@@ -1467,7 +1470,8 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className={`max-w-60 sticky border-r z-10 py-2 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '104px'}} title={item.lineItemName}>
+                                <td className="min-w-60 sticky left-[104px] bg-gray-100 border-r z-10 px-3 py-2">
+                                    <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`} title={item.lineItemName}>
                                   <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
