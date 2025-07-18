@@ -437,10 +437,24 @@ export class MemStorage implements IStorage {
     
     const updated = { ...existing, ...userData };
     this.users.set(id, updated);
+    
+    // Sync with linked employee if exists
+    const linkedEmployee = Array.from(this.employees.values()).find(emp => emp.userId === id);
+    if (linkedEmployee) {
+      await this.syncUserToEmployee(updated, linkedEmployee.id);
+    }
+    
     return updated;
   }
 
   async deleteUser(id: number): Promise<boolean> {
+    // Find and unlink any linked employee before deleting
+    const linkedEmployee = Array.from(this.employees.values()).find(emp => emp.userId === id);
+    if (linkedEmployee) {
+      const updated = { ...linkedEmployee, userId: null };
+      this.employees.set(linkedEmployee.id, updated);
+    }
+    
     return this.users.delete(id);
   }
 
@@ -662,10 +676,23 @@ export class MemStorage implements IStorage {
     if (!existing) throw new Error('Employee not found');
     const updated = { ...existing, ...updateEmployee };
     this.employees.set(id, updated);
+    
+    // Sync with linked user if exists
+    if (updated.userId) {
+      await this.syncEmployeeToUser(updated, updated.userId);
+    }
+    
     return updated;
   }
 
   async deleteEmployee(id: number): Promise<void> {
+    const employee = this.employees.get(id);
+    
+    // Delete linked user account if exists
+    if (employee?.userId) {
+      this.users.delete(employee.userId);
+    }
+    
     this.employees.delete(id);
   }
 
@@ -689,6 +716,35 @@ export class MemStorage implements IStorage {
     this.employees.set(employeeId, updatedEmployee);
 
     return { user, employee: updatedEmployee };
+  }
+
+  // Sync helper methods for bidirectional updates
+  private async syncEmployeeToUser(employee: Employee, userId: number): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+
+    // Update user with employee data (excluding password and auth-specific fields)
+    const updatedUser = {
+      ...user,
+      name: employee.name,
+      email: employee.email || user.email,
+      phone: employee.phone || user.phone
+    };
+    this.users.set(userId, updatedUser);
+  }
+
+  private async syncUserToEmployee(user: User, employeeId: number): Promise<void> {
+    const employee = this.employees.get(employeeId);
+    if (!employee) return;
+
+    // Update employee with user data (excluding employee-specific fields)
+    const updatedEmployee = {
+      ...employee,
+      name: user.name,
+      email: user.email || employee.email,
+      phone: user.phone || employee.phone
+    };
+    this.employees.set(employeeId, updatedEmployee);
   }
 
   // Task methods
