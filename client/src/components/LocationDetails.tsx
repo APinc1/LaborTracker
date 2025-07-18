@@ -21,12 +21,27 @@ interface LocationDetailsProps {
 }
 
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
+  // Safe date formatting helper
+  const safeFormatDate = (date: Date | string | number, formatStr: string = 'yyyy-MM-dd'): string => {
+    try {
+      const dateObj = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
+      if (!dateObj || isNaN(dateObj.getTime())) {
+        console.warn('Invalid date provided to safeFormatDate:', date);
+        return '2025-07-16';
+      }
+      return format(dateObj, formatStr);
+    } catch (error) {
+      console.error('Error formatting date:', date, error);
+      return '2025-07-16';
+    }
+  };
+
   const [selectedCostCode, setSelectedCostCode] = useState<string | null>(null);
   const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [locationPath, setLocationPath] = useLocation();
   const [showGenerateTasksDialog, setShowGenerateTasksDialog] = useState(false);
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(() => safeFormatDate(new Date()));
   const [combineFormPour, setCombineFormPour] = useState(false);
   const [combineDemoBase, setCombineDemoBase] = useState(false);
   const { toast } = useToast();
@@ -306,12 +321,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       // Skip weekends (0 = Sunday, 6 = Saturday)
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         dates.push(new Date(current.getFullYear(), current.getMonth(), current.getDate()));
-        console.log('Added workday:', format(new Date(current), 'yyyy-MM-dd'), 'Day of week:', dayOfWeek);
+        console.log('Added workday:', safeFormatDate(new Date(current)), 'Day of week:', dayOfWeek);
       }
       current.setDate(current.getDate() + 1);
     }
     
-    console.log('Final generated workdays:', dates.map(d => format(d, 'yyyy-MM-dd')));
+    console.log('Final generated workdays:', dates.map(d => safeFormatDate(d)));
     return dates;
   };
 
@@ -508,9 +523,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               taskId: taskId,
               name: taskName,
               taskType: taskType,
-              taskDate: format(taskDate, 'yyyy-MM-dd'),
-              startDate: format(taskDate, 'yyyy-MM-dd'),
-              finishDate: format(taskDate, 'yyyy-MM-dd'),
+              taskDate: safeFormatDate(taskDate),
+              startDate: safeFormatDate(taskDate),
+              finishDate: safeFormatDate(taskDate),
               costCode: group.costCodes[0].costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
@@ -565,9 +580,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             taskId: taskId,
             name: taskName,
             taskType: taskType,
-            taskDate: format(taskDate, 'yyyy-MM-dd'),
-            startDate: format(taskDate, 'yyyy-MM-dd'),
-            finishDate: format(taskDate, 'yyyy-MM-dd'),
+            taskDate: safeFormatDate(taskDate),
+            startDate: safeFormatDate(taskDate),
+            finishDate: safeFormatDate(taskDate),
             costCode: group.costCodes[0].costCode,
             workDescription: workDescription,
             scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
@@ -598,9 +613,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               taskId: taskId,
               name: taskName,
               taskType: taskType,
-              taskDate: format(taskDate, 'yyyy-MM-dd'),
-              startDate: format(taskDate, 'yyyy-MM-dd'),
-              finishDate: format(taskDate, 'yyyy-MM-dd'),
+              taskDate: safeFormatDate(taskDate),
+              startDate: safeFormatDate(taskDate),
+              finishDate: safeFormatDate(taskDate),
               costCode: group.costCodes[0].costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
@@ -632,9 +647,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               taskId: taskId,
               name: taskName,
               taskType: taskType,
-              taskDate: format(taskDate, 'yyyy-MM-dd'),
-              startDate: format(taskDate, 'yyyy-MM-dd'),
-              finishDate: format(taskDate, 'yyyy-MM-dd'),
+              taskDate: safeFormatDate(taskDate),
+              startDate: safeFormatDate(taskDate),
+              finishDate: safeFormatDate(taskDate),
               costCode: group.costCodes[0].costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
