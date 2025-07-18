@@ -704,7 +704,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       
       toast({
         title: "Tasks generated successfully",
-        description: `Created ${tasksToCreate.length} tasks starting from ${format(new Date(startDate), 'MMM d, yyyy')}`
+        description: `Created ${tasksToCreate.length} tasks starting from ${safeFormatDate(startDate, 'MMM d, yyyy')}`
       });
       
       setShowGenerateTasksDialog(false);
@@ -1023,7 +1023,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             <Badge variant="outline">{task.taskType}</Badge>
                             <div className="flex items-center gap-1 text-sm text-gray-600">
                               <Calendar className="w-4 h-4" />
-                              <span>{format(new Date(task.taskDate), 'MMM d, yyyy')}</span>
+                              <span>{safeFormatDate(task.taskDate, 'MMM d, yyyy')}</span>
                             </div>
                             <div className="flex items-center gap-1 text-sm text-gray-600">
                               <Clock className="w-4 h-4" />
