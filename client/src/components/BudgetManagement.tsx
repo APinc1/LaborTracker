@@ -77,6 +77,13 @@ export default function BudgetManagement() {
       setIsDirectAccess(true);
     }
   }, []);
+  
+  // Auto-set project when accessing via direct location access
+  useEffect(() => {
+    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
+      setSelectedProject(currentLocation.projectId.toString());
+    }
+  }, [isDirectAccess, currentLocation, selectedProject]);
 
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
@@ -317,13 +324,6 @@ export default function BudgetManagement() {
     enabled: !!selectedLocation,
     staleTime: 30000,
   });
-  
-  // Auto-set project when accessing via direct location access
-  useEffect(() => {
-    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
-      setSelectedProject(currentLocation.projectId.toString());
-    }
-  }, [isDirectAccess, currentLocation, selectedProject]);
 
   // Fetch current project details for breadcrumbs
   const { data: currentProject, isLoading: projectLoading } = useQuery({
@@ -1411,29 +1411,27 @@ export default function BudgetManagement() {
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
-                            <th className="w-20 sticky left-0 top-0 bg-gray-100 z-20 px-2 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-2 py-2 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>
-                              Description
-                            </th>
-                            <th className="w-20 sticky top-0 bg-gray-50 px-2 py-2 text-left font-medium text-gray-900">Cost Code</th>
-                            <th className="w-16 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Qty</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit Cost</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Unit Total</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Conv. UM</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Conv. Qty</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">PX</th>
-                            <th className="w-20 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Hours</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Labor Cost</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Equipment</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Trucking</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Dump Fees</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Material</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Sub</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Budget</th>
-                            <th className="w-24 sticky top-0 bg-gray-50 px-3 py-2 text-left font-medium text-gray-900">Billings</th>
+                            <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                            <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
+                            <th className="w-16 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Qty</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">PX</th>
+                            <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Hours</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Equipment</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Trucking</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Dump Fees</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Material</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Sub</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Budget</th>
+                            <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Billings</th>
                             {isEditMode && (
-                              <th className="w-16 sticky right-0 top-0 bg-gray-100 z-20 border-l px-3 py-2 text-left font-medium text-gray-900">Delete</th>
+                              <th className="w-16 sticky right-0 top-0 bg-gray-100 z-20 border-l px-4 py-3 text-left font-medium text-gray-900">Delete</th>
                             )}
                           </tr>
                         </thead>
@@ -1450,7 +1448,7 @@ export default function BudgetManagement() {
                             
                             return (
                               <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
-                                <td className={`font-medium sticky left-0 z-10 px-2 py-2 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
+                                <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
                                       <Button
@@ -1469,16 +1467,16 @@ export default function BudgetManagement() {
                                     {item.lineItemNumber}
                                   </div>
                                 </td>
-                                <td className="min-w-60 sticky left-[80px] bg-gray-100 border-r z-10 px-2 py-2">
-                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`} title={item.lineItemName}>
+                                <td className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '80px'}} title={item.lineItemName}>
+                                  <div className={`${isChild ? 'pl-4' : ''} ${isParent ? 'font-semibold' : ''}`}>
                                     {item.lineItemName}
                                   </div>
                                 </td>
-                                <td className="px-2 py-2">
+                                <td className="px-4 py-3">
                                   {item.costCode || '-'}
                                 </td>
-                                <td className="py-2">{item.unconvertedUnitOfMeasure}</td>
-                                <td className="py-2">
+                                <td className="px-4 py-3">{item.unconvertedUnitOfMeasure}</td>
+                                <td className="px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium text-right w-20 inline-block">
                                       {formatNumber(getInputValue(item.id, 'unconvertedQty', getParentQuantitySum(item).toString()))}
@@ -1538,14 +1536,14 @@ export default function BudgetManagement() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.unitCost)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.unitTotal)}
                                 </td>
-                                <td className="py-2">{item.convertedUnitOfMeasure || '-'}</td>
-                                <td className="text-right py-2">
+                                <td className="px-4 py-3">{item.convertedUnitOfMeasure || '-'}</td>
+                                <td className="text-right px-4 py-3">
                                   {isParent && hasChildren(item) ? (
                                     <span className="text-gray-600 font-medium">
                                       {formatNumber(getInputValue(item.id, 'convertedQty', getParentQuantitySum(item).toString()))}
@@ -1554,7 +1552,7 @@ export default function BudgetManagement() {
                                     formatNumber(getInputValue(item.id, 'convertedQty', item.convertedQty))
                                   )}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {isEditMode ? (
                                     <Input
                                       type="number"
@@ -1612,7 +1610,7 @@ export default function BudgetManagement() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {isEditMode ? (
                                     <Input
                                       type="number"
@@ -1704,32 +1702,32 @@ export default function BudgetManagement() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.laborCost || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.equipmentCost || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.truckingCost || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.dumpFeesCost || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.materialCost || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.subcontractorCost || 0)}
                                 </td>
                                 <td className="text-right font-medium">
                                   {formatCurrency(item.budgetTotal || 0)}
                                 </td>
-                                <td className="text-right py-2">
+                                <td className="text-right px-4 py-3">
                                   {formatCurrency(item.billing || 0)}
                                 </td>
                                 {isEditMode && (
-                                  <td className={`sticky right-0 z-10 border-l border-gray-200 py-2 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`}>
+                                  <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`}>
                                     <Button 
                                       variant="ghost" 
                                       size="sm" 
