@@ -19,6 +19,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedCostCode, setSelectedCostCode] = useState<string | null>(null);
   const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
 
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
@@ -310,11 +311,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium">Cost Code Summary</h4>
-                    <Link href={`/budgets?locationId=${location.id}`}>
-                      <Button variant="outline" size="sm">
-                        View Full Budget
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowBudgetDialog(true)}
+                    >
+                      View Full Budget
+                    </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {costCodeArray.map((summary: any) => {
@@ -441,6 +444,126 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </CardContent>
         </Card>
       </main>
+
+      {/* Budget Management Dialog */}
+      <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5" />
+              Budget Management - {location?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-[calc(95vh-120px)] overflow-y-auto p-4">
+            {budgetLoading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Budget Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="text-sm text-gray-600">Total Items</p>
+                    <p className="text-2xl font-bold text-blue-600">{budgetItems.length}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Total Budget Hours</p>
+                    <p className="text-2xl font-bold text-green-600">{totalBudgetHours.toLocaleString()} hrs</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Actual Hours</p>
+                    <p className="text-2xl font-bold text-orange-600">{totalActualHours.toLocaleString()} hrs</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Remaining Hours</p>
+                    <p className={`text-2xl font-bold ${remainingHours >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {remainingHours.toLocaleString()} hrs
+                    </p>
+                  </div>
+                </div>
+
+                {/* Budget Table */}
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-gray-100 border-b z-10">
+                        <tr>
+                          <th className="text-left p-3 font-medium text-gray-900 w-20">Line #</th>
+                          <th className="text-left p-3 font-medium text-gray-900">Description</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Qty</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Unit Cost</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Budget Total</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Hours</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Actual Hours</th>
+                          <th className="text-right p-3 font-medium text-gray-900">Cost Code</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {budgetItems.map((item: any, index: number) => {
+                          const budgetTotal = parseFloat(item.budgetTotal) || 0;
+                          const hours = parseFloat(item.hours) || 0;
+                          const actualHours = parseFloat(item.actualHours) || 0;
+                          const isParent = budgetItems.some((child: any) => 
+                            child.lineItemNumber && 
+                            child.lineItemNumber.startsWith(item.lineItemNumber + ".") &&
+                            child.lineItemNumber !== item.lineItemNumber
+                          );
+                          
+                          return (
+                            <tr key={item.id} className={`border-b hover:bg-gray-50 ${
+                              item.lineItemNumber && item.lineItemNumber.includes('.') ? 'bg-gray-25' : ''
+                            }`}>
+                              <td className="p-3 font-medium">
+                                <div className="flex items-center gap-2">
+                                  {isParent && (
+                                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                                  )}
+                                  <span className={item.lineItemNumber && item.lineItemNumber.includes('.') ? 'pl-4' : ''}>
+                                    {item.lineItemNumber}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div>
+                                  <p className="font-medium">{item.lineItemName}</p>
+                                  {item.notes && (
+                                    <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-right">
+                                {parseFloat(item.convertedQty || 0).toLocaleString()} {item.convertedUnitOfMeasure}
+                              </td>
+                              <td className="p-3 text-right">
+                                ${parseFloat(item.unitCost || 0).toLocaleString()}
+                              </td>
+                              <td className="p-3 text-right font-medium">
+                                ${budgetTotal.toLocaleString()}
+                              </td>
+                              <td className="p-3 text-right">
+                                {hours.toLocaleString()} hrs
+                              </td>
+                              <td className="p-3 text-right text-blue-600">
+                                {actualHours.toLocaleString()} hrs
+                              </td>
+                              <td className="p-3 text-center">
+                                <Badge variant="outline">{item.costCode}</Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Cost Code Dialog */}
       <Dialog open={showCostCodeDialog} onOpenChange={setShowCostCodeDialog}>
