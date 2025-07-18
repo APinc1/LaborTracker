@@ -50,8 +50,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   });
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/locations", locationId, "tasks"],
-    enabled: !!locationId,
+    queryKey: ["/api/locations", location?.locationId || locationId, "tasks"],
+    enabled: !!(location?.locationId || locationId),
     staleTime: 30000,
   });
 
@@ -388,16 +388,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(task)
         });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to create task: ${response.status}`);
+        }
+        
         const result = await response.json();
         console.log('Task created:', result);
         return result;
       });
 
-      await Promise.all(createPromises);
+      const results = await Promise.all(createPromises);
+      console.log('All tasks created successfully:', results.length);
+      
+      // Add a small delay to ensure tasks are properly saved
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Refresh tasks data
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId, "tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
       
       toast({
         title: "Tasks generated successfully",
@@ -407,9 +415,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       setShowGenerateTasksDialog(false);
     } catch (error) {
       console.error('Error generating tasks:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Error generating tasks",
-        description: "An error occurred while creating tasks. Please try again.",
+        description: `Failed to create tasks: ${errorMessage}. Please try again.`,
         variant: "destructive"
       });
     }
