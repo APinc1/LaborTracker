@@ -7,9 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2 } from "lucide-react";
 import { format } from "date-fns";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -19,9 +19,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedCostCode, setSelectedCostCode] = useState<string | null>(null);
   const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [locationPath, setLocationPath] = useLocation();
 
   const { data: location, isLoading: locationLoading } = useQuery({
     queryKey: ["/api/locations", locationId],
+    staleTime: 30000,
+  });
+
+  // Fetch project details for breadcrumb navigation
+  const { data: project, isLoading: projectLoading } = useQuery({
+    queryKey: ["/api/projects", location?.projectId],
+    enabled: !!location?.projectId,
     staleTime: 30000,
   });
 
@@ -186,6 +194,49 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-4">
+          <nav className="flex items-center space-x-2 text-sm text-gray-600">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocationPath("/")}
+              className="p-1 h-auto hover:bg-gray-100"
+            >
+              <Home className="w-4 h-4" />
+            </Button>
+            <span>/</span>
+            
+            {project ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocationPath(`/projects/${project.projectId}`)}
+                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+                >
+                  <Building2 className="w-4 h-4 mr-1" />
+                  {project.name}
+                </Button>
+                <span>/</span>
+              </>
+            ) : (
+              <>
+                <span className="text-gray-400">
+                  <Building2 className="w-4 h-4 mr-1 inline" />
+                  Project
+                </span>
+                <span>/</span>
+              </>
+            )}
+            
+            <span className="text-gray-900 font-medium">
+              <MapPin className="w-4 h-4 mr-1 inline" />
+              {location?.name || 'Location'}
+            </span>
+          </nav>
+        </div>
+        
         <div className="flex items-center gap-4">
           <Link href="/locations">
             <Button variant="ghost" size="sm">

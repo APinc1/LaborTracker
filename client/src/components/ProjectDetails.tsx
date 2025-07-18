@@ -4,15 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2 } from "lucide-react";
 import { format } from "date-fns";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 interface ProjectDetailsProps {
   projectId: string;
 }
 
 export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
+  const [location, setLocation] = useLocation();
+  
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["/api/projects", projectId],
     staleTime: 30000,
@@ -60,6 +62,25 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="bg-white border-b border-gray-200 px-6 py-4">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-4">
+          <nav className="flex items-center space-x-2 text-sm text-gray-600">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLocation("/")}
+              className="p-1 h-auto hover:bg-gray-100"
+            >
+              <Home className="w-4 h-4" />
+            </Button>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">
+              <Building2 className="w-4 h-4 mr-1 inline" />
+              {project?.name || 'Project'}
+            </span>
+          </nav>
+        </div>
+        
         <div className="flex items-center gap-4">
           <Link href="/projects">
             <Button variant="ghost" size="sm">
