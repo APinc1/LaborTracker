@@ -36,7 +36,10 @@ export default function ProjectManagement() {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', '/api/projects', data);
+      const response = await apiRequest('/api/projects', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -55,7 +58,10 @@ export default function ProjectManagement() {
 
   const updateProjectMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await apiRequest('PUT', `/api/projects/${id}`, data);
+      const response = await apiRequest(`/api/projects/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -74,7 +80,9 @@ export default function ProjectManagement() {
 
   const deleteProjectMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/projects/${id}`);
+      await apiRequest(`/api/projects/${id}`, {
+        method: 'DELETE',
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
