@@ -13,6 +13,7 @@ import LocationManagement from "@/components/LocationManagement";
 import ScheduleManagement from "@/components/ScheduleManagement";
 import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
+import UserManagement from "@/components/UserManagement";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/schedule" component={ScheduleManagement} />
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />
+      <Route path="/users" component={UserManagement} />
       <Route component={NotFound} />
     </Switch>
   );

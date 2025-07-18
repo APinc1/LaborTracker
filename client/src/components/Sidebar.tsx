@@ -63,6 +63,7 @@ export default function Sidebar() {
       icon: CheckSquare,
       key: "assignments",
     },
+    { name: "Users", href: "/users", icon: User, key: "users" },
   ];
 
   const isActive = (key: string) => {

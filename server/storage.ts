@@ -14,6 +14,8 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Project methods
   getProjects(): Promise<Project[]>;
@@ -105,6 +107,33 @@ export class MemStorage implements IStorage {
       email: "admin@buildtracker.com",
       phone: "(555) 123-4567",
       role: "Superintendent"
+    });
+
+    const projectManager = await this.createUser({
+      username: "pmgr",
+      password: "password",
+      name: "Maria Rodriguez",
+      email: "maria@buildtracker.com",
+      phone: "(555) 234-5678",
+      role: "Project Manager"
+    });
+
+    const superintendent = await this.createUser({
+      username: "super",
+      password: "password",
+      name: "David Johnson",
+      email: "david@buildtracker.com",
+      phone: "(555) 345-6789",
+      role: "Superintendent"
+    });
+
+    const foreman = await this.createUser({
+      username: "foreman",
+      password: "password",
+      name: "Carlos Martinez",
+      email: "carlos@buildtracker.com",
+      phone: "(555) 456-7890",
+      role: "Foreman"
     });
 
     // Create sample crews
@@ -344,6 +373,25 @@ export class MemStorage implements IStorage {
     };
     this.users.set(id, user);
     return user;
+  }
+
+  async updateUser(id: number, updateUser: Partial<InsertUser>): Promise<User> {
+    const existing = this.users.get(id);
+    if (!existing) throw new Error('User not found');
+    
+    // Don't update password if it's empty (for edit mode)
+    const userData = { ...updateUser };
+    if (userData.password === "") {
+      delete userData.password;
+    }
+    
+    const updated = { ...existing, ...userData };
+    this.users.set(id, updated);
+    return updated;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
   }
 
   // Project methods
@@ -684,6 +732,22 @@ class DatabaseStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const result = await this.db.insert(users).values(insertUser).returning();
     return result[0];
+  }
+
+  async updateUser(id: number, updateUser: Partial<InsertUser>): Promise<User> {
+    // Don't update password if it's empty (for edit mode)
+    const userData = { ...updateUser };
+    if (userData.password === "") {
+      delete userData.password;
+    }
+    
+    const result = await this.db.update(users).set(userData).where(eq(users.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await this.db.delete(users).where(eq(users.id, id));
+    return true;
   }
 
   // Project methods
