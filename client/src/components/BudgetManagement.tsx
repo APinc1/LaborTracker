@@ -1222,7 +1222,21 @@ export default function BudgetManagement() {
           {selectedLocation && (
             <>
               {/* Cost Code Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Cost Code Summary</h3>
+                  {selectedCostCodeFilter !== 'all' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedCostCodeFilter('all')}
+                      className="text-sm"
+                    >
+                      Clear Filter
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {(() => {
                   try {
                     const items = budgetItems as any[];
@@ -1281,13 +1295,24 @@ export default function BudgetManagement() {
                             pxRates[Math.floor(pxRates.length / 2)] : 0;
 
                         return (
-                          <Card key={costCode} className="hover:shadow-md transition-shadow">
+                          <Card 
+                            key={costCode} 
+                            className={`hover:shadow-md transition-all cursor-pointer ${
+                              selectedCostCodeFilter === costCode ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                            }`}
+                            onClick={() => setSelectedCostCodeFilter(costCode)}
+                          >
                             <CardContent className="p-4">
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                   <h3 className="font-semibold text-sm text-gray-900">{costCode}</h3>
                                   <span className="text-xs text-gray-500">{items.length} items</span>
                                 </div>
+                                {selectedCostCodeFilter === costCode && (
+                                  <div className="text-xs text-blue-600 font-medium">
+                                    ✓ Filtering table
+                                  </div>
+                                )}
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   <div>
                                     <p className="text-gray-600">Conv. Qty</p>
@@ -1332,6 +1357,7 @@ export default function BudgetManagement() {
                     );
                   }
                 })()}
+                </div>
               </div>
 
               {/* Budget Items Table */}
