@@ -52,7 +52,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
       }
-      res.json(project);
+      
+      // Resolve superintendent and project manager names
+      let superintendentName = null;
+      let projectManagerName = null;
+      
+      if (project.defaultSuperintendent) {
+        const superintendent = await storage.getUser(project.defaultSuperintendent);
+        superintendentName = superintendent?.name || null;
+      }
+      
+      if (project.defaultProjectManager) {
+        const projectManager = await storage.getUser(project.defaultProjectManager);
+        projectManagerName = projectManager?.name || null;
+      }
+      
+      res.json({
+        ...project,
+        defaultSuperintendent: superintendentName,
+        defaultProjectManager: projectManagerName
+      });
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch project' });
     }
