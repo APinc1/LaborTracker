@@ -212,7 +212,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setLocationPath(`/projects/${project.projectId}`)}
+                  onClick={() => setLocationPath(`/projects/${project.id}`)}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <Building2 className="w-4 h-4 mr-1" />

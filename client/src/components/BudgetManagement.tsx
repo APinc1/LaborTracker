@@ -879,7 +879,7 @@ export default function BudgetManagement() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setLocation(`/projects/${currentProject.projectId}`)}
+                  onClick={() => setLocation(`/projects/${currentProject.id}`)}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
