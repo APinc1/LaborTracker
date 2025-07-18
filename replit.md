@@ -165,6 +165,19 @@ Preferred communication style: Simple, everyday language.
 - ✅ Removed confirmation dialogs and toast notifications for cleaner UX
 - ✅ Removed automatic saving when typing in hours field
 
+### July 18, 2025
+- ✅ Enhanced employee management system with comprehensive field validation
+- ✅ Updated employee types to Core, Freelancer, and Apprentice only
+- ✅ Added apprentice level selection (1, 2, 3) when Apprentice type is selected
+- ✅ Restricted "Is Foreman" checkbox to Core employees only
+- ✅ Added "Is Union" checkbox for all employee types
+- ✅ Implemented three trade dropdown fields: Primary, Secondary, and Tertiary
+- ✅ Trade options: Mason, Formsetter, Laborer, Operator, Driver
+- ✅ Updated employee table to display trades, union status, and apprentice level
+- ✅ Enhanced form validation with conditional field visibility
+- ✅ Added sample employee data with new fields for testing
+- ✅ Expanded dialog size for better form layout with additional fields
+
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
 - By default Hours = Conv Qty × PX

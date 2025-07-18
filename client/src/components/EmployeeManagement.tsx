@@ -136,7 +136,12 @@ export default function EmployeeManagement() {
       phone: '',
       crewId: null,
       employeeType: 'Core',
+      apprenticeLevel: null,
       isForeman: false,
+      isUnion: false,
+      primaryTrade: null,
+      secondaryTrade: null,
+      tertiaryTrade: null,
     },
   });
 
@@ -150,7 +155,12 @@ export default function EmployeeManagement() {
   const onSubmitEmployee = (data: any) => {
     const processedData = {
       ...data,
-      crewId: data.crewId ? parseInt(data.crewId) : null,
+      crewId: data.crewId && data.crewId !== "none" ? parseInt(data.crewId) : null,
+      apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
+      isForeman: data.employeeType === "Core" ? data.isForeman : false,
+      primaryTrade: data.primaryTrade === "none" ? null : data.primaryTrade,
+      secondaryTrade: data.secondaryTrade === "none" ? null : data.secondaryTrade,
+      tertiaryTrade: data.tertiaryTrade === "none" ? null : data.tertiaryTrade,
     };
     
     if (editingEmployee) {
@@ -177,7 +187,12 @@ export default function EmployeeManagement() {
       phone: employee.phone || '',
       crewId: employee.crewId?.toString() || null,
       employeeType: employee.employeeType,
+      apprenticeLevel: employee.apprenticeLevel,
       isForeman: employee.isForeman,
+      isUnion: employee.isUnion,
+      primaryTrade: employee.primaryTrade,
+      secondaryTrade: employee.secondaryTrade,
+      tertiaryTrade: employee.tertiaryTrade,
     });
   };
 
@@ -265,7 +280,7 @@ export default function EmployeeManagement() {
                     Add Employee
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>
                       {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
@@ -342,16 +357,38 @@ export default function EmployeeManagement() {
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="Core">Core</SelectItem>
-                                  <SelectItem value="Foreman">Foreman</SelectItem>
-                                  <SelectItem value="Driver">Driver</SelectItem>
-                                  <SelectItem value="Apprentice">Apprentice</SelectItem>
                                   <SelectItem value="Freelancer">Freelancer</SelectItem>
+                                  <SelectItem value="Apprentice">Apprentice</SelectItem>
                                 </SelectContent>
                               </Select>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
+                        {employeeForm.watch("employeeType") === "Apprentice" && (
+                          <FormField
+                            control={employeeForm.control}
+                            name="apprenticeLevel"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Apprentice Level</FormLabel>
+                                <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value?.toString()}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select level" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="1">Level 1</SelectItem>
+                                    <SelectItem value="2">Level 2</SelectItem>
+                                    <SelectItem value="3">Level 3</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                         <FormField
                           control={employeeForm.control}
                           name="crewId"
@@ -378,23 +415,125 @@ export default function EmployeeManagement() {
                           )}
                         />
                       </div>
-                      <FormField
-                        control={employeeForm.control}
-                        name="isForeman"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>Is Foreman</FormLabel>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <FormField
+                          control={employeeForm.control}
+                          name="primaryTrade"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Primary Trade</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select trade" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="Mason">Mason</SelectItem>
+                                  <SelectItem value="Formsetter">Formsetter</SelectItem>
+                                  <SelectItem value="Laborer">Laborer</SelectItem>
+                                  <SelectItem value="Operator">Operator</SelectItem>
+                                  <SelectItem value="Driver">Driver</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={employeeForm.control}
+                          name="secondaryTrade"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Secondary Trade</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select trade" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="Mason">Mason</SelectItem>
+                                  <SelectItem value="Formsetter">Formsetter</SelectItem>
+                                  <SelectItem value="Laborer">Laborer</SelectItem>
+                                  <SelectItem value="Operator">Operator</SelectItem>
+                                  <SelectItem value="Driver">Driver</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={employeeForm.control}
+                          name="tertiaryTrade"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tertiary Trade</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select trade" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="Mason">Mason</SelectItem>
+                                  <SelectItem value="Formsetter">Formsetter</SelectItem>
+                                  <SelectItem value="Laborer">Laborer</SelectItem>
+                                  <SelectItem value="Operator">Operator</SelectItem>
+                                  <SelectItem value="Driver">Driver</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={employeeForm.control}
+                          name="isForeman"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  disabled={employeeForm.watch("employeeType") !== "Core"}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Is Foreman</FormLabel>
+                                {employeeForm.watch("employeeType") !== "Core" && (
+                                  <p className="text-sm text-muted-foreground">Only Core employees can be foremen</p>
+                                )}
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={employeeForm.control}
+                          name="isUnion"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Is Union</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       <div className="flex justify-end space-x-2">
                         <Button type="button" variant="outline" onClick={() => {
                           setIsCreateEmployeeOpen(false);
@@ -480,16 +619,17 @@ export default function EmployeeManagement() {
                     <TableRow>
                       <TableHead>Employee</TableHead>
                       <TableHead>Type</TableHead>
+                      <TableHead>Trades</TableHead>
                       <TableHead>Crew</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>Foreman</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {employees.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                           No employees found. Add your first employee to get started.
                         </TableCell>
                       </TableRow>
@@ -508,12 +648,38 @@ export default function EmployeeManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={getEmployeeTypeVariant(employee.employeeType)}>
-                              {employee.employeeType}
-                            </Badge>
+                            <div className="space-y-1">
+                              <Badge variant={getEmployeeTypeVariant(employee.employeeType)}>
+                                {employee.employeeType}
+                                {employee.apprenticeLevel && ` L${employee.apprenticeLevel}`}
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {employee.primaryTrade && (
+                                <div className="text-sm font-medium text-gray-700">{employee.primaryTrade}</div>
+                              )}
+                              {employee.secondaryTrade && (
+                                <div className="text-xs text-gray-500">{employee.secondaryTrade}</div>
+                              )}
+                              {employee.tertiaryTrade && (
+                                <div className="text-xs text-gray-500">{employee.tertiaryTrade}</div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <span className="text-gray-600">{getCrewName(employee.crewId)}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {employee.isForeman && (
+                                <Badge variant="secondary" className="text-xs">Foreman</Badge>
+                              )}
+                              {employee.isUnion && (
+                                <Badge variant="outline" className="text-xs">Union</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="space-y-1">
@@ -530,13 +696,6 @@ export default function EmployeeManagement() {
                                 </div>
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {employee.isForeman ? (
-                              <Badge variant="secondary">Yes</Badge>
-                            ) : (
-                              <span className="text-gray-400">No</span>
-                            )}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-1">

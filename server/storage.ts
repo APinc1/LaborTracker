@@ -149,7 +149,12 @@ export class MemStorage implements IStorage {
       phone: "(555) 234-5678",
       crewId: concreteCrew.id,
       employeeType: "Core",
-      isForeman: true
+      apprenticeLevel: null,
+      isForeman: true,
+      isUnion: true,
+      primaryTrade: "Formsetter",
+      secondaryTrade: "Laborer",
+      tertiaryTrade: null
     });
 
     const sarah = await this.createEmployee({
@@ -158,8 +163,13 @@ export class MemStorage implements IStorage {
       email: "sarah@buildtracker.com",
       phone: "(555) 345-6789",
       crewId: demoCrew.id,
-      employeeType: "Foreman",
-      isForeman: true
+      employeeType: "Core",
+      apprenticeLevel: null,
+      isForeman: true,
+      isUnion: false,
+      primaryTrade: "Operator",
+      secondaryTrade: "Driver",
+      tertiaryTrade: null
     });
 
     const tom = await this.createEmployee({
@@ -168,8 +178,28 @@ export class MemStorage implements IStorage {
       email: "tom@buildtracker.com",
       phone: "(555) 456-7890",
       crewId: transportCrew.id,
-      employeeType: "Driver",
-      isForeman: false
+      employeeType: "Freelancer",
+      apprenticeLevel: null,
+      isForeman: false,
+      isUnion: false,
+      primaryTrade: "Driver",
+      secondaryTrade: null,
+      tertiaryTrade: null
+    });
+
+    const apprentice = await this.createEmployee({
+      teamMemberId: "EMP-004",
+      name: "Jake Thompson",
+      email: "jake@buildtracker.com",
+      phone: "(555) 567-8901",
+      crewId: concreteCrew.id,
+      employeeType: "Apprentice",
+      apprenticeLevel: 2,
+      isForeman: false,
+      isUnion: true,
+      primaryTrade: "Mason",
+      secondaryTrade: "Laborer",
+      tertiaryTrade: null
     });
 
     // Create sample projects

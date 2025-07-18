@@ -83,8 +83,13 @@ export const employees = pgTable("employees", {
   email: text("email"),
   phone: text("phone"),
   crewId: integer("crew_id").references(() => crews.id),
-  employeeType: text("employee_type").notNull(), // Driver, Apprentice, Freelancer, Core
-  isForeman: boolean("is_foreman").default(false),
+  employeeType: text("employee_type").notNull(), // Core, Freelancer, Apprentice
+  apprenticeLevel: integer("apprentice_level"), // 1, 2, or 3 (only if employeeType is Apprentice)
+  isForeman: boolean("is_foreman").default(false), // Only available if employeeType is Core
+  isUnion: boolean("is_union").default(false),
+  primaryTrade: text("primary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
+  secondaryTrade: text("secondary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
+  tertiaryTrade: text("tertiary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
 });
 
 export const tasks = pgTable("tasks", {
