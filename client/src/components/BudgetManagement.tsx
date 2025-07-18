@@ -62,7 +62,7 @@ export default function BudgetManagement() {
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [currentRoute, navigate] = useLocation();
+  const [location, setLocation] = useLocation();
   const updateTimeoutRef = useRef<Map<number, NodeJS.Timeout>>(new Map());
   const { setHasUnsavedChanges: setGlobalUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
   
@@ -877,7 +877,7 @@ export default function BudgetManagement() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => setLocation("/")}
               className="p-1 h-auto hover:bg-gray-100"
             >
               <Home className="w-4 h-4" />
@@ -889,7 +889,7 @@ export default function BudgetManagement() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(`/projects/${currentProject.id}`)}
+                  onClick={() => setLocation(`/projects/${currentProject.id}`)}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
@@ -912,7 +912,7 @@ export default function BudgetManagement() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(`/locations/${currentLocation.locationId}`)}
+                  onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <MapPin className="w-4 h-4 mr-1" />
