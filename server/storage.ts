@@ -788,7 +788,6 @@ export class MemStorage implements IStorage {
   // Task methods
   async getTasks(locationId: string | number): Promise<Task[]> {
     return Array.from(this.tasks.values()).filter(task => {
-      // Convert both values to strings for consistent comparison
       return String(task.locationId) === String(locationId);
     });
   }

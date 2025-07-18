@@ -246,7 +246,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <Link href={`/locations/${location.id}`}>
+                          <Link href={`/locations/${location.locationId}`}>
                             <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
                           </Link>
                           <p className="text-gray-600 text-sm mt-1">{location.description}</p>
