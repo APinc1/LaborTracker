@@ -81,15 +81,47 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Calculate budget totals in hours
   const totalBudgetHours = budgetItems.reduce((sum: number, item: any) => {
-    // Only include items without children (leaf nodes)
-    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
-    return hasChildren ? sum : sum + (parseFloat(item.hours) || 0);
+    if (!item) return sum;
+    
+    // Only include items that are either:
+    // 1. Parent items (have children)
+    // 2. Standalone items (no children and not a child)
+    // Skip child items to avoid double counting
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    const hasChildren = budgetItems.some((child: any) => 
+      child.lineItemNumber && child.lineItemNumber.includes('.') && 
+      child.lineItemNumber.split('.')[0] === item.lineItemNumber
+    );
+    
+    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+    if (isParent || (!isChild && !hasChildren)) {
+      return sum + (parseFloat(item.hours) || 0);
+    }
+    
+    return sum;
   }, 0);
   
   const totalActualHours = budgetItems.reduce((sum: number, item: any) => {
-    // Only include items without children (leaf nodes)
-    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
-    return hasChildren ? sum : sum + (parseFloat(item.actualHours) || 0);
+    if (!item) return sum;
+    
+    // Only include items that are either:
+    // 1. Parent items (have children)
+    // 2. Standalone items (no children and not a child)
+    // Skip child items to avoid double counting
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    const hasChildren = budgetItems.some((child: any) => 
+      child.lineItemNumber && child.lineItemNumber.includes('.') && 
+      child.lineItemNumber.split('.')[0] === item.lineItemNumber
+    );
+    
+    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+    if (isParent || (!isChild && !hasChildren)) {
+      return sum + (parseFloat(item.actualHours) || 0);
+    }
+    
+    return sum;
   }, 0);
   
   const remainingHours = totalBudgetHours - totalActualHours;
@@ -113,9 +145,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       };
     }
     
-    // Only include items without children (leaf nodes)
-    const hasChildren = budgetItems.some((child: any) => child.parentId === item.id);
-    if (!hasChildren) {
+    // Only include items that are either:
+    // 1. Parent items (have children)
+    // 2. Standalone items (no children and not a child)
+    // Skip child items to avoid double counting
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    const hasChildren = budgetItems.some((child: any) => 
+      child.lineItemNumber && child.lineItemNumber.includes('.') && 
+      child.lineItemNumber.split('.')[0] === item.lineItemNumber
+    );
+    
+    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+    if (isParent || (!isChild && !hasChildren)) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
       acc[costCode].totalActualHours += parseFloat(item.actualHours) || 0;
       acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
