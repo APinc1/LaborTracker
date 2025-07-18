@@ -133,7 +133,10 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
   endDate: z.string().optional().nullable()
 });
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true });
-export const insertLocationSchema = createInsertSchema(locations).omit({ id: true });
+export const insertLocationSchema = createInsertSchema(locations).omit({ id: true }).extend({
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable()
+});
 export const insertLocationBudgetSchema = createInsertSchema(locationBudgets).omit({ id: true });
 export const insertCrewSchema = createInsertSchema(crews).omit({ id: true });
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true });

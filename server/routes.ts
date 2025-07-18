@@ -247,7 +247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/locations/:id', async (req, res) => {
     try {
-      const location = await storage.getLocation(parseInt(req.params.id));
+      const location = await storage.getLocation(req.params.id);
       if (!location) {
         return res.status(404).json({ error: 'Location not found' });
       }
@@ -278,8 +278,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         projectId: projectId,
         locationId: locationId,
-        // If no start date provided, use current date
-        startDate: req.body.startDate || new Date().toISOString().split('T')[0]
+        // Allow empty dates - user will specify dates manually when needed
+        startDate: req.body.startDate
       };
       
       const validated = insertLocationSchema.parse(locationData);
@@ -299,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/locations/:id', async (req, res) => {
     try {
       const validated = insertLocationSchema.partial().parse(req.body);
-      const location = await storage.updateLocation(parseInt(req.params.id), validated);
+      const location = await storage.updateLocation(req.params.id, validated);
       res.json(location);
     } catch (error) {
       res.status(400).json({ error: 'Invalid location data' });
@@ -308,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/locations/:id', async (req, res) => {
     try {
-      await storage.deleteLocation(parseInt(req.params.id));
+      await storage.deleteLocation(req.params.id);
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete location' });

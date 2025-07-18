@@ -316,8 +316,8 @@ export class MemStorage implements IStorage {
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     const formTask = await this.createTask({
-      taskId: `${northSection.id}_Form_Day1`,
-      locationId: northSection.id,
+      taskId: `${northSection.locationId}_Form_Day1`,
+      locationId: northSection.locationId,
       taskType: "Form",
       name: "Form Day 1 of 3",
       taskDate: today,
@@ -335,8 +335,8 @@ export class MemStorage implements IStorage {
     });
 
     const demoTask = await this.createTask({
-      taskId: `${eastWing.id}_Demo_Day1`,
-      locationId: eastWing.id,
+      taskId: `${eastWing.locationId}_Demo_Day1`,
+      locationId: eastWing.locationId,
       taskType: "Demo/Ex",
       name: "Demo/Ex Base Grade",
       taskDate: today,
@@ -354,8 +354,8 @@ export class MemStorage implements IStorage {
     });
 
     const pourTask = await this.createTask({
-      taskId: `${northSection.id}_Pour_Day1`,
-      locationId: northSection.id,
+      taskId: `${northSection.locationId}_Pour_Day1`,
+      locationId: northSection.locationId,
       taskType: "Pour",
       name: "Pour Concrete",
       taskDate: tomorrow,
@@ -575,7 +575,11 @@ export class MemStorage implements IStorage {
     return Array.from(this.locations.values()).filter(location => location.projectId === projectId);
   }
 
-  async getLocation(id: number): Promise<Location | undefined> {
+  async getLocation(id: string | number): Promise<Location | undefined> {
+    // For string IDs, find by locationId field; for number IDs, find by id field
+    if (typeof id === 'string') {
+      return Array.from(this.locations.values()).find(loc => loc.locationId === id);
+    }
     return this.locations.get(id);
   }
 
@@ -591,16 +595,45 @@ export class MemStorage implements IStorage {
     return location;
   }
 
-  async updateLocation(id: number, updateLocation: Partial<InsertLocation>): Promise<Location> {
-    const existing = this.locations.get(id);
+  async updateLocation(id: string | number, updateLocation: Partial<InsertLocation>): Promise<Location> {
+    let existing: Location | undefined;
+    let locationKey: number;
+    
+    if (typeof id === 'string') {
+      // Find by locationId field
+      for (const [key, loc] of this.locations.entries()) {
+        if (loc.locationId === id) {
+          existing = loc;
+          locationKey = key;
+          break;
+        }
+      }
+    } else {
+      // Find by numeric id
+      existing = this.locations.get(id);
+      locationKey = id;
+    }
+    
     if (!existing) throw new Error('Location not found');
     const updated = { ...existing, ...updateLocation };
-    this.locations.set(id, updated);
+    this.locations.set(locationKey!, updated);
     return updated;
   }
 
-  async deleteLocation(id: number): Promise<void> {
-    this.locations.delete(id);
+  async deleteLocation(id: string | number): Promise<void> {
+    if (typeof id === 'string') {
+      // Find and delete by locationId field
+      for (const [key, loc] of this.locations.entries()) {
+        if (loc.locationId === id) {
+          this.locations.delete(key);
+          return;
+        }
+      }
+      throw new Error('Location not found');
+    } else {
+      // Delete by numeric id
+      this.locations.delete(id);
+    }
   }
 
   // Location budget methods
@@ -754,7 +787,10 @@ export class MemStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: string | number): Promise<Task[]> {
-    return Array.from(this.tasks.values()).filter(task => task.locationId === locationId);
+    return Array.from(this.tasks.values()).filter(task => {
+      // Convert both values to strings for consistent comparison
+      return String(task.locationId) === String(locationId);
+    });
   }
 
   async getTask(id: number): Promise<Task | undefined> {
@@ -1093,7 +1129,7 @@ class DatabaseStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: string | number): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
+    return await this.db.select().from(tasks).where(eq(tasks.locationId, String(locationId)));
   }
 
   async getTask(id: number): Promise<Task | undefined> {
