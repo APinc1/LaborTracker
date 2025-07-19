@@ -259,10 +259,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/projects/:projectId/locations', async (req, res) => {
     try {
-      const projectId = parseInt(req.params.projectId);
+      const projectDbId = parseInt(req.params.projectId);
+      
+      // Get the project to access its actual projectId string
+      const project = await storage.getProject(projectDbId);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
       
       // Check for duplicate location name within the project
-      const existingLocations = await storage.getLocations(projectId);
+      const existingLocations = await storage.getLocations(projectDbId);
       const duplicateLocation = existingLocations.find(loc => 
         loc.name.toLowerCase() === req.body.name?.toLowerCase()
       );
@@ -270,13 +276,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: `Location name "${req.body.name}" already exists in this project` });
       }
       
-      // Generate a unique locationId
-      const locationId = `${projectId}_${req.body.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')}`;
+      // Generate a unique locationId using the project's actual projectId (not database ID)
+      const locationId = `${project.projectId}_${req.body.name.replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '')}`;
       
       // Prepare location data with required fields
       const locationData = {
         ...req.body,
-        projectId: projectId,
+        projectId: projectDbId,
         locationId: locationId,
         // Allow empty dates - user will specify dates manually when needed
         startDate: req.body.startDate

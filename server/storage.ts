@@ -243,7 +243,7 @@ export class MemStorage implements IStorage {
 
     // Create sample locations
     const northSection = await this.createLocation({
-      locationId: `${bridgeProject.id}_NorthSection`,
+      locationId: `${bridgeProject.projectId}_NorthSection`,
       projectId: bridgeProject.id,
       name: "Main St Bridge - North Section",
       startDate: "2024-03-01",
@@ -252,7 +252,7 @@ export class MemStorage implements IStorage {
     });
 
     const eastWing = await this.createLocation({
-      locationId: `${cityHallProject.id}_EastWing`,
+      locationId: `${cityHallProject.projectId}_EastWing`,
       projectId: cityHallProject.id,
       name: "City Hall - East Wing",
       startDate: "2024-03-10",
