@@ -192,21 +192,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let locationDbId: number;
       
-      // Handle both locationId string (e.g., "101_test") and database ID (e.g., "3")
+      // Handle both locationId string (e.g., "101_test") and pure database ID (e.g., "3")
       const locationParam = req.params.locationId;
-      if (isNaN(parseInt(locationParam))) {
-        // If it's not a number, it's a locationId string - find the location by locationId
+      console.log(`🔍 Budget GET: locationParam = "${locationParam}"`);
+      
+      // Check if it's a pure numeric string (database ID) vs locationId format (contains non-numeric characters)
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure numeric database ID
+        locationDbId = parseInt(locationParam);
+        console.log(`📊 Budget GET: Using database ID ${locationDbId}`);
+      } else {
+        // It's a locationId string - find the location by locationId
+        console.log(`🔍 Budget GET: Looking up location by locationId string: ${locationParam}`);
         const location = await storage.getLocation(locationParam);
         if (!location) {
+          console.log(`❌ Budget GET: Location not found for locationId: ${locationParam}`);
           return res.status(404).json({ error: 'Location not found' });
         }
         locationDbId = location.id;
-      } else {
-        // It's a numeric database ID
-        locationDbId = parseInt(locationParam);
+        console.log(`✅ Budget GET: Found location "${location.name}", using database ID ${locationDbId}`);
       }
       
+      console.log(`🔎 Budget GET: Calling getBudgetLineItems(${locationDbId})`);
       const budgetItems = await storage.getBudgetLineItems(locationDbId);
+      console.log(`📊 Budget GET: Found ${budgetItems.length} budget items`);
       res.json(budgetItems);
     } catch (error) {
       console.error('Budget fetch error:', error);
@@ -218,18 +227,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let locationDbId: number;
       
-      // Handle both locationId string (e.g., "101_test") and database ID (e.g., "3")
+      // Handle both locationId string (e.g., "101_test") and pure database ID (e.g., "3")
       const locationParam = req.params.locationId;
-      if (isNaN(parseInt(locationParam))) {
-        // If it's not a number, it's a locationId string - find the location by locationId
+      // Check if it's a pure numeric string (database ID) vs locationId format (contains non-numeric characters)
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure numeric database ID
+        locationDbId = parseInt(locationParam);
+      } else {
+        // It's a locationId string - find the location by locationId
         const location = await storage.getLocation(locationParam);
         if (!location) {
           return res.status(404).json({ error: 'Location not found' });
         }
         locationDbId = location.id;
-      } else {
-        // It's a numeric database ID
-        locationDbId = parseInt(locationParam);
       }
       
       const validated = insertBudgetLineItemSchema.parse({

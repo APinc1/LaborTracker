@@ -1480,7 +1480,7 @@ export default function BudgetManagement() {
                             };
                             
                             return (
-                              <tr key={item.id} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                              <tr key={`budget-item-${item.id}-${item.lineItemNumber}`} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
                                 <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
                                   <div className="flex items-center">
                                     {isParent && hasChildren(item) && (
