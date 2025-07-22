@@ -416,7 +416,34 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return group.costCodes[0].costCode;
   };
 
-  // Helper function to get cost code date range based on task type order
+  // Helper function to get cost code date range based on actual tasks
+  const getCostCodeDateRangeFromTasks = (costCode: string, existingTasks: any[]) => {
+    // Find all tasks with this cost code
+    const costCodeTasks = existingTasks.filter(task => {
+      if (costCode === 'Demo/Ex + Base/Grading') {
+        return task.costCode === 'Demo/Ex + Base/Grading' || 
+               task.costCode === 'DEMO/EX' || 
+               task.costCode === 'BASE/GRADING';
+      }
+      return task.costCode === costCode;
+    });
+
+    if (costCodeTasks.length === 0) {
+      return { startDate: null, finishDate: null };
+    }
+
+    // Get the earliest and latest task dates for this cost code
+    const taskDates = costCodeTasks.map(task => new Date(task.taskDate + 'T00:00:00'));
+    const earliestDate = new Date(Math.min(...taskDates));
+    const latestDate = new Date(Math.max(...taskDates));
+
+    return {
+      startDate: safeFormatDate(earliestDate),
+      finishDate: safeFormatDate(latestDate)
+    };
+  };
+
+  // Helper function to get cost code date range based on task type order (for new task creation)
   const getCostCodeDateRange = (costCode: string, taskType: string, allWorkDays: Date[]) => {
     // Calculate date ranges based on task type order and scheduling
     const taskTypeIndex = taskTypeOrder.indexOf(taskType);
@@ -435,7 +462,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     
     // For Demo/Ex + Base/Grading, start from beginning
     if (costCode === 'Demo/Ex + Base/Grading') {
-      const endIndex = Math.min(Math.floor(allWorkDays.length * 0.3), allWorkDays.length - 1);
+      const endIndex = Math.max(0, Math.floor(allWorkDays.length * 0.3) - 1);
       return {
         startDate: safeFormatDate(allWorkDays[0]),
         finishDate: safeFormatDate(allWorkDays[endIndex])
@@ -445,7 +472,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // For Concrete (Form/Pour), typically middle of project
     if (costCode === 'CONCRETE') {
       const startIndex = Math.floor(allWorkDays.length * 0.2);
-      const endIndex = Math.min(Math.floor(allWorkDays.length * 0.8), allWorkDays.length - 1);
+      const endIndex = Math.max(startIndex, Math.floor(allWorkDays.length * 0.8) - 1);
       return {
         startDate: safeFormatDate(allWorkDays[startIndex]),
         finishDate: safeFormatDate(allWorkDays[endIndex])
@@ -463,7 +490,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     
     // For other cost codes, calculate based on position
     const startIndex = Math.floor(allWorkDays.length * progressPercentage);
-    const endIndex = Math.min(startIndex + Math.ceil(allWorkDays.length * 0.3), allWorkDays.length - 1);
+    const endIndex = Math.max(startIndex, startIndex + Math.ceil(allWorkDays.length * 0.3) - 1);
     
     return {
       startDate: safeFormatDate(allWorkDays[startIndex]),
@@ -1483,6 +1510,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           setEditingTask(null);
         }}
         task={editingTask}
+        locationTasks={tasks || []}
         onTaskUpdate={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
         }}

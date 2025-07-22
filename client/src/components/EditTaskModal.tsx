@@ -20,6 +20,7 @@ interface EditTaskModalProps {
   onClose: () => void;
   task: any | null;
   onTaskUpdate: () => void;
+  locationTasks?: any[];
 }
 
 const taskStatuses = [
@@ -60,9 +61,43 @@ const editTaskSchema = z.object({
   status: z.string().optional(),
 });
 
-export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: EditTaskModalProps) {
+export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Helper function to safely format dates  
+  const safeFormatDate = (date: Date): string => {
+    if (!date || isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
+    return date.toISOString().split('T')[0];
+  };
+
+  // Helper function to get cost code date range based on actual tasks
+  const getCostCodeDateRangeFromTasks = (costCode: string, existingTasks: any[]) => {
+    // Find all tasks with this cost code (excluding the current task being edited)
+    const costCodeTasks = existingTasks.filter(t => {
+      if (t.id === task?.id) return false; // Exclude current task
+      if (costCode === 'Demo/Ex + Base/Grading') {
+        return t.costCode === 'Demo/Ex + Base/Grading' || 
+               t.costCode === 'DEMO/EX' || 
+               t.costCode === 'BASE/GRADING';
+      }
+      return t.costCode === costCode;
+    });
+
+    if (costCodeTasks.length === 0) {
+      return { startDate: null, finishDate: null };
+    }
+
+    // Get the earliest and latest task dates for this cost code
+    const taskDates = costCodeTasks.map(t => new Date(t.taskDate + 'T00:00:00').getTime());
+    const earliestDate = new Date(Math.min(...taskDates));
+    const latestDate = new Date(Math.max(...taskDates));
+
+    return {
+      startDate: safeFormatDate(earliestDate),
+      finishDate: safeFormatDate(latestDate)
+    };
+  };
 
   const form = useForm({
     resolver: zodResolver(editTaskSchema),
@@ -211,10 +246,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
                 <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">
-                    {task.startDate ? new Date(task.startDate + 'T00:00:00').toLocaleDateString() : 'Not set'}
+                    {(() => {
+                      const dateRange = getCostCodeDateRangeFromTasks(task.costCode, locationTasks);
+                      return dateRange.startDate 
+                        ? new Date(dateRange.startDate + 'T00:00:00').toLocaleDateString() 
+                        : 'Not set';
+                    })()}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">Based on cost code schedule</p>
+                <p className="text-xs text-gray-500">Based on other tasks with this cost code</p>
               </div>
 
               <div className="space-y-2">
@@ -222,10 +262,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
                 <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">
-                    {task.finishDate ? new Date(task.finishDate + 'T00:00:00').toLocaleDateString() : 'Not set'}
+                    {(() => {
+                      const dateRange = getCostCodeDateRangeFromTasks(task.costCode, locationTasks);
+                      return dateRange.finishDate 
+                        ? new Date(dateRange.finishDate + 'T00:00:00').toLocaleDateString() 
+                        : 'Not set';
+                    })()}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">Based on cost code schedule</p>
+                <p className="text-xs text-gray-500">Based on other tasks with this cost code</p>
               </div>
             </div>
 
