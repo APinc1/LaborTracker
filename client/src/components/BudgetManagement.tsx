@@ -874,27 +874,23 @@ export default function BudgetManagement() {
         {/* Breadcrumb Navigation - Always Visible */}
         <div className="mb-4">
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
               onClick={() => setLocation("/")}
-              className="p-1 h-auto hover:bg-gray-100"
+              className="p-1 h-auto hover:bg-gray-100 rounded flex items-center"
             >
               <Home className="w-4 h-4" />
-            </Button>
+            </button>
             <span>/</span>
             
             {currentProject ? (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => setLocation(`/projects/${currentProject.id}`)}
-                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
                   {currentProject.name}
-                </Button>
+                </button>
                 <span>/</span>
               </>
             ) : (
@@ -909,15 +905,13 @@ export default function BudgetManagement() {
             
             {currentLocation ? (
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
-                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
+                  className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <MapPin className="w-4 h-4 mr-1" />
                   {currentLocation.name}
-                </Button>
+                </button>
                 <span>/</span>
               </>
             ) : (
