@@ -1164,8 +1164,7 @@ export default function BudgetManagement() {
       <main className="p-6">
         <div className="space-y-6">
           {/* Project and Location Selection */}
-          {(
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Select Project</CardTitle>
@@ -1213,7 +1212,6 @@ export default function BudgetManagement() {
                 </CardContent>
               </Card>
             </div>
-          )}
 
           {selectedLocation && (
             <>

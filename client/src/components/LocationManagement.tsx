@@ -13,6 +13,30 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+
+// Safe date formatting helper
+const safeFormatDate = (date: Date | string | number | null | undefined, formatStr: string = 'MMM d, yyyy'): string => {
+  try {
+    if (!date) return 'Not set';
+    
+    let dateObj: Date;
+    if (typeof date === 'string') {
+      dateObj = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
+    } else if (typeof date === 'number') {
+      dateObj = new Date(date);
+    } else {
+      dateObj = date;
+    }
+    
+    if (!dateObj || isNaN(dateObj.getTime())) {
+      return 'Invalid date';
+    }
+    return format(dateObj, formatStr);
+  } catch (error) {
+    console.error('Error formatting date:', date, error);
+    return 'Invalid date';
+  }
+};
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertLocationSchema, insertLocationBudgetSchema } from "@shared/schema";
@@ -45,7 +69,11 @@ export default function LocationManagement() {
 
   const createLocationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/projects/${selectedProject}/locations`, data);
+      const response = await fetch(`/api/projects/${selectedProject}/locations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -61,7 +89,11 @@ export default function LocationManagement() {
 
   const createLocationBudgetMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/locations/${selectedLocation}/budgets`, data);
+      const response = await fetch(`/api/locations/${selectedLocation}/budgets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -257,7 +289,7 @@ export default function LocationManagement() {
                   <SelectValue placeholder="Choose a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project: any) => (
+                  {projects && (projects as any[]).map((project: any) => (
                     <SelectItem key={project.id} value={project.id.toString()}>
                       {project.name} ({project.projectId})
                     </SelectItem>
@@ -302,7 +334,7 @@ export default function LocationManagement() {
                       <div>
                         <p className="text-sm text-subtle">In Progress</p>
                         <p className="text-2xl font-bold text-orange-600">
-                          {locations.filter((loc: any) => !loc.isComplete).length}
+                          {(locations as any[]).filter((loc: any) => !loc.isComplete).length}
                         </p>
                       </div>
                     </div>
@@ -327,7 +359,7 @@ export default function LocationManagement() {
                   [...Array(6)].map((_, i) => (
                     <Skeleton key={i} className="h-64" />
                   ))
-                ) : locations.length === 0 ? (
+                ) : !locations || (locations as any[]).length === 0 ? (
                   <Card className="col-span-full">
                     <CardContent className="text-center py-8">
                       <p className="text-muted">No locations found for this project</p>
@@ -338,7 +370,7 @@ export default function LocationManagement() {
                     </CardContent>
                   </Card>
                 ) : (
-                  locations.map((location: any) => {
+                  (locations as any[]).map((location: any) => {
                     const completionPercentage = getCompletionPercentage(location);
                     return (
                       <Card key={location.id} className="hover:shadow-md transition-shadow">
@@ -376,14 +408,14 @@ export default function LocationManagement() {
                               <div className="flex items-center space-x-2 text-sm text-gray-600">
                                 <Calendar className="w-4 h-4" />
                                 <span>
-                                  Start: {format(new Date(location.startDate), 'MMM d, yyyy')}
+                                  Start: {safeFormatDate(location.startDate)}
                                 </span>
                               </div>
                               {location.endDate && (
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <Calendar className="w-4 h-4" />
                                   <span>
-                                    End: {format(new Date(location.endDate), 'MMM d, yyyy')}
+                                    End: {safeFormatDate(location.endDate)}
                                   </span>
                                 </div>
                               )}
