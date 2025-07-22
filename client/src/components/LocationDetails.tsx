@@ -416,25 +416,59 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return group.costCodes[0].costCode;
   };
 
-  // Helper function to get cost code date range
-  const getCostCodeDateRange = (costCode: string) => {
-    // Find all budget items with this cost code to determine start and finish dates
-    const costCodeItems = budgetItems.filter((item: any) => {
-      const itemCostCode = item.costCode || 'UNCATEGORIZED';
-      // Handle the combined cost code
-      if (costCode === 'Demo/Ex + Base/Grading') {
-        return itemCostCode === 'DEMO/EX' || itemCostCode === 'BASE/GRADING';
-      }
-      return itemCostCode === costCode;
-    });
-
-    if (costCodeItems.length === 0) {
-      return { startDate: null, finishDate: null };
+  // Helper function to get cost code date range based on task type order
+  const getCostCodeDateRange = (costCode: string, taskType: string, allWorkDays: Date[]) => {
+    // Calculate date ranges based on task type order and scheduling
+    const taskTypeIndex = taskTypeOrder.indexOf(taskType);
+    
+    if (taskTypeIndex === -1) {
+      // If task type not found in order, use full range
+      return { 
+        startDate: safeFormatDate(allWorkDays[0]), 
+        finishDate: safeFormatDate(allWorkDays[allWorkDays.length - 1]) 
+      };
     }
 
-    // For now, return null since we don't have date range info in budget items
-    // This would need to be enhanced with actual cost code scheduling
-    return { startDate: null, finishDate: null };
+    // Calculate rough start position based on task type order
+    const totalOrderedTypes = taskTypeOrder.length;
+    const progressPercentage = taskTypeIndex / totalOrderedTypes;
+    
+    // For Demo/Ex + Base/Grading, start from beginning
+    if (costCode === 'Demo/Ex + Base/Grading') {
+      const endIndex = Math.min(Math.floor(allWorkDays.length * 0.3), allWorkDays.length - 1);
+      return {
+        startDate: safeFormatDate(allWorkDays[0]),
+        finishDate: safeFormatDate(allWorkDays[endIndex])
+      };
+    }
+    
+    // For Concrete (Form/Pour), typically middle of project
+    if (costCode === 'CONCRETE') {
+      const startIndex = Math.floor(allWorkDays.length * 0.2);
+      const endIndex = Math.min(Math.floor(allWorkDays.length * 0.8), allWorkDays.length - 1);
+      return {
+        startDate: safeFormatDate(allWorkDays[startIndex]),
+        finishDate: safeFormatDate(allWorkDays[endIndex])
+      };
+    }
+    
+    // For Asphalt, typically near end
+    if (costCode === 'AC' || costCode === 'ASPHALT') {
+      const startIndex = Math.floor(allWorkDays.length * 0.7);
+      return {
+        startDate: safeFormatDate(allWorkDays[startIndex]),
+        finishDate: safeFormatDate(allWorkDays[allWorkDays.length - 1])
+      };
+    }
+    
+    // For other cost codes, calculate based on position
+    const startIndex = Math.floor(allWorkDays.length * progressPercentage);
+    const endIndex = Math.min(startIndex + Math.ceil(allWorkDays.length * 0.3), allWorkDays.length - 1);
+    
+    return {
+      startDate: safeFormatDate(allWorkDays[startIndex]),
+      finishDate: safeFormatDate(allWorkDays[endIndex])
+    };
   };
 
   // Helper function to skip weekends
@@ -647,15 +681,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
             const costCode = getTaskCostCode(taskType, group);
-            const dateRange = getCostCodeDateRange(costCode);
+            const dateRange = getCostCodeDateRange(costCode, taskType, allWorkDays);
             
             tasksToCreate.push({
               taskId: taskId,
               name: taskName,
               taskType: taskType,
               taskDate: safeFormatDate(taskDate),
-              startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
-              finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+              startDate: dateRange.startDate,
+              finishDate: dateRange.finishDate,
               costCode: costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
@@ -707,15 +741,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const taskDate = allWorkDays[globalDayIndex];
           
           const costCode = getTaskCostCode(taskType, group);
-          const dateRange = getCostCodeDateRange(costCode);
+          const dateRange = getCostCodeDateRange(costCode, taskType, allWorkDays);
           
           tasksToCreate.push({
             taskId: taskId,
             name: taskName,
             taskType: taskType,
             taskDate: safeFormatDate(taskDate),
-            startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
-            finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+            startDate: dateRange.startDate,
+            finishDate: dateRange.finishDate,
             costCode: costCode,
             workDescription: workDescription,
             scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
@@ -742,15 +776,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
             const costCode = getTaskCostCode(taskType, group);
-            const dateRange = getCostCodeDateRange(costCode);
+            const dateRange = getCostCodeDateRange(costCode, taskType, allWorkDays);
             
             tasksToCreate.push({
               taskId: taskId,
               name: taskName,
               taskType: taskType,
               taskDate: safeFormatDate(taskDate),
-              startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
-              finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+              startDate: dateRange.startDate,
+              finishDate: dateRange.finishDate,
               costCode: costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
