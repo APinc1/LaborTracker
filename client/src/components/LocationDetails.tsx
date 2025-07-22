@@ -407,6 +407,36 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     'Punchlist General Labor'
   ];
 
+  // Helper function to get correct cost code for tasks
+  const getTaskCostCode = (taskType: string, group: any) => {
+    // Demo/Ex and Base/Grading tasks should use "Demo/Ex + Base/Grading"
+    if (taskType === 'Demo/Ex' || taskType === 'Base/Grading') {
+      return 'Demo/Ex + Base/Grading';
+    }
+    return group.costCodes[0].costCode;
+  };
+
+  // Helper function to get cost code date range
+  const getCostCodeDateRange = (costCode: string) => {
+    // Find all budget items with this cost code to determine start and finish dates
+    const costCodeItems = budgetItems.filter((item: any) => {
+      const itemCostCode = item.costCode || 'UNCATEGORIZED';
+      // Handle the combined cost code
+      if (costCode === 'Demo/Ex + Base/Grading') {
+        return itemCostCode === 'DEMO/EX' || itemCostCode === 'BASE/GRADING';
+      }
+      return itemCostCode === costCode;
+    });
+
+    if (costCodeItems.length === 0) {
+      return { startDate: null, finishDate: null };
+    }
+
+    // For now, return null since we don't have date range info in budget items
+    // This would need to be enhanced with actual cost code scheduling
+    return { startDate: null, finishDate: null };
+  };
+
   // Helper function to skip weekends
   const addWorkdays = (startDate: Date, totalDays: number): Date[] => {
     const dates: Date[] = [];
@@ -616,15 +646,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
+            const costCode = getTaskCostCode(taskType, group);
+            const dateRange = getCostCodeDateRange(costCode);
             
             tasksToCreate.push({
               taskId: taskId,
               name: taskName,
               taskType: taskType,
               taskDate: safeFormatDate(taskDate),
-              startDate: safeFormatDate(taskDate),
-              finishDate: safeFormatDate(taskDate),
-              costCode: group.costCodes[0].costCode,
+              startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
+              finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+              costCode: costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
@@ -674,14 +706,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${dayCount}_${Date.now()}`;
           const taskDate = allWorkDays[globalDayIndex];
           
+          const costCode = getTaskCostCode(taskType, group);
+          const dateRange = getCostCodeDateRange(costCode);
+          
           tasksToCreate.push({
             taskId: taskId,
             name: taskName,
             taskType: taskType,
             taskDate: safeFormatDate(taskDate),
-            startDate: safeFormatDate(taskDate),
-            finishDate: safeFormatDate(taskDate),
-            costCode: group.costCodes[0].costCode,
+            startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
+            finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+            costCode: costCode,
             workDescription: workDescription,
             scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
             actualHours: null,
@@ -706,15 +741,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
+            const costCode = getTaskCostCode(taskType, group);
+            const dateRange = getCostCodeDateRange(costCode);
             
             tasksToCreate.push({
               taskId: taskId,
               name: taskName,
               taskType: taskType,
               taskDate: safeFormatDate(taskDate),
-              startDate: safeFormatDate(taskDate),
-              finishDate: safeFormatDate(taskDate),
-              costCode: group.costCodes[0].costCode,
+              startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
+              finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+              costCode: costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
@@ -740,15 +777,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
+            const costCode = getTaskCostCode(taskType, group);
+            const dateRange = getCostCodeDateRange(costCode);
             
             tasksToCreate.push({
               taskId: taskId,
               name: taskName,
               taskType: taskType,
               taskDate: safeFormatDate(taskDate),
-              startDate: safeFormatDate(taskDate),
-              finishDate: safeFormatDate(taskDate),
-              costCode: group.costCodes[0].costCode,
+              startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
+              finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
+              costCode: costCode,
               workDescription: workDescription,
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
