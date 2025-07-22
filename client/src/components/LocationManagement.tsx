@@ -19,7 +19,7 @@ import { insertLocationSchema, insertLocationBudgetSchema, Project, Location, Bu
 
 export default function LocationManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
-  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
   const [isCreateLocationOpen, setIsCreateLocationOpen] = useState(false);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -266,7 +266,7 @@ export default function LocationManagement() {
                   <label className="text-sm font-medium mb-2 block">Project</label>
                   <Select value={selectedProject} onValueChange={(value) => {
                     setSelectedProject(value);
-                    setSelectedLocationId(""); // Reset location when project changes
+                    setSelectedLocationId("all"); // Reset location when project changes
                   }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Choose a project" />
@@ -296,7 +296,7 @@ export default function LocationManagement() {
                       } />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Locations</SelectItem>
+                      <SelectItem value="all">All Locations</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location.id} value={location.locationId}>
                           {location.name} ({location.locationId})
@@ -314,7 +314,7 @@ export default function LocationManagement() {
               {/* Location Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {(() => {
-                  const filteredLocations = locations.filter(loc => !selectedLocationId || loc.locationId === selectedLocationId);
+                  const filteredLocations = locations.filter(loc => !selectedLocationId || selectedLocationId === "all" || loc.locationId === selectedLocationId);
                   const completedCount = filteredLocations.filter(loc => loc.isComplete).length;
                   const inProgressCount = filteredLocations.filter(loc => !loc.isComplete).length;
                   
@@ -389,7 +389,7 @@ export default function LocationManagement() {
                   </Card>
                 ) : (
                   locations
-                    .filter(location => !selectedLocationId || location.locationId === selectedLocationId)
+                    .filter(location => !selectedLocationId || selectedLocationId === "all" || location.locationId === selectedLocationId)
                     .map((location) => {
                     const completionPercentage = getCompletionPercentage(location);
                     return (
