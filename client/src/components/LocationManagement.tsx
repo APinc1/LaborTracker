@@ -11,8 +11,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign } from "lucide-react";
+import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertLocationSchema, insertLocationBudgetSchema, Project, Location, BudgetLineItem } from "@shared/schema";
@@ -26,6 +27,7 @@ export default function LocationManagement() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
@@ -40,7 +42,7 @@ export default function LocationManagement() {
 
   const { data: budgetItems = [] } = useQuery<BudgetLineItem[]>({
     queryKey: ["/api/locations", selectedLocationId, "budget"],
-    enabled: !!selectedLocationId,
+    enabled: !!selectedLocationId && selectedLocationId !== "all",
     staleTime: 30000,
   });
 
@@ -285,7 +287,13 @@ export default function LocationManagement() {
                   <label className="text-sm font-medium mb-2 block">Location</label>
                   <Select 
                     value={selectedLocationId} 
-                    onValueChange={setSelectedLocationId}
+                    onValueChange={(value) => {
+                      setSelectedLocationId(value);
+                      // Navigate to location overview if a specific location is selected
+                      if (value !== "all") {
+                        setLocation(`/locations/${value}`);
+                      }
+                    }}
                     disabled={!selectedProject || locationsLoading}
                   >
                     <SelectTrigger>
@@ -456,7 +464,12 @@ export default function LocationManagement() {
                                   <DollarSign className="w-4 h-4 mr-1" />
                                   Budget
                                 </Button>
-                                <Button variant="ghost" size="sm">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => setLocation(`/locations/${location.locationId}`)}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
                                   View Details
                                 </Button>
                               </div>
