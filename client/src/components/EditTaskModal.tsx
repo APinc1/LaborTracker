@@ -38,15 +38,25 @@ const taskTypes = [
 ];
 
 const costCodes = [
-  "DEMO/EX",
-  "BASE/GRADING",
-  "CONCRETE", 
-  "AC",
-  "UTILITY ADJ"
+  "Demo/Ex + Base/Grading",
+  "Concrete",
+  "Asphalt",
+  "General Labor",
+  "Traffic Control",
+  "Landscaping",
+  "Utility Adjustment",
+  "Punchlist Demo",
+  "Punchlist Concrete",
+  "Punchlist General Labor"
 ];
 
-// Extended schema for editing with status
-const editTaskSchema = insertTaskSchema.extend({
+// Simplified schema for editing only the editable fields
+const editTaskSchema = z.object({
+  taskDate: z.string().min(1, "Task date is required"),
+  startTime: z.string().optional(),
+  finishTime: z.string().optional(),
+  workDescription: z.string().optional(),
+  notes: z.string().optional(),
   status: z.string().optional(),
 });
 
@@ -114,6 +124,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
   });
 
   const onSubmit = (data: any) => {
+    console.log('Form submitted with data:', data);
+    console.log('Form errors:', form.formState.errors);
+    
     const processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
@@ -123,6 +136,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
         : task.actualHours,
     };
 
+    console.log('Processed data to send:', processedData);
     updateTaskMutation.mutate(processedData);
   };
 
@@ -197,7 +211,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
                 <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">
-                    {task.startDate ? new Date(task.startDate).toLocaleDateString() : 'Not set'}
+                    {task.startDate ? new Date(task.startDate + 'T00:00:00').toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">Based on cost code schedule</p>
@@ -208,31 +222,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: E
                 <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="text-sm text-gray-600">
-                    {task.finishDate ? new Date(task.finishDate).toLocaleDateString() : 'Not set'}
+                    {task.finishDate ? new Date(task.finishDate + 'T00:00:00').toLocaleDateString() : 'Not set'}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500">Based on cost code schedule</p>
               </div>
             </div>
 
-            {/* Cost Code and Hours - Read Only */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <FormLabel className="text-sm font-medium text-gray-700">Cost Code</FormLabel>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
-                  <Badge variant="secondary">{task.costCode}</Badge>
-                </div>
-                <p className="text-xs text-gray-500">Assigned based on task type</p>
+            {/* Cost Code - Read Only */}
+            <div className="space-y-2">
+              <FormLabel className="text-sm font-medium text-gray-700">Cost Code</FormLabel>
+              <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                <Badge variant="secondary">{task.costCode}</Badge>
               </div>
-
-              <div className="space-y-2">
-                <FormLabel className="text-sm font-medium text-gray-700">Scheduled Hours</FormLabel>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
-                  <Clock className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-600 font-medium">{task.scheduledHours} hours</span>
-                </div>
-                <p className="text-xs text-gray-500">Based on budget allocation</p>
-              </div>
+              <p className="text-xs text-gray-500">Assigned based on task type</p>
             </div>
 
             {/* Time */}
