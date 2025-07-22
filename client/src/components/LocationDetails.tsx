@@ -15,6 +15,7 @@ import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import EditTaskModal from "./EditTaskModal";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -53,27 +54,73 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [startDate, setStartDate] = useState(() => safeFormatDate(new Date()));
   const [combineFormPour, setCombineFormPour] = useState(false);
   const [combineDemoBase, setCombineDemoBase] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Task edit and delete functions
   const handleEditTask = (task: any) => {
-    toast({
-      title: "Edit Task",
-      description: "Task editing functionality coming soon",
-    });
+    setEditingTask(task);
+    setIsEditTaskModalOpen(true);
   };
 
-  const handleDeleteTask = async (taskId: number) => {
+  const handleDeleteTask = async (taskToDelete: any) => {
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${taskToDelete.id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
+        // Handle multi-day task renumbering logic
+        const taskName = taskToDelete.name;
+        const dayMatch = taskName.match(/Day (\d+)/i);
+        
+        if (dayMatch) {
+          const deletedDayNumber = parseInt(dayMatch[1]);
+          const taskType = taskToDelete.taskType;
+          const costCode = taskToDelete.costCode;
+          
+          // Find all related tasks of the same type and cost code
+          const relatedTasks = tasks.filter((t: any) => 
+            t.taskType === taskType && 
+            t.costCode === costCode && 
+            t.locationId === taskToDelete.locationId &&
+            t.id !== taskToDelete.id
+          );
+          
+          // Find tasks that need renumbering (day numbers greater than deleted day)
+          const tasksToUpdate = relatedTasks.filter((t: any) => {
+            const match = t.name.match(/Day (\d+)/i);
+            return match && parseInt(match[1]) > deletedDayNumber;
+          });
+          
+          // Calculate new total count
+          const newTotalDays = relatedTasks.length; // After deletion
+          
+          // Update task names for renumbering
+          for (const task of tasksToUpdate) {
+            const currentDayMatch = task.name.match(/Day (\d+)/i);
+            if (currentDayMatch) {
+              const currentDay = parseInt(currentDayMatch[1]);
+              const newDay = currentDay - 1;
+              const newName = task.name.replace(/Day \d+/i, `Day ${newDay}`);
+              
+              await fetch(`/api/tasks/${task.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  ...task,
+                  name: newName
+                })
+              });
+            }
+          }
+        }
+
         await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
         toast({
           title: "Task deleted",
-          description: "Task has been removed successfully",
+          description: "Task has been removed and related tasks updated successfully",
         });
       } else {
         throw new Error('Failed to delete task');
@@ -85,6 +132,49 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         variant: "destructive"
       });
     }
+  };
+
+  // Helper function to determine task status
+  const getTaskStatus = (task: any) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    if (task.actualHours && parseFloat(task.actualHours) > 0) {
+      return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+    } else if (task.taskDate === currentDate) {
+      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+    } else {
+      return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
+  // Helper function to format task name with day info
+  const getTaskDisplayInfo = (task: any) => {
+    const dayMatch = task.name.match(/Day (\d+)/i);
+    if (dayMatch) {
+      const currentDay = parseInt(dayMatch[1]);
+      
+      // Count total days for this task type and cost code
+      const relatedTasks = tasks.filter((t: any) => 
+        t.taskType === task.taskType && 
+        t.costCode === task.costCode && 
+        t.locationId === task.locationId
+      );
+      
+      const totalDays = relatedTasks.length;
+      return {
+        displayName: task.name.replace(/Day \d+/i, `Day ${currentDay} of ${totalDays}`),
+        isMultiDay: true,
+        currentDay,
+        totalDays
+      };
+    }
+    
+    return {
+      displayName: task.name,
+      isMultiDay: false,
+      currentDay: null,
+      totalDays: null
+    };
   };
 
   const { data: location, isLoading: locationLoading } = useQuery({
@@ -1018,7 +1108,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">{task.name}</h3>
+                            <h3 className="font-semibold text-lg">{getTaskDisplayInfo(task).displayName}</h3>
                             <Badge variant="secondary" className="text-xs">{task.taskId}</Badge>
                           </div>
                           <p className="text-gray-600 text-sm mt-1">{task.workDescription}</p>
@@ -1032,20 +1122,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               <Clock className="w-4 h-4" />
                               <span>{task.scheduledHours}h scheduled</span>
                             </div>
+                            {task.actualHours && (
+                              <div className="flex items-center gap-1 text-sm text-green-600">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>{task.actualHours}h completed</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {task.actualHours ? (
-                            <Badge variant="default" className="bg-green-100 text-green-800">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Completed
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-orange-600">
-                              <Clock className="w-3 h-3 mr-1" />
-                              In Progress
-                            </Badge>
-                          )}
+                          <Badge 
+                            variant="secondary" 
+                            className={getTaskStatus(task).color}
+                          >
+                            {getTaskStatus(task).status === 'complete' && <CheckCircle className="w-3 h-3 mr-1" />}
+                            {getTaskStatus(task).status === 'in_progress' && <Clock className="w-3 h-3 mr-1" />}
+                            {getTaskStatus(task).status === 'upcoming' && <AlertCircle className="w-3 h-3 mr-1" />}
+                            {getTaskStatus(task).label}
+                          </Badge>
                           <Button 
                             variant="outline" 
                             size="sm"
@@ -1056,7 +1150,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleDeleteTask(task.id)}
+                            onClick={() => handleDeleteTask(task)}
                             className="text-red-600 hover:text-red-700"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1307,6 +1401,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Task Modal */}
+      <EditTaskModal
+        isOpen={isEditTaskModalOpen}
+        onClose={() => {
+          setIsEditTaskModalOpen(false);
+          setEditingTask(null);
+        }}
+        task={editingTask}
+        onTaskUpdate={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
+        }}
+      />
     </div>
   );
 }
