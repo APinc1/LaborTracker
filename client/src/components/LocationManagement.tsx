@@ -15,10 +15,11 @@ import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign } from "lucide-
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { insertLocationSchema, insertLocationBudgetSchema } from "@shared/schema";
+import { insertLocationSchema, insertLocationBudgetSchema, Project, Location, BudgetLineItem } from "@shared/schema";
 
 export default function LocationManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedLocationId, setSelectedLocationId] = useState<string>("");
   const [isCreateLocationOpen, setIsCreateLocationOpen] = useState(false);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
@@ -26,26 +27,30 @@ export default function LocationManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: projects = [], isLoading: projectsLoading } = useQuery({
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     staleTime: 30000,
   });
 
-  const { data: locations = [], isLoading: locationsLoading } = useQuery({
+  const { data: locations = [], isLoading: locationsLoading } = useQuery<Location[]>({
     queryKey: ["/api/projects", selectedProject, "locations"],
     enabled: !!selectedProject,
     staleTime: 30000,
   });
 
-  const { data: budgetItems = [] } = useQuery({
-    queryKey: ["/api/projects", selectedProject, "budget"],
-    enabled: !!selectedProject,
+  const { data: budgetItems = [] } = useQuery<BudgetLineItem[]>({
+    queryKey: ["/api/locations", selectedLocationId, "budget"],
+    enabled: !!selectedLocationId,
     staleTime: 30000,
   });
 
   const createLocationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/projects/${selectedProject}/locations`, data);
+      const response = await apiRequest(`/api/projects/${selectedProject}/locations`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -61,7 +66,11 @@ export default function LocationManagement() {
 
   const createLocationBudgetMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/locations/${selectedLocation}/budgets`, data);
+      const response = await apiRequest(`/api/locations/${selectedLocation}/budgets`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -82,7 +91,7 @@ export default function LocationManagement() {
       projectId: selectedProject ? parseInt(selectedProject) : 0,
       name: '',
       description: '',
-      startDate: new Date().toISOString().split('T')[0],
+      startDate: '',
       endDate: '',
       estimatedCost: '',
       actualCost: '',
@@ -246,24 +255,57 @@ export default function LocationManagement() {
 
       <main className="p-6">
         <div className="space-y-6">
-          {/* Project Selection */}
+          {/* Project and Location Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>Select Project</CardTitle>
+              <CardTitle>Select Project and Location</CardTitle>
             </CardHeader>
             <CardContent>
-              <Select value={selectedProject} onValueChange={setSelectedProject}>
-                <SelectTrigger className="w-full md:w-1/3">
-                  <SelectValue placeholder="Choose a project" />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((project: any) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.name} ({project.projectId})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Project</label>
+                  <Select value={selectedProject} onValueChange={(value) => {
+                    setSelectedProject(value);
+                    setSelectedLocationId(""); // Reset location when project changes
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id.toString()}>
+                          {project.name} ({project.projectId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Location</label>
+                  <Select 
+                    value={selectedLocationId} 
+                    onValueChange={setSelectedLocationId}
+                    disabled={!selectedProject || locationsLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        !selectedProject ? "Select a project first" : 
+                        locationsLoading ? "Loading locations..." :
+                        "Choose a location"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Locations</SelectItem>
+                      {locations.map((location) => (
+                        <SelectItem key={location.id} value={location.locationId}>
+                          {location.name} ({location.locationId})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -271,54 +313,62 @@ export default function LocationManagement() {
             <>
               {/* Location Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Total Locations</p>
-                        <p className="text-2xl font-bold text-blue-600">{locations.length}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Completed</p>
-                        <p className="text-2xl font-bold text-green-600">
-                          {locations.filter((loc: any) => loc.isComplete).length}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Circle className="w-5 h-5 text-orange-600" />
-                      <div>
-                        <p className="text-sm text-subtle">In Progress</p>
-                        <p className="text-2xl font-bold text-orange-600">
-                          {locations.filter((loc: any) => !loc.isComplete).length}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-5 h-5 text-purple-600" />
-                      <div>
-                        <p className="text-sm text-subtle">Avg. Duration</p>
-                        <p className="text-2xl font-bold text-purple-600">21 days</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                {(() => {
+                  const filteredLocations = locations.filter(loc => !selectedLocationId || loc.locationId === selectedLocationId);
+                  const completedCount = filteredLocations.filter(loc => loc.isComplete).length;
+                  const inProgressCount = filteredLocations.filter(loc => !loc.isComplete).length;
+                  
+                  return (
+                    <>
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="w-5 h-5 text-blue-600" />
+                            <div>
+                              <p className="text-sm text-subtle">
+                                {selectedLocationId ? "Selected" : "Total"} Locations
+                              </p>
+                              <p className="text-2xl font-bold text-blue-600">{filteredLocations.length}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                            <div>
+                              <p className="text-sm text-subtle">Completed</p>
+                              <p className="text-2xl font-bold text-green-600">{completedCount}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center space-x-2">
+                            <Circle className="w-5 h-5 text-orange-600" />
+                            <div>
+                              <p className="text-sm text-subtle">In Progress</p>
+                              <p className="text-2xl font-bold text-orange-600">{inProgressCount}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-6">
+                          <div className="flex items-center space-x-2">
+                            <Calendar className="w-5 h-5 text-purple-600" />
+                            <div>
+                              <p className="text-sm text-subtle">Avg. Duration</p>
+                              <p className="text-2xl font-bold text-purple-600">21 days</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Locations Grid */}
@@ -331,14 +381,16 @@ export default function LocationManagement() {
                   <Card className="col-span-full">
                     <CardContent className="text-center py-8">
                       <p className="text-muted">No locations found for this project</p>
-                      <Button className="mt-4">
+                      <Button className="mt-4" onClick={() => setIsCreateLocationOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add First Location
                       </Button>
                     </CardContent>
                   </Card>
                 ) : (
-                  locations.map((location: any) => {
+                  locations
+                    .filter(location => !selectedLocationId || location.locationId === selectedLocationId)
+                    .map((location) => {
                     const completionPercentage = getCompletionPercentage(location);
                     return (
                       <Card key={location.id} className="hover:shadow-md transition-shadow">
@@ -346,7 +398,7 @@ export default function LocationManagement() {
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-lg">{location.name}</CardTitle>
                             <div className="flex items-center space-x-2">
-                              <div className={`w-3 h-3 ${getStatusColor(location.isComplete)} rounded-full`}></div>
+                              <div className={`w-3 h-3 ${getStatusColor(location.isComplete || false)} rounded-full`}></div>
                               {location.isComplete ? (
                                 <CheckCircle className="w-4 h-4 text-green-600" />
                               ) : (
@@ -383,7 +435,7 @@ export default function LocationManagement() {
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <Calendar className="w-4 h-4" />
                                   <span>
-                                    End: {location.endDate ? format(new Date(location.endDate), 'MMM d, yyyy') : 'Not set'}
+                                    End: {format(new Date(location.endDate), 'MMM d, yyyy')}
                                   </span>
                                 </div>
                               )}
@@ -442,9 +494,9 @@ export default function LocationManagement() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {budgetItems.map((item: any) => (
+                        {budgetItems.map((item) => (
                           <SelectItem key={item.id} value={item.id.toString()}>
-                            {item.lineItemNumber} - {item.description}
+                            {item.lineItemNumber} - {item.lineItemName}
                           </SelectItem>
                         ))}
                       </SelectContent>
