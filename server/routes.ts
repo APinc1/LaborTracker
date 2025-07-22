@@ -190,22 +190,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budget line item routes
   app.get('/api/locations/:locationId/budget', async (req, res) => {
     try {
-      const budgetItems = await storage.getBudgetLineItems(parseInt(req.params.locationId));
+      let locationDbId: number;
+      
+      // Handle both locationId string (e.g., "101_test") and database ID (e.g., "3")
+      const locationParam = req.params.locationId;
+      if (isNaN(parseInt(locationParam))) {
+        // If it's not a number, it's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      } else {
+        // It's a numeric database ID
+        locationDbId = parseInt(locationParam);
+      }
+      
+      const budgetItems = await storage.getBudgetLineItems(locationDbId);
       res.json(budgetItems);
     } catch (error) {
+      console.error('Budget fetch error:', error);
       res.status(500).json({ error: 'Failed to fetch budget items' });
     }
   });
 
   app.post('/api/locations/:locationId/budget', async (req, res) => {
     try {
+      let locationDbId: number;
+      
+      // Handle both locationId string (e.g., "101_test") and database ID (e.g., "3")
+      const locationParam = req.params.locationId;
+      if (isNaN(parseInt(locationParam))) {
+        // If it's not a number, it's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      } else {
+        // It's a numeric database ID
+        locationDbId = parseInt(locationParam);
+      }
+      
       const validated = insertBudgetLineItemSchema.parse({
         ...req.body,
-        locationId: parseInt(req.params.locationId)
+        locationId: locationDbId
       });
       const budgetItem = await storage.createBudgetLineItem(validated);
       res.status(201).json(budgetItem);
     } catch (error) {
+      console.error('Budget create error:', error);
       res.status(400).json({ error: 'Invalid budget item data' });
     }
   });
