@@ -1163,8 +1163,8 @@ export default function BudgetManagement() {
       </header>
       <main className="p-6">
         <div className="space-y-6">
-          {/* Project and Location Selection - Only show when not accessed directly */}
-          {!isDirectAccess && (
+          {/* Project and Location Selection */}
+          {(
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -1204,7 +1204,7 @@ export default function BudgetManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {(locations as any[]).map((location: any) => (
-                        <SelectItem key={location.id} value={location.id.toString()}>
+                        <SelectItem key={location.locationId} value={location.locationId}>
                           {location.name}
                         </SelectItem>
                       ))}
