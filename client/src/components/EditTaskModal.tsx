@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ interface EditTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: any | null;
-  locationId: string;
+  onTaskUpdate: () => void;
 }
 
 const taskStatuses = [
@@ -50,20 +50,14 @@ const editTaskSchema = insertTaskSchema.extend({
   status: z.string().optional(),
 });
 
-export default function EditTaskModal({ isOpen, onClose, task, locationId }: EditTaskModalProps) {
+export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate }: EditTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const form = useForm({
     resolver: zodResolver(editTaskSchema),
     defaultValues: {
-      name: "",
-      taskType: "",
       taskDate: "",
-      startDate: "",
-      finishDate: "",
-      costCode: "",
-      scheduledHours: "",
       startTime: "",
       finishTime: "",
       workDescription: "",
@@ -86,13 +80,7 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
       }
 
       form.reset({
-        name: task.name || "",
-        taskType: task.taskType || "",
         taskDate: task.taskDate || "",
-        startDate: task.startDate || "",
-        finishDate: task.finishDate || "",
-        costCode: task.costCode || "",
-        scheduledHours: task.scheduledHours?.toString() || "",
         startTime: task.startTime || "",
         finishTime: task.finishTime || "",
         workDescription: task.workDescription || "",
@@ -112,7 +100,7 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+      onTaskUpdate();
       toast({ title: "Success", description: "Task updated successfully" });
       onClose();
     },
@@ -127,11 +115,11 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
 
   const onSubmit = (data: any) => {
     const processedData = {
-      ...data,
-      scheduledHours: data.scheduledHours ? parseFloat(data.scheduledHours) : null,
+      ...task, // Keep all existing task data
+      ...data, // Override with edited fields only
       // If status is complete, set actualHours to scheduledHours if not already set
       actualHours: data.status === "complete" && !task.actualHours 
-        ? (data.scheduledHours ? parseFloat(data.scheduledHours) : null)
+        ? task.scheduledHours
         : task.actualHours,
     };
 
@@ -162,50 +150,30 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
             <Edit className="w-5 h-5" />
             Edit Task: {getTaskDisplayName(task.name)}
           </DialogTitle>
+          <DialogDescription>
+            Edit task date, schedule, description, and status. Other fields are based on cost code settings.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Task Basic Info */}
+            {/* Task Basic Info - Read Only */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Task Name</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Task Name</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <span className="text-sm text-gray-600 font-medium">{getTaskDisplayName(task.name)}</span>
+                </div>
+                <p className="text-xs text-gray-500">Generated from task type and sequence</p>
+              </div>
 
-              <FormField
-                control={form.control}
-                name="taskType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Task Type</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select task type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {taskTypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Task Type</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <Badge variant="outline">{task.taskType}</Badge>
+                </div>
+                <p className="text-xs text-gray-500">Based on cost code type</p>
+              </div>
             </div>
 
             {/* Dates */}
@@ -215,7 +183,7 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
                 name="taskDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Task Date</FormLabel>
+                    <FormLabel>Task Date (Editable)</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -224,75 +192,47 @@ export default function EditTaskModal({ isOpen, onClose, task, locationId }: Edi
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Cost Code Start Date</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {task.startDate ? new Date(task.startDate).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">Based on cost code schedule</p>
+              </div>
 
-              <FormField
-                control={form.control}
-                name="finishDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Finish Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Cost Code Finish Date</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <Calendar className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600">
+                    {task.finishDate ? new Date(task.finishDate).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500">Based on cost code schedule</p>
+              </div>
             </div>
 
-            {/* Cost Code and Hours */}
+            {/* Cost Code and Hours - Read Only */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="costCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cost Code</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select cost code" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {costCodes.map((code) => (
-                          <SelectItem key={code} value={code}>
-                            {code}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Cost Code</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <Badge variant="secondary">{task.costCode}</Badge>
+                </div>
+                <p className="text-xs text-gray-500">Assigned based on task type</p>
+              </div>
 
-              <FormField
-                control={form.control}
-                name="scheduledHours"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Scheduled Hours</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-2">
+                <FormLabel className="text-sm font-medium text-gray-700">Scheduled Hours</FormLabel>
+                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
+                  <Clock className="w-4 h-4 text-gray-500" />
+                  <span className="text-sm text-gray-600 font-medium">{task.scheduledHours} hours</span>
+                </div>
+                <p className="text-xs text-gray-500">Based on budget allocation</p>
+              </div>
             </div>
 
             {/* Time */}
