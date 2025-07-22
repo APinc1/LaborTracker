@@ -376,14 +376,14 @@ export default function LocationManagement() {
                               <div className="flex items-center space-x-2 text-sm text-gray-600">
                                 <Calendar className="w-4 h-4" />
                                 <span>
-                                  Start: {format(new Date(location.startDate), 'MMM d, yyyy')}
+                                  Start: {location.startDate ? format(new Date(location.startDate), 'MMM d, yyyy') : 'Not set'}
                                 </span>
                               </div>
                               {location.endDate && (
                                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                                   <Calendar className="w-4 h-4" />
                                   <span>
-                                    End: {format(new Date(location.endDate), 'MMM d, yyyy')}
+                                    End: {location.endDate ? format(new Date(location.endDate), 'MMM d, yyyy') : 'Not set'}
                                   </span>
                                 </div>
                               )}
