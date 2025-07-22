@@ -404,7 +404,12 @@ export default function LocationManagement() {
                       <Card key={location.id} className="hover:shadow-md transition-shadow">
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
-                            <CardTitle className="text-lg">{location.name}</CardTitle>
+                            <CardTitle 
+                              className="text-lg cursor-pointer hover:text-primary transition-colors"
+                              onClick={() => setLocation(`/locations/${location.locationId}`)}
+                            >
+                              {location.name}
+                            </CardTitle>
                             <div className="flex items-center space-x-2">
                               <div className={`w-3 h-3 ${getStatusColor(location.isComplete || false)} rounded-full`}></div>
                               {location.isComplete ? (
