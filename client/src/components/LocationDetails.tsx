@@ -16,6 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import EditTaskModal from "./EditTaskModal";
+import DraggableTaskList from "./DraggableTaskList";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -1184,106 +1185,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : tasks.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500">No tasks found for this location</p>
-                <p className="text-sm text-gray-400 mt-2">
-                  Tasks will appear here once they are scheduled
-                </p>
-              </div>
             ) : (
-              <div className="space-y-4">
-                {tasks
-                  .sort((a: any, b: any) => {
-                    // First sort by date
-                    const dateA = new Date(a.taskDate);
-                    const dateB = new Date(b.taskDate);
-                    if (dateA.getTime() !== dateB.getTime()) {
-                      return dateA.getTime() - dateB.getTime();
-                    }
-                    
-                    // Then sort by task type order
-                    const taskTypeOrder = [
-                      'Traffic Control',
-                      'Demo/Ex + Base/Grading',
-                      'Demo/Ex', 
-                      'Base/Grading',
-                      'Form + Pour',
-                      'Form',
-                      'Pour', 
-                      'Asphalt',
-                      'General Labor',
-                      'Landscaping',
-                      'Utility Adjustment',
-                      'Punchlist Demo',
-                      'Punchlist Concrete',
-                      'Punchlist General Labor'
-                    ];
-                    
-                    const indexA = taskTypeOrder.indexOf(a.taskType);
-                    const indexB = taskTypeOrder.indexOf(b.taskType);
-                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-                  })
-                  .map((task: any) => (
-                  <Card key={task.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">{getTaskDisplayInfo(task).displayName}</h3>
-                            <Badge variant="secondary" className="text-xs">{task.taskId}</Badge>
-                          </div>
-                          <p className="text-gray-600 text-sm mt-1">{task.workDescription}</p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">{task.taskType}</Badge>
-                            <div className="flex items-center gap-1 text-sm text-gray-600">
-                              <Calendar className="w-4 h-4" />
-                              <span>{safeFormatDate(task.taskDate, 'MMM d, yyyy')}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-sm text-gray-600">
-                              <Clock className="w-4 h-4" />
-                              <span>{task.scheduledHours}h scheduled</span>
-                            </div>
-                            {task.actualHours && (
-                              <div className="flex items-center gap-1 text-sm text-green-600">
-                                <CheckCircle className="w-4 h-4" />
-                                <span>{task.actualHours}h completed</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="secondary" 
-                            className={getTaskStatus(task).color}
-                          >
-                            {getTaskStatus(task).status === 'complete' && <CheckCircle className="w-3 h-3 mr-1" />}
-                            {getTaskStatus(task).status === 'in_progress' && <Clock className="w-3 h-3 mr-1" />}
-                            {getTaskStatus(task).status === 'upcoming' && <AlertCircle className="w-3 h-3 mr-1" />}
-                            {getTaskStatus(task).label}
-                          </Badge>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleEditTask(task)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleDeleteTask(task)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <DraggableTaskList
+                tasks={tasks || []}
+                locationId={locationId}
+                onEditTask={handleEditTask}
+                onTaskUpdate={() => {
+                  queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+                }}
+              />
             )}
           </CardContent>
         </Card>
