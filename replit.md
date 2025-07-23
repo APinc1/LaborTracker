@@ -206,6 +206,15 @@ Preferred communication style: Simple, everyday language.
 - ✅ Updated date formatting to safely handle optional start/end dates in location display
 - ✅ Location pages now open properly without React errors when clicking location links
 
+### July 23, 2025
+- ✅ Fixed task generation errors by correcting getCostCodeDateRange function parameters
+- ✅ Enhanced cost code mapping: Demo/Ex, Base/Grading, and Demo/Ex + Base/Grading tasks all use "Demo/Ex + Base/Grading"
+- ✅ Implemented dynamic cost code date range calculation based on actual first and last task dates for each cost code
+- ✅ Fixed task status changes: users can now freely change between upcoming, in progress, and complete
+- ✅ Updated EditTaskModal to properly handle actualHours when status changes (clears when not complete, sets when complete)
+- ✅ Cost code start/finish dates now show accurate ranges based on tasks with that specific cost code at the location
+- ✅ Resolved task edit functionality issues with bidirectional status changes
+
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
 - By default Hours = Conv Qty × PX

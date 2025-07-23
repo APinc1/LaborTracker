@@ -168,11 +168,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
-      // If status is complete, set actualHours to scheduledHours if not already set
-      actualHours: data.status === "complete" && !task.actualHours 
-        ? task.scheduledHours
-        : task.actualHours,
     };
+
+    // Handle actualHours based on status
+    if (data.status === "complete") {
+      // If marking as complete, set actualHours to scheduledHours if not already set
+      processedData.actualHours = task.actualHours || task.scheduledHours;
+    } else {
+      // If not complete, clear actualHours
+      processedData.actualHours = null;
+    }
 
     console.log('Processed data to send:', processedData);
     updateTaskMutation.mutate(processedData);
