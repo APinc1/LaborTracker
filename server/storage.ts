@@ -331,7 +331,9 @@ export class MemStorage implements IStorage {
       startTime: "08:00",
       finishTime: "17:00",
       workDescription: "Set up concrete forms for bridge deck section. Ensure proper alignment and elevation.",
-      notes: "Weather conditions good, expect normal progress"
+      notes: "Weather conditions good, expect normal progress",
+      order: 0,
+      dependentOnPrevious: true
     });
 
     const demoTask = await this.createTask({
@@ -350,7 +352,9 @@ export class MemStorage implements IStorage {
       startTime: "09:30",
       finishTime: "16:00",
       workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
-      notes: "Coordinate with utilities for underground clearance"
+      notes: "Coordinate with utilities for underground clearance",
+      order: 1,
+      dependentOnPrevious: true
     });
 
     const pourTask = await this.createTask({
@@ -369,7 +373,9 @@ export class MemStorage implements IStorage {
       startTime: "07:00",
       finishTime: "15:00",
       workDescription: "Pour concrete for bridge deck section",
-      notes: "Concrete delivery scheduled for 7:00 AM"
+      notes: "Concrete delivery scheduled for 7:00 AM",
+      order: 2,
+      dependentOnPrevious: true
     });
 
     // Create sample employee assignments
@@ -808,7 +814,9 @@ export class MemStorage implements IStorage {
       startTime: insertTask.startTime ?? null,
       finishTime: insertTask.finishTime ?? null,
       workDescription: insertTask.workDescription ?? null,
-      notes: insertTask.notes ?? null
+      notes: insertTask.notes ?? null,
+      order: insertTask.order ?? 0,
+      dependentOnPrevious: insertTask.dependentOnPrevious ?? true
     };
     this.tasks.set(id, task);
     return task;

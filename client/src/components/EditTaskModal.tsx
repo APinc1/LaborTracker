@@ -13,7 +13,9 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
+import { updateTaskDependencies } from "@shared/taskUtils";
 import { z } from "zod";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -59,6 +61,7 @@ const editTaskSchema = z.object({
   workDescription: z.string().optional(),
   notes: z.string().optional(),
   status: z.string().optional(),
+  dependentOnPrevious: z.boolean().optional(),
 });
 
 export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
@@ -108,6 +111,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       workDescription: "",
       notes: "",
       status: "upcoming",
+      dependentOnPrevious: true,
     },
   });
 
@@ -134,6 +138,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         workDescription: task.workDescription || "",
         notes: task.notes || "",
         status: status,
+        dependentOnPrevious: task.dependentOnPrevious ?? true,
       });
     }
   }, [task, form]);
@@ -161,6 +166,37 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     },
   });
 
+  const batchUpdateTasksMutation = useMutation({
+    mutationFn: async (updatedTasks: any[]) => {
+      // Update each task individually but batch the requests
+      const promises = updatedTasks.map(taskData => 
+        apiRequest(`/api/tasks/${taskData.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(taskData),
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+      
+      const responses = await Promise.all(promises);
+      return responses.map(response => response.json());
+    },
+    onSuccess: () => {
+      onTaskUpdate();
+      toast({ 
+        title: "Success", 
+        description: "Task and dependent tasks updated successfully" 
+      });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update tasks with dependencies", 
+        variant: "destructive" 
+      });
+    },
+  });
+
   const onSubmit = (data: any) => {
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
@@ -179,8 +215,25 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       processedData.actualHours = null;
     }
 
-    console.log('Processed data to send:', processedData);
-    updateTaskMutation.mutate(processedData);
+    // Check if date changed and handle dependency shifting
+    const dateChanged = data.taskDate !== task.taskDate;
+    if (dateChanged && locationTasks && locationTasks.length > 0) {
+      // Update all affected tasks with dependency shifting
+      const updatedTasks = updateTaskDependencies(
+        locationTasks, 
+        task.taskId || task.id, 
+        data.taskDate, 
+        task.taskDate
+      );
+      
+      // Batch update all affected tasks
+      console.log('Date changed - updating all affected tasks:', updatedTasks);
+      batchUpdateTasksMutation.mutate(updatedTasks);
+    } else {
+      // Single task update
+      console.log('Processed data to send:', processedData);
+      updateTaskMutation.mutate(processedData);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -280,6 +333,32 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 </div>
                 <p className="text-xs text-gray-500">Based on other tasks with this cost code</p>
               </div>
+            </div>
+
+            {/* Task Dependencies */}
+            <div className="space-y-2">
+              <FormField
+                control={form.control}
+                name="dependentOnPrevious"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Dependent on Previous Task
+                      </FormLabel>
+                      <p className="text-xs text-gray-500">
+                        When enabled, this task will automatically shift if previous tasks change dates
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Cost Code - Read Only */}

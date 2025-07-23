@@ -114,6 +114,8 @@ export const tasks = pgTable("tasks", {
   finishTime: text("finish_time"),
   workDescription: text("work_description"),
   notes: text("notes"),
+  order: integer("order").notNull().default(0),
+  dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
