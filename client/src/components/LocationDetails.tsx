@@ -839,7 +839,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
             const costCode = getTaskCostCode(taskType, group);
-            const dateRange = getCostCodeDateRange(costCode);
+            const dateRange = getCostCodeDateRange(costCode, taskType, allWorkDays);
             
             tasksToCreate.push({
               taskId: taskId,
