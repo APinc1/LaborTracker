@@ -214,6 +214,8 @@ Preferred communication style: Simple, everyday language.
 - ✅ Updated EditTaskModal to properly handle actualHours when status changes (clears when not complete, sets when complete)
 - ✅ Cost code start/finish dates now show accurate ranges based on tasks with that specific cost code at the location
 - ✅ Resolved task edit functionality issues with bidirectional status changes
+- ✅ Location duration now dynamically reflects the first and last task dates rather than static location dates
+- ✅ Added "Based on scheduled tasks" indicator to show duration is calculated from actual task scheduling
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**

@@ -330,6 +330,28 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => summary.totalConvertedQty > 0);
 
+  // Calculate actual location duration based on task dates
+  const getLocationDuration = () => {
+    if (!tasks || tasks.length === 0) {
+      return {
+        startDate: location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+      };
+    }
+
+    // Get all task dates and find earliest and latest
+    const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
+    const earliestTaskDate = new Date(Math.min(...taskDates));
+    const latestTaskDate = new Date(Math.max(...taskDates));
+
+    return {
+      startDate: safeFormatDate(earliestTaskDate, 'MMM d, yyyy'),
+      endDate: safeFormatDate(latestTaskDate, 'MMM d, yyyy')
+    };
+  };
+
+  const locationDuration = getLocationDuration();
+
   // Handle cost code card click
   const handleCostCodeClick = (costCode: string) => {
     setSelectedCostCode(costCode);
@@ -978,8 +1000,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <div>
                   <p className="text-sm text-gray-600">Duration</p>
                   <p className="font-medium">
-                    {location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No start date'} - {location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No end date'}
+                    {locationDuration.startDate} - {locationDuration.endDate}
                   </p>
+                  <p className="text-xs text-gray-500">Based on scheduled tasks</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
