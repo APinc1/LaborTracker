@@ -73,9 +73,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Helper function to get cost code date range based on actual tasks
   const getCostCodeDateRangeFromTasks = (costCode: string, existingTasks: any[]) => {
-    // Find all tasks with this cost code (excluding the current task being edited)
+    // Find all tasks with this cost code (including the current task being edited)
     const costCodeTasks = existingTasks.filter(t => {
-      if (t.id === task?.id) return false; // Exclude current task
+      // Include current task for proper date range calculation
       if (costCode === 'Demo/Ex + Base/Grading') {
         return t.costCode === 'Demo/Ex + Base/Grading' || 
                t.costCode === 'DEMO/EX' || 
@@ -114,14 +114,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   // Update form when task changes
   useEffect(() => {
     if (task) {
-      const currentDate = new Date().toISOString().split('T')[0];
-      let status = "upcoming";
+      // Use the task's existing status if available, otherwise determine it
+      let status = task.status || "upcoming";
       
-      // Determine status based on date and completion
-      if (task.actualHours && parseFloat(task.actualHours) > 0) {
-        status = "complete";
-      } else if (task.taskDate === currentDate) {
-        status = "in_progress";
+      // Only auto-determine status if no status is set
+      if (!task.status) {
+        const currentDate = new Date().toISOString().split('T')[0];
+        if (task.actualHours && parseFloat(task.actualHours) > 0) {
+          status = "complete";
+        } else if (task.taskDate === currentDate) {
+          status = "in_progress";
+        }
       }
 
       form.reset({

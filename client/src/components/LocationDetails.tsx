@@ -409,8 +409,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Helper function to get correct cost code for tasks
   const getTaskCostCode = (taskType: string, group: any) => {
-    // Demo/Ex and Base/Grading tasks should use "Demo/Ex + Base/Grading"
-    if (taskType === 'Demo/Ex' || taskType === 'Base/Grading') {
+    // Demo/Ex, Base/Grading, and Demo/Ex + Base/Grading tasks should all use "Demo/Ex + Base/Grading"
+    if (taskType === 'Demo/Ex' || taskType === 'Base/Grading' || taskType === 'Demo/Ex + Base/Grading') {
       return 'Demo/Ex + Base/Grading';
     }
     return group.costCodes[0].costCode;
