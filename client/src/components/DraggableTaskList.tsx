@@ -22,7 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies } from '@shared/taskUtils';
@@ -31,16 +31,19 @@ interface DraggableTaskListProps {
   tasks: any[];
   locationId: string;
   onEditTask: (task: any) => void;
+  onDeleteTask: (task: any) => void;
   onTaskUpdate: () => void;
 }
 
 interface SortableTaskItemProps {
   task: any;
+  tasks: any[];
   onEditTask: (task: any) => void;
+  onDeleteTask: (task: any) => void;
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -52,8 +55,10 @@ function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.8 : 1,
+    scale: isDragging ? 1.02 : 1,
+    zIndex: isDragging ? 50 : 1
   };
 
   const getStatusIcon = (status: string) => {
@@ -90,9 +95,24 @@ function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
     }
   };
 
+  // Calculate "Day x of y" for cost code
+  const getTaskDayInfo = (task: any, allTasks: any[]) => {
+    const tasksForCostCode = allTasks
+      .filter(t => t.costCode === task.costCode)
+      .sort((a, b) => new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime());
+    
+    const taskIndex = tasksForCostCode.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+    const dayNumber = taskIndex + 1;
+    const totalDays = tasksForCostCode.length;
+    
+    return totalDays > 1 ? `Day ${dayNumber} of ${totalDays}` : null;
+  };
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className={`mb-2 cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-lg' : ''}`}>
+      <Card className={`mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${
+        isDragging ? 'shadow-xl border-blue-300 bg-blue-50' : 'hover:shadow-md'
+      }`}>
         <CardContent className="p-4">
           <div className="flex items-center space-x-3">
             {/* Drag handle */}
@@ -108,6 +128,11 @@ function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
                 <Badge variant="outline" className="text-xs">
                   {task.taskType}
                 </Badge>
+                {getTaskDayInfo(task, tasks) && (
+                  <Badge variant="secondary" className="text-xs">
+                    {getTaskDayInfo(task, tasks)}
+                  </Badge>
+                )}
               </div>
               
               <div className="flex items-center space-x-4 text-xs text-gray-600">
@@ -141,15 +166,25 @@ function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
                task.status === 'complete' ? 'Complete' : 'Upcoming'}
             </Badge>
 
-            {/* Edit button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEditTask(task)}
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="w-3 h-3" />
-            </Button>
+            {/* Action buttons */}
+            <div className="flex items-center space-x-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEditTask(task)}
+                className="h-8 w-8 p-0"
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDeleteTask(task)}
+                className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -161,6 +196,7 @@ export default function DraggableTaskList({
   tasks, 
   locationId, 
   onEditTask, 
+  onDeleteTask,
   onTaskUpdate 
 }: DraggableTaskListProps) {
   const { toast } = useToast();
@@ -173,13 +209,23 @@ export default function DraggableTaskList({
     })
   );
 
-  // Sort tasks by order field, then by taskDate as fallback
+  // Always sort tasks by date first, then by order as secondary
   const sortedTasks = [...tasks].sort((a, b) => {
+    const dateA = new Date(a.taskDate).getTime();
+    const dateB = new Date(b.taskDate).getTime();
+    
+    // If dates are different, sort by date
+    if (dateA !== dateB) {
+      return dateA - dateB;
+    }
+    
+    // If dates are same, sort by order
     if (a.order !== undefined && b.order !== undefined) {
       return a.order - b.order;
     }
-    // Fallback to date sorting if order is not set
-    return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+    
+    // Fallback to ID comparison
+    return (a.taskId || a.id).localeCompare(b.taskId || b.id);
   });
 
   const batchUpdateTasksMutation = useMutation({
@@ -229,17 +275,58 @@ export default function DraggableTaskList({
     // Reorder the tasks array
     const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
 
-    // Apply dependency logic using the utility function
-    const tasksWithDependencies = reorderTasksWithDependencies(
-      reorderedTasks,
-      active.id as string,
-      newIndex
-    );
+    // Apply intelligent reordering: only update order and dates for dependent tasks
+    let tasksWithUpdatedOrder = reorderedTasks.map((task, index) => ({
+      ...task,
+      order: index
+    }));
 
-    console.log('Reordered tasks with dependencies:', tasksWithDependencies);
+    // Apply date dependency logic only to tasks that are dependent
+    // Start from the dragged task and update subsequent dependent tasks
+    const draggedTaskNewIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === active.id);
+    
+    if (draggedTaskNewIndex > 0) {
+      const draggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
+      const previousTask = tasksWithUpdatedOrder[draggedTaskNewIndex - 1];
+      
+      // If the dragged task is dependent and was moved, align it with the previous task
+      if (draggedTask.dependentOnPrevious && previousTask) {
+        const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+        const nextWorkday = new Date(previousDate);
+        nextWorkday.setDate(nextWorkday.getDate() + 1);
+        
+        // Skip weekends
+        while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+          nextWorkday.setDate(nextWorkday.getDate() + 1);
+        }
+        
+        const newDateString = nextWorkday.toISOString().split('T')[0];
+        draggedTask.taskDate = newDateString;
+        
+        // Update subsequent dependent tasks
+        for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
+          const currentTask = tasksWithUpdatedOrder[i];
+          if (!currentTask.dependentOnPrevious) break;
+          
+          const prevTask = tasksWithUpdatedOrder[i - 1];
+          const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
+          const nextDay = new Date(prevDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+          
+          // Skip weekends
+          while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+            nextDay.setDate(nextDay.getDate() + 1);
+          }
+          
+          currentTask.taskDate = nextDay.toISOString().split('T')[0];
+        }
+      }
+    }
+
+    console.log('Reordered tasks with smart dependency updates:', tasksWithUpdatedOrder);
 
     // Batch update all affected tasks
-    batchUpdateTasksMutation.mutate(tasksWithDependencies);
+    batchUpdateTasksMutation.mutate(tasksWithUpdatedOrder);
   };
 
   if (!tasks || tasks.length === 0) {
@@ -275,7 +362,9 @@ export default function DraggableTaskList({
               <SortableTaskItem
                 key={task.taskId || task.id}
                 task={task}
+                tasks={sortedTasks}
                 onEditTask={onEditTask}
+                onDeleteTask={onDeleteTask}
               />
             ))}
           </div>
