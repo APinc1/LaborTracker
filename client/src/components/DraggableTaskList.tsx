@@ -22,7 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies } from '@shared/taskUtils';
@@ -31,18 +31,16 @@ interface DraggableTaskListProps {
   tasks: any[];
   locationId: string;
   onEditTask: (task: any) => void;
-  onDeleteTask: (task: any) => void;
   onTaskUpdate: () => void;
 }
 
 interface SortableTaskItemProps {
   task: any;
   onEditTask: (task: any) => void;
-  onDeleteTask: (task: any) => void;
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, onEditTask, onDeleteTask }: SortableTaskItemProps) {
+function SortableTaskItem({ task, onEditTask }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -54,9 +52,8 @@ function SortableTaskItem({ task, onEditTask, onDeleteTask }: SortableTaskItemPr
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
-    opacity: isDragging ? 0.8 : 1,
-    zIndex: isDragging ? 1000 : 1
+    transition,
+    opacity: isDragging ? 0.5 : 1
   };
 
   const getStatusIcon = (status: string) => {
@@ -95,12 +92,12 @@ function SortableTaskItem({ task, onEditTask, onDeleteTask }: SortableTaskItemPr
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className={`mb-2 ${isDragging ? 'shadow-xl border-blue-300 bg-blue-50' : 'hover:shadow-md'} transition-shadow duration-200`}>
+      <Card className={`mb-2 cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-lg' : ''}`}>
         <CardContent className="p-4">
           <div className="flex items-center space-x-3">
             {/* Drag handle */}
-            <div {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
-              <GripVertical className="w-4 h-4 text-gray-400 hover:text-gray-600 transition-colors" />
+            <div {...listeners} className="cursor-grab active:cursor-grabbing">
+              <GripVertical className="w-4 h-4 text-gray-400" />
             </div>
 
             {/* Task info */}
@@ -144,25 +141,15 @@ function SortableTaskItem({ task, onEditTask, onDeleteTask }: SortableTaskItemPr
                task.status === 'complete' ? 'Complete' : 'Upcoming'}
             </Badge>
 
-            {/* Action buttons */}
-            <div className="flex items-center space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onEditTask(task)}
-                className="h-8 w-8 p-0 hover:bg-blue-100"
-              >
-                <Edit className="w-3 h-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onDeleteTask(task)}
-                className="h-8 w-8 p-0 hover:bg-red-100 text-red-600 hover:text-red-700"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
+            {/* Edit button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEditTask(task)}
+              className="h-8 w-8 p-0"
+            >
+              <Edit className="w-3 h-3" />
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -174,7 +161,6 @@ export default function DraggableTaskList({
   tasks, 
   locationId, 
   onEditTask, 
-  onDeleteTask,
   onTaskUpdate 
 }: DraggableTaskListProps) {
   const { toast } = useToast();
@@ -290,7 +276,6 @@ export default function DraggableTaskList({
                 key={task.taskId || task.id}
                 task={task}
                 onEditTask={onEditTask}
-                onDeleteTask={onDeleteTask}
               />
             ))}
           </div>
