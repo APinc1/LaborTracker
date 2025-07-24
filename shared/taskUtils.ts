@@ -147,6 +147,7 @@ export function reorderTasksWithDependencies(
 
 /**
  * Re-align dependent tasks to follow previous task by one weekday
+ * Only updates tasks that are explicitly marked as dependent
  */
 export function realignDependentTasks(tasks: any[]): any[] {
   const updatedTasks = [...tasks];
@@ -155,8 +156,9 @@ export function realignDependentTasks(tasks: any[]): any[] {
     const currentTask = updatedTasks[i];
     const previousTask = updatedTasks[i - 1];
     
-    // Only re-align if current task is dependent on previous
-    if (currentTask.dependentOnPrevious) {
+    // Only re-align if current task is explicitly dependent on previous
+    // This preserves the original dependency state
+    if (currentTask.dependentOnPrevious === true) {
       const previousDate = parseDateString(previousTask.taskDate);
       const nextWeekday = getNextWeekday(previousDate);
       
@@ -165,6 +167,7 @@ export function realignDependentTasks(tasks: any[]): any[] {
         taskDate: formatDateToString(nextWeekday)
       };
     }
+    // If dependentOnPrevious is false, preserve the original date and don't shift
   }
   
   return updatedTasks;

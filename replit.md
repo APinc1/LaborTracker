@@ -216,6 +216,16 @@ Preferred communication style: Simple, everyday language.
 - ✅ Resolved task edit functionality issues with bidirectional status changes
 - ✅ Location duration now dynamically reflects the first and last task dates rather than static location dates
 - ✅ Added "Based on scheduled tasks" indicator to show duration is calculated from actual task scheduling
+- ✅ Implemented comprehensive task dependency system with dependentOnPrevious flag and order fields
+- ✅ Created task utility functions for weekday-only date shifting and dependency management
+- ✅ Enhanced EditTaskModal with dependency checkbox and automatic date shifting logic
+- ✅ Added batch update mutation for handling dependent task shifts when dates change
+- ✅ Implemented drag-and-drop task reordering with @dnd-kit library
+- ✅ Created DraggableTaskList component with visual drag handles and smooth animations
+- ✅ Added automatic dependency re-alignment when tasks are reordered
+- ✅ Enhanced task cards with improved visual indicators for status, dependencies, and cost codes
+- ✅ Fixed dependency preservation logic to maintain original dependency state during reordering
+- ✅ Added delete button back to task cards with improved action button layout
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
