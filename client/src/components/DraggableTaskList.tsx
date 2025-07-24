@@ -55,7 +55,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : 'transform 200ms ease',
+    transition: isDragging ? 'none' : 'none', // Disable all transitions to prevent snap-back
     opacity: isDragging ? 0.8 : 1,
     scale: isDragging ? 1.02 : 1,
     zIndex: isDragging ? 50 : 1
@@ -243,13 +243,9 @@ export default function DraggableTaskList({
       return responses.map(response => response.json());
     },
     onSuccess: () => {
-      // Immediately update the UI to prevent snap-back effect
+      // Immediately invalidate cache to refresh data and prevent visual issues
       queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
       onTaskUpdate();
-      toast({ 
-        title: "Success", 
-        description: "Tasks reordered successfully" 
-      });
     },
     onError: (error: any) => {
       // Revert the UI on error
@@ -275,6 +271,14 @@ export default function DraggableTaskList({
     if (oldIndex === -1 || newIndex === -1) {
       return;
     }
+
+    console.log('Drag operation:', { 
+      draggedTask: sortedTasks[oldIndex].name, 
+      oldIndex, 
+      newIndex,
+      draggedDate: sortedTasks[oldIndex].taskDate,
+      targetDate: sortedTasks[newIndex].taskDate
+    });
 
     // Reorder the tasks array
     const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
@@ -302,18 +306,10 @@ export default function DraggableTaskList({
       } 
       // For other positions with a previous task
       else if (previousTask) {
-        // Check if tasks are on the same date for smart ordering
-        const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
-        const draggedDate = new Date(draggedTask.taskDate + 'T00:00:00');
-        
-        // If moving within the same date, preserve the date but adjust dependency logic
-        if (previousDate.getTime() === draggedDate.getTime()) {
-          // Same date - just reorder, no date change needed
-          // Keep dependency setting as-is unless it's the first task
-        } 
-        // Different dates - apply dependency logic
-        else if (draggedTask.dependentOnPrevious) {
-          // For dependent tasks, follow the previous task with next workday
+        // Handle date logic based on dependency and position
+        if (draggedTask.dependentOnPrevious) {
+          // For dependent tasks, always follow the previous task
+          const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
           const nextWorkday = new Date(previousDate);
           nextWorkday.setDate(nextWorkday.getDate() + 1);
           
@@ -324,7 +320,7 @@ export default function DraggableTaskList({
           
           draggedTask.taskDate = nextWorkday.toISOString().split('T')[0];
         }
-        // For non-dependent tasks, preserve original date
+        // For non-dependent tasks, preserve original date regardless of position
       }
       
       // Update subsequent dependent tasks

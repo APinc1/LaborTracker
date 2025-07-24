@@ -217,6 +217,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
     // Check if date changed and handle dependency shifting
     const dateChanged = data.taskDate !== task.taskDate;
+    const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
+    
     if (dateChanged && locationTasks && locationTasks.length > 0) {
       // Update all affected tasks with dependency shifting
       const updatedTasks = updateTaskDependencies(
@@ -226,11 +228,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         task.taskDate
       );
       
+      // Ensure the main task includes the dependency change
+      const mainTaskIndex = updatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+      if (mainTaskIndex >= 0) {
+        updatedTasks[mainTaskIndex] = { ...updatedTasks[mainTaskIndex], ...processedData };
+      }
+      
       // Batch update all affected tasks
       console.log('Date changed - updating all affected tasks:', updatedTasks);
       batchUpdateTasksMutation.mutate(updatedTasks);
     } else {
-      // Single task update
+      // Single task update (including dependency changes)
       console.log('Processed data to send:', processedData);
       updateTaskMutation.mutate(processedData);
     }
