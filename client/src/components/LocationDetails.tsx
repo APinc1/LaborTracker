@@ -1190,7 +1190,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
