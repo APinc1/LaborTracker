@@ -55,7 +55,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? 'none' : transition,
+    transition: isDragging ? 'none' : 'transform 200ms ease',
     opacity: isDragging ? 0.8 : 1,
     scale: isDragging ? 1.02 : 1,
     zIndex: isDragging ? 50 : 1
@@ -243,6 +243,8 @@ export default function DraggableTaskList({
       return responses.map(response => response.json());
     },
     onSuccess: () => {
+      // Immediately update the UI to prevent snap-back effect
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
       onTaskUpdate();
       toast({ 
         title: "Success", 
@@ -250,6 +252,8 @@ export default function DraggableTaskList({
       });
     },
     onError: (error: any) => {
+      // Revert the UI on error
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
       toast({ 
         title: "Error", 
         description: error.message || "Failed to reorder tasks", 
@@ -275,51 +279,70 @@ export default function DraggableTaskList({
     // Reorder the tasks array
     const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
 
-    // Apply intelligent reordering: only update order and dates for dependent tasks
+    // Apply intelligent reordering with smart date handling
     let tasksWithUpdatedOrder = reorderedTasks.map((task, index) => ({
       ...task,
       order: index
     }));
 
-    // Apply date dependency logic only to tasks that are dependent
-    // Start from the dragged task and update subsequent dependent tasks
     const draggedTaskNewIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === active.id);
+    const draggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
     
-    if (draggedTaskNewIndex > 0) {
-      const draggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
-      const previousTask = tasksWithUpdatedOrder[draggedTaskNewIndex - 1];
+    // Smart date assignment based on position and task relationships
+    if (draggedTaskNewIndex >= 0) {
+      const previousTask = draggedTaskNewIndex > 0 ? tasksWithUpdatedOrder[draggedTaskNewIndex - 1] : null;
       
-      // If the dragged task is dependent and was moved, align it with the previous task
-      if (draggedTask.dependentOnPrevious && previousTask) {
-        const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
-        const nextWorkday = new Date(previousDate);
-        nextWorkday.setDate(nextWorkday.getDate() + 1);
-        
-        // Skip weekends
-        while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
-          nextWorkday.setDate(nextWorkday.getDate() + 1);
+      // If moving to first position
+      if (draggedTaskNewIndex === 0) {
+        // First task can't be dependent, so disable dependency
+        if (draggedTask.dependentOnPrevious) {
+          draggedTask.dependentOnPrevious = false;
         }
+        // Keep original date for first task
+      } 
+      // For other positions with a previous task
+      else if (previousTask) {
+        // Check if tasks are on the same date for smart ordering
+        const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+        const draggedDate = new Date(draggedTask.taskDate + 'T00:00:00');
         
-        const newDateString = nextWorkday.toISOString().split('T')[0];
-        draggedTask.taskDate = newDateString;
-        
-        // Update subsequent dependent tasks
-        for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
-          const currentTask = tasksWithUpdatedOrder[i];
-          if (!currentTask.dependentOnPrevious) break;
-          
-          const prevTask = tasksWithUpdatedOrder[i - 1];
-          const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
-          const nextDay = new Date(prevDate);
-          nextDay.setDate(nextDay.getDate() + 1);
+        // If moving within the same date, preserve the date but adjust dependency logic
+        if (previousDate.getTime() === draggedDate.getTime()) {
+          // Same date - just reorder, no date change needed
+          // Keep dependency setting as-is unless it's the first task
+        } 
+        // Different dates - apply dependency logic
+        else if (draggedTask.dependentOnPrevious) {
+          // For dependent tasks, follow the previous task with next workday
+          const nextWorkday = new Date(previousDate);
+          nextWorkday.setDate(nextWorkday.getDate() + 1);
           
           // Skip weekends
-          while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
-            nextDay.setDate(nextDay.getDate() + 1);
+          while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+            nextWorkday.setDate(nextWorkday.getDate() + 1);
           }
           
-          currentTask.taskDate = nextDay.toISOString().split('T')[0];
+          draggedTask.taskDate = nextWorkday.toISOString().split('T')[0];
         }
+        // For non-dependent tasks, preserve original date
+      }
+      
+      // Update subsequent dependent tasks
+      for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
+        const currentTask = tasksWithUpdatedOrder[i];
+        if (!currentTask.dependentOnPrevious) break;
+        
+        const prevTask = tasksWithUpdatedOrder[i - 1];
+        const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
+        const nextDay = new Date(prevDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        // Skip weekends
+        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+          nextDay.setDate(nextDay.getDate() + 1);
+        }
+        
+        currentTask.taskDate = nextDay.toISOString().split('T')[0];
       }
     }
 

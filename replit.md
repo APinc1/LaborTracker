@@ -216,6 +216,13 @@ Preferred communication style: Simple, everyday language.
 - ✅ Resolved task edit functionality issues with bidirectional status changes
 - ✅ Location duration now dynamically reflects the first and last task dates rather than static location dates
 - ✅ Added "Based on scheduled tasks" indicator to show duration is calculated from actual task scheduling
+- ✅ Implemented comprehensive drag-and-drop task reordering with @dnd-kit library
+- ✅ Added intelligent dependency management for task reordering
+- ✅ Enhanced task cards with delete buttons and "Day x of y" cost code indicators
+- ✅ Improved drag animations with smooth transitions and visual feedback
+- ✅ Fixed dependency preservation during reordering (non-dependent tasks stay non-dependent)
+- ✅ Implemented smart date handling for same-day task reordering
+- ✅ Enhanced date-first sorting with order as secondary sort criteria
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
