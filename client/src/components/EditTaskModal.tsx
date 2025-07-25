@@ -279,18 +279,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             Edit Task: {getTaskDisplayName(task.name)}
             {/* Day indicator badge */}
             {(() => {
-              const dayMatch = task.name.match(/Day (\d+)/i);
-              if (dayMatch && locationTasks) {
-                const currentDay = parseInt(dayMatch[1]);
-                const totalDays = locationTasks.filter(t => 
-                  t.costCode === task.costCode && 
-                  t.locationId === task.locationId
-                ).length;
-                return (
-                  <Badge variant="outline" className="text-xs">
-                    Day {currentDay} of {totalDays}
-                  </Badge>
-                );
+              if (locationTasks) {
+                // Get all tasks with the same cost code at this location, sorted by date then order
+                const sameCostCodeTasks = locationTasks
+                  .filter(t => t.costCode === task.costCode && t.locationId === task.locationId)
+                  .sort((a, b) => {
+                    if (a.taskDate !== b.taskDate) {
+                      return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+                    }
+                    return (a.order || 0) - (b.order || 0);
+                  });
+                
+                const currentTaskIndex = sameCostCodeTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+                
+                if (currentTaskIndex >= 0 && sameCostCodeTasks.length > 1) {
+                  const currentDay = currentTaskIndex + 1;
+                  const totalDays = sameCostCodeTasks.length;
+                  return (
+                    <Badge variant="outline" className="text-xs">
+                      Day {currentDay} of {totalDays}
+                    </Badge>
+                  );
+                }
               }
               return null;
             })()}

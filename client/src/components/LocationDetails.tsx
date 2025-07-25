@@ -725,7 +725,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
-            const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
+            const taskName = taskType;
             const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
@@ -785,7 +785,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             }
           }
           
-          const taskName = group.days > 1 ? `${taskType} - Day ${dayCount}` : taskType;
+          const taskName = taskType;
           const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${dayCount}_${Date.now()}`;
           const taskDate = allWorkDays[globalDayIndex];
@@ -820,7 +820,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
-            const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
+            const taskName = taskType;
             const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
@@ -856,7 +856,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
-            const taskName = group.days > 1 ? `${taskType} - Day ${day}` : taskType;
+            const taskName = taskType;
             const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
@@ -1172,6 +1172,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onClick={() => setShowGenerateTasksDialog(true)}
                 size="sm"
                 className="ml-auto"
+                disabled={tasks.length > 0}
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Generate Tasks
