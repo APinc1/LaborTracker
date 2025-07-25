@@ -374,9 +374,20 @@ export default function DraggableTaskList({
       }
       
       // Update all subsequent dependent tasks to maintain proper sequence
-      for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
+      // This ensures that when a task moves, all following dependent tasks adjust properly
+      for (let i = 0; i < tasksWithUpdatedOrder.length; i++) {
         const currentTask = tasksWithUpdatedOrder[i];
-        if (!currentTask.dependentOnPrevious) continue; // Skip non-dependent tasks
+        
+        // Skip the first task (no previous task to depend on)
+        if (i === 0) {
+          if (currentTask.dependentOnPrevious) {
+            currentTask.dependentOnPrevious = false; // First task can't be dependent
+          }
+          continue;
+        }
+        
+        // Only update dependent tasks
+        if (!currentTask.dependentOnPrevious) continue;
         
         const prevTask = tasksWithUpdatedOrder[i - 1];
         const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
@@ -389,8 +400,19 @@ export default function DraggableTaskList({
         }
         
         const newDate = nextDay.toISOString().split('T')[0];
-        console.log('Updating dependent task:', { taskName: currentTask.name, oldDate: currentTask.taskDate, newDate });
-        currentTask.taskDate = newDate;
+        
+        // Only update if the date actually changes
+        if (currentTask.taskDate !== newDate) {
+          console.log('Updating dependent task:', { 
+            taskName: currentTask.name, 
+            position: i,
+            oldDate: currentTask.taskDate, 
+            newDate,
+            previousTask: prevTask.name,
+            previousDate: prevTask.taskDate
+          });
+          currentTask.taskDate = newDate;
+        }
       }
     }
 
