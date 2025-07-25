@@ -220,6 +220,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
     if (dateChanged && locationTasks && locationTasks.length > 0) {
+      // Only cascade if the date actually changed - dependency changes alone don't cascade
+      console.log('Task date changed from', task.taskDate, 'to', data.taskDate, '- cascading updates');
+      
       // Update all affected tasks with dependency shifting
       const updatedTasks = updateTaskDependencies(
         locationTasks, 
@@ -238,7 +241,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       console.log('Date changed - updating all affected tasks:', updatedTasks);
       batchUpdateTasksMutation.mutate(updatedTasks);
     } else {
-      // Single task update (including dependency changes)
+      // Single task update (including dependency changes only)
+      // Dependency changes without date changes should not affect other tasks
+      if (dependencyChanged) {
+        console.log('Only dependency changed - updating single task without cascading');
+      }
       console.log('Processed data to send:', processedData);
       updateTaskMutation.mutate(processedData);
     }

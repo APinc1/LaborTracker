@@ -373,46 +373,52 @@ export default function DraggableTaskList({
         draggedTask.taskDate = targetDate;
       }
       
-      // Update all subsequent dependent tasks to maintain proper sequence
-      // This ensures that when a task moves, all following dependent tasks adjust properly
-      for (let i = 0; i < tasksWithUpdatedOrder.length; i++) {
-        const currentTask = tasksWithUpdatedOrder[i];
+      // Only cascade date updates if the dragged task's date actually changed
+      // and it affects subsequent dependent tasks
+      const draggedTaskDateChanged = draggedTask.taskDate !== sortedTasks[oldIndex].taskDate;
+      
+      if (draggedTaskDateChanged) {
+        console.log('Dragged task date changed, cascading updates to dependent tasks');
         
-        // Skip the first task (no previous task to depend on)
-        if (i === 0) {
-          if (currentTask.dependentOnPrevious) {
-            currentTask.dependentOnPrevious = false; // First task can't be dependent
-          }
-          continue;
-        }
-        
-        // Only update dependent tasks
-        if (!currentTask.dependentOnPrevious) continue;
-        
-        const prevTask = tasksWithUpdatedOrder[i - 1];
-        const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
-        const nextDay = new Date(prevDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        
-        // Skip weekends
-        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+        // Update only subsequent dependent tasks starting from the dragged task position
+        for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
+          const currentTask = tasksWithUpdatedOrder[i];
+          
+          // Only update dependent tasks
+          if (!currentTask.dependentOnPrevious) continue;
+          
+          const prevTask = tasksWithUpdatedOrder[i - 1];
+          const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
+          const nextDay = new Date(prevDate);
           nextDay.setDate(nextDay.getDate() + 1);
+          
+          // Skip weekends
+          while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+            nextDay.setDate(nextDay.getDate() + 1);
+          }
+          
+          const newDate = nextDay.toISOString().split('T')[0];
+          
+          // Only update if the date actually changes
+          if (currentTask.taskDate !== newDate) {
+            console.log('Cascading date update to dependent task:', { 
+              taskName: currentTask.name, 
+              position: i,
+              oldDate: currentTask.taskDate, 
+              newDate,
+              previousTask: prevTask.name,
+              previousDate: prevTask.taskDate
+            });
+            currentTask.taskDate = newDate;
+          }
         }
-        
-        const newDate = nextDay.toISOString().split('T')[0];
-        
-        // Only update if the date actually changes
-        if (currentTask.taskDate !== newDate) {
-          console.log('Updating dependent task:', { 
-            taskName: currentTask.name, 
-            position: i,
-            oldDate: currentTask.taskDate, 
-            newDate,
-            previousTask: prevTask.name,
-            previousDate: prevTask.taskDate
-          });
-          currentTask.taskDate = newDate;
-        }
+      } else {
+        console.log('Dragged task date unchanged, no cascading needed');
+      }
+      
+      // Always ensure first task is not dependent
+      if (tasksWithUpdatedOrder.length > 0 && tasksWithUpdatedOrder[0].dependentOnPrevious) {
+        tasksWithUpdatedOrder[0].dependentOnPrevious = false;
       }
     }
 
