@@ -87,27 +87,32 @@ export function updateTaskDependencies(
     taskDate: newDate
   };
 
-  // Calculate the date shift in weekdays
-  const oldDateObj = parseDateString(oldDate);
-  const newDateObj = parseDateString(newDate);
-  const daysDifference = getWeekdayDifference(oldDateObj, newDateObj);
+  // Instead of calculating difference, rebuild the sequence from the changed task forward
+  // This ensures all subsequent dependent tasks follow the correct date sequence
+  let currentDate = parseDateString(newDate);
   
-  // If no difference or moving backward, don't shift subsequent tasks
-  if (daysDifference <= 0) return updatedTasks;
-
-  // Shift all subsequent dependent tasks
+  // Process all subsequent tasks and rebuild dependent task dates
   for (let i = changedTaskIndex + 1; i < updatedTasks.length; i++) {
     const task = updatedTasks[i];
     
-    // Only shift if task is dependent on previous
+    // Only update dependent tasks
     if (task.dependentOnPrevious) {
-      const currentTaskDate = parseDateString(task.taskDate);
-      const shiftedDate = addWeekdays(currentTaskDate, daysDifference);
+      // Get the previous task's date
+      const previousTask = updatedTasks[i - 1];
+      const previousDate = parseDateString(previousTask.taskDate);
+      
+      // Calculate next workday after previous task
+      const nextWorkday = getNextWeekday(previousDate);
       
       updatedTasks[i] = {
         ...task,
-        taskDate: formatDateToString(shiftedDate)
+        taskDate: formatDateToString(nextWorkday)
       };
+      
+      currentDate = nextWorkday;
+    } else {
+      // For non-dependent tasks, keep their current date but update currentDate for next iteration
+      currentDate = parseDateString(task.taskDate);
     }
   }
 

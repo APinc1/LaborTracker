@@ -380,7 +380,8 @@ export default function DraggableTaskList({
       if (draggedTaskDateChanged) {
         console.log('Dragged task date changed, cascading updates to dependent tasks');
         
-        // Update only subsequent dependent tasks starting from the dragged task position
+        // Rebuild the sequence from the dragged task position forward
+        // This ensures all subsequent dependent tasks follow correct sequence for both increases and decreases
         for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
           const currentTask = tasksWithUpdatedOrder[i];
           
@@ -399,18 +400,18 @@ export default function DraggableTaskList({
           
           const newDate = nextDay.toISOString().split('T')[0];
           
-          // Only update if the date actually changes
-          if (currentTask.taskDate !== newDate) {
-            console.log('Cascading date update to dependent task:', { 
-              taskName: currentTask.name, 
-              position: i,
-              oldDate: currentTask.taskDate, 
-              newDate,
-              previousTask: prevTask.name,
-              previousDate: prevTask.taskDate
-            });
-            currentTask.taskDate = newDate;
-          }
+          // Always update dependent tasks to maintain proper sequence
+          // This handles both date increases and decreases properly
+          console.log('Cascading date update to dependent task:', { 
+            taskName: currentTask.name, 
+            position: i,
+            oldDate: currentTask.taskDate, 
+            newDate,
+            previousTask: prevTask.name,
+            previousDate: prevTask.taskDate,
+            reason: 'Rebuilding sequence after drag operation'
+          });
+          currentTask.taskDate = newDate;
         }
       } else {
         console.log('Dragged task date unchanged, no cascading needed');
