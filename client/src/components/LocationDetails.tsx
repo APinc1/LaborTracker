@@ -722,11 +722,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         // Process task types that come before Form/Pour first
         beforeFormPourTypes.forEach(taskType => {
           const group = taskGroups[taskType];
-          const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
             const taskName = taskType;
-            const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
@@ -741,7 +739,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startDate: dateRange.startDate,
               finishDate: dateRange.finishDate,
               costCode: costCode,
-              workDescription: workDescription,
+              workDescription: "",
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
               superintendentId: null,
@@ -758,7 +756,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         // Now handle alternating Form/Pour
         let formDayCount = 1;
         let pourDayCount = 1;
-        const costCodeNames = formGroup.costCodes.map(cc => cc.costCode).join(', ');
         
         for (let concreteDay = 1; concreteDay <= totalConcreteDays; concreteDay++) {
           const isFormDay = (concreteDay % 2 === 1); // Odd days are Form
@@ -786,7 +783,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           }
           
           const taskName = taskType;
-          const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
           const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${dayCount}_${Date.now()}`;
           const taskDate = allWorkDays[globalDayIndex];
           
@@ -801,7 +797,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             startDate: dateRange.startDate,
             finishDate: dateRange.finishDate,
             costCode: costCode,
-            workDescription: workDescription,
+            workDescription: "",
             scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
             actualHours: null,
             superintendentId: null,
@@ -817,11 +813,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         // Now process task types that come after Form/Pour
         [...afterFormPourTypes, ...filteredAdditionalTypes].forEach(taskType => {
           const group = taskGroups[taskType];
-          const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
             const taskName = taskType;
-            const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
@@ -836,7 +830,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startDate: dateRange.startDate,
               finishDate: dateRange.finishDate,
               costCode: costCode,
-              workDescription: workDescription,
+              workDescription: "",
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
               superintendentId: null,
@@ -853,11 +847,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         // Normal processing for non-alternating tasks
         [...orderedTaskTypes, ...additionalTaskTypes].forEach(taskType => {
           const group = taskGroups[taskType];
-          const costCodeNames = group.costCodes.map(cc => cc.costCode).join(', ');
           
           for (let day = 1; day <= group.days; day++) {
             const taskName = taskType;
-            const workDescription = `${taskType} work for cost codes: ${costCodeNames}`;
             
             const taskId = `${locationId}_${taskType.replace(/[\/\s+]/g, '')}_Day${day}_${Date.now()}`;
             const taskDate = allWorkDays[globalDayIndex];
@@ -872,7 +864,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startDate: dateRange.startDate || safeFormatDate(allWorkDays[0]),
               finishDate: dateRange.finishDate || safeFormatDate(allWorkDays[allWorkDays.length - 1]),
               costCode: costCode,
-              workDescription: workDescription,
+              workDescription: "",
               scheduledHours: (Math.min(40, group.totalHours / group.days)).toFixed(2),
               actualHours: null,
               superintendentId: null,
