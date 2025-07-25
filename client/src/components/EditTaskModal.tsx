@@ -55,6 +55,7 @@ const costCodes = [
 
 // Simplified schema for editing only the editable fields
 const editTaskSchema = z.object({
+  name: z.string().min(1, "Task name is required"),
   taskDate: z.string().min(1, "Task date is required"),
   startTime: z.string().optional(),
   finishTime: z.string().optional(),
@@ -105,6 +106,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const form = useForm({
     resolver: zodResolver(editTaskSchema),
     defaultValues: {
+      name: "",
       taskDate: "",
       startTime: "",
       finishTime: "",
@@ -132,6 +134,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       }
 
       form.reset({
+        name: task.name || "",
         taskDate: task.taskDate || "",
         startTime: task.startTime || "",
         finishTime: task.finishTime || "",
@@ -271,26 +274,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-3">
             <Edit className="w-5 h-5" />
             Edit Task: {getTaskDisplayName(task.name)}
+            {/* Day indicator badge */}
+            {(() => {
+              const dayMatch = task.name.match(/Day (\d+)/i);
+              if (dayMatch && locationTasks) {
+                const currentDay = parseInt(dayMatch[1]);
+                const totalDays = locationTasks.filter(t => 
+                  t.costCode === task.costCode && 
+                  t.locationId === task.locationId
+                ).length;
+                return (
+                  <Badge variant="outline" className="text-xs">
+                    Day {currentDay} of {totalDays}
+                  </Badge>
+                );
+              }
+              return null;
+            })()}
           </DialogTitle>
           <DialogDescription>
-            Edit task date, schedule, description, and status. Other fields are based on cost code settings.
+            Edit task name, date, schedule, description, and status. Other fields are based on cost code settings.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Task Basic Info - Read Only */}
+            {/* Task Basic Info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <FormLabel className="text-sm font-medium text-gray-700">Task Name</FormLabel>
-                <div className="flex items-center gap-2 p-2 bg-gray-50 border rounded-md">
-                  <span className="text-sm text-gray-600 font-medium">{getTaskDisplayName(task.name)}</span>
-                </div>
-                <p className="text-xs text-gray-500">Generated from task type and sequence</p>
-              </div>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Task Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter task name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-2">
                 <FormLabel className="text-sm font-medium text-gray-700">Task Type</FormLabel>

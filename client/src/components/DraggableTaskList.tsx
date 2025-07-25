@@ -125,9 +125,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
               <div className="flex items-center space-x-2 mb-1">
                 {getStatusIcon(task.status || 'upcoming')}
                 <h4 className="font-medium text-sm truncate">{task.name}</h4>
-                <Badge variant="outline" className="text-xs">
-                  {task.taskType}
-                </Badge>
                 {getTaskDayInfo(task, tasks) && (
                   <Badge variant="secondary" className="text-xs">
                     {getTaskDayInfo(task, tasks)}
