@@ -292,23 +292,36 @@ export default function DraggableTaskList({
     const draggedTaskNewIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === active.id);
     const draggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
     
-    // Smart date assignment based on position and task relationships
+    // Intelligent date assignment based on task movement
     if (draggedTaskNewIndex >= 0) {
       const previousTask = draggedTaskNewIndex > 0 ? tasksWithUpdatedOrder[draggedTaskNewIndex - 1] : null;
+      const nextTask = draggedTaskNewIndex < tasksWithUpdatedOrder.length - 1 ? tasksWithUpdatedOrder[draggedTaskNewIndex + 1] : null;
+      
+      console.log('Task positioning:', {
+        draggedTask: draggedTask.name,
+        newIndex: draggedTaskNewIndex,
+        previousTask: previousTask?.name,
+        previousDate: previousTask?.taskDate,
+        nextTask: nextTask?.name,
+        nextDate: nextTask?.taskDate,
+        isDraggedDependent: draggedTask.dependentOnPrevious
+      });
       
       // If moving to first position
       if (draggedTaskNewIndex === 0) {
-        // First task can't be dependent, so disable dependency
+        // First task can't be dependent
         if (draggedTask.dependentOnPrevious) {
           draggedTask.dependentOnPrevious = false;
         }
         // Keep original date for first task
       } 
-      // For other positions with a previous task
+      // For other positions, determine the best date for this position
       else if (previousTask) {
-        // Handle date logic based on dependency and position
+        // Calculate what date this position should have
+        let targetDate: string;
+        
         if (draggedTask.dependentOnPrevious) {
-          // For dependent tasks, always follow the previous task
+          // Dependent tasks follow the previous task (next workday)
           const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
           const nextWorkday = new Date(previousDate);
           nextWorkday.setDate(nextWorkday.getDate() + 1);
@@ -318,15 +331,52 @@ export default function DraggableTaskList({
             nextWorkday.setDate(nextWorkday.getDate() + 1);
           }
           
-          draggedTask.taskDate = nextWorkday.toISOString().split('T')[0];
+          targetDate = nextWorkday.toISOString().split('T')[0];
+        } else {
+          // Non-dependent tasks should fit logically in the sequence
+          // If there's a next task, try to fit between previous and next
+          if (nextTask) {
+            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+            const nextDate = new Date(nextTask.taskDate + 'T00:00:00');
+            
+            // Try to place it the day after previous task
+            const candidateDate = new Date(previousDate);
+            candidateDate.setDate(candidateDate.getDate() + 1);
+            
+            // Skip weekends
+            while (candidateDate.getDay() === 0 || candidateDate.getDay() === 6) {
+              candidateDate.setDate(candidateDate.getDate() + 1);
+            }
+            
+            // If candidate date is before next task's date, use it; otherwise use original
+            if (candidateDate < nextDate) {
+              targetDate = candidateDate.toISOString().split('T')[0];
+            } else {
+              targetDate = draggedTask.taskDate; // Keep original
+            }
+          } else {
+            // No next task, place after previous task
+            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+            const nextWorkday = new Date(previousDate);
+            nextWorkday.setDate(nextWorkday.getDate() + 1);
+            
+            // Skip weekends
+            while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+              nextWorkday.setDate(nextWorkday.getDate() + 1);
+            }
+            
+            targetDate = nextWorkday.toISOString().split('T')[0];
+          }
         }
-        // For non-dependent tasks, preserve original date regardless of position
+        
+        console.log('Assigning new date:', { taskName: draggedTask.name, oldDate: draggedTask.taskDate, newDate: targetDate });
+        draggedTask.taskDate = targetDate;
       }
       
-      // Update subsequent dependent tasks
+      // Update all subsequent dependent tasks to maintain proper sequence
       for (let i = draggedTaskNewIndex + 1; i < tasksWithUpdatedOrder.length; i++) {
         const currentTask = tasksWithUpdatedOrder[i];
-        if (!currentTask.dependentOnPrevious) break;
+        if (!currentTask.dependentOnPrevious) continue; // Skip non-dependent tasks
         
         const prevTask = tasksWithUpdatedOrder[i - 1];
         const prevDate = new Date(prevTask.taskDate + 'T00:00:00');
@@ -338,7 +388,9 @@ export default function DraggableTaskList({
           nextDay.setDate(nextDay.getDate() + 1);
         }
         
-        currentTask.taskDate = nextDay.toISOString().split('T')[0];
+        const newDate = nextDay.toISOString().split('T')[0];
+        console.log('Updating dependent task:', { taskName: currentTask.name, oldDate: currentTask.taskDate, newDate });
+        currentTask.taskDate = newDate;
       }
     }
 
