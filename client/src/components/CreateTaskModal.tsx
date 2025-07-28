@@ -109,6 +109,9 @@ export default function CreateTaskModal({
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: { newTask: any; updatedTasks: any[] }) => {
+      console.log('Creating task with position:', data.newTask.name, 'order:', data.newTask.order);
+      console.log('Updating', data.updatedTasks.length, 'existing tasks');
+      
       // First create the new task
       const createResponse = await apiRequest(`/api/locations/${data.newTask.locationId}/tasks`, {
         method: 'POST',
@@ -118,6 +121,7 @@ export default function CreateTaskModal({
       
       // Then update existing tasks if needed (for date shifting)
       if (data.updatedTasks.length > 0) {
+        console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate })));
         const updatePromises = data.updatedTasks.map(task => 
           apiRequest(`/api/tasks/${task.id}`, {
             method: 'PUT',
@@ -131,14 +135,19 @@ export default function CreateTaskModal({
       return createResponse.json();
     },
     onSuccess: (result, variables) => {
+      const successMsg = variables.updatedTasks.length > 0 
+        ? `Task created and ${variables.updatedTasks.length} existing tasks shifted`
+        : "Task created successfully";
+      
       // Invalidate both general tasks and location-specific tasks
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
-      toast({ title: "Success", description: "Task created and schedule updated successfully" });
+      toast({ title: "Success", description: successMsg });
       onClose();
       form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Task creation error:', error);
       toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
     },
   });
@@ -197,6 +206,36 @@ export default function CreateTaskModal({
             updatedTasks[linkedTaskIndex] = { ...updatedTasks[linkedTaskIndex], linkedTaskGroup };
           }
         }
+        
+        // Find position to insert (after the linked task)
+        const linkedTaskIndex = sortedTasks.findIndex(t => 
+          (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)
+        );
+        insertIndex = linkedTaskIndex + 1;
+        
+        // Shift all subsequent sequential tasks
+        let currentDate = taskDate;
+        for (let i = insertIndex; i < updatedTasks.length; i++) {
+          const task = updatedTasks[i];
+          if (task.dependentOnPrevious) {
+            // Calculate next date based on the current reference date
+            const baseDate = new Date(currentDate + 'T00:00:00');
+            const shiftedDate = new Date(baseDate);
+            shiftedDate.setDate(shiftedDate.getDate() + 1);
+            // Skip weekends
+            while (shiftedDate.getDay() === 0 || shiftedDate.getDay() === 6) {
+              shiftedDate.setDate(shiftedDate.getDate() + 1);
+            }
+            updatedTasks[i] = { 
+              ...task, 
+              taskDate: shiftedDate.toISOString().split('T')[0] 
+            };
+            currentDate = shiftedDate.toISOString().split('T')[0];
+          } else {
+            // Non-dependent task keeps its date
+            currentDate = task.taskDate;
+          }
+        }
       } else {
         taskDate = new Date().toISOString().split('T')[0]; // Fallback
       }
@@ -247,12 +286,14 @@ export default function CreateTaskModal({
             }
             taskDate = nextDate.toISOString().split('T')[0];
             
-            // Shift all subsequent dependent tasks
+            // Shift all subsequent tasks that are after this insertion point
+            let currentDate = taskDate;
             for (let i = insertIndex; i < updatedTasks.length; i++) {
               const task = updatedTasks[i];
               if (task.dependentOnPrevious) {
-                const currentDate = new Date(updatedTasks[i - 1]?.taskDate + 'T00:00:00' || taskDate + 'T00:00:00');
-                const shiftedDate = new Date(currentDate);
+                // Calculate next date based on the previous task (either new task or previous shifted task)
+                const baseDate = new Date(currentDate + 'T00:00:00');
+                const shiftedDate = new Date(baseDate);
                 shiftedDate.setDate(shiftedDate.getDate() + 1);
                 // Skip weekends
                 while (shiftedDate.getDay() === 0 || shiftedDate.getDay() === 6) {
@@ -262,6 +303,10 @@ export default function CreateTaskModal({
                   ...task, 
                   taskDate: shiftedDate.toISOString().split('T')[0] 
                 };
+                currentDate = shiftedDate.toISOString().split('T')[0];
+              } else {
+                // Non-dependent task keeps its date, but this becomes the new reference point
+                currentDate = task.taskDate;
               }
             }
           } else {
@@ -332,9 +377,17 @@ export default function CreateTaskModal({
     }));
 
     // Create new task first, then update existing tasks if needed
+    // Only update tasks that have actually changed
+    const tasksToUpdate = updatedTasks.filter(task => {
+      const originalTask = existingTasks.find(orig => 
+        (orig.taskId || orig.id) === (task.taskId || task.id)
+      );
+      return originalTask && originalTask.taskDate !== task.taskDate;
+    });
+
     createTaskMutation.mutate({
       newTask,
-      updatedTasks: updatedTasks.filter(task => task.taskId !== newTask.taskId)
+      updatedTasks: tasksToUpdate
     });
   };
 
@@ -369,12 +422,19 @@ export default function CreateTaskModal({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="start">At the beginning</SelectItem>
-                      {existingTasks.map((task: any) => (
+                      {existingTasks
+                        .sort((a, b) => {
+                          const dateA = new Date(a.taskDate).getTime();
+                          const dateB = new Date(b.taskDate).getTime();
+                          if (dateA !== dateB) return dateA - dateB;
+                          return (a.order || 0) - (b.order || 0);
+                        })
+                        .map((task: any) => (
                         <SelectItem 
                           key={task.id || task.taskId} 
                           value={`after-${(task.taskId || task.id).toString()}`}
                         >
-                          After: {task.name} ({task.taskDate})
+                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB')})
                         </SelectItem>
                       ))}
                       <SelectItem value="end">At the end</SelectItem>
@@ -456,12 +516,19 @@ export default function CreateTaskModal({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {existingTasks.map((task: any) => (
+                          {existingTasks
+                            .sort((a, b) => {
+                              const dateA = new Date(a.taskDate).getTime();
+                              const dateB = new Date(b.taskDate).getTime();
+                              if (dateA !== dateB) return dateA - dateB;
+                              return (a.order || 0) - (b.order || 0);
+                            })
+                            .map((task: any) => (
                             <SelectItem 
                               key={task.id || task.taskId} 
                               value={(task.taskId || task.id).toString()}
                             >
-                              {task.name} ({task.taskDate})
+                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB')})
                             </SelectItem>
                           ))}
                         </SelectContent>
