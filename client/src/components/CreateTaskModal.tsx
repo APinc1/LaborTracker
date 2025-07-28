@@ -434,7 +434,7 @@ export default function CreateTaskModal({
                           key={task.id || task.taskId} 
                           value={`after-${(task.taskId || task.id).toString()}`}
                         >
-                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
                         </SelectItem>
                       ))}
                       <SelectItem value="end">At the end</SelectItem>
@@ -528,7 +528,7 @@ export default function CreateTaskModal({
                               key={task.id || task.taskId} 
                               value={(task.taskId || task.id).toString()}
                             >
-                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -560,29 +560,21 @@ export default function CreateTaskModal({
               />
             )}
 
-            {/* Task Name */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter task name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Task Type */}
+            {/* Task Type - Now first */}
             <FormField
               control={form.control}
               name="taskType"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Task Type *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    // Auto-fill task name if it's empty
+                    const currentName = form.getValues("name");
+                    if (!currentName || currentName.trim() === "") {
+                      form.setValue("name", value);
+                    }
+                  }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select task type" />
@@ -596,6 +588,24 @@ export default function CreateTaskModal({
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Task Name - Now second */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter task name" {...field} />
+                  </FormControl>
+                  <p className="text-xs text-gray-500">
+                    Auto-filled from task type selection. You can change it if needed.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

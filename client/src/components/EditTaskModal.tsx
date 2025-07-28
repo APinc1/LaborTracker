@@ -272,16 +272,40 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
       
-      // If this task is being linked and changes date, update all other linked tasks in the group
+      // If this task has a linkedTaskGroup (existing or new) and date changed, update all linked tasks
       if (processedData.linkedTaskGroup && dateChanged) {
+        console.log('Updating linked tasks in group:', processedData.linkedTaskGroup);
         const linkedTasks = allUpdatedTasks.filter(t => 
           t.linkedTaskGroup === processedData.linkedTaskGroup && 
           (t.taskId || t.id) !== (task.taskId || task.id)
         );
         
+        console.log('Found', linkedTasks.length, 'linked tasks to update');
         linkedTasks.forEach(linkedTask => {
           const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
           if (linkedTaskIndex >= 0) {
+            console.log('Updating linked task:', linkedTask.name, 'from', linkedTask.taskDate, 'to', processedData.taskDate);
+            allUpdatedTasks[linkedTaskIndex] = {
+              ...allUpdatedTasks[linkedTaskIndex],
+              taskDate: processedData.taskDate // Sync all linked tasks to same date
+            };
+          }
+        });
+      }
+      
+      // Also handle case where task is already in a linked group but we're not explicitly linking
+      else if (task.linkedTaskGroup && dateChanged && !data.linkToExistingTask) {
+        console.log('Updating existing linked group:', task.linkedTaskGroup);
+        const linkedTasks = allUpdatedTasks.filter(t => 
+          t.linkedTaskGroup === task.linkedTaskGroup && 
+          (t.taskId || t.id) !== (task.taskId || task.id)
+        );
+        
+        console.log('Found', linkedTasks.length, 'existing linked tasks to update');
+        linkedTasks.forEach(linkedTask => {
+          const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+          if (linkedTaskIndex >= 0) {
+            console.log('Updating existing linked task:', linkedTask.name, 'from', linkedTask.taskDate, 'to', processedData.taskDate);
             allUpdatedTasks[linkedTaskIndex] = {
               ...allUpdatedTasks[linkedTaskIndex],
               taskDate: processedData.taskDate // Sync all linked tasks to same date
@@ -557,7 +581,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 key={linkTask.id || linkTask.taskId} 
                                 value={(linkTask.taskId || linkTask.id).toString()}
                               >
-                                {linkTask.name} ({new Date(linkTask.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
+                                {linkTask.name} ({new Date(linkTask.taskDate).toLocaleDateString('en-US')})
                               </SelectItem>
                             ))
                           }
