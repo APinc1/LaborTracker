@@ -1,59 +1,87 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar, Clock, MapPin, Tag, User, Plus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
+import { z } from "zod";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedDate?: string;
   selectedProject?: number;
   selectedLocation?: number;
 }
 
+// Task type to cost code mapping
+const TASK_TYPE_TO_COST_CODE = {
+  "Traffic Control": "TRAFFIC",
+  "Demo/Ex": "Demo/Ex + Base/Grading",
+  "Base/Grading": "Demo/Ex + Base/Grading", 
+  "Demo/Ex + Base/Grading": "Demo/Ex + Base/Grading",
+  "Form": "CONCRETE",
+  "Pour": "CONCRETE",
+  "Form + Pour": "CONCRETE",
+  "Asphalt": "AC",
+  "General Labor": "GENERAL",
+  "Landscaping": "LANDSCAPE", 
+  "Utility Adjustment": "UTILITY ADJ",
+  "Punchlist Demo": "PUNCHLIST",
+  "Punchlist Concrete": "PUNCHLIST",
+  "Punchlist General Labor": "PUNCHLIST"
+};
+
+const TASK_TYPES = [
+  "Traffic Control",
+  "Demo/Ex", 
+  "Base/Grading",
+  "Demo/Ex + Base/Grading",
+  "Form",
+  "Pour", 
+  "Form + Pour",
+  "Asphalt",
+  "General Labor",
+  "Landscaping",
+  "Utility Adjustment",
+  "Punchlist Demo",
+  "Punchlist Concrete", 
+  "Punchlist General Labor"
+];
+
+const STATUS_OPTIONS = [
+  "upcoming",
+  "in progress", 
+  "complete"
+];
+
+// Create form schema
+const createTaskFormSchema = z.object({
+  taskDate: z.string().min(1, "Date is required"),
+  name: z.string().min(1, "Task name is required"),
+  taskType: z.string().min(1, "Task type is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  finishTime: z.string().min(1, "Finish time is required"),
+  status: z.string().min(1, "Status is required"),
+  workDescription: z.string().optional(),
+  notes: z.string().optional(),
+  dependentOnPrevious: z.boolean().default(true)
+});
+
 export default function CreateTaskModal({ 
   isOpen, 
   onClose, 
-  selectedDate, 
   selectedProject, 
   selectedLocation 
 }: CreateTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [step, setStep] = useState(1);
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ["/api/projects"],
-    staleTime: 30000,
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ["/api/projects", selectedProject || 0, "locations"],
-    enabled: !!selectedProject,
-    staleTime: 30000,
-  });
-
-  const { data: employees = [] } = useQuery({
-    queryKey: ["/api/employees"],
-    staleTime: 30000,
-  });
-
-  const { data: budgetItems = [] } = useQuery({
-    queryKey: ["/api/projects", selectedProject || 0, "budget"],
-    enabled: !!selectedProject,
-    staleTime: 30000,
-  });
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -71,7 +99,6 @@ export default function CreateTaskModal({
       toast({ title: "Success", description: "Task created successfully" });
       onClose();
       form.reset();
-      setStep(1);
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
@@ -79,412 +106,254 @@ export default function CreateTaskModal({
   });
 
   const form = useForm({
-    resolver: zodResolver(insertTaskSchema),
+    resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
-      taskId: '',
-      locationId: selectedLocation || 0,
-      taskType: '',
+      taskDate: new Date().toISOString().split('T')[0],
       name: '',
-      taskDate: selectedDate || new Date().toISOString().split('T')[0],
-      startDate: selectedDate || new Date().toISOString().split('T')[0],
-      finishDate: selectedDate || new Date().toISOString().split('T')[0],
-      costCode: '',
-      superintendentId: null,
-      foremanId: null,
-      scheduledHours: '',
-      actualHours: null,
+      taskType: '',
       startTime: '08:00',
       finishTime: '17:00',
+      status: 'upcoming',
       workDescription: '',
       notes: '',
+      dependentOnPrevious: true,
     },
   });
 
   const onSubmit = (data: any) => {
+    // Get cost code from task type
+    const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
+    
     const processedData = {
-      ...data,
-      taskId: `${data.locationId}_${data.name.replace(/\s+/g, '_')}`,
-      locationId: parseInt(data.locationId),
-      superintendentId: data.superintendentId ? parseInt(data.superintendentId) : null,
-      foremanId: data.foremanId ? parseInt(data.foremanId) : null,
-      scheduledHours: data.scheduledHours ? parseFloat(data.scheduledHours) : null,
-      actualHours: data.actualHours ? parseFloat(data.actualHours) : null,
+      taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
+      locationId: selectedLocation,
+      name: data.name,
+      taskType: data.taskType,
+      taskDate: data.taskDate,
+      startDate: data.taskDate,
+      finishDate: data.taskDate,
+      costCode: costCode,
+      startTime: data.startTime,
+      finishTime: data.finishTime,
+      status: data.status,
+      workDescription: data.workDescription || '',
+      notes: data.notes || '',
+      dependentOnPrevious: data.dependentOnPrevious,
+      superintendentId: null,
+      foremanId: null,
+      scheduledHours: 8, // Default 8 hours
+      actualHours: data.status === 'complete' ? 8 : null,
+      order: 0 // Will be reordered based on date
     };
 
     createTaskMutation.mutate(processedData);
   };
 
-  const handleNext = () => {
-    if (step < 3) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  };
-
   const handleClose = () => {
     onClose();
     form.reset();
-    setStep(1);
-  };
-
-  const getProject = (projectId: number) => {
-    return projects.find((p: any) => p.id === projectId);
-  };
-
-  const getLocation = (locationId: number) => {
-    return locations.find((l: any) => l.id === locationId);
-  };
-
-  const getForemen = () => {
-    return employees.filter((emp: any) => emp.isForeman);
-  };
-
-  const getCostCodes = () => {
-    return [...new Set(budgetItems.map((item: any) => item.costCode))];
-  };
-
-  const estimateHours = (costCode: string) => {
-    const budgetItem = budgetItems.find((item: any) => item.costCode === costCode);
-    return budgetItem?.hours || 40;
   };
 
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Plus className="w-5 h-5" />
-            <span>Create New Task</span>
-            <span className="text-sm text-gray-500">({step}/3)</span>
-          </DialogTitle>
+          <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {step === 1 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Basic Information</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="locationId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value?.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select location" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {locations.map((location: any) => (
-                              <SelectItem key={location.id} value={location.id.toString()}>
-                                {location.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Date */}
+            <FormField
+              control={form.control}
+              name="taskDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date *</FormLabel>
+                  <FormControl>
+                    <Input type="date" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                  <FormField
-                    control={form.control}
-                    name="taskType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Task Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select task type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="Form">Form</SelectItem>
-                            <SelectItem value="Pour">Pour</SelectItem>
-                            <SelectItem value="Demo/Ex">Demo/Ex</SelectItem>
-                            <SelectItem value="Asphalt">Asphalt</SelectItem>
-                            <SelectItem value="Grade">Grade</SelectItem>
-                            <SelectItem value="Haul">Haul</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            {/* Task Name */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter task name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Task Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Form Day 1 of 3" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* Task Type */}
+            <FormField
+              control={form.control}
+              name="taskType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Type *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TASK_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="costCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Cost Code</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select cost code" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {getCostCodes().map((code) => (
-                              <SelectItem key={code} value={code}>
-                                {code}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {/* Start and Finish Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="startTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Time *</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                  <FormField
-                    control={form.control}
-                    name="scheduledHours"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Scheduled Hours</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            step="0.5" 
-                            min="0" 
-                            max="80" 
-                            placeholder="40" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-            )}
+              <FormField
+                control={form.control}
+                name="finishTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Finish Time *</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            {step === 2 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Schedule & Timing</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="taskDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Task Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {/* Status */}
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {STATUS_OPTIONS.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Start Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            {/* Work Description */}
+            <FormField
+              control={form.control}
+              name="workDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Work Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe the work to be done..."
+                      className="min-h-[80px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                  <FormField
-                    control={form.control}
-                    name="finishDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Finish Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+            {/* Notes */}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Additional notes..."
+                      className="min-h-[60px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="startTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Start Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="finishTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Finish Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="foremanId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Foreman</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select foreman" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none">No foreman assigned</SelectItem>
-                          {getForemen().map((foreman: any) => (
-                            <SelectItem key={foreman.id} value={foreman.id.toString()}>
-                              {foreman.name} ({foreman.teamMemberId})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Description & Notes</h3>
-                
-                <FormField
-                  control={form.control}
-                  name="workDescription"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Work Description</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Describe the work to be performed..."
-                          className="min-h-[100px]"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Notes</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Any additional notes or special instructions..."
-                          className="min-h-[100px]"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Task Summary */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Task Summary</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center space-x-2">
-                      <Tag className="w-4 h-4 text-gray-500" />
-                      <span>{form.watch('name') || 'Task Name'}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      <span>{getLocation(parseInt(form.watch('locationId')))?.name || 'Location'}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-4 h-4 text-gray-500" />
-                      <span>{form.watch('taskDate') || 'Date'}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-4 h-4 text-gray-500" />
-                      <span>{form.watch('startTime')} - {form.watch('finishTime')}</span>
-                    </div>
+            {/* Dependent on Previous */}
+            <FormField
+              control={form.control}
+              name="dependentOnPrevious"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Dependent on previous task
+                    </FormLabel>
                   </div>
-                </div>
-              </div>
-            )}
+                </FormItem>
+              )}
+            />
 
-            <div className="flex justify-between">
-              <div>
-                {step > 1 && (
-                  <Button type="button" variant="outline" onClick={handleBack}>
-                    Back
-                  </Button>
-                )}
-              </div>
-              <div className="flex space-x-2">
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                {step < 3 ? (
-                  <Button type="button" onClick={handleNext}>
-                    Next
-                  </Button>
-                ) : (
-                  <Button type="submit" disabled={createTaskMutation.isPending}>
-                    {createTaskMutation.isPending ? 'Creating...' : 'Create Task'}
-                  </Button>
-                )}
-              </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createTaskMutation.isPending}
+                className="flex-1"
+              >
+                {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+              </Button>
             </div>
           </form>
         </Form>
