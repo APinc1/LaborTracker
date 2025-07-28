@@ -1459,7 +1459,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
         selectedProject={location?.projectId}
-        selectedLocation={location?.id}
+        selectedLocation={location?.locationId || locationId}
       />
     </div>
   );

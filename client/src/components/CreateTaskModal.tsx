@@ -141,7 +141,7 @@ export default function CreateTaskModal({
       dependentOnPrevious: data.dependentOnPrevious,
       superintendentId: null,
       foremanId: null,
-      scheduledHours: 8, // Default 8 hours
+      scheduledHours: "8", // Default 8 hours as string
       actualHours: data.status === 'complete' ? 8 : null,
       order: 0 // Will be reordered based on date
     };
@@ -176,6 +176,27 @@ export default function CreateTaskModal({
                     <Input type="date" {...field} />
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Dependent on Previous */}
+            <FormField
+              control={form.control}
+              name="dependentOnPrevious"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Dependent on previous task
+                    </FormLabel>
+                  </div>
                 </FormItem>
               )}
             />
@@ -312,27 +333,6 @@ export default function CreateTaskModal({
                     />
                   </FormControl>
                   <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Dependent on Previous */}
-            <FormField
-              control={form.control}
-              name="dependentOnPrevious"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Dependent on previous task
-                    </FormLabel>
-                  </div>
                 </FormItem>
               )}
             />
