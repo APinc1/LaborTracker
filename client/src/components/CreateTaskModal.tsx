@@ -434,7 +434,7 @@ export default function CreateTaskModal({
                           key={task.id || task.taskId} 
                           value={`after-${(task.taskId || task.id).toString()}`}
                         >
-                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB')})
+                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                         </SelectItem>
                       ))}
                       <SelectItem value="end">At the end</SelectItem>
@@ -528,7 +528,7 @@ export default function CreateTaskModal({
                               key={task.id || task.taskId} 
                               value={(task.taskId || task.id).toString()}
                             >
-                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB')})
+                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                             </SelectItem>
                           ))}
                         </SelectContent>

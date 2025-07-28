@@ -222,8 +222,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       ...data, // Override with edited fields only
     };
 
-    // Handle linked tasks
+    // Handle linking changes
+    const linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
+    
     if (data.linkToExistingTask && data.linkedTaskId) {
+      // LINKING TO A TASK
       const linkedTask = (existingTasks as any[]).find((t: any) => 
         (t.taskId || t.id).toString() === data.linkedTaskId
       );
@@ -231,11 +234,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Use linked task's group or create new one
         const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
         processedData.linkedTaskGroup = linkedTaskGroup;
-        processedData.taskDate = linkedTask.taskDate; // Use same date as linked task
+        processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
         processedData.dependentOnPrevious = false; // Linked tasks are not dependent
+        
+        // If the linked task doesn't have a group yet, update it too
+        if (!linkedTask.linkedTaskGroup) {
+          linkedTask.linkedTaskGroup = linkedTaskGroup;
+        }
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
-      // Unlinking from existing group
+      // UNLINKING FROM GROUP
       processedData.linkedTaskGroup = null;
       processedData.dependentOnPrevious = data.dependentOnPrevious ?? true;
     }
@@ -249,36 +257,95 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       processedData.actualHours = null;
     }
 
-    // Check if date changed and handle dependency shifting
+    // Check if changes require cascading updates
     const dateChanged = data.taskDate !== task.taskDate;
     const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
-    if (dateChanged && locationTasks && locationTasks.length > 0) {
-      // Use enhanced dependency update function that handles both sequential and linked tasks
-      console.log('Task date changed from', task.taskDate, 'to', data.taskDate, '- cascading updates');
+    if ((dateChanged || linkingChanged) && locationTasks && locationTasks.length > 0) {
+      console.log('Task changes require cascading updates');
       
-      const updatedTasks = updateTaskDependenciesEnhanced(
-        locationTasks, 
-        task.taskId || task.id, 
-        data.taskDate, 
-        task.taskDate
-      );
+      let allUpdatedTasks = [...locationTasks];
       
-      // Ensure the main task includes all changes
-      const mainTaskIndex = updatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+      // Update the main task first
+      const mainTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
       if (mainTaskIndex >= 0) {
-        updatedTasks[mainTaskIndex] = { ...updatedTasks[mainTaskIndex], ...processedData };
+        allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
       
-      // Batch update all affected tasks
-      console.log('Date changed - updating all affected tasks:', updatedTasks);
-      batchUpdateTasksMutation.mutate(updatedTasks);
+      // If this task is being linked and changes date, update all other linked tasks in the group
+      if (processedData.linkedTaskGroup && dateChanged) {
+        const linkedTasks = allUpdatedTasks.filter(t => 
+          t.linkedTaskGroup === processedData.linkedTaskGroup && 
+          (t.taskId || t.id) !== (task.taskId || task.id)
+        );
+        
+        linkedTasks.forEach(linkedTask => {
+          const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+          if (linkedTaskIndex >= 0) {
+            allUpdatedTasks[linkedTaskIndex] = {
+              ...allUpdatedTasks[linkedTaskIndex],
+              taskDate: processedData.taskDate // Sync all linked tasks to same date
+            };
+          }
+        });
+      }
+      
+      // Sort tasks by date and order to process sequential dependencies
+      const sortedTasks = allUpdatedTasks.sort((a, b) => {
+        const dateA = new Date(a.taskDate).getTime();
+        const dateB = new Date(b.taskDate).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.order || 0) - (b.order || 0);
+      });
+      
+      // Process sequential dependencies after date changes
+      const taskIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+      if (taskIndex >= 0) {
+        // Update subsequent sequential tasks
+        let currentDate = processedData.taskDate;
+        for (let i = taskIndex + 1; i < sortedTasks.length; i++) {
+          const subsequentTask = sortedTasks[i];
+          if (subsequentTask.dependentOnPrevious) {
+            const baseDate = new Date(currentDate + 'T00:00:00');
+            const nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            const newDate = nextDate.toISOString().split('T')[0];
+            
+            const updateIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id));
+            if (updateIndex >= 0) {
+              allUpdatedTasks[updateIndex] = {
+                ...allUpdatedTasks[updateIndex],
+                taskDate: newDate
+              };
+            }
+            currentDate = newDate;
+          } else {
+            currentDate = subsequentTask.taskDate;
+          }
+        }
+      }
+      
+      // Filter to only tasks that actually changed
+      const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
+        const originalTask = locationTasks.find(orig => 
+          (orig.taskId || orig.id) === (updatedTask.taskId || updatedTask.id)
+        );
+        return originalTask && (
+          originalTask.taskDate !== updatedTask.taskDate ||
+          originalTask.linkedTaskGroup !== updatedTask.linkedTaskGroup ||
+          originalTask.dependentOnPrevious !== updatedTask.dependentOnPrevious
+        );
+      });
+      
+      console.log('Cascading updates for', tasksToUpdate.length, 'tasks');
+      batchUpdateTasksMutation.mutate(tasksToUpdate);
     } else {
       // Single task update
-      if (dependencyChanged) {
-        console.log('Only dependency changed - updating single task without cascading');
-      }
-      console.log('Processed data to send:', processedData);
+      console.log('Single task update without cascading');
       updateTaskMutation.mutate(processedData);
     }
   };
@@ -490,7 +557,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 key={linkTask.id || linkTask.taskId} 
                                 value={(linkTask.taskId || linkTask.id).toString()}
                               >
-                                {linkTask.name} ({linkTask.taskDate})
+                                {linkTask.name} ({new Date(linkTask.taskDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })})
                               </SelectItem>
                             ))
                           }
