@@ -151,7 +151,13 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
                 
                 {task.dependentOnPrevious && (
                   <Badge variant="outline" className="text-xs text-blue-600">
-                    Dependent
+                    Sequential
+                  </Badge>
+                )}
+                
+                {task.linkedTaskGroup && (
+                  <Badge variant="outline" className="text-xs text-green-600">
+                    Linked
                   </Badge>
                 )}
               </div>

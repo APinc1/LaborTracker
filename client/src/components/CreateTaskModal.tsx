@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
 import { z } from "zod";
+import { generateLinkedTaskGroupId, getLinkedTasks } from "@shared/taskUtils";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -71,7 +72,9 @@ const createTaskFormSchema = z.object({
   status: z.string().min(1, "Status is required"),
   workDescription: z.string().optional(),
   notes: z.string().optional(),
-  dependentOnPrevious: z.boolean().default(true)
+  dependentOnPrevious: z.boolean().default(true),
+  linkToExistingTask: z.boolean().default(false),
+  linkedTaskId: z.string().optional()
 });
 
 export default function CreateTaskModal({ 
@@ -82,6 +85,13 @@ export default function CreateTaskModal({
 }: CreateTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch existing tasks for linking
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: ["/api/locations", selectedLocation, "tasks"],
+    enabled: !!selectedLocation && isOpen,
+    staleTime: 5000,
+  });
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -117,6 +127,8 @@ export default function CreateTaskModal({
       workDescription: '',
       notes: '',
       dependentOnPrevious: true,
+      linkToExistingTask: false,
+      linkedTaskId: '',
     },
   });
 
@@ -124,21 +136,35 @@ export default function CreateTaskModal({
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
+    // Handle linked tasks
+    let linkedTaskGroup = null;
+    let taskDate = data.taskDate;
+    
+    if (data.linkToExistingTask && data.linkedTaskId) {
+      const linkedTask = existingTasks.find((task: any) => task.taskId === data.linkedTaskId || task.id.toString() === data.linkedTaskId);
+      if (linkedTask) {
+        // Use the linked task's group if it exists, or create new group
+        linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
+        taskDate = linkedTask.taskDate; // Use same date as linked task
+      }
+    }
+    
     const processedData = {
       taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocation,
       name: data.name,
       taskType: data.taskType,
-      taskDate: data.taskDate,
-      startDate: data.taskDate,
-      finishDate: data.taskDate,
+      taskDate: taskDate,
+      startDate: taskDate,
+      finishDate: taskDate,
       costCode: costCode,
       startTime: data.startTime,
       finishTime: data.finishTime,
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: data.dependentOnPrevious,
+      dependentOnPrevious: data.linkToExistingTask ? false : data.dependentOnPrevious, // Linked tasks not dependent
+      linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
       scheduledHours: "8", // Default 8 hours as string
@@ -190,16 +216,74 @@ export default function CreateTaskModal({
                     <Checkbox
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      disabled={form.watch("linkToExistingTask")}
                     />
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>
-                      Dependent on previous task
+                      Sequential dependency (automatically shift date based on previous task)
                     </FormLabel>
                   </div>
                 </FormItem>
               )}
             />
+
+            {/* Link to Existing Task */}
+            <FormField
+              control={form.control}
+              name="linkToExistingTask"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (checked) {
+                          form.setValue("dependentOnPrevious", false);
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Link to existing task (occur on same date)
+                    </FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Linked Task Selection */}
+            {form.watch("linkToExistingTask") && (
+              <FormField
+                control={form.control}
+                name="linkedTaskId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Select Task to Link With</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose an existing task" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {existingTasks.map((task: any) => (
+                          <SelectItem 
+                            key={task.id || task.taskId} 
+                            value={(task.taskId || task.id).toString()}
+                          >
+                            {task.name} ({task.taskDate})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Task Name */}
             <FormField

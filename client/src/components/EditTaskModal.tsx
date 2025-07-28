@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependencies } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -63,11 +63,20 @@ const editTaskSchema = z.object({
   notes: z.string().optional(),
   status: z.string().optional(),
   dependentOnPrevious: z.boolean().optional(),
+  linkToExistingTask: z.boolean().default(false),
+  linkedTaskId: z.string().optional(),
 });
 
 export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch existing tasks for linking
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: ["/api/locations", task?.locationId, "tasks"],
+    enabled: !!task?.locationId && isOpen,
+    staleTime: 5000,
+  });
 
   // Helper function to safely format dates  
   const safeFormatDate = (date: Date): string => {
@@ -114,6 +123,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       notes: "",
       status: "upcoming",
       dependentOnPrevious: true,
+      linkToExistingTask: false,
+      linkedTaskId: "",
     },
   });
 
@@ -142,6 +153,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         notes: task.notes || "",
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
+        linkToExistingTask: !!task.linkedTaskGroup,
+        linkedTaskId: "",
       });
     }
   }, [task, form]);
@@ -204,10 +217,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
     
-    const processedData = {
+    let processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
     };
+
+    // Handle linked tasks
+    if (data.linkToExistingTask && data.linkedTaskId) {
+      const linkedTask = (existingTasks as any[]).find((t: any) => 
+        (t.taskId || t.id).toString() === data.linkedTaskId
+      );
+      if (linkedTask) {
+        // Use linked task's group or create new one
+        const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
+        processedData.linkedTaskGroup = linkedTaskGroup;
+        processedData.taskDate = linkedTask.taskDate; // Use same date as linked task
+        processedData.dependentOnPrevious = false; // Linked tasks are not dependent
+      }
+    } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
+      // Unlinking from existing group
+      processedData.linkedTaskGroup = null;
+      processedData.dependentOnPrevious = data.dependentOnPrevious ?? true;
+    }
 
     // Handle actualHours based on status
     if (data.status === "complete") {
@@ -223,18 +254,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
     if (dateChanged && locationTasks && locationTasks.length > 0) {
-      // Only cascade if the date actually changed - dependency changes alone don't cascade
+      // Use enhanced dependency update function that handles both sequential and linked tasks
       console.log('Task date changed from', task.taskDate, 'to', data.taskDate, '- cascading updates');
       
-      // Update all affected tasks with dependency shifting
-      const updatedTasks = updateTaskDependencies(
+      const updatedTasks = updateTaskDependenciesEnhanced(
         locationTasks, 
         task.taskId || task.id, 
         data.taskDate, 
         task.taskDate
       );
       
-      // Ensure the main task includes the dependency change
+      // Ensure the main task includes all changes
       const mainTaskIndex = updatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
       if (mainTaskIndex >= 0) {
         updatedTasks[mainTaskIndex] = { ...updatedTasks[mainTaskIndex], ...processedData };
@@ -244,8 +274,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       console.log('Date changed - updating all affected tasks:', updatedTasks);
       batchUpdateTasksMutation.mutate(updatedTasks);
     } else {
-      // Single task update (including dependency changes only)
-      // Dependency changes without date changes should not affect other tasks
+      // Single task update
       if (dependencyChanged) {
         console.log('Only dependency changed - updating single task without cascading');
       }
@@ -387,7 +416,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             </div>
 
             {/* Task Dependencies */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <FormField
                 control={form.control}
                 name="dependentOnPrevious"
@@ -397,11 +426,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        disabled={form.watch("linkToExistingTask")}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
                       <FormLabel>
-                        Dependent on Previous Task
+                        Sequential dependency (automatically shift date based on previous task)
                       </FormLabel>
                       <p className="text-xs text-gray-500">
                         When enabled, this task will automatically shift if previous tasks change dates
@@ -410,6 +440,67 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="linkToExistingTask"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked);
+                          if (checked) {
+                            form.setValue("dependentOnPrevious", false);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Link to existing task (occur on same date)
+                      </FormLabel>
+                      <p className="text-xs text-gray-500">
+                        Link this task to occur on the same date as another task
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("linkToExistingTask") && (
+                <FormField
+                  control={form.control}
+                  name="linkedTaskId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Task to Link With</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose an existing task" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {(existingTasks as any[])
+                            .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id))
+                            .map((linkTask: any) => (
+                              <SelectItem 
+                                key={linkTask.id || linkTask.taskId} 
+                                value={(linkTask.taskId || linkTask.id).toString()}
+                              >
+                                {linkTask.name} ({linkTask.taskDate})
+                              </SelectItem>
+                            ))
+                          }
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Cost Code - Read Only */}

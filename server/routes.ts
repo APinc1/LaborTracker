@@ -529,7 +529,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         locationId: req.params.locationId
       });
+      
       const task = await storage.createTask(validated);
+      
+      // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
+      if (validated.linkedTaskGroup && req.body.linkedTaskId) {
+        try {
+          const existingTask = await storage.getTask(parseInt(req.body.linkedTaskId));
+          if (existingTask && !existingTask.linkedTaskGroup) {
+            await storage.updateTask(parseInt(req.body.linkedTaskId), {
+              linkedTaskGroup: validated.linkedTaskGroup
+            });
+          }
+        } catch (updateError) {
+          console.error('Failed to update linked task group:', updateError);
+          // Continue with task creation even if linking fails
+        }
+      }
+      
       res.status(201).json(task);
     } catch (error: any) {
       console.error('Task validation error:', error);

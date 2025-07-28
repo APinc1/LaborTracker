@@ -185,3 +185,120 @@ export function initializeTaskOrder(tasks: any[]): any[] {
     dependentOnPrevious: task.dependentOnPrevious ?? true
   }));
 }
+
+/**
+ * Generate a unique linked task group ID
+ */
+export function generateLinkedTaskGroupId(): string {
+  return `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Link tasks to occur on the same date
+ */
+export function linkTasksToSameDate(
+  tasks: any[],
+  taskIds: string[],
+  targetDate: string,
+  groupId?: string
+): any[] {
+  if (taskIds.length < 2) return tasks;
+  
+  const linkedGroupId = groupId || generateLinkedTaskGroupId();
+  const updatedTasks = [...tasks];
+  
+  // Update all specified tasks to have the same date and group ID
+  taskIds.forEach(taskId => {
+    const taskIndex = updatedTasks.findIndex(task => 
+      task.taskId === taskId || task.id === taskId
+    );
+    
+    if (taskIndex !== -1) {
+      updatedTasks[taskIndex] = {
+        ...updatedTasks[taskIndex],
+        taskDate: targetDate,
+        linkedTaskGroup: linkedGroupId,
+        dependentOnPrevious: false // Linked tasks are not dependent on previous
+      };
+    }
+  });
+  
+  return updatedTasks;
+}
+
+/**
+ * Update all tasks in a linked group when one task's date changes
+ */
+export function updateLinkedTasksDate(
+  tasks: any[],
+  changedTaskId: string,
+  newDate: string
+): any[] {
+  const changedTask = tasks.find(task => 
+    task.taskId === changedTaskId || task.id === changedTaskId
+  );
+  
+  if (!changedTask?.linkedTaskGroup) return tasks;
+  
+  const updatedTasks = [...tasks];
+  
+  // Update all tasks in the same linked group
+  updatedTasks.forEach((task, index) => {
+    if (task.linkedTaskGroup === changedTask.linkedTaskGroup) {
+      updatedTasks[index] = {
+        ...task,
+        taskDate: newDate
+      };
+    }
+  });
+  
+  return updatedTasks;
+}
+
+/**
+ * Remove a task from its linked group
+ */
+export function unlinkTask(tasks: any[], taskId: string): any[] {
+  const updatedTasks = [...tasks];
+  const taskIndex = updatedTasks.findIndex(task => 
+    task.taskId === taskId || task.id === taskId
+  );
+  
+  if (taskIndex !== -1) {
+    updatedTasks[taskIndex] = {
+      ...updatedTasks[taskIndex],
+      linkedTaskGroup: null,
+      dependentOnPrevious: true // Restore default dependency behavior
+    };
+  }
+  
+  return updatedTasks;
+}
+
+/**
+ * Get all tasks in the same linked group
+ */
+export function getLinkedTasks(tasks: any[], taskId: string): any[] {
+  const task = tasks.find(t => t.taskId === taskId || t.id === taskId);
+  if (!task?.linkedTaskGroup) return [task];
+  
+  return tasks.filter(t => t.linkedTaskGroup === task.linkedTaskGroup);
+}
+
+/**
+ * Enhanced dependency update that handles both sequential and linked tasks
+ */
+export function updateTaskDependenciesEnhanced(
+  tasks: any[],
+  changedTaskId: string,
+  newDate: string,
+  oldDate: string
+): any[] {
+  // First handle linked tasks
+  let updatedTasks = updateLinkedTasksDate(tasks, changedTaskId, newDate);
+  
+  // Then handle sequential dependencies
+  updatedTasks = updateTaskDependencies(updatedTasks, changedTaskId, newDate, oldDate);
+  
+  return updatedTasks;
+}
