@@ -57,11 +57,17 @@ export default function CreateTaskModal({
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/locations/${data.locationId}/tasks`, data);
+      const response = await apiRequest(`/api/locations/${data.locationId}/tasks`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
+      // Invalidate both general tasks and location-specific tasks
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", String(variables.locationId), "tasks"] });
       toast({ title: "Success", description: "Task created successfully" });
       onClose();
       form.reset();

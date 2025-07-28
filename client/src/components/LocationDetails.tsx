@@ -16,6 +16,7 @@ import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import EditTaskModal from "./EditTaskModal";
+import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 
 interface LocationDetailsProps {
@@ -57,6 +58,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [combineDemoBase, setCombineDemoBase] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -1160,15 +1162,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 Tasks
                 <Badge variant="secondary">{tasks.length}</Badge>
               </div>
-              <Button 
-                onClick={() => setShowGenerateTasksDialog(true)}
-                size="sm"
-                className="ml-auto"
-                disabled={tasks.length > 0}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Generate Tasks
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={() => setIsCreateTaskModalOpen(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Task
+                </Button>
+                <Button 
+                  onClick={() => setShowGenerateTasksDialog(true)}
+                  size="sm"
+                  disabled={tasks.length > 0}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Generate Tasks
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1441,6 +1452,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         onTaskUpdate={() => {
           queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
         }}
+      />
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={isCreateTaskModalOpen}
+        onClose={() => setIsCreateTaskModalOpen(false)}
+        selectedProject={location?.projectId}
+        selectedLocation={location?.id}
       />
     </div>
   );
