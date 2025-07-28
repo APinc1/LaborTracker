@@ -62,19 +62,33 @@ const STATUS_OPTIONS = [
   "complete"
 ];
 
-// Create form schema
+// Create form schema with conditional validation
 const createTaskFormSchema = z.object({
-  taskDate: z.string().min(1, "Date is required"),
+  insertPosition: z.string().min(1, "Position is required"),
+  taskDate: z.string().optional(),
   name: z.string().min(1, "Task name is required"),
   taskType: z.string().min(1, "Task type is required"),
-  startTime: z.string().min(1, "Start time is required"),
-  finishTime: z.string().min(1, "Finish time is required"),
+  startTime: z.string().optional(),
+  finishTime: z.string().optional(),
   status: z.string().min(1, "Status is required"),
   workDescription: z.string().optional(),
   notes: z.string().optional(),
   dependentOnPrevious: z.boolean().default(true),
   linkToExistingTask: z.boolean().default(false),
   linkedTaskId: z.string().optional()
+}).refine((data) => {
+  // Date is required for non-dependent, non-linked tasks
+  if (!data.dependentOnPrevious && !data.linkToExistingTask && !data.taskDate) {
+    return false;
+  }
+  // LinkedTaskId is required when linking to existing task
+  if (data.linkToExistingTask && !data.linkedTaskId) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Date is required for non-dependent tasks, or select a task to link with",
+  path: ["taskDate"]
 });
 
 export default function CreateTaskModal({ 
@@ -94,19 +108,33 @@ export default function CreateTaskModal({
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await apiRequest(`/api/locations/${data.locationId}/tasks`, {
+    mutationFn: async (data: { newTask: any; updatedTasks: any[] }) => {
+      // First create the new task
+      const createResponse = await apiRequest(`/api/locations/${data.newTask.locationId}/tasks`, {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify(data.newTask),
         headers: { 'Content-Type': 'application/json' }
       });
-      return response.json();
+      
+      // Then update existing tasks if needed (for date shifting)
+      if (data.updatedTasks.length > 0) {
+        const updatePromises = data.updatedTasks.map(task => 
+          apiRequest(`/api/tasks/${task.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(task),
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        await Promise.all(updatePromises);
+      }
+      
+      return createResponse.json();
     },
     onSuccess: (result, variables) => {
       // Invalidate both general tasks and location-specific tasks
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", String(variables.locationId), "tasks"] });
-      toast({ title: "Success", description: "Task created successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
+      toast({ title: "Success", description: "Task created and schedule updated successfully" });
       onClose();
       form.reset();
     },
@@ -118,11 +146,12 @@ export default function CreateTaskModal({
   const form = useForm({
     resolver: zodResolver(createTaskFormSchema),
     defaultValues: {
-      taskDate: new Date().toISOString().split('T')[0],
+      insertPosition: 'end',
+      taskDate: '',
       name: '',
       taskType: '',
-      startTime: '08:00',
-      finishTime: '17:00',
+      startTime: '',
+      finishTime: '',
       status: 'upcoming',
       workDescription: '',
       notes: '',
@@ -136,20 +165,141 @@ export default function CreateTaskModal({
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
-    // Handle linked tasks
-    let linkedTaskGroup = null;
-    let taskDate = data.taskDate;
-    
+    // Sort existing tasks for position calculations
+    const sortedTasks = [...existingTasks].sort((a, b) => {
+      const dateA = new Date(a.taskDate).getTime();
+      const dateB = new Date(b.taskDate).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.order || 0) - (b.order || 0);
+    });
+
+    let taskDate: string;
+    let linkedTaskGroup: string | null = null;
+    let insertIndex = sortedTasks.length; // Default to end
+    let updatedTasks = [...sortedTasks];
+
+    // Handle different task creation modes
     if (data.linkToExistingTask && data.linkedTaskId) {
-      const linkedTask = existingTasks.find((task: any) => task.taskId === data.linkedTaskId || task.id.toString() === data.linkedTaskId);
+      // LINKED TASK MODE: Use same date as linked task
+      const linkedTask = existingTasks.find((task: any) => 
+        (task.taskId || task.id).toString() === data.linkedTaskId
+      );
       if (linkedTask) {
-        // Use the linked task's group if it exists, or create new group
         linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
-        taskDate = linkedTask.taskDate; // Use same date as linked task
+        taskDate = linkedTask.taskDate;
+        
+        // Update the original linked task to have the group ID if it doesn't
+        if (!linkedTask.linkedTaskGroup) {
+          const linkedTaskIndex = updatedTasks.findIndex(t => 
+            (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)
+          );
+          if (linkedTaskIndex >= 0) {
+            updatedTasks[linkedTaskIndex] = { ...updatedTasks[linkedTaskIndex], linkedTaskGroup };
+          }
+        }
+      } else {
+        taskDate = new Date().toISOString().split('T')[0]; // Fallback
+      }
+    } else {
+      // Calculate position and date based on insertPosition and dependency
+      if (data.insertPosition === 'start') {
+        insertIndex = 0;
+        if (data.dependentOnPrevious) {
+          // First task can't be dependent
+          data.dependentOnPrevious = false;
+        }
+        taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+      } else if (data.insertPosition === 'end') {
+        insertIndex = sortedTasks.length;
+        if (data.dependentOnPrevious && sortedTasks.length > 0) {
+          // Calculate next date after last task
+          const lastTask = sortedTasks[sortedTasks.length - 1];
+          const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
+          const nextDate = new Date(lastDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          // Skip weekends
+          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+          taskDate = nextDate.toISOString().split('T')[0];
+        } else {
+          taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+        }
+      } else if (data.insertPosition.startsWith('after-')) {
+        // Insert after specific task
+        const afterTaskId = data.insertPosition.replace('after-', '');
+        const afterTaskIndex = sortedTasks.findIndex(task => 
+          (task.taskId || task.id).toString() === afterTaskId
+        );
+        
+        if (afterTaskIndex >= 0) {
+          insertIndex = afterTaskIndex + 1;
+          const afterTask = sortedTasks[afterTaskIndex];
+          
+          if (data.dependentOnPrevious) {
+            // DEPENDENT TASK: Calculate next date and shift subsequent dependent tasks
+            const afterDate = new Date(afterTask.taskDate + 'T00:00:00');
+            const nextDate = new Date(afterDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            taskDate = nextDate.toISOString().split('T')[0];
+            
+            // Shift all subsequent dependent tasks
+            for (let i = insertIndex; i < updatedTasks.length; i++) {
+              const task = updatedTasks[i];
+              if (task.dependentOnPrevious) {
+                const currentDate = new Date(updatedTasks[i - 1]?.taskDate + 'T00:00:00' || taskDate + 'T00:00:00');
+                const shiftedDate = new Date(currentDate);
+                shiftedDate.setDate(shiftedDate.getDate() + 1);
+                // Skip weekends
+                while (shiftedDate.getDay() === 0 || shiftedDate.getDay() === 6) {
+                  shiftedDate.setDate(shiftedDate.getDate() + 1);
+                }
+                updatedTasks[i] = { 
+                  ...task, 
+                  taskDate: shiftedDate.toISOString().split('T')[0] 
+                };
+              }
+            }
+          } else {
+            // NON-DEPENDENT TASK: Use specified date and shift subsequent dependent tasks
+            taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+            
+            // Shift all subsequent dependent tasks based on new task's date
+            let lastTaskDate = taskDate;
+            for (let i = insertIndex; i < updatedTasks.length; i++) {
+              const task = updatedTasks[i];
+              if (task.dependentOnPrevious) {
+                const baseDate = new Date(lastTaskDate + 'T00:00:00');
+                const nextDate = new Date(baseDate);
+                nextDate.setDate(nextDate.getDate() + 1);
+                // Skip weekends
+                while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                  nextDate.setDate(nextDate.getDate() + 1);
+                }
+                updatedTasks[i] = { 
+                  ...task, 
+                  taskDate: nextDate.toISOString().split('T')[0] 
+                };
+                lastTaskDate = nextDate.toISOString().split('T')[0];
+              } else {
+                lastTaskDate = task.taskDate;
+              }
+            }
+          }
+        } else {
+          // Fallback to end if task not found
+          insertIndex = sortedTasks.length;
+          taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+        }
       }
     }
-    
-    const processedData = {
+
+    // Create the new task
+    const newTask = {
       taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocation,
       name: data.name,
@@ -158,21 +308,34 @@ export default function CreateTaskModal({
       startDate: taskDate,
       finishDate: taskDate,
       costCode: costCode,
-      startTime: data.startTime,
-      finishTime: data.finishTime,
+      startTime: data.startTime || null,
+      finishTime: data.finishTime || null,
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: data.linkToExistingTask ? false : data.dependentOnPrevious, // Linked tasks not dependent
+      dependentOnPrevious: data.linkToExistingTask ? false : data.dependentOnPrevious,
       linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
-      scheduledHours: "8", // Default 8 hours as string
+      scheduledHours: "8",
       actualHours: data.status === 'complete' ? 8 : null,
-      order: 0 // Will be reordered based on date
+      order: insertIndex
     };
 
-    createTaskMutation.mutate(processedData);
+    // Insert new task into the array
+    updatedTasks.splice(insertIndex, 0, newTask);
+
+    // Update order values for all tasks
+    updatedTasks = updatedTasks.map((task, index) => ({
+      ...task,
+      order: index
+    }));
+
+    // Create new task first, then update existing tasks if needed
+    createTaskMutation.mutate({
+      newTask,
+      updatedTasks: updatedTasks.filter(task => task.taskId !== newTask.taskId)
+    });
   };
 
   const handleClose = () => {
@@ -191,94 +354,139 @@ export default function CreateTaskModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Date */}
+            {/* Position Selection */}
             <FormField
               control={form.control}
-              name="taskDate"
+              name="insertPosition"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Date *</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} />
-                  </FormControl>
+                  <FormLabel>Insert Position *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select where to insert task" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="start">At the beginning</SelectItem>
+                      {existingTasks.map((task: any) => (
+                        <SelectItem 
+                          key={task.id || task.taskId} 
+                          value={`after-${(task.taskId || task.id).toString()}`}
+                        >
+                          After: {task.name} ({task.taskDate})
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="end">At the end</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Dependent on Previous */}
-            <FormField
-              control={form.control}
-              name="dependentOnPrevious"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                      disabled={form.watch("linkToExistingTask")}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Sequential dependency (automatically shift date based on previous task)
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            {/* Link to Existing Task */}
-            <FormField
-              control={form.control}
-              name="linkToExistingTask"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={(checked) => {
-                        field.onChange(checked);
-                        if (checked) {
-                          form.setValue("dependentOnPrevious", false);
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Link to existing task (occur on same date)
-                    </FormLabel>
-                  </div>
-                </FormItem>
-              )}
-            />
-
-            {/* Linked Task Selection */}
-            {form.watch("linkToExistingTask") && (
+            {/* Task Type Selection */}
+            <div className="space-y-3">
+              {/* Dependency Selection */}
               <FormField
                 control={form.control}
-                name="linkedTaskId"
+                name="dependentOnPrevious"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        disabled={form.watch("linkToExistingTask")}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Sequential dependency (follow previous task + 1 day)
+                      </FormLabel>
+                      <p className="text-xs text-gray-500">
+                        Date will be calculated automatically. Subsequent dependent tasks will shift.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Link to Existing Task */}
+              <FormField
+                control={form.control}
+                name="linkToExistingTask"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(checked) => {
+                          field.onChange(checked);
+                          if (checked) {
+                            form.setValue("dependentOnPrevious", false);
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Link to existing task (occur on same date)
+                      </FormLabel>
+                      <p className="text-xs text-gray-500">
+                        Select an existing task to occur on the same date.
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Linked Task Selection */}
+              {form.watch("linkToExistingTask") && (
+                <FormField
+                  control={form.control}
+                  name="linkedTaskId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Task to Link With</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose an existing task" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {existingTasks.map((task: any) => (
+                            <SelectItem 
+                              key={task.id || task.taskId} 
+                              value={(task.taskId || task.id).toString()}
+                            >
+                              {task.name} ({task.taskDate})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Date Selection - Only show for non-dependent tasks */}
+            {!form.watch("dependentOnPrevious") && !form.watch("linkToExistingTask") && (
+              <FormField
+                control={form.control}
+                name="taskDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Select Task to Link With</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Choose an existing task" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {existingTasks.map((task: any) => (
-                          <SelectItem 
-                            key={task.id || task.taskId} 
-                            value={(task.taskId || task.id).toString()}
-                          >
-                            {task.name} ({task.taskDate})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Date *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <p className="text-xs text-gray-500">
+                      All subsequent dependent tasks will shift based on this date.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -326,16 +534,16 @@ export default function CreateTaskModal({
               )}
             />
 
-            {/* Start and Finish Time */}
+            {/* Start and Finish Time - Optional */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="startTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Time *</FormLabel>
+                    <FormLabel>Start Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input type="time" {...field} placeholder="Optional" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -347,9 +555,9 @@ export default function CreateTaskModal({
                 name="finishTime"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Finish Time *</FormLabel>
+                    <FormLabel>Finish Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input type="time" {...field} placeholder="Optional" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
