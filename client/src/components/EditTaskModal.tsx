@@ -288,18 +288,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         if (linkedTaskIndex >= 0) {
           const linkedTaskGroup = processedData.linkedTaskGroup;
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
+          const currentTask = allUpdatedTasks[mainTaskIndex];
           
-          // Update the linked task to be sequential + linked
+          // Both tasks should use the same date - use the current task's date (the one being edited)
+          const synchronizedDate = processedData.taskDate;
+          
+          // Update the linked task to be sequential + linked with synchronized date
           allUpdatedTasks[linkedTaskIndex] = {
             ...linkedTask,
             linkedTaskGroup: linkedTaskGroup,
             dependentOnPrevious: true, // First task in linked group is sequential
-            taskDate: processedData.taskDate // Both tasks must have same date
+            taskDate: synchronizedDate // Both tasks must have same date
+          };
+          
+          // Update the current task to have the synchronized date (should already be set, but ensure)
+          allUpdatedTasks[mainTaskIndex] = {
+            ...allUpdatedTasks[mainTaskIndex],
+            taskDate: synchronizedDate
           };
           
           // Remove the current task from its position and reinsert after the linked task
           const currentTaskIndex = mainTaskIndex;
-          const currentTask = allUpdatedTasks[currentTaskIndex];
           
           if (currentTaskIndex !== linkedTaskIndex + 1) {
             // Remove current task from array
@@ -313,7 +322,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             // Insert current task right after the linked task
             allUpdatedTasks.splice(newLinkedTaskIndex + 1, 0, {
               ...currentTask,
-              taskDate: processedData.taskDate // Ensure same date
+              taskDate: synchronizedDate // Ensure same date
             });
             
             console.log('Repositioned linked task after target task');
@@ -325,8 +334,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             order: index
           }));
           
-          console.log('Updated linked task to be sequential + linked:', linkedTask.name);
-          console.log('Current task is now just linked:', currentTask.name);
+          console.log('Updated linked task to be sequential + linked with date:', linkedTask.name, synchronizedDate);
+          console.log('Current task is now just linked with date:', currentTask.name, synchronizedDate);
         }
       }
       
@@ -355,21 +364,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         });
       }
       
-      // Sort tasks by date and order to process sequential dependencies
-      const sortedTasks = allUpdatedTasks.sort((a, b) => {
-        const dateA = new Date(a.taskDate).getTime();
-        const dateB = new Date(b.taskDate).getTime();
-        if (dateA !== dateB) return dateA - dateB;
-        return (a.order || 0) - (b.order || 0);
-      });
-      
       // Process sequential dependencies after date changes
-      const taskIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
-      if (taskIndex >= 0) {
-        // Update subsequent sequential tasks (but NOT linked tasks)
+      // Don't sort - use original order to maintain task positioning
+      const taskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+      if (taskIndex >= 0 && dateChanged) {
+        // Update subsequent sequential tasks in their original order
         let currentDate = processedData.taskDate;
-        for (let i = taskIndex + 1; i < sortedTasks.length; i++) {
-          const subsequentTask = sortedTasks[i];
+        for (let i = taskIndex + 1; i < allUpdatedTasks.length; i++) {
+          const subsequentTask = allUpdatedTasks[i];
           
           // Skip linked tasks - they maintain their synchronized date
           if (subsequentTask.linkedTaskGroup) {
@@ -387,13 +389,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
             const newDate = nextDate.toISOString().split('T')[0];
             
-            const updateIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id));
-            if (updateIndex >= 0) {
-              allUpdatedTasks[updateIndex] = {
-                ...allUpdatedTasks[updateIndex],
-                taskDate: newDate
-              };
-            }
+            allUpdatedTasks[i] = {
+              ...allUpdatedTasks[i],
+              taskDate: newDate
+            };
             currentDate = newDate;
           } else {
             currentDate = subsequentTask.taskDate;
