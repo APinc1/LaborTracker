@@ -369,8 +369,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('Unlinked partner task from group:', task.linkedTaskGroup);
       }
 
-      // Handle dependency changes - when a task becomes sequential, find its proper position and date
-      if (dependencyChanged && processedData.dependentOnPrevious) {
+      // Handle dependency changes - when a task becomes sequential OR when linked task becomes sequential
+      if ((dependencyChanged && processedData.dependentOnPrevious) || 
+          (linkingChanged && processedData.linkedTaskGroup && processedData.dependentOnPrevious)) {
+        
         const taskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
         
         // Sort tasks by date and order to find chronological position
@@ -412,13 +414,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
             const newDate = nextDate.toISOString().split('T')[0];
             
+            // Update the processedData with calculated sequential date
+            processedData.taskDate = newDate;
+            
             // Update the task with the calculated date
             allUpdatedTasks[taskIndex] = {
               ...allUpdatedTasks[taskIndex],
               taskDate: newDate
             };
             
-            // If this task is linked, update all tasks in the linked group
+            // If this task is linked, update all tasks in the linked group with the sequential date
             if (processedData.linkedTaskGroup) {
               allUpdatedTasks = allUpdatedTasks.map(t => 
                 t.linkedTaskGroup === processedData.linkedTaskGroup 
@@ -428,14 +433,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
             
             console.log('Updated sequential task date to:', newDate, 'based on chronologically previous task:', previousTaskDate);
+            console.log('Sequential calculation triggered by:', dependencyChanged ? 'dependency change' : 'linking change');
           }
         }
       }
       
-      // Handle linked task synchronization - any task in a linked group should sync dates
+      // Handle linked task synchronization - ONLY if not already handled by sequential logic above
       const finalLinkedGroup = processedData.linkedTaskGroup || task.linkedTaskGroup;
-      if (finalLinkedGroup && dateChanged) {
-        console.log('Syncing all tasks in linked group:', finalLinkedGroup, 'to date:', processedData.taskDate);
+      if (finalLinkedGroup && dateChanged && !processedData.dependentOnPrevious) {
+        console.log('Syncing all tasks in linked group (non-sequential):', finalLinkedGroup, 'to date:', processedData.taskDate);
         
         // Find all tasks in the same linked group (including the current task)
         const linkedTasks = allUpdatedTasks.filter(t => 
