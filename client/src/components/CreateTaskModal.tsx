@@ -552,14 +552,21 @@ export default function CreateTaskModal({
                               if (dateA !== dateB) return dateA - dateB;
                               return (a.order || 0) - (b.order || 0);
                             })
-                            .map((task: any) => (
-                            <SelectItem 
-                              key={task.id || task.taskId} 
-                              value={(task.taskId || task.id).toString()}
-                            >
-                              {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
-                            </SelectItem>
-                          ))}
+                            .map((task: any) => {
+                              // Fix date display - use direct string formatting to avoid timezone issues
+                              const formatDate = (dateStr: string) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${month}/${day}/${year}`;
+                              };
+                              return (
+                                <SelectItem 
+                                  key={task.id || task.taskId} 
+                                  value={(task.taskId || task.id).toString()}
+                                >
+                                  {task.name} ({formatDate(task.taskDate)})
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                       <FormMessage />

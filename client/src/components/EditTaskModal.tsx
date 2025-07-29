@@ -280,19 +280,53 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
 
-      // Handle new linking - update the linked task to be sequential + linked
+      // Handle new linking - update both tasks and reposition
       if (data.linkToExistingTask && data.linkedTaskId && linkingChanged) {
         const linkedTaskIndex = allUpdatedTasks.findIndex(t => 
           (t.taskId || t.id).toString() === data.linkedTaskId
         );
         if (linkedTaskIndex >= 0) {
           const linkedTaskGroup = processedData.linkedTaskGroup;
+          const linkedTask = allUpdatedTasks[linkedTaskIndex];
+          
+          // Update the linked task to be sequential + linked
           allUpdatedTasks[linkedTaskIndex] = {
-            ...allUpdatedTasks[linkedTaskIndex],
+            ...linkedTask,
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: true // First task in linked group is sequential
+            dependentOnPrevious: true, // First task in linked group is sequential
+            taskDate: processedData.taskDate // Both tasks must have same date
           };
-          console.log('Updated linked task to be sequential + linked:', allUpdatedTasks[linkedTaskIndex].name);
+          
+          // Remove the current task from its position and reinsert after the linked task
+          const currentTaskIndex = mainTaskIndex;
+          const currentTask = allUpdatedTasks[currentTaskIndex];
+          
+          if (currentTaskIndex !== linkedTaskIndex + 1) {
+            // Remove current task from array
+            allUpdatedTasks.splice(currentTaskIndex, 1);
+            
+            // Find new position of linked task (may have shifted due to removal)
+            const newLinkedTaskIndex = allUpdatedTasks.findIndex(t => 
+              (t.taskId || t.id).toString() === data.linkedTaskId
+            );
+            
+            // Insert current task right after the linked task
+            allUpdatedTasks.splice(newLinkedTaskIndex + 1, 0, {
+              ...currentTask,
+              taskDate: processedData.taskDate // Ensure same date
+            });
+            
+            console.log('Repositioned linked task after target task');
+          }
+          
+          // Update order values for all tasks after repositioning
+          allUpdatedTasks = allUpdatedTasks.map((task, index) => ({
+            ...task,
+            order: index
+          }));
+          
+          console.log('Updated linked task to be sequential + linked:', linkedTask.name);
+          console.log('Current task is now just linked:', currentTask.name);
         }
       }
       
@@ -375,7 +409,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         return originalTask && (
           originalTask.taskDate !== updatedTask.taskDate ||
           originalTask.linkedTaskGroup !== updatedTask.linkedTaskGroup ||
-          originalTask.dependentOnPrevious !== updatedTask.dependentOnPrevious
+          originalTask.dependentOnPrevious !== updatedTask.dependentOnPrevious ||
+          originalTask.order !== updatedTask.order
         );
       });
       
@@ -590,14 +625,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         <SelectContent>
                           {(existingTasks as any[])
                             .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id))
-                            .map((linkTask: any) => (
-                              <SelectItem 
-                                key={linkTask.id || linkTask.taskId} 
-                                value={(linkTask.taskId || linkTask.id).toString()}
-                              >
-                                {linkTask.name} ({new Date(linkTask.taskDate).toLocaleDateString('en-US')})
-                              </SelectItem>
-                            ))
+                            .sort((a: any, b: any) => {
+                              // Sort by date first, then by order
+                              const dateA = new Date(a.taskDate).getTime();
+                              const dateB = new Date(b.taskDate).getTime();
+                              if (dateA !== dateB) return dateA - dateB;
+                              return (a.order || 0) - (b.order || 0);
+                            })
+                            .map((linkTask: any) => {
+                              // Fix date display - use direct string formatting to avoid timezone issues
+                              const formatDate = (dateStr: string) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${month}/${day}/${year}`;
+                              };
+                              return (
+                                <SelectItem 
+                                  key={linkTask.id || linkTask.taskId} 
+                                  value={(linkTask.taskId || linkTask.id).toString()}
+                                >
+                                  {linkTask.name} ({formatDate(linkTask.taskDate)})
+                                </SelectItem>
+                              );
+                            })
                           }
                         </SelectContent>
                       </Select>
