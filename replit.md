@@ -248,6 +248,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ Enhanced popup functionality with proper cancel/close handling that reverts date changes
 - ✅ Implemented immediate popup triggering for both sequential and non-sequential task date changes
 - ✅ Added consistent language across both popup types with "Keep Unsequential" terminology
+- ✅ Fixed sequential task shifting logic to stop at unsequential "break points" instead of shifting all subsequent tasks
+- ✅ Implemented linked task deletion handling: partner tasks become unlinked and sequential if either original task was sequential
+- ✅ Enhanced task deletion to properly cascade sequential task date adjustments after removal
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**

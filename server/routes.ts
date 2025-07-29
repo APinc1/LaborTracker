@@ -580,63 +580,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all tasks in the same location for sequential cascading
       const locationTasks = await storage.getTasks(taskToDelete.locationId);
       
-      // Delete the task first
+      // Handle linked task unlinking before deletion
+      let tasksToUpdateForUnlinking = [];
+      if (taskToDelete.linkedTaskGroup) {
+        console.log('Deleting linked task, processing partner task unlinking');
+        
+        // Find partner task(s) in the same linked group
+        const linkedPartners = locationTasks.filter(t => 
+          t.linkedTaskGroup === taskToDelete.linkedTaskGroup && t.id !== taskId
+        );
+        
+        linkedPartners.forEach(partnerTask => {
+          console.log('Unlinking partner task:', partnerTask.name);
+          
+          // Determine if remaining task should be sequential
+          // If either the deleted task or partner was sequential, make partner sequential
+          const shouldBeSequential = taskToDelete.dependentOnPrevious || partnerTask.dependentOnPrevious;
+          
+          tasksToUpdateForUnlinking.push({
+            ...partnerTask,
+            linkedTaskGroup: null,
+            dependentOnPrevious: shouldBeSequential
+          });
+        });
+      }
+      
+      // Update unlinked tasks before deletion
+      if (tasksToUpdateForUnlinking.length > 0) {
+        const unlinkingPromises = tasksToUpdateForUnlinking.map(task => 
+          storage.updateTask(task.id, { 
+            linkedTaskGroup: null, 
+            dependentOnPrevious: task.dependentOnPrevious 
+          })
+        );
+        await Promise.all(unlinkingPromises);
+      }
+      
+      // Delete the task
       await storage.deleteTask(taskId);
       
-      // Process sequential cascading for remaining tasks
+      // Process sequential cascading for remaining tasks (including newly unlinked ones)
       const remainingTasks = locationTasks.filter(t => t.id !== taskId);
       
       if (remainingTasks.length > 0) {
-        // Sort tasks chronologically
-        const sortedTasks = remainingTasks.sort((a, b) => {
+        // Apply unlinking updates to remaining tasks
+        let updatedRemainingTasks = [...remainingTasks];
+        tasksToUpdateForUnlinking.forEach(unlinkUpdate => {
+          const taskIndex = updatedRemainingTasks.findIndex(t => t.id === unlinkUpdate.id);
+          if (taskIndex >= 0) {
+            updatedRemainingTasks[taskIndex] = unlinkUpdate;
+          }
+        });
+        
+        // Sort tasks chronologically for sequential cascading
+        const sortedTasks = updatedRemainingTasks.sort((a, b) => {
           const dateA = new Date(a.taskDate).getTime();
           const dateB = new Date(b.taskDate).getTime();
           if (dateA !== dateB) return dateA - dateB;
           return (a.order || 0) - (b.order || 0);
         });
         
-        // Find tasks that need date recalculation
+        // Find sequential tasks that need date recalculation after deletion
         const tasksToUpdate = [];
         let needsCascading = false;
         
         for (let i = 0; i < sortedTasks.length; i++) {
           const currentTask = sortedTasks[i];
           
-          if (currentTask.dependentOnPrevious && i > 0) {
-            const prevTask = sortedTasks[i - 1];
-            
-            // Calculate what the date should be based on previous task
-            const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-            const nextDate = new Date(baseDate);
-            nextDate.setDate(nextDate.getDate() + 1);
-            // Skip weekends
-            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-              nextDate.setDate(nextDate.getDate() + 1);
+          // Skip linked tasks and non-sequential tasks
+          if (currentTask.linkedTaskGroup || !currentTask.dependentOnPrevious) {
+            continue;
+          }
+          
+          if (i > 0) {
+            // Find the chronologically previous task (could be linked or sequential)
+            let prevTask = null;
+            for (let j = i - 1; j >= 0; j--) {
+              prevTask = sortedTasks[j];
+              break; // Take the immediately previous task chronologically
             }
-            const expectedDate = nextDate.toISOString().split('T')[0];
             
-            // If current date doesn't match expected date, update it
-            if (currentTask.taskDate !== expectedDate) {
-              needsCascading = true;
-              tasksToUpdate.push({
-                ...currentTask,
-                taskDate: expectedDate
-              });
+            if (prevTask) {
+              // Calculate what the date should be based on previous task
+              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const expectedDate = nextDate.toISOString().split('T')[0];
               
-              // Update all linked tasks in the same group
-              if (currentTask.linkedTaskGroup) {
-                const linkedTasks = sortedTasks.filter(t => 
-                  t.linkedTaskGroup === currentTask.linkedTaskGroup && 
-                  t.id !== currentTask.id
-                );
-                linkedTasks.forEach(linkedTask => {
-                  if (linkedTask.taskDate !== expectedDate) {
-                    tasksToUpdate.push({
-                      ...linkedTask,
-                      taskDate: expectedDate
-                    });
-                  }
+              // If current date doesn't match expected date, update it
+              if (currentTask.taskDate !== expectedDate) {
+                needsCascading = true;
+                tasksToUpdate.push({
+                  ...currentTask,
+                  taskDate: expectedDate
                 });
+                
+                // Update all linked tasks in the same group to maintain synchronization
+                if (currentTask.linkedTaskGroup) {
+                  const linkedTasks = sortedTasks.filter(t => 
+                    t.linkedTaskGroup === currentTask.linkedTaskGroup && 
+                    t.id !== currentTask.id
+                  );
+                  linkedTasks.forEach(linkedTask => {
+                    if (linkedTask.taskDate !== expectedDate) {
+                      tasksToUpdate.push({
+                        ...linkedTask,
+                        taskDate: expectedDate
+                      });
+                    }
+                  });
+                }
               }
             }
           }

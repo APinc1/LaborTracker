@@ -286,6 +286,40 @@ export function getLinkedTasks(tasks: any[], taskId: string): any[] {
 }
 
 /**
+ * Handle linked task deletion - unlink partner tasks and set appropriate dependency
+ */
+export function handleLinkedTaskDeletion(
+  tasks: any[],
+  deletedTaskId: string | number
+): { unlinkUpdates: any[]; remainingTasks: any[] } {
+  const deletedTask = tasks.find(t => (t.taskId || t.id) === deletedTaskId);
+  const unlinkUpdates: any[] = [];
+  
+  if (deletedTask?.linkedTaskGroup) {
+    // Find partner tasks in the same linked group
+    const linkedPartners = tasks.filter(t => 
+      t.linkedTaskGroup === deletedTask.linkedTaskGroup && 
+      (t.taskId || t.id) !== deletedTaskId
+    );
+    
+    linkedPartners.forEach(partnerTask => {
+      // If either task was sequential, make the remaining task sequential
+      const shouldBeSequential = deletedTask.dependentOnPrevious || partnerTask.dependentOnPrevious;
+      
+      unlinkUpdates.push({
+        ...partnerTask,
+        linkedTaskGroup: null,
+        dependentOnPrevious: shouldBeSequential
+      });
+    });
+  }
+  
+  const remainingTasks = tasks.filter(t => (t.taskId || t.id) !== deletedTaskId);
+  
+  return { unlinkUpdates, remainingTasks };
+}
+
+/**
  * Enhanced dependency update that handles both sequential and linked tasks
  */
 export function updateTaskDependenciesEnhanced(
