@@ -186,7 +186,7 @@ export default function CreateTaskModal({
       return (a.order || 0) - (b.order || 0);
     });
 
-    let taskDate: string;
+    let taskDate: string = new Date().toISOString().split('T')[0]; // Default fallback
     let linkedTaskGroup: string | null = null;
     let insertIndex = sortedTasks.length; // Default to end
     let updatedTasks = [...sortedTasks];
@@ -262,14 +262,14 @@ export default function CreateTaskModal({
         data.dependentOnPrevious = false;
         taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         
-        // Make all existing tasks shift their dependency chain
+        // Shift all existing tasks down - they maintain their dependency settings
         for (let i = 0; i < updatedTasks.length; i++) {
           const existingTask = updatedTasks[i];
-          if (existingTask.dependentOnPrevious && i === 0) {
-            // The original first task should become sequential since there's now a task before it
+          // Original first task becomes second and can now be sequential if it wasn't already
+          if (i === 0 && !existingTask.dependentOnPrevious) {
             updatedTasks[i] = { 
               ...existingTask, 
-              dependentOnPrevious: true 
+              dependentOnPrevious: true // Make the displaced first task sequential
             };
           }
         }
@@ -397,7 +397,7 @@ export default function CreateTaskModal({
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: data.linkToExistingTask ? false : data.dependentOnPrevious,
+      dependentOnPrevious: data.linkToExistingTask ? false : (insertIndex === 0 ? false : data.dependentOnPrevious),
       linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,

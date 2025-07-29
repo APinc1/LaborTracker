@@ -1007,41 +1007,48 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
       {/* Date Change Confirmation Dialog */}
       <AlertDialog open={showDateChangeDialog} onOpenChange={setShowDateChangeDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Sequential Task Date Change</AlertDialogTitle>
-            <AlertDialogDescription>
-              This task is currently sequential (automatically positioned after the previous task). 
-              When you change the date, you can either:
+            <AlertDialogTitle className="text-lg font-semibold">
+              Change Sequential Task Date
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <p>This task is currently sequential (automatically positioned after the previous task).</p>
+              <p>When you change the date, choose an option:</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col space-y-2">
-            <AlertDialogAction 
+          <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
+            <Button 
               onClick={() => {
                 processFormSubmission(pendingFormData, true);
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
-              className="w-full"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Keep Sequential & Move Position
-              <span className="text-xs block mt-1">
-                Move to the new date and maintain sequential dependency
-              </span>
-            </AlertDialogAction>
-            <AlertDialogCancel 
+              <div className="text-center">
+                <div className="font-medium">Keep Sequential & Move Position</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Move to the new date and maintain sequential dependency
+                </div>
+              </div>
+            </Button>
+            <Button 
               onClick={() => {
                 processFormSubmission(pendingFormData, false);
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
+              variant="outline"
               className="w-full"
             >
-              Make Non-Sequential & Shift Others
-              <span className="text-xs block mt-1">
-                Remove sequential dependency and shift following tasks
-              </span>
-            </AlertDialogCancel>
+              <div className="text-center">
+                <div className="font-medium">Make Non-Sequential & Shift Others</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Remove sequential dependency and shift following tasks
+                </div>
+              </div>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

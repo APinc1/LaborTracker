@@ -320,25 +320,44 @@ export default function DraggableTaskList({
       } 
       // For other positions, determine the best date for this position
       else if (previousTask) {
-        // Calculate what date this position should have
-        let targetDate: string;
-        
-        if (draggedTask.dependentOnPrevious) {
-          // Dependent tasks follow the previous task (next workday)
-          const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
-          const nextWorkday = new Date(previousDate);
-          nextWorkday.setDate(nextWorkday.getDate() + 1);
-          
-          // Skip weekends
-          while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
-            nextWorkday.setDate(nextWorkday.getDate() + 1);
+        // When moving before a sequential task, adopt that task's date
+        if (nextTask && nextTask.dependentOnPrevious) {
+          console.log('Assigning new date:', {
+            taskName: draggedTask.name,
+            oldDate: draggedTask.taskDate,
+            newDate: nextTask.taskDate
+          });
+          draggedTask.taskDate = nextTask.taskDate;
+          // If dragged task has linked partners, sync their dates too
+          if (draggedTask.linkedTaskGroup) {
+            tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
+              if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+                return { ...task, taskDate: nextTask.taskDate };
+              }
+              return task;
+            });
           }
+        }
+        // Otherwise, calculate proper date based on dependency
+        else {
+          let targetDate: string;
           
-          targetDate = nextWorkday.toISOString().split('T')[0];
-        } else {
-          // Non-dependent tasks: when moving to earlier dates, adopt the existing date
-          const currentDate = new Date(draggedTask.taskDate + 'T00:00:00');
-          const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+          if (draggedTask.dependentOnPrevious) {
+            // Dependent tasks follow the previous task (next workday)
+            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+            const nextWorkday = new Date(previousDate);
+            nextWorkday.setDate(nextWorkday.getDate() + 1);
+            
+            // Skip weekends
+            while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+              nextWorkday.setDate(nextWorkday.getDate() + 1);
+            }
+            
+            targetDate = nextWorkday.toISOString().split('T')[0];
+          } else {
+            // Non-dependent tasks: when moving to earlier dates, adopt the existing date
+            const currentDate = new Date(draggedTask.taskDate + 'T00:00:00');
+            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
           
           // If moving to an earlier position (date), adopt the previous task's date to avoid gaps
           if (currentDate > previousDate) {
@@ -377,11 +396,40 @@ export default function DraggableTaskList({
               targetDate = nextWorkday.toISOString().split('T')[0];
             }
           }
+          
+          console.log('Assigning new date:', { taskName: draggedTask.name, oldDate: draggedTask.taskDate, newDate: targetDate });
+          draggedTask.taskDate = targetDate;
+          
+          // If dragged task has linked partners, sync their dates too
+          if (draggedTask.linkedTaskGroup) {
+            tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
+              if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+                return { ...task, taskDate: targetDate };
+              }
+              return task;
+            });
+          }
         }
-        
-        console.log('Assigning new date:', { taskName: draggedTask.name, oldDate: draggedTask.taskDate, newDate: targetDate });
-        draggedTask.taskDate = targetDate;
       }
+      
+      // After positioning logic, ensure linked tasks maintain same dates
+      tasksWithUpdatedOrder.forEach((task, index) => {
+        if (task.linkedTaskGroup) {
+          const linkedTasks = tasksWithUpdatedOrder.filter(t => t.linkedTaskGroup === task.linkedTaskGroup);
+          if (linkedTasks.length > 1) {
+            // Find the primary date (from first task in group chronologically)
+            const primaryDate = linkedTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].taskDate;
+            // Sync all linked tasks to primary date
+            linkedTasks.forEach(linkedTask => {
+              const taskIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+              if (taskIndex >= 0 && tasksWithUpdatedOrder[taskIndex].taskDate !== primaryDate) {
+                tasksWithUpdatedOrder[taskIndex].taskDate = primaryDate;
+              }
+            });
+          }
+        }
+      });
+    }
       
       // Always rebuild the entire dependency chain after reordering
       // This handles both the dropped position and tasks that shifted to fill gaps
