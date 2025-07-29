@@ -235,7 +235,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
         processedData.linkedTaskGroup = linkedTaskGroup;
         processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
-        processedData.dependentOnPrevious = false; // Linked tasks are not dependent
+        
+        // Check if this is the first task in the linked group
+        const tasksInGroup = (existingTasks as any[]).filter(t => 
+          t.linkedTaskGroup === linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+        );
+        
+        // First task in group can be sequential, others are just linked
+        if (tasksInGroup.length === 0) {
+          // This is linking to the first task - can keep sequential dependency
+          processedData.dependentOnPrevious = data.dependentOnPrevious;
+        } else {
+          // This is the second+ task - should not be sequential
+          processedData.dependentOnPrevious = false;
+        }
         
         // If the linked task doesn't have a group yet, update it too
         if (!linkedTask.linkedTaskGroup) {
@@ -272,43 +285,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
       
-      // If this task has a linkedTaskGroup (existing or new) and date changed, update all linked tasks
-      if (processedData.linkedTaskGroup && dateChanged) {
-        console.log('Updating linked tasks in group:', processedData.linkedTaskGroup);
+      // Handle linked task synchronization - any task in a linked group should sync dates
+      const finalLinkedGroup = processedData.linkedTaskGroup || task.linkedTaskGroup;
+      if (finalLinkedGroup && dateChanged) {
+        console.log('Syncing all tasks in linked group:', finalLinkedGroup, 'to date:', processedData.taskDate);
+        
+        // Find all tasks in the same linked group (including the current task)
         const linkedTasks = allUpdatedTasks.filter(t => 
-          t.linkedTaskGroup === processedData.linkedTaskGroup && 
-          (t.taskId || t.id) !== (task.taskId || task.id)
+          t.linkedTaskGroup === finalLinkedGroup
         );
         
-        console.log('Found', linkedTasks.length, 'linked tasks to update');
+        console.log('Found', linkedTasks.length, 'tasks in linked group to sync');
+        
+        // Update all tasks in the group to have the same date
         linkedTasks.forEach(linkedTask => {
           const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
           if (linkedTaskIndex >= 0) {
-            console.log('Updating linked task:', linkedTask.name, 'from', linkedTask.taskDate, 'to', processedData.taskDate);
+            console.log('Syncing task:', linkedTask.name, 'to date:', processedData.taskDate);
             allUpdatedTasks[linkedTaskIndex] = {
               ...allUpdatedTasks[linkedTaskIndex],
-              taskDate: processedData.taskDate // Sync all linked tasks to same date
-            };
-          }
-        });
-      }
-      
-      // Also handle case where task is already in a linked group but we're not explicitly linking
-      else if (task.linkedTaskGroup && dateChanged && !data.linkToExistingTask) {
-        console.log('Updating existing linked group:', task.linkedTaskGroup);
-        const linkedTasks = allUpdatedTasks.filter(t => 
-          t.linkedTaskGroup === task.linkedTaskGroup && 
-          (t.taskId || t.id) !== (task.taskId || task.id)
-        );
-        
-        console.log('Found', linkedTasks.length, 'existing linked tasks to update');
-        linkedTasks.forEach(linkedTask => {
-          const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
-          if (linkedTaskIndex >= 0) {
-            console.log('Updating existing linked task:', linkedTask.name, 'from', linkedTask.taskDate, 'to', processedData.taskDate);
-            allUpdatedTasks[linkedTaskIndex] = {
-              ...allUpdatedTasks[linkedTaskIndex],
-              taskDate: processedData.taskDate // Sync all linked tasks to same date
+              taskDate: processedData.taskDate // All linked tasks must have same date
             };
           }
         });
