@@ -241,12 +241,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           t.linkedTaskGroup === linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
         );
         
-        // First task in group can be sequential, others are just linked
+        // For linked tasks: first one can be sequential, others are just linked (non-sequential)
         if (tasksInGroup.length === 0) {
-          // This is linking to the first task - can keep sequential dependency
+          // This is the first task linking to another - can keep sequential if desired
           processedData.dependentOnPrevious = data.dependentOnPrevious;
         } else {
-          // This is the second+ task - should not be sequential
+          // This is the second+ task in the group - must not be sequential 
           processedData.dependentOnPrevious = false;
         }
         
@@ -321,10 +321,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Process sequential dependencies after date changes
       const taskIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
       if (taskIndex >= 0) {
-        // Update subsequent sequential tasks
+        // Update subsequent sequential tasks (but NOT linked tasks)
         let currentDate = processedData.taskDate;
         for (let i = taskIndex + 1; i < sortedTasks.length; i++) {
           const subsequentTask = sortedTasks[i];
+          
+          // Skip linked tasks - they maintain their synchronized date
+          if (subsequentTask.linkedTaskGroup) {
+            currentDate = subsequentTask.taskDate;
+            continue;
+          }
+          
           if (subsequentTask.dependentOnPrevious) {
             const baseDate = new Date(currentDate + 'T00:00:00');
             const nextDate = new Date(baseDate);

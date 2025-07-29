@@ -213,10 +213,17 @@ export default function CreateTaskModal({
         );
         insertIndex = linkedTaskIndex + 1;
         
-        // Shift all subsequent sequential tasks
+        // Shift all subsequent sequential tasks (but NOT linked tasks)
         let currentDate = taskDate;
         for (let i = insertIndex; i < updatedTasks.length; i++) {
           const task = updatedTasks[i];
+          
+          // Skip linked tasks - they maintain their synchronized date
+          if (task.linkedTaskGroup) {
+            currentDate = task.taskDate;
+            continue;
+          }
+          
           if (task.dependentOnPrevious) {
             // Calculate next date based on the current reference date
             const baseDate = new Date(currentDate + 'T00:00:00');
@@ -286,10 +293,17 @@ export default function CreateTaskModal({
             }
             taskDate = nextDate.toISOString().split('T')[0];
             
-            // Shift all subsequent tasks that are after this insertion point
+            // Shift all subsequent tasks that are after this insertion point (but NOT linked tasks)
             let currentDate = taskDate;
             for (let i = insertIndex; i < updatedTasks.length; i++) {
               const task = updatedTasks[i];
+              
+              // Skip linked tasks - they maintain their synchronized date
+              if (task.linkedTaskGroup) {
+                currentDate = task.taskDate;
+                continue;
+              }
+              
               if (task.dependentOnPrevious) {
                 // Calculate next date based on the previous task (either new task or previous shifted task)
                 const baseDate = new Date(currentDate + 'T00:00:00');
@@ -313,10 +327,17 @@ export default function CreateTaskModal({
             // NON-DEPENDENT TASK: Use specified date and shift subsequent dependent tasks
             taskDate = data.taskDate || new Date().toISOString().split('T')[0];
             
-            // Shift all subsequent dependent tasks based on new task's date
+            // Shift all subsequent dependent tasks based on new task's date (but NOT linked tasks)
             let lastTaskDate = taskDate;
             for (let i = insertIndex; i < updatedTasks.length; i++) {
               const task = updatedTasks[i];
+              
+              // Skip linked tasks - they maintain their synchronized date
+              if (task.linkedTaskGroup) {
+                lastTaskDate = task.taskDate;
+                continue;
+              }
+              
               if (task.dependentOnPrevious) {
                 const baseDate = new Date(lastTaskDate + 'T00:00:00');
                 const nextDate = new Date(baseDate);
