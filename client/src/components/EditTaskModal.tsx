@@ -1035,7 +1035,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           </form>
         </Form>
       </DialogContent>
-
       {/* Date Change Confirmation Dialog */}
       <AlertDialog open={showDateChangeDialog} onOpenChange={(open) => {
         if (!open) {
@@ -1137,7 +1136,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Non-Sequential Task Date Change Dialog */}
       <AlertDialog open={showNonSequentialDialog} onOpenChange={(open) => {
         if (!open) {
@@ -1174,7 +1172,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             >
               <div className="text-center">
                 <div className="font-medium">Keep Unsequential & Shift Others</div>
-                <div className="text-xs text-gray-300 mt-1">
+                <div className="text-xs mt-1 text-[#6b7280]">
                   Stay non-sequential, shift subsequent sequential tasks
                 </div>
               </div>
