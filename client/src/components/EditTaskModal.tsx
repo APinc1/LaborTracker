@@ -236,18 +236,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         processedData.linkedTaskGroup = linkedTaskGroup;
         processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
         
-        // When linking two tasks:
-        // 1. The task we're linking TO (linkedTask) becomes sequential AND linked (first in group)
-        // 2. The current task becomes just linked (second in group)
+        // When linking two tasks, the first task in the sequence should be sequential+linked
+        // and the second task should be just linked
         
-        // Current task (being edited) becomes just linked (not sequential)
-        processedData.dependentOnPrevious = false;
+        const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+        const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id).toString() === data.linkedTaskId);
         
-        // The linked task becomes the sequential one (if it isn't already)
-        if (!linkedTask.linkedTaskGroup) {
-          // This is a new link - the linked task becomes sequential + linked
-          linkedTask.linkedTaskGroup = linkedTaskGroup;
-          linkedTask.dependentOnPrevious = true; // First task in linked group is sequential
+        // Determine which task comes first in the sequence
+        if (currentTaskIndex < linkedTaskIndex) {
+          // Current task comes first - it should be sequential+linked
+          processedData.dependentOnPrevious = true;
+          // Linked task becomes just linked
+          linkedTask.dependentOnPrevious = false;
+        } else {
+          // Linked task comes first - it should be sequential+linked  
+          processedData.dependentOnPrevious = false;
+          // Linked task becomes sequential+linked
+          linkedTask.dependentOnPrevious = true;
         }
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
@@ -280,7 +285,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
 
-      // Handle new linking - update both tasks and reposition
+      // Handle new linking - update both tasks based on their sequence position
       if (data.linkToExistingTask && data.linkedTaskId && linkingChanged) {
         const linkedTaskIndex = allUpdatedTasks.findIndex(t => 
           (t.taskId || t.id).toString() === data.linkedTaskId
@@ -290,18 +295,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
           const currentTask = allUpdatedTasks[mainTaskIndex];
           
-          // Both tasks should use the same date - use the current task's date (the one being edited)
-          const synchronizedDate = processedData.taskDate;
+          // Determine which task should be sequential and calculate the proper date
+          let sequentialTaskIndex, nonSequentialTaskIndex;
+          if (mainTaskIndex < linkedTaskIndex) {
+            // Current task comes first - it should be sequential
+            sequentialTaskIndex = mainTaskIndex;
+            nonSequentialTaskIndex = linkedTaskIndex;
+          } else {
+            // Linked task comes first - it should be sequential
+            sequentialTaskIndex = linkedTaskIndex;
+            nonSequentialTaskIndex = mainTaskIndex;
+          }
           
-          // Find the correct date for the linked task based on its position in the sequence
-          let linkedTaskDate = synchronizedDate;
+          // Calculate the proper sequential date for the first task
+          let sequentialDate = allUpdatedTasks[sequentialTaskIndex].taskDate;
           
-          // If making the linked task sequential, calculate its proper date based on previous task
-          if (linkedTaskIndex > 0) {
-            // Find the previous task (not from same linked group)
+          if (sequentialTaskIndex > 0) {
+            // Find the previous task (not from same linked group) to calculate sequential date
             let previousTaskDate = null;
             
-            for (let i = linkedTaskIndex - 1; i >= 0; i--) {
+            for (let i = sequentialTaskIndex - 1; i >= 0; i--) {
               const prevTask = allUpdatedTasks[i];
               
               // Skip tasks from the same linked group
@@ -322,55 +335,36 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
                 nextDate.setDate(nextDate.getDate() + 1);
               }
-              linkedTaskDate = nextDate.toISOString().split('T')[0];
+              sequentialDate = nextDate.toISOString().split('T')[0];
               
-              console.log('Calculated sequential date for linked task:', linkedTaskDate, 'based on previous task date:', previousTaskDate);
+              console.log('Calculated sequential date for first task:', sequentialDate, 'based on previous task date:', previousTaskDate);
             }
           }
 
-          // Update the linked task to be sequential + linked with calculated date
-          allUpdatedTasks[linkedTaskIndex] = {
-            ...linkedTask,
+          // Update both tasks with the synchronized date and proper dependencies
+          allUpdatedTasks[sequentialTaskIndex] = {
+            ...allUpdatedTasks[sequentialTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: true, // First task in linked group is sequential
-            taskDate: linkedTaskDate // Use calculated sequential date
+            dependentOnPrevious: true, // First task in sequence is sequential
+            taskDate: sequentialDate
           };
           
-          // Update the current task to use the same date as the linked task
-          allUpdatedTasks[mainTaskIndex] = {
-            ...allUpdatedTasks[mainTaskIndex],
-            taskDate: linkedTaskDate // Both tasks must have same date
+          allUpdatedTasks[nonSequentialTaskIndex] = {
+            ...allUpdatedTasks[nonSequentialTaskIndex],
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: false, // Second task in sequence is just linked
+            taskDate: sequentialDate // Both tasks must have same date
           };
           
-          // Remove the current task from its position and reinsert after the linked task
-          const currentTaskIndex = mainTaskIndex;
-          
-          if (currentTaskIndex !== linkedTaskIndex + 1) {
-            // Remove current task from array
-            allUpdatedTasks.splice(currentTaskIndex, 1);
-            
-            // Find new position of linked task (may have shifted due to removal)
-            const newLinkedTaskIndex = allUpdatedTasks.findIndex(t => 
-              (t.taskId || t.id).toString() === data.linkedTaskId
-            );
-            
-            // Insert current task right after the linked task
-            allUpdatedTasks.splice(newLinkedTaskIndex + 1, 0, {
-              ...currentTask,
-              taskDate: synchronizedDate // Ensure same date
-            });
-            
-            console.log('Repositioned linked task after target task');
-          }
-          
-          // Update order values for all tasks after repositioning
+          // No repositioning needed - tasks stay in their current positions
+          // Update order values for consistency
           allUpdatedTasks = allUpdatedTasks.map((task, index) => ({
             ...task,
             order: index
           }));
           
-          console.log('Updated linked task to be sequential + linked with date:', linkedTask.name, linkedTaskDate);
-          console.log('Current task is now just linked with date:', currentTask.name, linkedTaskDate);
+          console.log('Updated sequential task (first in group):', allUpdatedTasks[sequentialTaskIndex].name, 'with date:', sequentialDate);
+          console.log('Updated linked task (second in group):', allUpdatedTasks[nonSequentialTaskIndex].name, 'with date:', sequentialDate);
         }
       }
 
