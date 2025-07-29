@@ -540,14 +540,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // Find all tasks that come after this task in the original order (not by date, but by actual position/order)
           const originalTaskOrder = task.order || 0;
           
-          // Filter tasks that come after this task in the original sequence
-          const subsequentTasks = allUpdatedTasks.filter(t => {
+          // Get all tasks after this one, sorted by order
+          const allSubsequentTasks = allUpdatedTasks.filter(t => {
             const taskOrder = t.order || 0;
-            return taskOrder > originalTaskOrder && t.dependentOnPrevious && (t.taskId || t.id) !== (task.taskId || task.id);
-          });
+            return taskOrder > originalTaskOrder && (t.taskId || t.id) !== (task.taskId || task.id);
+          }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
-          // Sort subsequent tasks by their order to process them in sequence
-          subsequentTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+          // Only shift sequential tasks until we hit the next unsequential task
+          const subsequentTasks = [];
+          for (const subsequentTask of allSubsequentTasks) {
+            if (subsequentTask.dependentOnPrevious) {
+              subsequentTasks.push(subsequentTask);
+            } else {
+              // Stop when we hit an unsequential task - it acts as a "break point"
+              console.log('Stopping at unsequential task:', subsequentTask.name, 'order:', subsequentTask.order);
+              break;
+            }
+          }
           
           console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
           console.log('Original task order:', originalTaskOrder, 'New date:', processedData.taskDate);
