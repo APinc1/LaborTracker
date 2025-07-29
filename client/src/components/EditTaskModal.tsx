@@ -1068,6 +1068,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
+              variant="outline"
               className="w-full"
             >
               <div className="text-center">
@@ -1111,6 +1112,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
+              variant="outline"
               className="w-full"
             >
               <div className="text-center">
@@ -1167,6 +1169,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowNonSequentialDialog(false);
                 setPendingNonSequentialData(null);
               }}
+              variant="outline"
               className="w-full"
             >
               <div className="text-center">
