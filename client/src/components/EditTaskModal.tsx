@@ -732,7 +732,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   <FormItem>
                     <FormLabel>Task Date (Editable)</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input 
+                        type="date" 
+                        {...field} 
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const oldDate = field.value;
+                          
+                          // Check if this is a sequential task and the date actually changed
+                          if (form.watch("dependentOnPrevious") && newDate !== oldDate && newDate) {
+                            // Set up pending form data for the date change dialog
+                            const formData = form.getValues();
+                            formData.taskDate = newDate;
+                            setPendingFormData(formData);
+                            setShowDateChangeDialog(true);
+                          } else {
+                            // For non-sequential tasks or no real change, update normally
+                            field.onChange(e);
+                          }
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
