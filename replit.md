@@ -224,6 +224,17 @@ Preferred communication style: Simple, everyday language.
 - ✅ Implemented smart date handling for same-day task reordering
 - ✅ Enhanced date-first sorting with order as secondary sort criteria
 
+### July 29, 2025
+- ✅ Fixed critical first task generation bug: first tasks are now always non-sequential regardless of form defaults
+- ✅ Enhanced date change dialog to appear immediately for ANY date change with only 2 options
+- ✅ Updated date change options to "Make Unsequential & Shift Others" and "Make Unsequential & Move It"
+- ✅ Improved linked task synchronization to maintain same dates during all drag operations
+- ✅ Fixed drag-to-beginning logic: task takes original first task's date, becomes non-sequential, original first becomes sequential
+- ✅ Enhanced linked task positioning to prevent sequential tasks appearing below non-sequential linked tasks
+- ✅ Added comprehensive linked task date synchronization after all positioning operations
+- ✅ Implemented proper task dependency ordering within linked groups
+- ✅ Fixed "unsequential and shift others" functionality to keep task in same position and shift subsequent tasks
+
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
 - By default Hours = Conv Qty × PX

@@ -191,8 +191,14 @@ export default function CreateTaskModal({
     let insertIndex = sortedTasks.length; // Default to end
     let updatedTasks = [...sortedTasks];
     
+    // CRITICAL: If this will be the first task (no existing tasks), force it to be non-sequential
+    if (sortedTasks.length === 0) {
+      insertIndex = 0;
+      data.dependentOnPrevious = false;
+      taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+    }
     // Handle different task creation modes
-    if (data.linkToExistingTask && data.linkedTaskId) {
+    else if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKED TASK MODE: Use same date as linked task
       const linkedTask = (existingTasks as any[]).find((task: any) => 
         (task.taskId || task.id).toString() === data.linkedTaskId
@@ -397,7 +403,7 @@ export default function CreateTaskModal({
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: (insertIndex === 0) ? false : (data.linkToExistingTask ? false : data.dependentOnPrevious),
+      dependentOnPrevious: (insertIndex === 0 || sortedTasks.length === 0) ? false : (data.linkToExistingTask ? false : data.dependentOnPrevious),
       linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
