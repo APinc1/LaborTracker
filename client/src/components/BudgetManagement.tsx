@@ -1163,8 +1163,8 @@ export default function BudgetManagement() {
       </header>
       <main className="p-6">
         <div className="space-y-6">
-          {/* Project and Location Selection */}
-          {(
+          {/* Project and Location Selection - Only show when not accessing directly from location page */}
+          {!isDirectAccess && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>

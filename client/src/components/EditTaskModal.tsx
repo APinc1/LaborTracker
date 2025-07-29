@@ -269,7 +269,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const dateChanged = data.taskDate !== task.taskDate;
     const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
-    if ((dateChanged || linkingChanged) && locationTasks && locationTasks.length > 0) {
+    if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
       
       let allUpdatedTasks = [...locationTasks];
@@ -336,6 +336,56 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           
           console.log('Updated linked task to be sequential + linked with date:', linkedTask.name, synchronizedDate);
           console.log('Current task is now just linked with date:', currentTask.name, synchronizedDate);
+        }
+      }
+
+      // Handle dependency changes - when a task becomes sequential, calculate its proper date
+      if (dependencyChanged && processedData.dependentOnPrevious) {
+        const taskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+        if (taskIndex > 0) {
+          // Find the previous task (not linked task from same group)
+          let previousTaskDate = null;
+          
+          for (let i = taskIndex - 1; i >= 0; i--) {
+            const prevTask = allUpdatedTasks[i];
+            
+            // Skip tasks from the same linked group
+            if (processedData.linkedTaskGroup && prevTask.linkedTaskGroup === processedData.linkedTaskGroup) {
+              continue;
+            }
+            
+            previousTaskDate = prevTask.taskDate;
+            break;
+          }
+          
+          if (previousTaskDate) {
+            // Calculate next working day
+            const baseDate = new Date(previousTaskDate + 'T00:00:00');
+            const nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            const newDate = nextDate.toISOString().split('T')[0];
+            
+            // Update the task and its linked group with the new date
+            allUpdatedTasks[taskIndex] = {
+              ...allUpdatedTasks[taskIndex],
+              taskDate: newDate
+            };
+            
+            // If this task is linked, update all tasks in the linked group
+            if (processedData.linkedTaskGroup) {
+              allUpdatedTasks = allUpdatedTasks.map(t => 
+                t.linkedTaskGroup === processedData.linkedTaskGroup 
+                  ? { ...t, taskDate: newDate }
+                  : t
+              );
+            }
+            
+            console.log('Updated sequential task date to:', newDate);
+          }
         }
       }
       
