@@ -397,7 +397,7 @@ export default function CreateTaskModal({
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: data.linkToExistingTask ? false : (insertIndex === 0 ? false : data.dependentOnPrevious),
+      dependentOnPrevious: (insertIndex === 0) ? false : (data.linkToExistingTask ? false : data.dependentOnPrevious),
       linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,

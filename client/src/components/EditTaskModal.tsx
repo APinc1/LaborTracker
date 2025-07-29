@@ -222,8 +222,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     
     const dateChanged = data.taskDate !== task.taskDate;
     
-    // If date changed and task is sequential, show confirmation dialog
-    if (dateChanged && task.dependentOnPrevious) {
+    // Show date change dialog immediately for ANY date change
+    if (dateChanged) {
       setPendingFormData(data);
       setShowDateChangeDialog(true);
       return;
@@ -233,15 +233,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     processFormSubmission(data);
   };
 
-  const processFormSubmission = (data: any, keepSequential = false) => {
+  const processFormSubmission = (data: any, makeUnsequentialAndShift = false) => {
     let processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
     };
     
     // Handle date change dialog choice
-    if (keepSequential === false && pendingFormData) {
-      // User chose to make non-sequential - override dependency
+    if (makeUnsequentialAndShift && pendingFormData) {
+      // User chose to make non-sequential and shift others - override dependency
       processedData.dependentOnPrevious = false;
     }
 
@@ -1027,9 +1027,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               <div className="text-center">
-                <div className="font-medium">Keep Sequential & Move Position</div>
+                <div className="font-medium">Make Unsequential & Shift Others</div>
                 <div className="text-xs text-gray-300 mt-1">
-                  Move to the new date and maintain sequential dependency
+                  Task stays in same position, shift subsequent sequential tasks
                 </div>
               </div>
             </Button>
@@ -1043,9 +1043,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               className="w-full"
             >
               <div className="text-center">
-                <div className="font-medium">Make Non-Sequential & Shift Others</div>
+                <div className="font-medium">Make Unsequential & Move It</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Remove sequential dependency and shift following tasks
+                  Remove sequential dependency and move to new date
                 </div>
               </div>
             </Button>

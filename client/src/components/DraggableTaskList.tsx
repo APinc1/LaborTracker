@@ -312,11 +312,15 @@ export default function DraggableTaskList({
       
       // If moving to first position
       if (draggedTaskNewIndex === 0) {
-        // First task can't be dependent
-        if (draggedTask.dependentOnPrevious) {
-          draggedTask.dependentOnPrevious = false;
+        // Take the date of the original first task
+        const originalFirstTask = tasksWithUpdatedOrder[1]; // Now at position 1
+        if (originalFirstTask) {
+          draggedTask.taskDate = originalFirstTask.taskDate;
+          // Original first task becomes sequential
+          originalFirstTask.dependentOnPrevious = true;
         }
-        // Keep original date for first task
+        // First task must be non-sequential
+        draggedTask.dependentOnPrevious = false;
       } 
       // For other positions, determine the best date for this position
       else if (previousTask) {
@@ -412,21 +416,41 @@ export default function DraggableTaskList({
         }
       }
       
-      // After positioning logic, ensure linked tasks maintain same dates
+      // Ensure linked tasks maintain same dates and proper ordering
+      const linkedGroups = new Map();
       tasksWithUpdatedOrder.forEach((task, index) => {
         if (task.linkedTaskGroup) {
-          const linkedTasks = tasksWithUpdatedOrder.filter(t => t.linkedTaskGroup === task.linkedTaskGroup);
-          if (linkedTasks.length > 1) {
-            // Find the primary date (from first task in group chronologically)
-            const primaryDate = linkedTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].taskDate;
-            // Sync all linked tasks to primary date
-            linkedTasks.forEach(linkedTask => {
-              const taskIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
-              if (taskIndex >= 0 && tasksWithUpdatedOrder[taskIndex].taskDate !== primaryDate) {
-                tasksWithUpdatedOrder[taskIndex].taskDate = primaryDate;
-              }
-            });
+          if (!linkedGroups.has(task.linkedTaskGroup)) {
+            linkedGroups.set(task.linkedTaskGroup, []);
           }
+          linkedGroups.get(task.linkedTaskGroup).push({ task, index });
+        }
+      });
+
+      linkedGroups.forEach((groupTasks, groupId) => {
+        if (groupTasks.length > 1) {
+          // Sort by order to find the first task
+          groupTasks.sort((a: any, b: any) => a.index - b.index);
+          const primaryDate = groupTasks[0].task.taskDate;
+          
+          // Sync all linked tasks to the same date
+          groupTasks.forEach(({ task, index }: any) => {
+            tasksWithUpdatedOrder[index].taskDate = primaryDate;
+            
+            // Ensure proper dependency ordering within linked group:
+            // First task in group (by position) should be sequential if not at position 0
+            // Second task in group should be non-sequential (linked)
+            if (index === 0) {
+              // First task in entire list is never sequential
+              tasksWithUpdatedOrder[index].dependentOnPrevious = false;
+            } else if (groupTasks[0].index === index) {
+              // This is the first task in the linked group (but not first overall)
+              tasksWithUpdatedOrder[index].dependentOnPrevious = true;
+            } else {
+              // This is the second+ task in the linked group - should be non-sequential
+              tasksWithUpdatedOrder[index].dependentOnPrevious = false;
+            }
+          });
         }
       });
     }
