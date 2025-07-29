@@ -282,27 +282,37 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
           const currentTask = allUpdatedTasks[mainTaskIndex];
           
-          // Determine which task should be sequential and calculate the proper date
-          let sequentialTaskIndex, nonSequentialTaskIndex;
-          if (mainTaskIndex < linkedTaskIndex) {
-            // Current task comes first - it should be sequential
-            sequentialTaskIndex = mainTaskIndex;
-            nonSequentialTaskIndex = linkedTaskIndex;
+          // Sort tasks chronologically to determine proper first/second task
+          const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
+            const dateA = new Date(a.taskDate).getTime();
+            const dateB = new Date(b.taskDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.order || 0) - (b.order || 0);
+          });
+          
+          const currentSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
+          const linkedSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+          
+          // First task chronologically should be sequential, second should not be
+          let firstTaskIndex, secondTaskIndex;
+          if (currentSortedIndex < linkedSortedIndex) {
+            firstTaskIndex = mainTaskIndex;
+            secondTaskIndex = linkedTaskIndex;
           } else {
-            // Linked task comes first - it should be sequential
-            sequentialTaskIndex = linkedTaskIndex;
-            nonSequentialTaskIndex = mainTaskIndex;
+            firstTaskIndex = linkedTaskIndex;
+            secondTaskIndex = mainTaskIndex;
           }
           
           // Calculate the proper sequential date for the first task
-          let sequentialDate = allUpdatedTasks[sequentialTaskIndex].taskDate;
+          let sequentialDate = allUpdatedTasks[firstTaskIndex].taskDate;
           
-          if (sequentialTaskIndex > 0) {
-            // Find the previous task (not from same linked group) to calculate sequential date
+          const firstTaskSortedIndex = Math.min(currentSortedIndex, linkedSortedIndex);
+          if (firstTaskSortedIndex > 0) {
+            // Find the chronologically previous task (not from same linked group)
             let previousTaskDate = null;
             
-            for (let i = sequentialTaskIndex - 1; i >= 0; i--) {
-              const prevTask = allUpdatedTasks[i];
+            for (let i = firstTaskSortedIndex - 1; i >= 0; i--) {
+              const prevTask = sortedTasks[i];
               
               // Skip tasks from the same linked group
               if (prevTask.linkedTaskGroup === linkedTaskGroup) {
@@ -329,29 +339,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
 
           // Update both tasks with the synchronized date and proper dependencies
-          allUpdatedTasks[sequentialTaskIndex] = {
-            ...allUpdatedTasks[sequentialTaskIndex],
+          allUpdatedTasks[firstTaskIndex] = {
+            ...allUpdatedTasks[firstTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: true, // First task in sequence is sequential
+            dependentOnPrevious: true, // First task chronologically is sequential
             taskDate: sequentialDate
           };
           
-          allUpdatedTasks[nonSequentialTaskIndex] = {
-            ...allUpdatedTasks[nonSequentialTaskIndex],
+          allUpdatedTasks[secondTaskIndex] = {
+            ...allUpdatedTasks[secondTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: false, // Second task in sequence is just linked
+            dependentOnPrevious: false, // Second task chronologically is just linked, never sequential
             taskDate: sequentialDate // Both tasks must have same date
           };
           
-          // No repositioning needed - tasks stay in their current positions
-          // Update order values for consistency
-          allUpdatedTasks = allUpdatedTasks.map((task, index) => ({
-            ...task,
-            order: index
-          }));
-          
-          console.log('Updated sequential task (first in group):', allUpdatedTasks[sequentialTaskIndex].name, 'with date:', sequentialDate);
-          console.log('Updated linked task (second in group):', allUpdatedTasks[nonSequentialTaskIndex].name, 'with date:', sequentialDate);
+          console.log('Updated sequential task (first chronologically):', allUpdatedTasks[firstTaskIndex].name, 'with date:', sequentialDate);
+          console.log('Updated linked task (second chronologically):', allUpdatedTasks[secondTaskIndex].name, 'with date:', sequentialDate);
         }
       }
 
@@ -455,7 +458,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       }
       
       // Process sequential dependencies after date changes - shift subsequent tasks chronologically
-      if (dateChanged) {
+      if (dateChanged || dependencyChanged) {
         // Sort all tasks chronologically to process sequential dependencies correctly  
         const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
           const dateA = new Date(a.taskDate).getTime();
@@ -496,13 +499,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   taskDate: newDate
                 };
                 
-                // If this task is linked, update all tasks in its linked group
+                // If this task is linked, update all tasks in its linked group (but maintain sequential rules)
                 if (subsequentTask.linkedTaskGroup) {
-                  allUpdatedTasks = allUpdatedTasks.map(t => 
-                    t.linkedTaskGroup === subsequentTask.linkedTaskGroup 
-                      ? { ...t, taskDate: newDate }
-                      : t
-                  );
+                  allUpdatedTasks = allUpdatedTasks.map(t => {
+                    if (t.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
+                      return { ...t, taskDate: newDate };
+                    }
+                    return t;
+                  });
                 }
                 
                 currentDate = newDate;
@@ -514,6 +518,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
           }
         }
+        
+        // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
+        // This prevents linked tasks from moving to end of list
+        const finalSortedTasks = [...allUpdatedTasks].sort((a, b) => {
+          const dateA = new Date(a.taskDate).getTime();
+          const dateB = new Date(b.taskDate).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          return (a.order || 0) - (b.order || 0);
+        });
+        
+        // Reassign order values to maintain chronological positioning
+        finalSortedTasks.forEach((task, index) => {
+          const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+          if (originalIndex >= 0) {
+            allUpdatedTasks[originalIndex] = {
+              ...allUpdatedTasks[originalIndex],
+              order: index
+            };
+          }
+        });
       }
       
       // Filter to only tasks that actually changed
@@ -681,6 +705,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        disabled={(() => {
+                          // Disable sequential checkbox for second task in linked group
+                          if (task.linkedTaskGroup && locationTasks) {
+                            const linkedTasks = locationTasks
+                              .filter((t: any) => t.linkedTaskGroup === task.linkedTaskGroup)
+                              .sort((a: any, b: any) => {
+                                const dateA = new Date(a.taskDate).getTime();
+                                const dateB = new Date(b.taskDate).getTime();
+                                if (dateA !== dateB) return dateA - dateB;
+                                return (a.order || 0) - (b.order || 0);
+                              });
+                            
+                            // If this is not the first task in the linked group, disable sequential
+                            const currentTaskIndex = linkedTasks.findIndex((t: any) => 
+                              (t.taskId || t.id) === (task.taskId || task.id)
+                            );
+                            return currentTaskIndex > 0; // Disable if not first task
+                          }
+                          return false;
+                        })()}
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
