@@ -74,6 +74,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showDateChangeDialog, setShowDateChangeDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
   const [dateChangeAction, setDateChangeAction] = useState<'sequential' | 'unsequential_shift_others' | 'unsequential_move_only'>('sequential');
+  const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
+  const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -223,6 +225,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const onSubmit = (data: any) => {
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
+    
+    // Check if this is a non-sequential task with a date change - show move/shift dialog
+    const isCurrentlyNonSequential = !task.dependentOnPrevious;
+    const taskDateChanged = data.taskDate !== task.taskDate;
+    
+    if (isCurrentlyNonSequential && taskDateChanged) {
+      console.log('Non-sequential task date change detected - showing move/shift dialog');
+      setPendingNonSequentialData(data);
+      setShowNonSequentialDialog(true);
+      return; // Don't submit yet, wait for user choice
+    }
     
     // Process the form submission with the current date change action
     processFormSubmission(data);
@@ -743,13 +756,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           
                           // Check if this is a sequential task and the date actually changed
                           if (form.watch("dependentOnPrevious") && newDate !== oldDate && newDate) {
-                            // Set up pending form data for the date change dialog
+                            // Set up pending form data for the date change dialog (sequential task)
                             const formData = form.getValues();
                             formData.taskDate = newDate;
                             setPendingFormData(formData);
                             setShowDateChangeDialog(true);
+                          } else if (!form.watch("dependentOnPrevious") && newDate !== oldDate && newDate) {
+                            // For non-sequential tasks, update the field but we'll check on form submit for the move/shift dialog
+                            field.onChange(e);
                           } else {
-                            // For non-sequential tasks or no real change, update normally
+                            // No real change, update normally
                             field.onChange(e);
                           }
                         }}
@@ -1041,27 +1057,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
             <Button 
               onClick={() => {
-                // Keep sequential and move to nearest valid date
-                if (pendingFormData) {
-                  // Reset the date field to the new date but keep sequential
-                  form.setValue("taskDate", pendingFormData.taskDate);
-                  // Don't change dependency - keep sequential
-                  setDateChangeAction('sequential');
-                }
-                setShowDateChangeDialog(false);
-                setPendingFormData(null);
-              }}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              <div className="text-center">
-                <div className="font-medium">Keep Sequential & Move to Nearest Date</div>
-                <div className="text-xs text-gray-300 mt-1">
-                  Keep sequential dependency, adjust to nearest valid date
-                </div>
-              </div>
-            </Button>
-            <Button 
-              onClick={() => {
                 // Make unsequential and shift others - this preserves the date change logic
                 if (pendingFormData) {
                   form.setValue("taskDate", pendingFormData.taskDate);
@@ -1100,6 +1095,83 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 <div className="font-medium">Make Unsequential & Move It</div>
                 <div className="text-xs text-gray-500 mt-1">
                   Remove sequential dependency and move to new date
+                </div>
+              </div>
+            </Button>
+            <Button 
+              onClick={() => {
+                // Keep sequential and move to nearest valid date
+                if (pendingFormData) {
+                  // Reset the date field to the new date but keep sequential
+                  form.setValue("taskDate", pendingFormData.taskDate);
+                  // Don't change dependency - keep sequential
+                  setDateChangeAction('sequential');
+                }
+                setShowDateChangeDialog(false);
+                setPendingFormData(null);
+              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              <div className="text-center">
+                <div className="font-medium">Keep Sequential & Move to Nearest Date</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Keep sequential dependency, adjust to nearest valid date
+                </div>
+              </div>
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Non-Sequential Task Date Change Dialog */}
+      <AlertDialog open={showNonSequentialDialog} onOpenChange={setShowNonSequentialDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Move Non-Sequential Task
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <p>You've changed the date for this non-sequential task.</p>
+              <p>How would you like to handle the following sequential tasks?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
+            <Button 
+              onClick={() => {
+                // Move task and shift following sequential tasks
+                if (pendingNonSequentialData) {
+                  setDateChangeAction('unsequential_shift_others');
+                  processFormSubmission(pendingNonSequentialData);
+                }
+                setShowNonSequentialDialog(false);
+                setPendingNonSequentialData(null);
+              }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <div className="text-center">
+                <div className="font-medium">Move It & Shift Others</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Move task to new date and shift subsequent sequential tasks
+                </div>
+              </div>
+            </Button>
+            <Button 
+              onClick={() => {
+                // Just move the task without affecting others
+                if (pendingNonSequentialData) {
+                  setDateChangeAction('unsequential_move_only');
+                  processFormSubmission(pendingNonSequentialData);
+                }
+                setShowNonSequentialDialog(false);
+                setPendingNonSequentialData(null);
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              <div className="text-center">
+                <div className="font-medium">Just Move It</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Move task without affecting other tasks
                 </div>
               </div>
             </Button>

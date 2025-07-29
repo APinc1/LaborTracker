@@ -237,6 +237,12 @@ Preferred communication style: Simple, everyday language.
 - ✅ Fixed bulk task generation to ensure first task is always non-sequential (dependentOnPrevious: false)
 - ✅ Added dependentOnPrevious field to all four bulk task creation locations in LocationDetails.tsx
 - ✅ Ensured both individual and bulk task creation follow same first-task-non-sequential rule
+- ✅ Completely redesigned date change popup system with proper option ordering
+- ✅ Reordered popup options: "Make Unsequential & Shift Others", "Make Unsequential & Move It", "Keep Sequential & Move to Nearest Date"
+- ✅ Added separate popup for non-sequential tasks when changing dates on save with "Move & Shift Others" and "Just Move It" options
+- ✅ Fixed "Unsequential & Shift Others" logic to use task order instead of chronological sorting for proper sequential task shifting
+- ✅ Implemented comprehensive debugging for date change actions to troubleshoot shifting issues
+- ✅ Enhanced cascading logic to handle both sequential and non-sequential task date changes with proper subsequent task shifting
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
