@@ -463,8 +463,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         });
       }
       
-      // Process sequential dependencies after date changes - shift subsequent tasks chronologically
+      // Process sequential dependencies after ANY date changes - shift subsequent tasks chronologically
       if (dateChanged || dependencyChanged) {
+        console.log('Processing sequential dependencies after date/dependency change');
+        
         // Sort all tasks chronologically to process sequential dependencies correctly  
         const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
           const dateA = new Date(a.taskDate).getTime();
@@ -478,6 +480,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         if (changedTaskSortedIndex >= 0) {
           let currentDate = processedData.taskDate;
+          console.log('Starting cascade from task:', task.name, 'at date:', currentDate);
           
           // Process all tasks chronologically after the changed task
           for (let i = changedTaskSortedIndex + 1; i < sortedTasks.length; i++) {
@@ -500,15 +503,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               );
               
               if (originalIndex >= 0) {
+                console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
+                
                 allUpdatedTasks[originalIndex] = {
                   ...allUpdatedTasks[originalIndex],
                   taskDate: newDate
                 };
                 
-                // If this task is linked, update all tasks in its linked group (but maintain sequential rules)
+                // If this task is linked, update all tasks in its linked group 
                 if (subsequentTask.linkedTaskGroup) {
                   allUpdatedTasks = allUpdatedTasks.map(t => {
                     if (t.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
+                      console.log('Syncing linked task:', t.name, 'to:', newDate);
                       return { ...t, taskDate: newDate };
                     }
                     return t;
@@ -516,17 +522,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 }
                 
                 currentDate = newDate;
-                console.log('Shifted sequential task:', subsequentTask.name, 'to:', newDate);
               }
             } else {
               // Non-sequential task - use its existing date as the baseline for next sequential tasks
               currentDate = subsequentTask.taskDate;
+              console.log('Non-sequential task baseline:', subsequentTask.name, 'at:', currentDate);
             }
           }
         }
         
         // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
-        // This prevents linked tasks from moving to end of list
         const finalSortedTasks = [...allUpdatedTasks].sort((a, b) => {
           const dateA = new Date(a.taskDate).getTime();
           const dateB = new Date(b.taskDate).getTime();
@@ -535,8 +540,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         });
         
         // Reassign order values to maintain chronological positioning
-        finalSortedTasks.forEach((task, index) => {
-          const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+        finalSortedTasks.forEach((sortedTask, index) => {
+          const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (sortedTask.taskId || sortedTask.id));
           if (originalIndex >= 0) {
             allUpdatedTasks[originalIndex] = {
               ...allUpdatedTasks[originalIndex],
@@ -544,6 +549,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             };
           }
         });
+        
+        console.log('Sequential cascading complete');
       }
       
       // Filter to only tasks that actually changed
