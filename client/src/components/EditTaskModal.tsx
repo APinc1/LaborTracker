@@ -236,24 +236,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         processedData.linkedTaskGroup = linkedTaskGroup;
         processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
         
-        // When linking two tasks, the first task in the sequence should be sequential+linked
-        // and the second task should be just linked
-        
-        const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
-        const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id).toString() === data.linkedTaskId);
-        
-        // Determine which task comes first in the sequence
-        if (currentTaskIndex < linkedTaskIndex) {
-          // Current task comes first - it should be sequential+linked
-          processedData.dependentOnPrevious = true;
-          // Linked task becomes just linked
-          linkedTask.dependentOnPrevious = false;
-        } else {
-          // Linked task comes first - it should be sequential+linked  
-          processedData.dependentOnPrevious = false;
-          // Linked task becomes sequential+linked
-          linkedTask.dependentOnPrevious = true;
-        }
+        // When linking two tasks, we need to determine which should be sequential based on their positions
+        // This will be handled in the cascading updates section where we have access to the task list
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
       // UNLINKING FROM GROUP
