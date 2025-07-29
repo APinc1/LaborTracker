@@ -336,39 +336,46 @@ export default function DraggableTaskList({
           
           targetDate = nextWorkday.toISOString().split('T')[0];
         } else {
-          // Non-dependent tasks should fit logically in the sequence
-          // If there's a next task, try to fit between previous and next
-          if (nextTask) {
-            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
-            const nextDate = new Date(nextTask.taskDate + 'T00:00:00');
-            
-            // Try to place it the day after previous task
-            const candidateDate = new Date(previousDate);
-            candidateDate.setDate(candidateDate.getDate() + 1);
-            
-            // Skip weekends
-            while (candidateDate.getDay() === 0 || candidateDate.getDay() === 6) {
-              candidateDate.setDate(candidateDate.getDate() + 1);
-            }
-            
-            // If candidate date is before next task's date, use it; otherwise use original
-            if (candidateDate < nextDate) {
-              targetDate = candidateDate.toISOString().split('T')[0];
-            } else {
-              targetDate = draggedTask.taskDate; // Keep original
-            }
+          // Non-dependent tasks: when moving to earlier dates, adopt the existing date
+          const currentDate = new Date(draggedTask.taskDate + 'T00:00:00');
+          const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
+          
+          // If moving to an earlier position (date), adopt the previous task's date to avoid gaps
+          if (currentDate > previousDate) {
+            targetDate = previousTask.taskDate; // Adopt the earlier date
+            console.log('Adopting earlier date to avoid gaps:', previousTask.taskDate);
           } else {
-            // No next task, place after previous task
-            const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
-            const nextWorkday = new Date(previousDate);
-            nextWorkday.setDate(nextWorkday.getDate() + 1);
-            
-            // Skip weekends
-            while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+            // If there's a next task, try to fit between previous and next
+            if (nextTask) {
+              const nextDate = new Date(nextTask.taskDate + 'T00:00:00');
+              
+              // Try to place it the day after previous task
+              const candidateDate = new Date(previousDate);
+              candidateDate.setDate(candidateDate.getDate() + 1);
+              
+              // Skip weekends
+              while (candidateDate.getDay() === 0 || candidateDate.getDay() === 6) {
+                candidateDate.setDate(candidateDate.getDate() + 1);
+              }
+              
+              // If candidate date is before next task's date, use it; otherwise use original
+              if (candidateDate < nextDate) {
+                targetDate = candidateDate.toISOString().split('T')[0];
+              } else {
+                targetDate = draggedTask.taskDate; // Keep original
+              }
+            } else {
+              // No next task, place after previous task
+              const nextWorkday = new Date(previousDate);
               nextWorkday.setDate(nextWorkday.getDate() + 1);
+              
+              // Skip weekends
+              while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+                nextWorkday.setDate(nextWorkday.getDate() + 1);
+              }
+              
+              targetDate = nextWorkday.toISOString().split('T')[0];
             }
-            
-            targetDate = nextWorkday.toISOString().split('T')[0];
           }
         }
         

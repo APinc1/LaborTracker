@@ -64,7 +64,7 @@ const STATUS_OPTIONS = [
 
 // Create form schema with conditional validation
 const createTaskFormSchema = z.object({
-  insertPosition: z.string().min(1, "Position is required"),
+  insertPosition: z.string().optional(),
   taskDate: z.string().optional(),
   name: z.string().min(1, "Task name is required"),
   taskType: z.string().min(1, "Task type is required"),
@@ -77,6 +77,10 @@ const createTaskFormSchema = z.object({
   linkToExistingTask: z.boolean().default(false),
   linkedTaskId: z.string().optional()
 }).refine((data) => {
+  // Insert position is required UNLESS linking to existing task
+  if (!data.linkToExistingTask && !data.insertPosition) {
+    return false;
+  }
   // Date is required for non-dependent, non-linked tasks
   if (!data.dependentOnPrevious && !data.linkToExistingTask && !data.taskDate) {
     return false;
@@ -87,8 +91,8 @@ const createTaskFormSchema = z.object({
   }
   return true;
 }, {
-  message: "Date is required for non-dependent tasks, or select a task to link with",
-  path: ["taskDate"]
+  message: "Position is required unless linking to existing task, and date is required for non-dependent tasks",
+  path: ["insertPosition"]
 });
 
 export default function CreateTaskModal({ 
@@ -254,11 +258,21 @@ export default function CreateTaskModal({
       // Calculate position and date based on insertPosition and dependency
       if (data.insertPosition === 'start') {
         insertIndex = 0;
-        if (data.dependentOnPrevious) {
-          // First task can't be dependent
-          data.dependentOnPrevious = false;
-        }
+        // First task can't be dependent - force it to be non-sequential
+        data.dependentOnPrevious = false;
         taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+        
+        // Make all existing tasks shift their dependency chain
+        for (let i = 0; i < updatedTasks.length; i++) {
+          const existingTask = updatedTasks[i];
+          if (existingTask.dependentOnPrevious && i === 0) {
+            // The original first task should become sequential since there's now a task before it
+            updatedTasks[i] = { 
+              ...existingTask, 
+              dependentOnPrevious: true 
+            };
+          }
+        }
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
@@ -436,43 +450,45 @@ export default function CreateTaskModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Position Selection */}
-            <FormField
-              control={form.control}
-              name="insertPosition"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Insert Position *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select where to insert task" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="start">At the beginning</SelectItem>
-                      {(existingTasks as any[])
-                        .sort((a: any, b: any) => {
-                          const dateA = new Date(a.taskDate).getTime();
-                          const dateB = new Date(b.taskDate).getTime();
-                          if (dateA !== dateB) return dateA - dateB;
-                          return (a.order || 0) - (b.order || 0);
-                        })
-                        .map((task: any) => (
-                        <SelectItem 
-                          key={task.id || task.taskId} 
-                          value={`after-${(task.taskId || task.id).toString()}`}
-                        >
-                          After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
-                        </SelectItem>
-                      ))}
-                      <SelectItem value="end">At the end</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Position Selection - Hidden when linking to existing task */}
+            {!form.watch("linkToExistingTask") && (
+              <FormField
+                control={form.control}
+                name="insertPosition"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Insert Position *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select where to insert task" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="start">At the beginning</SelectItem>
+                        {(existingTasks as any[])
+                          .sort((a: any, b: any) => {
+                            const dateA = new Date(a.taskDate).getTime();
+                            const dateB = new Date(b.taskDate).getTime();
+                            if (dateA !== dateB) return dateA - dateB;
+                            return (a.order || 0) - (b.order || 0);
+                          })
+                          .map((task: any) => (
+                          <SelectItem 
+                            key={task.id || task.taskId} 
+                            value={`after-${(task.taskId || task.id).toString()}`}
+                          >
+                            After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="end">At the end</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Task Type Selection - MUST come before task name */}
             <FormField

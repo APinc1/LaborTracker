@@ -16,6 +16,7 @@ import { insertTaskSchema } from "@shared/schema";
 import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -70,6 +71,8 @@ const editTaskSchema = z.object({
 export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showDateChangeDialog, setShowDateChangeDialog] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -217,10 +220,30 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
     
+    const dateChanged = data.taskDate !== task.taskDate;
+    
+    // If date changed and task is sequential, show confirmation dialog
+    if (dateChanged && task.dependentOnPrevious) {
+      setPendingFormData(data);
+      setShowDateChangeDialog(true);
+      return;
+    }
+
+    // Process the form submission
+    processFormSubmission(data);
+  };
+
+  const processFormSubmission = (data: any, keepSequential = false) => {
     let processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
     };
+    
+    // Handle date change dialog choice
+    if (keepSequential === false && pendingFormData) {
+      // User chose to make non-sequential - override dependency
+      processedData.dependentOnPrevious = false;
+    }
 
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
@@ -350,7 +373,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...allUpdatedTasks[secondTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
             dependentOnPrevious: false, // Second task chronologically is just linked, never sequential
-            taskDate: sequentialDate // Both tasks must have same date
+            taskDate: sequentialDate // Both tasks get the same synchronized date
           };
           
           console.log('Updated sequential task (first chronologically):', allUpdatedTasks[firstTaskIndex].name, 'with date:', sequentialDate);
@@ -358,15 +381,57 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       }
 
-      // Handle unlinking - unlink the partner task
+      // Handle unlinking - unlink the partner task and trigger sequential cascading
       if (!data.linkToExistingTask && task.linkedTaskGroup && linkingChanged) {
         // Find and unlink the partner task
+        const partnerTask = allUpdatedTasks.find(t => 
+          t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+        );
+        
         allUpdatedTasks = allUpdatedTasks.map(t => 
           t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
             ? { ...t, linkedTaskGroup: null, dependentOnPrevious: true } // Make partner sequential by default
             : t
         );
+        
         console.log('Unlinked partner task from group:', task.linkedTaskGroup);
+        
+        // If the partner task becomes sequential, recalculate its date and trigger cascading
+        if (partnerTask) {
+          const partnerIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (partnerTask.taskId || partnerTask.id));
+          if (partnerIndex >= 0) {
+            // Sort tasks to find chronological previous task for partner
+            const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
+              const dateA = new Date(a.taskDate).getTime();
+              const dateB = new Date(b.taskDate).getTime();
+              if (dateA !== dateB) return dateA - dateB;
+              return (a.order || 0) - (b.order || 0);
+            });
+            
+            const partnerSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (partnerTask.taskId || partnerTask.id));
+            
+            if (partnerSortedIndex > 0) {
+              const prevTask = sortedTasks[partnerSortedIndex - 1];
+              // Calculate next working day from previous task
+              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update partner task with sequential date
+              allUpdatedTasks[partnerIndex] = {
+                ...allUpdatedTasks[partnerIndex],
+                taskDate: newDate
+              };
+              
+              console.log('Updated unlinked partner task sequential date to:', newDate);
+            }
+          }
+        }
       }
 
       // Handle dependency changes - when a task becomes sequential OR when linked task becomes sequential
@@ -939,6 +1004,47 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           </form>
         </Form>
       </DialogContent>
+
+      {/* Date Change Confirmation Dialog */}
+      <AlertDialog open={showDateChangeDialog} onOpenChange={setShowDateChangeDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sequential Task Date Change</AlertDialogTitle>
+            <AlertDialogDescription>
+              This task is currently sequential (automatically positioned after the previous task). 
+              When you change the date, you can either:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col space-y-2">
+            <AlertDialogAction 
+              onClick={() => {
+                processFormSubmission(pendingFormData, true);
+                setShowDateChangeDialog(false);
+                setPendingFormData(null);
+              }}
+              className="w-full"
+            >
+              Keep Sequential & Move Position
+              <span className="text-xs block mt-1">
+                Move to the new date and maintain sequential dependency
+              </span>
+            </AlertDialogAction>
+            <AlertDialogCancel 
+              onClick={() => {
+                processFormSubmission(pendingFormData, false);
+                setShowDateChangeDialog(false);
+                setPendingFormData(null);
+              }}
+              className="w-full"
+            >
+              Make Non-Sequential & Shift Others
+              <span className="text-xs block mt-1">
+                Remove sequential dependency and shift following tasks
+              </span>
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

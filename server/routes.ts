@@ -569,9 +569,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/tasks/:id', async (req, res) => {
     try {
-      await storage.deleteTask(parseInt(req.params.id));
+      const taskId = parseInt(req.params.id);
+      
+      // Get the task being deleted to understand its context
+      const taskToDelete = await storage.getTask(taskId);
+      if (!taskToDelete) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      
+      // Get all tasks in the same location for sequential cascading
+      const locationTasks = await storage.getTasks(taskToDelete.locationId);
+      
+      // Delete the task first
+      await storage.deleteTask(taskId);
+      
+      // Process sequential cascading for remaining tasks
+      const remainingTasks = locationTasks.filter(t => t.id !== taskId);
+      
+      if (remainingTasks.length > 0) {
+        // Sort tasks chronologically
+        const sortedTasks = remainingTasks.sort((a, b) => {
+          const dateA = new Date(a.taskDate).getTime();
+          const dateB = new Date(b.taskDate).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          return (a.order || 0) - (b.order || 0);
+        });
+        
+        // Find tasks that need date recalculation
+        const tasksToUpdate = [];
+        let needsCascading = false;
+        
+        for (let i = 0; i < sortedTasks.length; i++) {
+          const currentTask = sortedTasks[i];
+          
+          if (currentTask.dependentOnPrevious && i > 0) {
+            const prevTask = sortedTasks[i - 1];
+            
+            // Calculate what the date should be based on previous task
+            const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+            const nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            const expectedDate = nextDate.toISOString().split('T')[0];
+            
+            // If current date doesn't match expected date, update it
+            if (currentTask.taskDate !== expectedDate) {
+              needsCascading = true;
+              tasksToUpdate.push({
+                ...currentTask,
+                taskDate: expectedDate
+              });
+              
+              // Update all linked tasks in the same group
+              if (currentTask.linkedTaskGroup) {
+                const linkedTasks = sortedTasks.filter(t => 
+                  t.linkedTaskGroup === currentTask.linkedTaskGroup && 
+                  t.id !== currentTask.id
+                );
+                linkedTasks.forEach(linkedTask => {
+                  if (linkedTask.taskDate !== expectedDate) {
+                    tasksToUpdate.push({
+                      ...linkedTask,
+                      taskDate: expectedDate
+                    });
+                  }
+                });
+              }
+            }
+          }
+        }
+        
+        // Update tasks if cascading is needed
+        if (needsCascading && tasksToUpdate.length > 0) {
+          console.log(`Cascading ${tasksToUpdate.length} tasks after deletion`);
+          const updatePromises = tasksToUpdate.map(task => 
+            storage.updateTask(task.id, { taskDate: task.taskDate })
+          );
+          await Promise.all(updatePromises);
+        }
+      }
+      
       res.status(204).send();
     } catch (error) {
+      console.error('Task deletion error:', error);
       res.status(500).json({ error: 'Failed to delete task' });
     }
   });
