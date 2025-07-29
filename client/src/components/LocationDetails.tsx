@@ -754,7 +754,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               foremanId: null,
               startTime: null,
               finishTime: null,
-              notes: null
+              notes: null,
+              dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
             globalDayIndex++;
@@ -812,7 +813,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             foremanId: null,
             startTime: null,
             finishTime: null,
-            notes: null
+            notes: null,
+            dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
           });
           
           globalDayIndex++;
@@ -845,7 +847,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               foremanId: null,
               startTime: null,
               finishTime: null,
-              notes: null
+              notes: null,
+              dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
             globalDayIndex++;
@@ -879,7 +882,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               foremanId: null,
               startTime: null,
               finishTime: null,
-              notes: null
+              notes: null,
+              dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
             globalDayIndex++;

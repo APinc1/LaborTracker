@@ -234,6 +234,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ Added comprehensive linked task date synchronization after all positioning operations
 - ✅ Implemented proper task dependency ordering within linked groups
 - ✅ Fixed "unsequential and shift others" functionality to keep task in same position and shift subsequent tasks
+- ✅ Fixed bulk task generation to ensure first task is always non-sequential (dependentOnPrevious: false)
+- ✅ Added dependentOnPrevious field to all four bulk task creation locations in LocationDetails.tsx
+- ✅ Ensured both individual and bulk task creation follow same first-task-non-sequential rule
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
