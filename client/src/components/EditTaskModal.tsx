@@ -1125,7 +1125,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             >
               <div className="text-center">
                 <div className="font-medium">Keep Sequential & Move to Nearest Date</div>
-                <div className="text-xs text-gray-300 mt-1">
+                <div className="text-xs mt-1 text-[#6b7280]">
                   Keep sequential dependency, adjust to nearest valid date
                 </div>
               </div>
