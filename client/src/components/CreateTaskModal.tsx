@@ -105,7 +105,7 @@ export default function CreateTaskModal({
     queryKey: ["/api/locations", selectedLocation, "tasks"],
     enabled: !!selectedLocation && isOpen,
     staleTime: 5000,
-  });
+  }) as { data: any[] };
 
   const createTaskMutation = useMutation({
     mutationFn: async (data: { newTask: any; updatedTasks: any[] }) => {
@@ -174,8 +174,8 @@ export default function CreateTaskModal({
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
-    // Sort existing tasks for position calculations
-    const sortedTasks = [...existingTasks].sort((a, b) => {
+    // Sort existing tasks for position calculations  
+    const sortedTasks = [...(existingTasks as any[])].sort((a: any, b: any) => {
       const dateA = new Date(a.taskDate).getTime();
       const dateB = new Date(b.taskDate).getTime();
       if (dateA !== dateB) return dateA - dateB;
@@ -186,11 +186,11 @@ export default function CreateTaskModal({
     let linkedTaskGroup: string | null = null;
     let insertIndex = sortedTasks.length; // Default to end
     let updatedTasks = [...sortedTasks];
-
+    
     // Handle different task creation modes
     if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKED TASK MODE: Use same date as linked task
-      const linkedTask = existingTasks.find((task: any) => 
+      const linkedTask = (existingTasks as any[]).find((task: any) => 
         (task.taskId || task.id).toString() === data.linkedTaskId
       );
       if (linkedTask) {
@@ -404,7 +404,7 @@ export default function CreateTaskModal({
     // Create new task first, then update existing tasks if needed
     // Only update tasks that have actually changed (date, linkedTaskGroup, or dependentOnPrevious)
     const tasksToUpdate = updatedTasks.filter(task => {
-      const originalTask = existingTasks.find(orig => 
+      const originalTask = (existingTasks as any[]).find((orig: any) => 
         (orig.taskId || orig.id) === (task.taskId || task.id)
       );
       return originalTask && (
@@ -451,8 +451,8 @@ export default function CreateTaskModal({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="start">At the beginning</SelectItem>
-                      {existingTasks
-                        .sort((a, b) => {
+                      {(existingTasks as any[])
+                        .sort((a: any, b: any) => {
                           const dateA = new Date(a.taskDate).getTime();
                           const dateB = new Date(b.taskDate).getTime();
                           if (dateA !== dateB) return dateA - dateB;
@@ -474,7 +474,58 @@ export default function CreateTaskModal({
               )}
             />
 
-            {/* Task Type Selection */}
+            {/* Task Type Selection - MUST come before task name */}
+            <FormField
+              control={form.control}
+              name="taskType"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Type *</FormLabel>
+                  <Select 
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Auto-fill task name if it's empty
+                      const currentName = form.getValues("name");
+                      if (!currentName || currentName.trim() === "") {
+                        // Auto-fill with the selected task type value
+                        form.setValue("name", value);
+                      }
+                    }} 
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select task type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TASK_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Task Name */}
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Name *</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter task name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-3">
               {/* Dependency Selection */}
               <FormField
@@ -545,8 +596,8 @@ export default function CreateTaskModal({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {existingTasks
-                            .sort((a, b) => {
+                          {(existingTasks as any[])
+                            .sort((a: any, b: any) => {
                               const dateA = new Date(a.taskDate).getTime();
                               const dateB = new Date(b.taskDate).getTime();
                               if (dateA !== dateB) return dateA - dateB;
@@ -596,56 +647,7 @@ export default function CreateTaskModal({
               />
             )}
 
-            {/* Task Type - Now first */}
-            <FormField
-              control={form.control}
-              name="taskType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Type *</FormLabel>
-                  <Select onValueChange={(value) => {
-                    field.onChange(value);
-                    // Auto-fill task name if it's empty
-                    const currentName = form.getValues("name");
-                    if (!currentName || currentName.trim() === "") {
-                      form.setValue("name", value);
-                    }
-                  }} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select task type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {TASK_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            {/* Task Name - Now second */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter task name" {...field} />
-                  </FormControl>
-                  <p className="text-xs text-gray-500">
-                    Auto-filled from task type selection. You can change it if needed.
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* Start and Finish Time - Optional */}
             <div className="grid grid-cols-2 gap-4">

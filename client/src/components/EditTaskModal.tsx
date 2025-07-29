@@ -223,7 +223,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     };
 
     // Handle linking changes
-    const linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
+    let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
     if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKING TO A TASK
@@ -240,9 +240,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // This will be handled in the cascading updates section where we have access to the task list
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
-      // UNLINKING FROM GROUP
+      // UNLINKING FROM GROUP - also unlink the other task in the group
       processedData.linkedTaskGroup = null;
       processedData.dependentOnPrevious = data.dependentOnPrevious ?? true;
+      
+      // Mark that we need to unlink the partner task too
+      linkingChanged = true;
     }
 
     // Handle actualHours based on status
@@ -352,15 +355,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       }
 
-      // Handle dependency changes - when a task becomes sequential, calculate its proper date
+      // Handle unlinking - unlink the partner task
+      if (!data.linkToExistingTask && task.linkedTaskGroup && linkingChanged) {
+        // Find and unlink the partner task
+        allUpdatedTasks = allUpdatedTasks.map(t => 
+          t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+            ? { ...t, linkedTaskGroup: null, dependentOnPrevious: true } // Make partner sequential by default
+            : t
+        );
+        console.log('Unlinked partner task from group:', task.linkedTaskGroup);
+      }
+
+      // Handle dependency changes - when a task becomes sequential, find its proper position and date
       if (dependencyChanged && processedData.dependentOnPrevious) {
         const taskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
-        if (taskIndex > 0) {
-          // Find the previous task (not linked task from same group)
+        
+        // Sort tasks by date and order to find the correct position
+        const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
+          const dateA = new Date(a.taskDate).getTime();
+          const dateB = new Date(b.taskDate).getTime();
+          if (dateA !== dateB) return dateA - dateB;
+          return (a.order || 0) - (b.order || 0);
+        });
+        
+        // Find where this task should be positioned based on its date
+        const currentTask = allUpdatedTasks[taskIndex];
+        const currentTaskDate = new Date(currentTask.taskDate).getTime();
+        
+        // Find the correct sequential position
+        let correctIndex = -1;
+        for (let i = 0; i < sortedTasks.length; i++) {
+          const sortedTaskDate = new Date(sortedTasks[i].taskDate).getTime();
+          if (sortedTaskDate >= currentTaskDate && (sortedTasks[i].taskId || sortedTasks[i].id) !== (currentTask.taskId || currentTask.id)) {
+            correctIndex = i;
+            break;
+          }
+        }
+        
+        if (correctIndex > 0) {
+          // Find the previous task for date calculation
           let previousTaskDate = null;
           
-          for (let i = taskIndex - 1; i >= 0; i--) {
-            const prevTask = allUpdatedTasks[i];
+          for (let i = correctIndex - 1; i >= 0; i--) {
+            const prevTask = sortedTasks[i];
             
             // Skip tasks from the same linked group
             if (processedData.linkedTaskGroup && prevTask.linkedTaskGroup === processedData.linkedTaskGroup) {
@@ -372,7 +409,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
           
           if (previousTaskDate) {
-            // Calculate next working day
+            // Calculate next working day from the correct previous task
             const baseDate = new Date(previousTaskDate + 'T00:00:00');
             const nextDate = new Date(baseDate);
             nextDate.setDate(nextDate.getDate() + 1);
@@ -382,7 +419,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
             const newDate = nextDate.toISOString().split('T')[0];
             
-            // Update the task and its linked group with the new date
+            // Update the task with the calculated date
             allUpdatedTasks[taskIndex] = {
               ...allUpdatedTasks[taskIndex],
               taskDate: newDate
@@ -397,7 +434,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               );
             }
             
-            console.log('Updated sequential task date to:', newDate);
+            console.log('Updated sequential task date to:', newDate, 'based on proper sequence position');
           }
         }
       }

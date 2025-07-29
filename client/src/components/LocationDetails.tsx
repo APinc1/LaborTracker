@@ -56,6 +56,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [startDate, setStartDate] = useState(() => safeFormatDate(new Date()));
   const [combineFormPour, setCombineFormPour] = useState(false);
   const [combineDemoBase, setCombineDemoBase] = useState(false);
+  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -546,6 +547,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   };
 
   const generateTasks = async () => {
+    if (isGeneratingTasks) {
+      return; // Prevent double submission
+    }
+    
+    setIsGeneratingTasks(true);
     try {
       // Get cost codes with total qty > 0
       const validCostCodes = costCodeArray.filter(summary => summary.totalConvertedQty > 0);
@@ -923,6 +929,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         description: `Failed to create tasks: ${errorMessage}. Please try again.`,
         variant: "destructive"
       });
+    } finally {
+      setIsGeneratingTasks(false);
     }
   };
 
@@ -1174,10 +1182,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <Button 
                   onClick={() => setShowGenerateTasksDialog(true)}
                   size="sm"
-                  disabled={tasks.length > 0}
+                  disabled={tasks.length > 0 || isGeneratingTasks}
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Generate Tasks
+                  {isGeneratingTasks ? 'Generating...' : 'Generate Tasks'}
                 </Button>
               </div>
             </CardTitle>
