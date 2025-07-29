@@ -226,17 +226,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
     
-    // Check if this is a non-sequential task with a date change - show move/shift dialog
-    const isCurrentlyNonSequential = !task.dependentOnPrevious;
-    const taskDateChanged = data.taskDate !== task.taskDate;
-    
-    if (isCurrentlyNonSequential && taskDateChanged) {
-      console.log('Non-sequential task date change detected - showing move/shift dialog');
-      setPendingNonSequentialData(data);
-      setShowNonSequentialDialog(true);
-      return; // Don't submit yet, wait for user choice
-    }
-    
     // Process the form submission with the current date change action
     processFormSubmission(data);
   };
@@ -754,16 +743,21 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           const newDate = e.target.value;
                           const oldDate = field.value;
                           
-                          // Check if this is a sequential task and the date actually changed
-                          if (form.watch("dependentOnPrevious") && newDate !== oldDate && newDate) {
-                            // Set up pending form data for the date change dialog (sequential task)
+                          // Check if the date actually changed
+                          if (newDate !== oldDate && newDate) {
+                            // Set up pending form data for the appropriate dialog
                             const formData = form.getValues();
                             formData.taskDate = newDate;
-                            setPendingFormData(formData);
-                            setShowDateChangeDialog(true);
-                          } else if (!form.watch("dependentOnPrevious") && newDate !== oldDate && newDate) {
-                            // For non-sequential tasks, update the field but we'll check on form submit for the move/shift dialog
-                            field.onChange(e);
+                            
+                            if (form.watch("dependentOnPrevious")) {
+                              // Sequential task - show sequential dialog
+                              setPendingFormData(formData);
+                              setShowDateChangeDialog(true);
+                            } else {
+                              // Non-sequential task - show non-sequential dialog
+                              setPendingNonSequentialData(formData);
+                              setShowNonSequentialDialog(true);
+                            }
                           } else {
                             // No real change, update normally
                             field.onChange(e);
@@ -1043,7 +1037,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       </DialogContent>
 
       {/* Date Change Confirmation Dialog */}
-      <AlertDialog open={showDateChangeDialog} onOpenChange={setShowDateChangeDialog}>
+      <AlertDialog open={showDateChangeDialog} onOpenChange={(open) => {
+        if (!open) {
+          // User closed dialog - revert the date change
+          form.setValue("taskDate", task.taskDate);
+          setPendingFormData(null);
+        }
+        setShowDateChangeDialog(open);
+      }}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
@@ -1119,29 +1120,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 </div>
               </div>
             </Button>
+            <Button 
+              onClick={() => {
+                // Cancel - revert date change
+                form.setValue("taskDate", task.taskDate);
+                setShowDateChangeDialog(false);
+                setPendingFormData(null);
+              }}
+              variant="ghost"
+              className="w-full"
+            >
+              Cancel
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Non-Sequential Task Date Change Dialog */}
-      <AlertDialog open={showNonSequentialDialog} onOpenChange={setShowNonSequentialDialog}>
+      <AlertDialog open={showNonSequentialDialog} onOpenChange={(open) => {
+        if (!open) {
+          // User closed dialog - revert the date change
+          form.setValue("taskDate", task.taskDate);
+          setPendingNonSequentialData(null);
+        }
+        setShowNonSequentialDialog(open);
+      }}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
-              Move Non-Sequential Task
+              Change Unsequential Task Date
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600 space-y-2">
-              <p>You've changed the date for this non-sequential task.</p>
-              <p>How would you like to handle the following sequential tasks?</p>
+              <p>This task is currently unsequential (positioned independently).</p>
+              <p>When you change the date, choose an option:</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
             <Button 
               onClick={() => {
-                // Move task and shift following sequential tasks
+                // Keep unsequential and shift others
                 if (pendingNonSequentialData) {
+                  form.setValue("taskDate", pendingNonSequentialData.taskDate);
+                  // Keep non-sequential (don't change dependentOnPrevious)
                   setDateChangeAction('unsequential_shift_others');
-                  processFormSubmission(pendingNonSequentialData);
                 }
                 setShowNonSequentialDialog(false);
                 setPendingNonSequentialData(null);
@@ -1149,18 +1170,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               <div className="text-center">
-                <div className="font-medium">Move It & Shift Others</div>
+                <div className="font-medium">Keep Unsequential & Shift Others</div>
                 <div className="text-xs text-gray-300 mt-1">
-                  Move task to new date and shift subsequent sequential tasks
+                  Stay non-sequential, shift subsequent sequential tasks
                 </div>
               </div>
             </Button>
             <Button 
               onClick={() => {
-                // Just move the task without affecting others
+                // Keep unsequential and move it
                 if (pendingNonSequentialData) {
+                  form.setValue("taskDate", pendingNonSequentialData.taskDate);
+                  // Keep non-sequential (don't change dependentOnPrevious)
                   setDateChangeAction('unsequential_move_only');
-                  processFormSubmission(pendingNonSequentialData);
                 }
                 setShowNonSequentialDialog(false);
                 setPendingNonSequentialData(null);
@@ -1169,11 +1191,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               className="w-full"
             >
               <div className="text-center">
-                <div className="font-medium">Just Move It</div>
+                <div className="font-medium">Keep Unsequential & Move It</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Move task without affecting other tasks
+                  Stay non-sequential and move to new date
                 </div>
               </div>
+            </Button>
+            <Button 
+              onClick={() => {
+                // Cancel - revert date change
+                form.setValue("taskDate", task.taskDate);
+                setShowNonSequentialDialog(false);
+                setPendingNonSequentialData(null);
+              }}
+              variant="ghost"
+              className="w-full"
+            >
+              Cancel
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
