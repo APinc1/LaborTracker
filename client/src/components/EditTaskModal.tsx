@@ -73,6 +73,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const queryClient = useQueryClient();
   const [showDateChangeDialog, setShowDateChangeDialog] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
+  const [dateChangeAction, setDateChangeAction] = useState<'sequential' | 'unsequential_shift_others' | 'unsequential_move_only'>('sequential');
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -134,6 +135,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   // Update form when task changes
   useEffect(() => {
     if (task) {
+      // Reset date change action when opening a different task
+      setDateChangeAction('sequential');
+      
       // Use the task's existing status if available, otherwise determine it
       let status = task.status || "upcoming";
       
@@ -220,30 +224,25 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
     
-    const dateChanged = data.taskDate !== task.taskDate;
-    
-    // Show date change dialog immediately for ANY date change
-    if (dateChanged) {
-      setPendingFormData(data);
-      setShowDateChangeDialog(true);
-      return;
-    }
-
-    // Process the form submission
+    // Process the form submission with the current date change action
     processFormSubmission(data);
   };
 
-  const processFormSubmission = (data: any, makeUnsequentialAndShift = false) => {
+  const processFormSubmission = (data: any) => {
     let processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
     };
     
-    // Handle date change dialog choice
-    if (makeUnsequentialAndShift && pendingFormData) {
-      // User chose to make non-sequential and shift others - override dependency
+    // Handle the date change action that was set by the dialog
+    if (dateChangeAction === 'unsequential_shift_others') {
+      // User chose to make non-sequential and shift others
+      processedData.dependentOnPrevious = false;
+    } else if (dateChangeAction === 'unsequential_move_only') {
+      // User chose to make non-sequential and just move the task
       processedData.dependentOnPrevious = false;
     }
+    // For 'sequential', keep the existing dependency status
 
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
@@ -532,47 +531,51 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       if (dateChanged || dependencyChanged) {
         console.log('Processing sequential dependencies after date/dependency change');
         
-        // Sort all tasks chronologically to process sequential dependencies correctly  
-        const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
-          const dateA = new Date(a.taskDate).getTime();
-          const dateB = new Date(b.taskDate).getTime();
-          if (dateA !== dateB) return dateA - dateB;
-          return (a.order || 0) - (b.order || 0);
-        });
-        
-        // Find the changed task in sorted order
-        const changedTaskSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
-        
-        if (changedTaskSortedIndex >= 0) {
-          let currentDate = processedData.taskDate;
-          console.log('Starting cascade from task:', task.name, 'at date:', currentDate);
+        // For "unsequential_shift_others" action, shift subsequent sequential tasks based on the changed task's new date
+        if (dateChangeAction === 'unsequential_shift_others') {
+          console.log('Handling unsequential_shift_others action');
           
-          // Process all tasks chronologically after the changed task
-          for (let i = changedTaskSortedIndex + 1; i < sortedTasks.length; i++) {
-            const subsequentTask = sortedTasks[i];
+          // Sort all tasks chronologically to process sequential dependencies correctly  
+          const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
+            const dateA = new Date(a.taskDate).getTime();
+            const dateB = new Date(b.taskDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.order || 0) - (b.order || 0);
+          });
+          
+          // Find the changed task in sorted order
+          const changedTaskSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+          
+          if (changedTaskSortedIndex >= 0) {
+            let currentDate = processedData.taskDate;
+            console.log('Starting cascade from task:', task.name, 'at date:', currentDate);
             
-            if (subsequentTask.dependentOnPrevious) {
-              // Calculate next working day
-              const baseDate = new Date(currentDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+            // Process all tasks chronologically after the changed task
+            for (let i = changedTaskSortedIndex + 1; i < sortedTasks.length; i++) {
+              const subsequentTask = sortedTasks[i];
+              
+              if (subsequentTask.dependentOnPrevious) {
+                // Calculate next working day
+                const baseDate = new Date(currentDate + 'T00:00:00');
+                const nextDate = new Date(baseDate);
                 nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              // Update in original array
-              const originalIndex = allUpdatedTasks.findIndex((t: any) => 
-                (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
-              );
-              
-              if (originalIndex >= 0) {
-                console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
+                // Skip weekends
+                while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                  nextDate.setDate(nextDate.getDate() + 1);
+                }
+                const newDate = nextDate.toISOString().split('T')[0];
                 
-                allUpdatedTasks[originalIndex] = {
-                  ...allUpdatedTasks[originalIndex],
-                  taskDate: newDate
+                // Update in original array
+                const originalIndex = allUpdatedTasks.findIndex((t: any) => 
+                  (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
+                );
+                
+                if (originalIndex >= 0) {
+                  console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
+                  
+                  allUpdatedTasks[originalIndex] = {
+                    ...allUpdatedTasks[originalIndex],
+                    taskDate: newDate
                 };
                 
                 // If this task is linked, update all tasks in its linked group 
@@ -594,6 +597,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               console.log('Non-sequential task baseline:', subsequentTask.name, 'at:', currentDate);
             }
           }
+        }
+        } else {
+          // For other actions (sequential, unsequential_move_only), use the existing cascading logic
+          // This is the original logic for normal sequential dependency processing
         }
         
         // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
@@ -1039,7 +1046,34 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
             <Button 
               onClick={() => {
-                processFormSubmission(pendingFormData, true);
+                // Keep sequential and move to nearest valid date
+                if (pendingFormData) {
+                  // Reset the date field to the new date but keep sequential
+                  form.setValue("taskDate", pendingFormData.taskDate);
+                  // Don't change dependency - keep sequential
+                  setDateChangeAction('sequential');
+                }
+                setShowDateChangeDialog(false);
+                setPendingFormData(null);
+              }}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              <div className="text-center">
+                <div className="font-medium">Keep Sequential & Move to Nearest Date</div>
+                <div className="text-xs text-gray-300 mt-1">
+                  Keep sequential dependency, adjust to nearest valid date
+                </div>
+              </div>
+            </Button>
+            <Button 
+              onClick={() => {
+                // Make unsequential and shift others - this preserves the date change logic
+                if (pendingFormData) {
+                  form.setValue("taskDate", pendingFormData.taskDate);
+                  form.setValue("dependentOnPrevious", false);
+                  // Mark that we want to shift others when saving
+                  setDateChangeAction('unsequential_shift_others');
+                }
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
@@ -1048,13 +1082,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               <div className="text-center">
                 <div className="font-medium">Make Unsequential & Shift Others</div>
                 <div className="text-xs text-gray-300 mt-1">
-                  Task stays in same position, shift subsequent sequential tasks
+                  Task becomes non-sequential, shift subsequent sequential tasks
                 </div>
               </div>
             </Button>
             <Button 
               onClick={() => {
-                processFormSubmission(pendingFormData, false);
+                // Make unsequential and move it - simple case
+                if (pendingFormData) {
+                  form.setValue("taskDate", pendingFormData.taskDate);
+                  form.setValue("dependentOnPrevious", false);
+                  // No special action needed - just change date and make non-sequential
+                  setDateChangeAction('unsequential_move_only');
+                }
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
