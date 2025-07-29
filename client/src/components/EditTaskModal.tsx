@@ -293,18 +293,53 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // Both tasks should use the same date - use the current task's date (the one being edited)
           const synchronizedDate = processedData.taskDate;
           
-          // Update the linked task to be sequential + linked with synchronized date
+          // Find the correct date for the linked task based on its position in the sequence
+          let linkedTaskDate = synchronizedDate;
+          
+          // If making the linked task sequential, calculate its proper date based on previous task
+          if (linkedTaskIndex > 0) {
+            // Find the previous task (not from same linked group)
+            let previousTaskDate = null;
+            
+            for (let i = linkedTaskIndex - 1; i >= 0; i--) {
+              const prevTask = allUpdatedTasks[i];
+              
+              // Skip tasks from the same linked group
+              if (prevTask.linkedTaskGroup === linkedTaskGroup) {
+                continue;
+              }
+              
+              previousTaskDate = prevTask.taskDate;
+              break;
+            }
+            
+            if (previousTaskDate) {
+              // Calculate next working day from previous task
+              const baseDate = new Date(previousTaskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              linkedTaskDate = nextDate.toISOString().split('T')[0];
+              
+              console.log('Calculated sequential date for linked task:', linkedTaskDate, 'based on previous task date:', previousTaskDate);
+            }
+          }
+
+          // Update the linked task to be sequential + linked with calculated date
           allUpdatedTasks[linkedTaskIndex] = {
             ...linkedTask,
             linkedTaskGroup: linkedTaskGroup,
             dependentOnPrevious: true, // First task in linked group is sequential
-            taskDate: synchronizedDate // Both tasks must have same date
+            taskDate: linkedTaskDate // Use calculated sequential date
           };
           
-          // Update the current task to have the synchronized date (should already be set, but ensure)
+          // Update the current task to use the same date as the linked task
           allUpdatedTasks[mainTaskIndex] = {
             ...allUpdatedTasks[mainTaskIndex],
-            taskDate: synchronizedDate
+            taskDate: linkedTaskDate // Both tasks must have same date
           };
           
           // Remove the current task from its position and reinsert after the linked task
@@ -334,8 +369,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             order: index
           }));
           
-          console.log('Updated linked task to be sequential + linked with date:', linkedTask.name, synchronizedDate);
-          console.log('Current task is now just linked with date:', currentTask.name, synchronizedDate);
+          console.log('Updated linked task to be sequential + linked with date:', linkedTask.name, linkedTaskDate);
+          console.log('Current task is now just linked with date:', currentTask.name, linkedTaskDate);
         }
       }
 
@@ -423,12 +458,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         for (let i = taskIndex + 1; i < allUpdatedTasks.length; i++) {
           const subsequentTask = allUpdatedTasks[i];
           
-          // Skip linked tasks - they maintain their synchronized date
-          if (subsequentTask.linkedTaskGroup) {
-            currentDate = subsequentTask.taskDate;
-            continue;
-          }
-          
           if (subsequentTask.dependentOnPrevious) {
             const baseDate = new Date(currentDate + 'T00:00:00');
             const nextDate = new Date(baseDate);
@@ -443,6 +472,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               ...allUpdatedTasks[i],
               taskDate: newDate
             };
+            
+            // If this task is linked, update all tasks in its linked group
+            if (subsequentTask.linkedTaskGroup) {
+              allUpdatedTasks = allUpdatedTasks.map(t => 
+                t.linkedTaskGroup === subsequentTask.linkedTaskGroup 
+                  ? { ...t, taskDate: newDate }
+                  : t
+              );
+            }
+            
             currentDate = newDate;
           } else {
             currentDate = subsequentTask.taskDate;
