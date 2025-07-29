@@ -243,6 +243,11 @@ Preferred communication style: Simple, everyday language.
 - ✅ Fixed "Unsequential & Shift Others" logic to use task order instead of chronological sorting for proper sequential task shifting
 - ✅ Implemented comprehensive debugging for date change actions to troubleshoot shifting issues
 - ✅ Enhanced cascading logic to handle both sequential and non-sequential task date changes with proper subsequent task shifting
+- ✅ Fixed task name auto-fill in CreateTaskModal to track manual edits and only auto-fill when task type changes if name hasn't been manually edited
+- ✅ Normalized button styling in both date change popups to remove blue/green backgrounds for consistent appearance
+- ✅ Enhanced popup functionality with proper cancel/close handling that reverts date changes
+- ✅ Implemented immediate popup triggering for both sequential and non-sequential task date changes
+- ✅ Added consistent language across both popup types with "Keep Unsequential" terminology
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**

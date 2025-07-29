@@ -1068,7 +1068,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full"
             >
               <div className="text-center">
                 <div className="font-medium">Make Unsequential & Shift Others</div>
@@ -1111,7 +1111,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowDateChangeDialog(false);
                 setPendingFormData(null);
               }}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full"
             >
               <div className="text-center">
                 <div className="font-medium">Keep Sequential & Move to Nearest Date</div>
@@ -1167,7 +1167,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 setShowNonSequentialDialog(false);
                 setPendingNonSequentialData(null);
               }}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full"
             >
               <div className="text-center">
                 <div className="font-medium">Keep Unsequential & Shift Others</div>

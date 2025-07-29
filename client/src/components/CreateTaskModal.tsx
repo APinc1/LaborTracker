@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +104,7 @@ export default function CreateTaskModal({
 }: CreateTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [hasManuallyEditedName, setHasManuallyEditedName] = useState(false);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -443,6 +445,7 @@ export default function CreateTaskModal({
   const handleClose = () => {
     onClose();
     form.reset();
+    setHasManuallyEditedName(false); // Reset manual edit tracking
   };
 
   if (!isOpen) return null;
@@ -506,10 +509,8 @@ export default function CreateTaskModal({
                   <Select 
                     onValueChange={(value) => {
                       field.onChange(value);
-                      // Auto-fill task name if it's empty
-                      const currentName = form.getValues("name");
-                      if (!currentName || currentName.trim() === "") {
-                        // Auto-fill with the selected task type value
+                      // Auto-fill task name if it hasn't been manually edited
+                      if (!hasManuallyEditedName) {
                         form.setValue("name", value);
                       }
                     }} 
@@ -541,7 +542,15 @@ export default function CreateTaskModal({
                 <FormItem>
                   <FormLabel>Task Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter task name" {...field} />
+                    <Input 
+                      placeholder="Enter task name" 
+                      {...field} 
+                      onChange={(e) => {
+                        field.onChange(e);
+                        // Mark as manually edited when user types
+                        setHasManuallyEditedName(true);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
