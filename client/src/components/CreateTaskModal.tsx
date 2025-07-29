@@ -197,13 +197,17 @@ export default function CreateTaskModal({
         linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
         taskDate = linkedTask.taskDate;
         
-        // Update the original linked task to have the group ID if it doesn't
+        // Update the original linked task to have the group ID and make it sequential + linked
         if (!linkedTask.linkedTaskGroup) {
           const linkedTaskIndex = updatedTasks.findIndex(t => 
             (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)
           );
           if (linkedTaskIndex >= 0) {
-            updatedTasks[linkedTaskIndex] = { ...updatedTasks[linkedTaskIndex], linkedTaskGroup };
+            updatedTasks[linkedTaskIndex] = { 
+              ...updatedTasks[linkedTaskIndex], 
+              linkedTaskGroup,
+              dependentOnPrevious: true // First task in linked group is sequential
+            };
           }
         }
         
@@ -383,8 +387,8 @@ export default function CreateTaskModal({
       linkedTaskGroup: linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
-      scheduledHours: "8",
-      actualHours: data.status === 'complete' ? 8 : null,
+      scheduledHours: "0.00",
+      actualHours: data.status === 'complete' ? "0.00" : null,
       order: insertIndex
     };
 
@@ -398,12 +402,16 @@ export default function CreateTaskModal({
     }));
 
     // Create new task first, then update existing tasks if needed
-    // Only update tasks that have actually changed
+    // Only update tasks that have actually changed (date, linkedTaskGroup, or dependentOnPrevious)
     const tasksToUpdate = updatedTasks.filter(task => {
       const originalTask = existingTasks.find(orig => 
         (orig.taskId || orig.id) === (task.taskId || task.id)
       );
-      return originalTask && originalTask.taskDate !== task.taskDate;
+      return originalTask && (
+        originalTask.taskDate !== task.taskDate ||
+        originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+        originalTask.dependentOnPrevious !== task.dependentOnPrevious
+      );
     });
 
     createTaskMutation.mutate({

@@ -231,28 +231,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         (t.taskId || t.id).toString() === data.linkedTaskId
       );
       if (linkedTask) {
-        // Use linked task's group or create new one
+        // Create new linked group or use existing one
         const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
         processedData.linkedTaskGroup = linkedTaskGroup;
         processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
         
-        // Check if this is the first task in the linked group
-        const tasksInGroup = (existingTasks as any[]).filter(t => 
-          t.linkedTaskGroup === linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
-        );
+        // When linking two tasks:
+        // 1. The task we're linking TO (linkedTask) becomes sequential AND linked (first in group)
+        // 2. The current task becomes just linked (second in group)
         
-        // For linked tasks: first one can be sequential, others are just linked (non-sequential)
-        if (tasksInGroup.length === 0) {
-          // This is the first task linking to another - can keep sequential if desired
-          processedData.dependentOnPrevious = data.dependentOnPrevious;
-        } else {
-          // This is the second+ task in the group - must not be sequential 
-          processedData.dependentOnPrevious = false;
-        }
+        // Current task (being edited) becomes just linked (not sequential)
+        processedData.dependentOnPrevious = false;
         
-        // If the linked task doesn't have a group yet, update it too
+        // The linked task becomes the sequential one (if it isn't already)
         if (!linkedTask.linkedTaskGroup) {
+          // This is a new link - the linked task becomes sequential + linked
           linkedTask.linkedTaskGroup = linkedTaskGroup;
+          linkedTask.dependentOnPrevious = true; // First task in linked group is sequential
         }
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
@@ -283,6 +278,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const mainTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
       if (mainTaskIndex >= 0) {
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
+      }
+
+      // Handle new linking - update the linked task to be sequential + linked
+      if (data.linkToExistingTask && data.linkedTaskId && linkingChanged) {
+        const linkedTaskIndex = allUpdatedTasks.findIndex(t => 
+          (t.taskId || t.id).toString() === data.linkedTaskId
+        );
+        if (linkedTaskIndex >= 0) {
+          const linkedTaskGroup = processedData.linkedTaskGroup;
+          allUpdatedTasks[linkedTaskIndex] = {
+            ...allUpdatedTasks[linkedTaskIndex],
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: true // First task in linked group is sequential
+          };
+          console.log('Updated linked task to be sequential + linked:', allUpdatedTasks[linkedTaskIndex].name);
+        }
       }
       
       // Handle linked task synchronization - any task in a linked group should sync dates
