@@ -533,49 +533,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         // For "unsequential_shift_others" action, shift subsequent sequential tasks based on the changed task's new date
         if (dateChangeAction === 'unsequential_shift_others') {
-          console.log('Handling unsequential_shift_others action');
+          console.log('Handling unsequential_shift_others action - task is now non-sequential but should shift following sequential tasks');
           
-          // Sort all tasks chronologically to process sequential dependencies correctly  
-          const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
-            const dateA = new Date(a.taskDate).getTime();
-            const dateB = new Date(b.taskDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-            return (a.order || 0) - (b.order || 0);
+          // Find all tasks that come after this task in the original order (not by date, but by actual position/order)
+          const originalTaskOrder = task.order || 0;
+          
+          // Filter tasks that come after this task in the original sequence
+          const subsequentTasks = allUpdatedTasks.filter(t => {
+            const taskOrder = t.order || 0;
+            return taskOrder > originalTaskOrder && t.dependentOnPrevious && (t.taskId || t.id) !== (task.taskId || task.id);
           });
           
-          // Find the changed task in sorted order
-          const changedTaskSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+          // Sort subsequent tasks by their order to process them in sequence
+          subsequentTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
           
-          if (changedTaskSortedIndex >= 0) {
-            let currentDate = processedData.taskDate;
-            console.log('Starting cascade from task:', task.name, 'at date:', currentDate);
+          console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
+          console.log('Original task order:', originalTaskOrder, 'New date:', processedData.taskDate);
+          console.log('Subsequent tasks to shift:', subsequentTasks.map(t => ({ name: t.name, order: t.order, dependentOnPrevious: t.dependentOnPrevious })));
+          
+          if (subsequentTasks.length > 0) {
+            let currentDate = processedData.taskDate; // Start from the changed task's new date
             
-            // Process all tasks chronologically after the changed task
-            for (let i = changedTaskSortedIndex + 1; i < sortedTasks.length; i++) {
-              const subsequentTask = sortedTasks[i];
-              
-              if (subsequentTask.dependentOnPrevious) {
-                // Calculate next working day
-                const baseDate = new Date(currentDate + 'T00:00:00');
-                const nextDate = new Date(baseDate);
+            subsequentTasks.forEach(subsequentTask => {
+              // Calculate next working day from the current baseline
+              const baseDate = new Date(currentDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
                 nextDate.setDate(nextDate.getDate() + 1);
-                // Skip weekends
-                while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                  nextDate.setDate(nextDate.getDate() + 1);
-                }
-                const newDate = nextDate.toISOString().split('T')[0];
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update the task in the array
+              const originalIndex = allUpdatedTasks.findIndex((t: any) => 
+                (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
+              );
+              
+              if (originalIndex >= 0) {
+                console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
                 
-                // Update in original array
-                const originalIndex = allUpdatedTasks.findIndex((t: any) => 
-                  (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
-                );
-                
-                if (originalIndex >= 0) {
-                  console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
-                  
-                  allUpdatedTasks[originalIndex] = {
-                    ...allUpdatedTasks[originalIndex],
-                    taskDate: newDate
+                allUpdatedTasks[originalIndex] = {
+                  ...allUpdatedTasks[originalIndex],
+                  taskDate: newDate
                 };
                 
                 // If this task is linked, update all tasks in its linked group 
@@ -589,15 +589,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   });
                 }
                 
-                currentDate = newDate;
+                currentDate = newDate; // Update baseline for next task
               }
-            } else {
-              // Non-sequential task - use its existing date as the baseline for next sequential tasks
-              currentDate = subsequentTask.taskDate;
-              console.log('Non-sequential task baseline:', subsequentTask.name, 'at:', currentDate);
-            }
+            });
           }
-        }
         } else {
           // For other actions (sequential, unsequential_move_only), use the existing cascading logic
           // This is the original logic for normal sequential dependency processing
