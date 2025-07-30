@@ -495,6 +495,8 @@ export default function DraggableTaskList({
       // This handles both the dropped position and tasks that shifted to fill gaps
       console.log('Rebuilding dependency chain for entire task sequence');
       
+      const processedLinkedGroups = new Set();
+      
       for (let i = 0; i < tasksWithUpdatedOrder.length; i++) {
         const currentTask = tasksWithUpdatedOrder[i];
         
@@ -521,18 +523,33 @@ export default function DraggableTaskList({
         
         const newDate = nextDay.toISOString().split('T')[0];
         
-        // Update if date changes
-        if (currentTask.taskDate !== newDate) {
-          console.log('Rebuilding dependent task date:', { 
-            taskName: currentTask.name, 
-            position: i,
-            oldDate: currentTask.taskDate, 
-            newDate,
-            previousTask: prevTask.name,
-            previousDate: prevTask.taskDate,
-            reason: 'Full sequence rebuild after reorder'
+        // Handle linked tasks: update ALL tasks in the linked group to same date
+        if (currentTask.linkedTaskGroup && !processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
+          processedLinkedGroups.add(currentTask.linkedTaskGroup);
+          
+          // Find all tasks in this linked group and sync them to the new date
+          tasksWithUpdatedOrder.forEach((task, index) => {
+            if (task.linkedTaskGroup === currentTask.linkedTaskGroup) {
+              console.log('Syncing linked task:', task.name, 'to:', newDate);
+              task.taskDate = newDate;
+            }
           });
-          currentTask.taskDate = newDate;
+        } 
+        // Handle non-linked sequential tasks normally
+        else if (!currentTask.linkedTaskGroup) {
+          // Update if date changes
+          if (currentTask.taskDate !== newDate) {
+            console.log('Rebuilding dependent task date:', { 
+              taskName: currentTask.name, 
+              position: i,
+              oldDate: currentTask.taskDate, 
+              newDate,
+              previousTask: prevTask.name,
+              previousDate: prevTask.taskDate,
+              reason: 'Full sequence rebuild after reorder'
+            });
+            currentTask.taskDate = newDate;
+          }
         }
       }
       
