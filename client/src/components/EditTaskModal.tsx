@@ -233,13 +233,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   const handleLinkDateChoice = (chosenDate: string) => {
-    if (!linkingOptions || !pendingFormData) return;
+    console.log('Link date choice made:', chosenDate);
+    if (!linkingOptions || !pendingFormData) {
+      console.log('Missing linkingOptions or pendingFormData');
+      return;
+    }
     
     // Update the form data with the chosen date and process
     const updatedData = {
       ...pendingFormData,
       taskDate: chosenDate
     };
+    
+    console.log('Processing link with chosen date:', chosenDate);
     
     // Close dialog and process with chosen date
     setShowLinkDateDialog(false);
@@ -1363,15 +1369,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               Choose Date for Linked Tasks
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600 space-y-2">
-              <p>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</p>
-              <p>Both tasks must have the same date. Which date should both tasks use?</p>
+              <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
+              <div>Both tasks must have the same date. Which date should both tasks use?</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
             <Button 
-              onClick={() => handleLinkDateChoice(linkingOptions?.currentTaskDate || '')}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLinkDateChoice(linkingOptions?.currentTaskDate || '');
+              }}
               variant="outline"
               className="w-full"
+              type="button"
             >
               <div className="text-center">
                 <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
@@ -1385,9 +1396,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               </div>
             </Button>
             <Button 
-              onClick={() => handleLinkDateChoice(linkingOptions?.targetTaskDate || '')}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleLinkDateChoice(linkingOptions?.targetTaskDate || '');
+              }}
               variant="outline"
               className="w-full"
+              type="button"
             >
               <div className="text-center">
                 <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
@@ -1401,7 +1417,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               </div>
             </Button>
             <Button 
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 // Cancel linking
                 setShowLinkDateDialog(false);
                 setLinkingOptions(null);
@@ -1409,6 +1427,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               }}
               variant="ghost"
               className="w-full"
+              type="button"
             >
               Cancel
             </Button>
