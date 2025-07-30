@@ -607,26 +607,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         } else {
           // For other actions (sequential, unsequential_move_only), use the existing cascading logic
           // This is the original logic for normal sequential dependency processing
+          
+          // Only reassign order values for non-"unsequential_shift_others" actions
+          // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
+          const finalSortedTasks = [...allUpdatedTasks].sort((a, b) => {
+            const dateA = new Date(a.taskDate).getTime();
+            const dateB = new Date(b.taskDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.order || 0) - (b.order || 0);
+          });
+          
+          // Reassign order values to maintain chronological positioning
+          finalSortedTasks.forEach((sortedTask, index) => {
+            const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (sortedTask.taskId || sortedTask.id));
+            if (originalIndex >= 0) {
+              allUpdatedTasks[originalIndex] = {
+                ...allUpdatedTasks[originalIndex],
+                order: index
+              };
+            }
+          });
         }
-        
-        // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
-        const finalSortedTasks = [...allUpdatedTasks].sort((a, b) => {
-          const dateA = new Date(a.taskDate).getTime();
-          const dateB = new Date(b.taskDate).getTime();
-          if (dateA !== dateB) return dateA - dateB;
-          return (a.order || 0) - (b.order || 0);
-        });
-        
-        // Reassign order values to maintain chronological positioning
-        finalSortedTasks.forEach((sortedTask, index) => {
-          const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (sortedTask.taskId || sortedTask.id));
-          if (originalIndex >= 0) {
-            allUpdatedTasks[originalIndex] = {
-              ...allUpdatedTasks[originalIndex],
-              order: index
-            };
-          }
-        });
         
         console.log('Sequential cascading complete');
       }
