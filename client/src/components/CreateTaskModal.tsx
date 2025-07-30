@@ -215,6 +215,12 @@ export default function CreateTaskModal({
       data.dependentOnPrevious = false;
       taskDate = data.taskDate || new Date().toISOString().split('T')[0];
     }
+    // CRITICAL: If inserting at position 0, this becomes the first task - must be non-sequential
+    else if (data.insertPosition === 'beginning') {
+      insertIndex = 0;
+      data.dependentOnPrevious = false;
+      console.log('Creating task at beginning - forcing to unsequential');
+    }
     // Handle different task creation modes
     else if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKED TASK MODE: Use same date as linked task

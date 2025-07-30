@@ -209,6 +209,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   const batchUpdateTasksMutation = useMutation({
     mutationFn: async (updatedTasks: any[]) => {
+      // CRITICAL: Enforce first task rule before batch update
+      const sortedTasks = [...updatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (sortedTasks.length > 0 && sortedTasks[0].dependentOnPrevious) {
+        console.log('ENFORCING FIRST TASK RULE in batch update:', sortedTasks[0].name);
+        const firstTaskIndex = updatedTasks.findIndex(t => (t.id || t.taskId) === (sortedTasks[0].id || sortedTasks[0].taskId));
+        if (firstTaskIndex >= 0) {
+          updatedTasks[firstTaskIndex] = {
+            ...updatedTasks[firstTaskIndex],
+            dependentOnPrevious: false
+          };
+        }
+      }
+      
       // Update each task individually but batch the requests
       const promises = updatedTasks.map(taskData => 
         apiRequest(`/api/tasks/${taskData.id}`, {
@@ -583,10 +596,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // FIRST TASK ENFORCEMENT - Always make first task unsequential
-    if (task.order === 0 || (existingTasks && existingTasks.length > 0 && 
-        existingTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].id === task.id)) {
-      console.log('Enforcing first task rule: making first task unsequential');
+    const sortedTasks = existingTasks ? [...existingTasks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
+    const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && sortedTasks[0].id === task.id);
+    
+    if (isFirstTask) {
+      console.log('Enforcing first task rule: making first task unsequential', {
+        taskId: task.id,
+        taskOrder: task.order,
+        originalDependency: data.dependentOnPrevious,
+        forcingToFalse: true
+      });
       processedData.dependentOnPrevious = false;
+      // Force the form value too to ensure UI updates
+      form.setValue('dependentOnPrevious', false);
     }
 
     // Check if changes require cascading updates
