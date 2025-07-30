@@ -359,6 +359,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             
             // Update linked task order
             allUpdatedTasks[linkedTaskIndex].order = newLinkedOrder;
+            
+            // Re-assign order values to ensure consistency
+            allUpdatedTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+            allUpdatedTasks.forEach((task, index) => {
+              task.order = index;
+            });
           }
           
           // First task chronologically should be sequential, second should not be
@@ -410,7 +416,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           allUpdatedTasks[firstTaskIndex] = {
             ...allUpdatedTasks[firstTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: true, // First task chronologically is sequential
+            dependentOnPrevious: firstTaskSortedIndex > 0, // Only sequential if not the very first task in the list
             taskDate: sequentialDate
           };
           
@@ -725,7 +731,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           originalTask.taskDate !== updatedTask.taskDate ||
           originalTask.linkedTaskGroup !== updatedTask.linkedTaskGroup ||
           originalTask.dependentOnPrevious !== updatedTask.dependentOnPrevious ||
-          originalTask.order !== updatedTask.order
+          originalTask.order !== updatedTask.order ||
+          originalTask.costCode !== updatedTask.costCode
         );
       });
       
