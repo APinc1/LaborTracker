@@ -76,6 +76,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [dateChangeAction, setDateChangeAction] = useState<'sequential' | 'unsequential_shift_others' | 'unsequential_move_only'>('sequential');
   const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
   const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
+  const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
+  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTask: any, currentTaskDate: string, targetTaskDate: string} | null>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -230,6 +232,24 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     processFormSubmission(data);
   };
 
+  const handleLinkDateChoice = (chosenDate: string) => {
+    if (!linkingOptions || !pendingFormData) return;
+    
+    // Update the form data with the chosen date and process
+    const updatedData = {
+      ...pendingFormData,
+      taskDate: chosenDate
+    };
+    
+    // Close dialog and process with chosen date
+    setShowLinkDateDialog(false);
+    setLinkingOptions(null);
+    setPendingFormData(null);
+    
+    // Continue with the linking process using the chosen date
+    processFormSubmission(updatedData);
+  };
+
   const processFormSubmission = (data: any) => {
     // Update cost code based on task type
     const TASK_TYPE_TO_COST_CODE = {
@@ -275,6 +295,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         (t.taskId || t.id).toString() === data.linkedTaskId
       );
       if (linkedTask) {
+        // Show date choice dialog if dates are different
+        if (task.taskDate !== linkedTask.taskDate) {
+          setLinkingOptions({
+            currentTask: task,
+            targetTask: linkedTask,
+            currentTaskDate: task.taskDate,
+            targetTaskDate: linkedTask.taskDate
+          });
+          setShowLinkDateDialog(true);
+          setPendingFormData(data); // Store form data for later processing
+          return; // Don't process yet, wait for date choice
+        }
+        
         // Create new linked group or use existing one
         const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
         processedData.linkedTaskGroup = linkedTaskGroup;
@@ -1305,6 +1338,74 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 form.setValue("taskDate", task.taskDate);
                 setShowNonSequentialDialog(false);
                 setPendingNonSequentialData(null);
+              }}
+              variant="ghost"
+              className="w-full"
+            >
+              Cancel
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Linking Date Choice Dialog */}
+      <AlertDialog open={showLinkDateDialog} onOpenChange={(open) => {
+        if (!open) {
+          // User closed dialog - cancel linking
+          setShowLinkDateDialog(false);
+          setLinkingOptions(null);
+          setPendingFormData(null);
+        }
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Choose Date for Linked Tasks
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <p>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</p>
+              <p>Both tasks must have the same date. Which date should both tasks use?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
+            <Button 
+              onClick={() => handleLinkDateChoice(linkingOptions?.currentTaskDate || '')}
+              variant="outline"
+              className="w-full"
+            >
+              <div className="text-center">
+                <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
+                <div className="text-xs mt-1 text-gray-500">
+                  {linkingOptions?.currentTaskDate && new Date(linkingOptions.currentTaskDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    year: 'numeric' 
+                  })}
+                </div>
+              </div>
+            </Button>
+            <Button 
+              onClick={() => handleLinkDateChoice(linkingOptions?.targetTaskDate || '')}
+              variant="outline"
+              className="w-full"
+            >
+              <div className="text-center">
+                <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
+                <div className="text-xs mt-1 text-gray-500">
+                  {linkingOptions?.targetTaskDate && new Date(linkingOptions.targetTaskDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    year: 'numeric' 
+                  })}
+                </div>
+              </div>
+            </Button>
+            <Button 
+              onClick={() => {
+                // Cancel linking
+                setShowLinkDateDialog(false);
+                setLinkingOptions(null);
+                setPendingFormData(null);
               }}
               variant="ghost"
               className="w-full"
