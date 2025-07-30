@@ -546,27 +546,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             return taskOrder > originalTaskOrder && (t.taskId || t.id) !== (task.taskId || task.id);
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
-          // Only shift sequential tasks until we hit the next unsequential task (but continue past linked tasks)
+          // Collect ALL sequential tasks, regardless of linked groups in between
           const subsequentTasks = [];
           for (const subsequentTask of allSubsequentTasks) {
             if (subsequentTask.dependentOnPrevious) {
               subsequentTasks.push(subsequentTask);
-            } else {
-              // Check if this unsequential task is linked to a task that was already shifted
-              const isLinkedToShiftedTask = subsequentTasks.some(shiftedTask => 
-                shiftedTask.linkedTaskGroup && shiftedTask.linkedTaskGroup === subsequentTask.linkedTaskGroup
-              );
-              
-              if (isLinkedToShiftedTask) {
-                // Continue past this unsequential task since it's linked to a shifted task
-                console.log('Continuing past unsequential linked task:', subsequentTask.name, 'order:', subsequentTask.order);
-                continue;
-              } else {
-                // Stop when we hit an unsequential task that's not linked to shifted tasks
-                console.log('Stopping at unsequential task:', subsequentTask.name, 'order:', subsequentTask.order);
-                break;
-              }
+            } else if (!subsequentTask.linkedTaskGroup) {
+              // Stop only when we hit an unsequential task that's NOT in a linked group
+              console.log('Stopping at unsequential non-linked task:', subsequentTask.name, 'order:', subsequentTask.order);
+              break;
             }
+            // Skip unsequential linked tasks but continue looking for sequential tasks beyond them
           }
           
           console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
