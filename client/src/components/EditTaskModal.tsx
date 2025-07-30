@@ -263,21 +263,61 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Create new linked group or use existing one
       const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
       
+      // Determine sequential status based on linking rules
+      const currentIsSequential = savedLinkingOptions?.currentIsSequential || task.dependentOnPrevious;
+      const linkedIsSequential = savedLinkingOptions?.linkedIsSequential || linkedTask.dependentOnPrevious;
+      const areAdjacent = savedLinkingOptions?.areAdjacent || false;
+      
+      // Apply linking rules for sequential status
+      let finalCurrentSequential, finalLinkedSequential;
+      
+      if (!currentIsSequential || !linkedIsSequential) {
+        // Rule 1: If one task is unsequential, both become unsequential
+        console.log('One task is unsequential - making both unsequential');
+        finalCurrentSequential = false;
+        finalLinkedSequential = false;
+      } else if (chosenDate === linkedTask.taskDate && !linkedIsSequential) {
+        // Rule 4: Choosing later date of unsequential task makes both unsequential
+        console.log('Chose date of unsequential task - making both unsequential');
+        finalCurrentSequential = false;
+        finalLinkedSequential = false;
+      } else if (areAdjacent) {
+        // Rule 2 & 3: For adjacent tasks, only the earlier task stays sequential
+        const currentOrder = task.order || 0;
+        const linkedOrder = linkedTask.order || 0;
+        finalCurrentSequential = currentOrder < linkedOrder;
+        finalLinkedSequential = linkedOrder < currentOrder;
+      } else {
+        // Default: keep original sequential status for non-adjacent tasks
+        finalCurrentSequential = currentIsSequential;
+        finalLinkedSequential = linkedIsSequential;
+      }
+      
       // Prepare both tasks for update
       const currentTaskUpdate = {
         ...task,
         ...savedFormData,
         taskDate: chosenDate,
-        linkedTaskGroup: linkedTaskGroup
+        linkedTaskGroup: linkedTaskGroup,
+        dependentOnPrevious: finalCurrentSequential
       };
       
       const linkedTaskUpdate = {
         ...linkedTask,
         taskDate: chosenDate,
-        linkedTaskGroup: linkedTaskGroup
+        linkedTaskGroup: linkedTaskGroup,
+        dependentOnPrevious: finalLinkedSequential
       };
       
       console.log('Linking tasks with date:', chosenDate);
+      console.log('Sequential status rules applied:', {
+        currentWasSequential: currentIsSequential,
+        linkedWasSequential: linkedIsSequential,
+        finalCurrentSequential,
+        finalLinkedSequential,
+        reason: !currentIsSequential || !linkedIsSequential ? 'One unsequential' : 
+                areAdjacent ? 'Adjacent tasks' : 'Default'
+      });
       console.log('Current task update:', currentTaskUpdate);
       console.log('Linked task update:', linkedTaskUpdate);
       
@@ -407,17 +447,68 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         (t.taskId || t.id).toString() === data.linkedTaskId
       );
       if (linkedTask) {
-        // Show date choice dialog if dates are different and dialog not already open
-        if (task.taskDate !== linkedTask.taskDate && !showLinkDateDialog) {
+        // Check if tasks are adjacent (next to each other in order)
+        const currentOrder = task.order || 0;
+        const linkedOrder = linkedTask.order || 0;
+        const areAdjacent = Math.abs(currentOrder - linkedOrder) === 1;
+        
+        // Determine sequential status
+        const currentIsSequential = task.dependentOnPrevious;
+        const linkedIsSequential = linkedTask.dependentOnPrevious;
+        
+        console.log('Linking analysis:', {
+          areAdjacent,
+          currentIsSequential,
+          linkedIsSequential,
+          currentDate: task.taskDate,
+          linkedDate: linkedTask.taskDate,
+          sameDate: task.taskDate === linkedTask.taskDate
+        });
+        
+        if (task.taskDate === linkedTask.taskDate) {
+          // Same date - proceed with linking directly
+          console.log('Same date linking - no dialog needed');
+        } else if (areAdjacent && currentIsSequential && linkedIsSequential) {
+          // Adjacent sequential tasks - use earlier date automatically
+          const earlierDate = task.taskDate < linkedTask.taskDate ? task.taskDate : linkedTask.taskDate;
+          console.log('Adjacent sequential tasks - using earlier date:', earlierDate);
+          
+          // Process directly with earlier date
+          const updatedData = { ...data, taskDate: earlierDate };
+          const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
+          
+          const currentTaskUpdate = {
+            ...task,
+            ...updatedData,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: currentOrder < linkedOrder ? currentIsSequential : false
+          };
+          
+          const linkedTaskUpdate = {
+            ...linkedTask,
+            taskDate: earlierDate,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: linkedOrder < currentOrder ? linkedIsSequential : false
+          };
+          
+          console.log('Direct linking with earlier date - no dialog');
+          batchUpdateTasksMutation.mutate([currentTaskUpdate, linkedTaskUpdate]);
+          return;
+        } else {
+          // Show date choice dialog for other cases
+          console.log('Showing date choice dialog');
           setLinkingOptions({
             currentTask: task,
             targetTask: linkedTask,
             currentTaskDate: task.taskDate,
-            targetTaskDate: linkedTask.taskDate
+            targetTaskDate: linkedTask.taskDate,
+            currentIsSequential,
+            linkedIsSequential,
+            areAdjacent
           });
           setShowLinkDateDialog(true);
-          setPendingFormData(data); // Store form data for later processing
-          return; // Don't process yet, wait for date choice
+          setPendingFormData(data);
+          return;
         }
         
         // Create new linked group or use existing one
@@ -1474,8 +1565,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Date for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600">
-              You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}". Both tasks must have the same date. Which date should both tasks use?
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
+              <div>Both tasks must have the same date. Which date should both tasks use?</div>
+              {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
+                <div className="text-sm text-gray-500 mt-2">
+                  {!linkingOptions.currentIsSequential || !linkingOptions.linkedIsSequential ? (
+                    <div className="font-medium text-orange-600">Since one task is unsequential, both linked tasks will become unsequential.</div>
+                  ) : linkingOptions.areAdjacent ? (
+                    <div>Adjacent sequential tasks: Only the earlier task will remain sequential.</div>
+                  ) : (
+                    <div>Both tasks will keep their current sequential status.</div>
+                  )}
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
