@@ -388,9 +388,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
           });
         } else {
-          // Using linked task's date - move current task to position right before linked task
+          // Using linked task's date - move current task to position right after linked task
           console.log('Moving current task to linked task position');
-          const newCurrentOrder = linkedTaskOrder - 1;
+          const newCurrentOrder = linkedTaskOrder + 1;
           
           allTasks.forEach(t => {
             if ((t.taskId || t.id) === (task.taskId || task.id)) {
@@ -402,9 +402,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               tasksToUpdate.push(linkedTaskUpdate);
             } else {
               const originalOrder = t.order || 0;
-              if (originalOrder >= newCurrentOrder && originalOrder < currentTaskOrder) {
+              // Shift tasks that are between the linked task and the new position
+              if (originalOrder > linkedTaskOrder && originalOrder < currentTaskOrder) {
                 tasksToUpdate.push({ ...t, order: originalOrder + 1 });
-              } else if (originalOrder <= newCurrentOrder && originalOrder > currentTaskOrder) {
+              } else if (originalOrder > currentTaskOrder && originalOrder <= linkedTaskOrder) {
                 tasksToUpdate.push({ ...t, order: originalOrder - 1 });
               } else {
                 tasksToUpdate.push(t);
