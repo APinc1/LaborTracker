@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -22,7 +22,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, Link } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies } from '@shared/taskUtils';
@@ -204,6 +205,16 @@ export default function DraggableTaskList({
 }: DraggableTaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // State for linking dialog
+  const [showLinkingDialog, setShowLinkingDialog] = useState(false);
+  const [pendingDragData, setPendingDragData] = useState<{
+    draggedTask: any;
+    linkedGroup: string;
+    originalIndex: number;
+    newIndex: number;
+    reorderedTasks: any[];
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -291,8 +302,37 @@ export default function DraggableTaskList({
       targetDate: sortedTasks[newIndex].taskDate
     });
 
-    // Special handling for linked tasks - they should move as groups
+    // Check if task is being dragged between linked tasks (and is not already linked)
     const originalDraggedTask = sortedTasks[oldIndex];
+    const targetTask = sortedTasks[newIndex];
+    
+    // Get neighboring tasks at the target position
+    const previousTaskAtTarget = newIndex > 0 ? sortedTasks[newIndex - 1] : null;
+    const nextTaskAtTarget = newIndex < sortedTasks.length - 1 ? sortedTasks[newIndex + 1] : null;
+    
+    // Check if being dragged between linked tasks
+    const isBeingDroppedBetweenLinkedTasks = (
+      !originalDraggedTask.linkedTaskGroup && // Not already linked
+      previousTaskAtTarget?.linkedTaskGroup && 
+      nextTaskAtTarget?.linkedTaskGroup && 
+      previousTaskAtTarget.linkedTaskGroup === nextTaskAtTarget.linkedTaskGroup
+    );
+    
+    if (isBeingDroppedBetweenLinkedTasks) {
+      // Show dialog to ask if user wants to link the task
+      const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
+      setPendingDragData({
+        draggedTask: originalDraggedTask,
+        linkedGroup: previousTaskAtTarget.linkedTaskGroup,
+        originalIndex: oldIndex,
+        newIndex: newIndex,
+        reorderedTasks: reorderedTasks
+      });
+      setShowLinkingDialog(true);
+      return; // Don't proceed with normal drag handling
+    }
+    
+    // Special handling for linked tasks - they should move as groups
     let reorderedTasks = [...sortedTasks];
     
     if (originalDraggedTask.linkedTaskGroup) {
@@ -548,6 +588,52 @@ export default function DraggableTaskList({
     batchUpdateTasksMutation.mutate(tasksWithUpdatedOrder);
   };
 
+  // Functions to handle linking dialog
+  const handleLinkConfirm = () => {
+    if (!pendingDragData) return;
+    
+    const { draggedTask, linkedGroup, reorderedTasks } = pendingDragData;
+    
+    // Apply reordering and add task to linked group
+    let tasksWithUpdatedOrder = reorderedTasks.map((task, index) => ({
+      ...task,
+      order: index
+    }));
+    
+    // Add the dragged task to the linked group and sync date
+    const linkedTasks = tasksWithUpdatedOrder.filter(t => t.linkedTaskGroup === linkedGroup);
+    const linkedGroupDate = linkedTasks.length > 0 ? linkedTasks[0].taskDate : draggedTask.taskDate;
+    
+    tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
+      if ((task.taskId || task.id) === (draggedTask.taskId || draggedTask.id)) {
+        return {
+          ...task,
+          linkedTaskGroup: linkedGroup,
+          taskDate: linkedGroupDate,
+          dependentOnPrevious: false // Linked tasks are not sequential
+        };
+      }
+      return task;
+    });
+    
+    console.log('Linking task to group:', {
+      taskName: draggedTask.name,
+      linkedGroup,
+      newDate: linkedGroupDate
+    });
+    
+    batchUpdateTasksMutation.mutate(tasksWithUpdatedOrder);
+    setShowLinkingDialog(false);
+    setPendingDragData(null);
+  };
+
+  const handleLinkCancel = () => {
+    // Revert to original position - no changes needed since we haven't applied any updates yet
+    console.log('Linking cancelled - task stays in original position');
+    setShowLinkingDialog(false);
+    setPendingDragData(null);
+  };
+
   if (!tasks || tasks.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -595,6 +681,43 @@ export default function DraggableTaskList({
           <div className="text-sm text-gray-600">Updating task dependencies...</div>
         </div>
       )}
+      
+      {/* Linking Dialog */}
+      <Dialog open={showLinkingDialog} onOpenChange={setShowLinkingDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="w-5 h-5 text-blue-600" />
+              Link Task to Group?
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-gray-700 mb-4">
+              You dropped <strong>"{pendingDragData?.draggedTask?.name}"</strong> between linked tasks.
+            </p>
+            <p className="text-gray-600">
+              Would you like to link this task to the group so they all move together and share the same date?
+            </p>
+          </div>
+          
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleLinkCancel}
+              className="flex-1"
+            >
+              No, Keep Separate
+            </Button>
+            <Button 
+              onClick={handleLinkConfirm}
+              className="flex-1 bg-blue-600 hover:bg-blue-700"
+            >
+              Yes, Link Tasks
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
