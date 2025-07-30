@@ -456,8 +456,71 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           task.order = index;
         });
         
+        // After repositioning, recalculate sequential task dates
+        console.log('Recalculating sequential task dates after repositioning');
+        let processedLinkedGroups = new Set();
+        
+        for (let i = 1; i < tasksToUpdate.length; i++) {
+          const currentTask = tasksToUpdate[i];
+          const previousTask = tasksToUpdate[i - 1];
+          
+          if (currentTask.dependentOnPrevious) {
+            // Check if this is part of a linked group that needs special handling
+            if (currentTask.linkedTaskGroup && !processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
+              // This is the first task in a linked group - keep its chosen date
+              processedLinkedGroups.add(currentTask.linkedTaskGroup);
+              
+              // Find partner task and ensure it has the same date
+              const partnerTaskIndex = tasksToUpdate.findIndex(t => 
+                t.linkedTaskGroup === currentTask.linkedTaskGroup && 
+                (t.taskId || t.id) !== (currentTask.taskId || currentTask.id)
+              );
+              
+              if (partnerTaskIndex >= 0) {
+                const partnerTask = tasksToUpdate[partnerTaskIndex];
+                partnerTask.taskDate = currentTask.taskDate;
+                partnerTask.startDate = currentTask.taskDate;
+                partnerTask.finishDate = currentTask.taskDate;
+                console.log('Syncing linked task date:', partnerTask.name, 'to', currentTask.taskDate);
+              }
+            } else if (!currentTask.linkedTaskGroup || processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
+              // This is either a non-linked sequential task, or the second task in a linked group
+              // Calculate next working day from previous task
+              const baseDate = new Date(previousTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              console.log('Updating sequential task date:', currentTask.name, 'from', currentTask.taskDate, 'to', newDate);
+              currentTask.taskDate = newDate;
+              currentTask.startDate = newDate;
+              currentTask.finishDate = newDate;
+              
+              // If this is part of a linked group, update the partner too
+              if (currentTask.linkedTaskGroup) {
+                const partnerTaskIndex = tasksToUpdate.findIndex(t => 
+                  t.linkedTaskGroup === currentTask.linkedTaskGroup && 
+                  (t.taskId || t.id) !== (currentTask.taskId || currentTask.id)
+                );
+                
+                if (partnerTaskIndex >= 0) {
+                  const partnerTask = tasksToUpdate[partnerTaskIndex];
+                  partnerTask.taskDate = newDate;
+                  partnerTask.startDate = newDate;
+                  partnerTask.finishDate = newDate;
+                  console.log('Syncing partner task date:', partnerTask.name, 'to', newDate);
+                }
+              }
+            }
+          }
+        }
+        
         console.log('Batch updating tasks for linking and positioning');
-        console.log('Final task order:', tasksToUpdate.map(t => ({ name: t.name, order: t.order })));
+        console.log('Final task order:', tasksToUpdate.map(t => ({ name: t.name, order: t.order, date: t.taskDate })));
         batchUpdateTasksMutation.mutate(tasksToUpdate);
       } else {
         // Tasks are already adjacent, just update linking and dates
