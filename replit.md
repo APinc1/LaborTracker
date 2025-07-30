@@ -264,6 +264,9 @@ Preferred communication style: Simple, everyday language.
 - ✅ Enhanced positioning logic for linking to earlier tasks to ensure proper adjacent placement
 - ✅ Fixed order calculation bugs when moving current task to linked task position
 - ✅ Resolved server-side interference with drag operation sequential status changes
+- ✅ Implemented comprehensive sequential task date cascading after linking operations
+- ✅ Fixed linked task positioning to ensure adjacent placement in correct order
+- ✅ Enhanced sequential date recalculation to handle linked groups as single units
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**

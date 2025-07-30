@@ -465,12 +465,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const previousTask = tasksToUpdate[i - 1];
           
           if (currentTask.dependentOnPrevious) {
-            // Check if this is part of a linked group that needs special handling
+            // Check if this is part of a linked group
             if (currentTask.linkedTaskGroup && !processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
-              // This is the first task in a linked group - keep its chosen date
+              // This is the first task in a linked group - calculate sequential date from previous task
               processedLinkedGroups.add(currentTask.linkedTaskGroup);
               
-              // Find partner task and ensure it has the same date
+              // Calculate next working day from previous task
+              const baseDate = new Date(previousTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              console.log('Updating linked group date:', currentTask.name, 'from', currentTask.taskDate, 'to', newDate);
+              currentTask.taskDate = newDate;
+              currentTask.startDate = newDate;
+              currentTask.finishDate = newDate;
+              
+              // Find partner task and sync to same date
               const partnerTaskIndex = tasksToUpdate.findIndex(t => 
                 t.linkedTaskGroup === currentTask.linkedTaskGroup && 
                 (t.taskId || t.id) !== (currentTask.taskId || currentTask.id)
@@ -478,13 +493,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               
               if (partnerTaskIndex >= 0) {
                 const partnerTask = tasksToUpdate[partnerTaskIndex];
-                partnerTask.taskDate = currentTask.taskDate;
-                partnerTask.startDate = currentTask.taskDate;
-                partnerTask.finishDate = currentTask.taskDate;
-                console.log('Syncing linked task date:', partnerTask.name, 'to', currentTask.taskDate);
+                partnerTask.taskDate = newDate;
+                partnerTask.startDate = newDate;
+                partnerTask.finishDate = newDate;
+                console.log('Syncing linked partner date:', partnerTask.name, 'to', newDate);
               }
-            } else if (!currentTask.linkedTaskGroup || processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
-              // This is either a non-linked sequential task, or the second task in a linked group
+            } else if (!currentTask.linkedTaskGroup) {
+              // This is a non-linked sequential task
               // Calculate next working day from previous task
               const baseDate = new Date(previousTask.taskDate + 'T00:00:00');
               const nextDate = new Date(baseDate);
@@ -499,23 +514,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               currentTask.taskDate = newDate;
               currentTask.startDate = newDate;
               currentTask.finishDate = newDate;
-              
-              // If this is part of a linked group, update the partner too
-              if (currentTask.linkedTaskGroup) {
-                const partnerTaskIndex = tasksToUpdate.findIndex(t => 
-                  t.linkedTaskGroup === currentTask.linkedTaskGroup && 
-                  (t.taskId || t.id) !== (currentTask.taskId || currentTask.id)
-                );
-                
-                if (partnerTaskIndex >= 0) {
-                  const partnerTask = tasksToUpdate[partnerTaskIndex];
-                  partnerTask.taskDate = newDate;
-                  partnerTask.startDate = newDate;
-                  partnerTask.finishDate = newDate;
-                  console.log('Syncing partner task date:', partnerTask.name, 'to', newDate);
-                }
-              }
             }
+            // Skip processing if this is the second task in a linked group (already processed)
           }
         }
         
