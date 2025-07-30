@@ -66,6 +66,87 @@ export function parseDateString(dateString: string): Date {
 }
 
 /**
+ * Process sequential dependencies - ensures sequential tasks follow chronological order
+ */
+export function processSequentialDependencies(tasks: any[]): any[] {
+  const updatedTasks = [...tasks];
+  
+  // Sort tasks by date and order
+  const sortedTasks = [...updatedTasks].sort((a, b) => {
+    const dateA = new Date(a.taskDate).getTime();
+    const dateB = new Date(b.taskDate).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    return (a.order || 0) - (b.order || 0);
+  });
+  
+  // Ensure first task is always non-sequential
+  if (sortedTasks.length > 0) {
+    const firstTask = sortedTasks[0];
+    const firstTaskIndex = updatedTasks.findIndex(t => (t.taskId || t.id) === (firstTask.taskId || firstTask.id));
+    if (firstTaskIndex >= 0 && updatedTasks[firstTaskIndex].dependentOnPrevious) {
+      console.log('ENFORCING FIRST TASK RULE: Making first task non-sequential:', firstTask.name);
+      updatedTasks[firstTaskIndex] = {
+        ...updatedTasks[firstTaskIndex],
+        dependentOnPrevious: false
+      };
+    }
+  }
+  
+  // Update sequential task dates based on dependencies
+  let currentDate = '';
+  
+  for (let i = 0; i < sortedTasks.length; i++) {
+    const task = sortedTasks[i];
+    const taskIndex = updatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+    
+    if (taskIndex >= 0) {
+      if (task.dependentOnPrevious && i > 0) {
+        // Find the chronologically previous task (not from same linked group)
+        let previousTaskDate = null;
+        
+        for (let j = i - 1; j >= 0; j--) {
+          const prevTask = sortedTasks[j];
+          
+          // Skip tasks from the same linked group
+          if (task.linkedTaskGroup && prevTask.linkedTaskGroup === task.linkedTaskGroup) {
+            continue;
+          }
+          
+          previousTaskDate = prevTask.taskDate;
+          break;
+        }
+        
+        if (previousTaskDate) {
+          // Calculate next working day
+          const baseDate = new Date(previousTaskDate + 'T00:00:00');
+          const nextDate = addWeekdays(baseDate, 1);
+          const newDate = formatDateToString(nextDate);
+          
+          updatedTasks[taskIndex] = {
+            ...updatedTasks[taskIndex],
+            taskDate: newDate
+          };
+          
+          // If this task is linked, update all tasks in the linked group
+          if (task.linkedTaskGroup) {
+            updatedTasks.forEach((t, idx) => {
+              if (t.linkedTaskGroup === task.linkedTaskGroup && idx !== taskIndex) {
+                updatedTasks[idx] = {
+                  ...updatedTasks[idx],
+                  taskDate: newDate
+                };
+              }
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return updatedTasks;
+}
+
+/**
  * Update task dependencies when a task date changes
  */
 export function updateTaskDependencies(

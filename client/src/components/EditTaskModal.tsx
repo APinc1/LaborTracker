@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, processSequentialDependencies } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -86,7 +86,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
   const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
-  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTask: any, currentTaskDate: string, targetTaskDate: string} | null>(null);
+  const [linkingOptions, setLinkingOptions] = useState<{
+    currentTask: any;
+    targetTask: any;
+    currentTaskDate: string;
+    targetTaskDate: string;
+    currentIsSequential: boolean;
+    linkedIsSequential: boolean;
+    areAdjacent: boolean;
+  } | null>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -361,7 +369,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
         console.log('Tasks not adjacent, repositioning required');
         
-        let tasksToUpdate = [];
+        let tasksToUpdate: any[] = [];
         
         if (usingCurrentTaskDate) {
           // Using current task's date - move linked task to position right after current task
@@ -545,7 +553,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       processedData.linkedTaskGroup = null;
       
       // For current task, determine if either task was sequential
-      const partnerTask = existingTasks.find((t: any) => 
+      const partnerTask = (existingTasks as any[]).find((t: any) => 
         t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
       );
       const currentWasSequential = task.dependentOnPrevious;
@@ -553,8 +561,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const eitherWasSequential = currentWasSequential || partnerWasSequential;
       
       // Check if current task is first task - first task must stay unsequential
-      const isCurrentTaskFirst = task.order === 0 || (existingTasks && existingTasks.length > 0 && 
-        existingTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+      const isCurrentTaskFirst = task.order === 0 || ((existingTasks as any[]).length > 0 && 
+        (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
       
       processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
       
@@ -584,7 +592,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // FIRST TASK ENFORCEMENT - Always make first task unsequential
-    const sortedTasks = existingTasks ? [...existingTasks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
+    const sortedTasks = existingTasks ? [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
     const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && sortedTasks[0].id === task.id);
     
     if (isFirstTask) {
@@ -600,13 +608,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // Check if changes require cascading updates
-    const dateChanged = data.taskDate !== task.taskDate;
-    const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
+    dateChanged = data.taskDate !== task.taskDate;
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
       
-      let allUpdatedTasks = [...locationTasks];
+      let allUpdatedTasks: any[] = [...locationTasks];
       
       // Update the main task first
       const mainTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
@@ -938,7 +945,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
           // Collect ALL sequential tasks, regardless of linked groups in between
-          const subsequentTasks = [];
+          const subsequentTasks: any[] = [];
           for (const subsequentTask of allSubsequentTasks) {
             if (subsequentTask.dependentOnPrevious) {
               subsequentTasks.push(subsequentTask);
@@ -950,7 +957,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             // Skip unsequential linked tasks but continue looking for sequential tasks beyond them
           }
           
-          console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
+          console.log('Found', (subsequentTasks as any[]).length, 'subsequent sequential tasks to shift');
           console.log('Original task order:', originalTaskOrder, 'New date:', processedData.taskDate);
           console.log('Subsequent tasks to shift:', subsequentTasks.map(t => ({ name: t.name, order: t.order, dependentOnPrevious: t.dependentOnPrevious })));
           
