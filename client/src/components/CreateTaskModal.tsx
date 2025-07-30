@@ -692,12 +692,25 @@ export default function CreateTaskModal({
                                 const [year, month, day] = dateStr.split('-');
                                 return `${month}/${day}/${year}`;
                               };
+                              
+                              // Check if this task is already linked to another task
+                              let linkedPartnerInfo = '';
+                              if (task.linkedTaskGroup) {
+                                const linkedPartner = (existingTasks as any[]).find((t: any) => 
+                                  t.linkedTaskGroup === task.linkedTaskGroup && 
+                                  (t.taskId || t.id) !== (task.taskId || task.id)
+                                );
+                                if (linkedPartner) {
+                                  linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
+                                }
+                              }
+                              
                               return (
                                 <SelectItem 
                                   key={task.id || task.taskId} 
                                   value={(task.taskId || task.id).toString()}
                                 >
-                                  {task.name} ({formatDate(task.taskDate)})
+                                  {task.name} ({formatDate(task.taskDate)}){linkedPartnerInfo}
                                 </SelectItem>
                               );
                             })}
