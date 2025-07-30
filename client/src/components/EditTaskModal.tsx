@@ -231,9 +231,29 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   const processFormSubmission = (data: any) => {
+    // Update cost code based on task type
+    const TASK_TYPE_TO_COST_CODE = {
+      "Traffic Control": "TRAFFIC",
+      "Demo/Ex": "Demo/Ex + Base/Grading",
+      "Base/Grading": "Demo/Ex + Base/Grading", 
+      "Demo/Ex + Base/Grading": "Demo/Ex + Base/Grading",
+      "Form": "CONCRETE",
+      "Pour": "CONCRETE",
+      "Form + Pour": "CONCRETE",
+      "Asphalt": "AC",
+      "General Labor": "GENERAL",
+      "Landscaping": "LANDSCAPE", 
+      "Utility Adjustment": "UTILITY ADJ",
+      "Punchlist Demo": "PUNCHLIST",
+      "Punchlist Concrete": "PUNCHLIST",
+      "Punchlist General Labor": "PUNCHLIST"
+    };
+    
     let processedData = {
       ...task, // Keep all existing task data
       ...data, // Override with edited fields only
+      // Update cost code if task type changed
+      costCode: TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType
     };
     
     // Handle the date change action that was set by the dialog
@@ -316,6 +336,30 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           
           const currentSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
           const linkedSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+          
+          // Move linked task to be adjacent to current task for better positioning
+          const currentTaskOrder = currentTask.order || 0;
+          const linkedTaskOrder = linkedTask.order || 0;
+          
+          // If tasks are not adjacent, move linked task to be next to current task
+          if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
+            console.log('Moving linked task to be adjacent to current task');
+            
+            // Move linked task to position right after current task
+            const newLinkedOrder = currentTaskOrder + 1;
+            
+            // Shift other tasks to make space
+            allUpdatedTasks.forEach((t, idx) => {
+              if (idx !== linkedTaskIndex && idx !== mainTaskIndex) {
+                if ((t.order || 0) >= newLinkedOrder) {
+                  t.order = (t.order || 0) + 1;
+                }
+              }
+            });
+            
+            // Update linked task order
+            allUpdatedTasks[linkedTaskIndex].order = newLinkedOrder;
+          }
           
           // First task chronologically should be sequential, second should not be
           let firstTaskIndex, secondTaskIndex;
