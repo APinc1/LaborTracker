@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, processSequentialDependencies } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -86,15 +86,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
   const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
-  const [linkingOptions, setLinkingOptions] = useState<{
-    currentTask: any;
-    targetTask: any;
-    currentTaskDate: string;
-    targetTaskDate: string;
-    currentIsSequential: boolean;
-    linkedIsSequential: boolean;
-    areAdjacent: boolean;
-  } | null>(null);
+  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTask: any, currentTaskDate: string, targetTaskDate: string} | null>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -369,7 +361,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
         console.log('Tasks not adjacent, repositioning required');
         
-        let tasksToUpdate: any[] = [];
+        let tasksToUpdate = [];
         
         if (usingCurrentTaskDate) {
           // Using current task's date - move linked task to position right after current task
@@ -432,12 +424,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   const processFormSubmission = (data: any) => {
-    // Declare variables at the top to avoid scope issues
-    let cascadingRequired = false;
-    let linkingChanged = false;
-    let dateChanged = false;
-    let dependencyChanged = false;
-    
     // Update cost code based on task type
     const TASK_TYPE_TO_COST_CODE = {
       "Traffic Control": "TRAFFIC",
@@ -474,7 +460,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     // For 'sequential', keep the existing dependency status
 
     // Handle linking changes
-    linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
+    let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
     if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKING TO A TASK
@@ -559,7 +545,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       processedData.linkedTaskGroup = null;
       
       // For current task, determine if either task was sequential
-      const partnerTask = (existingTasks as any[]).find((t: any) => 
+      const partnerTask = existingTasks.find((t: any) => 
         t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
       );
       const currentWasSequential = task.dependentOnPrevious;
@@ -567,8 +553,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const eitherWasSequential = currentWasSequential || partnerWasSequential;
       
       // Check if current task is first task - first task must stay unsequential
-      const isCurrentTaskFirst = task.order === 0 || ((existingTasks as any[]).length > 0 && 
-        (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+      const isCurrentTaskFirst = task.order === 0 || (existingTasks && existingTasks.length > 0 && 
+        existingTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
       
       processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
       
@@ -598,7 +584,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // FIRST TASK ENFORCEMENT - Always make first task unsequential
-    const sortedTasks = existingTasks ? [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
+    const sortedTasks = existingTasks ? [...existingTasks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
     const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && sortedTasks[0].id === task.id);
     
     if (isFirstTask) {
@@ -614,13 +600,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // Check if changes require cascading updates
-    dateChanged = data.taskDate !== task.taskDate;
-    dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
+    const dateChanged = data.taskDate !== task.taskDate;
+    const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
       
-      let allUpdatedTasks: any[] = [...locationTasks];
+      let allUpdatedTasks = [...locationTasks];
       
       // Update the main task first
       const mainTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
@@ -638,8 +624,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
           const currentTask = allUpdatedTasks[mainTaskIndex];
           
-          // CRITICAL FIX: Determine sequential status based on chronological order
-          // Only the FIRST chronological task should be sequential
+          // Sort tasks chronologically to determine proper first/second task
           const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
             const dateA = new Date(a.taskDate).getTime();
             const dateB = new Date(b.taskDate).getTime();
@@ -650,23 +635,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const currentSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
           const linkedSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
           
-          // ONLY the chronologically first task should be sequential
-          const currentIsFirst = currentSortedIndex < linkedSortedIndex;
-          const linkedIsFirst = linkedSortedIndex < currentSortedIndex;
-          
-          console.log('FIXING SEQUENTIAL STATUS: Current is first:', currentIsFirst, 'Linked is first:', linkedIsFirst);
-          
-          // Update sequential status - only first chronological task is sequential
-          allUpdatedTasks[mainTaskIndex] = {
-            ...allUpdatedTasks[mainTaskIndex],
-            dependentOnPrevious: currentIsFirst
-          };
-          
-          allUpdatedTasks[linkedTaskIndex] = {
-            ...allUpdatedTasks[linkedTaskIndex],
-            dependentOnPrevious: linkedIsFirst
-          };
-          
+          // Move linked task to be adjacent to current task for better positioning
           const currentTaskOrder = currentTask.order || 0;
           const linkedTaskOrder = linkedTask.order || 0;
           
@@ -742,7 +711,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
 
           // Update both tasks with the synchronized date and proper dependencies
-          // CRITICAL: Only the first chronologically positioned task should be sequential
           allUpdatedTasks[firstTaskIndex] = {
             ...allUpdatedTasks[firstTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
@@ -753,7 +721,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           allUpdatedTasks[secondTaskIndex] = {
             ...allUpdatedTasks[secondTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: false, // Second task chronologically is NEVER sequential (linked only)
+            dependentOnPrevious: false, // Second task chronologically is just linked, never sequential
             taskDate: sequentialDate // Both tasks get the same synchronized date
           };
           
@@ -969,7 +937,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
           // Collect ALL sequential tasks, regardless of linked groups in between
-          const subsequentTasks: any[] = [];
+          const subsequentTasks = [];
           for (const subsequentTask of allSubsequentTasks) {
             if (subsequentTask.dependentOnPrevious) {
               subsequentTasks.push(subsequentTask);
@@ -981,7 +949,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             // Skip unsequential linked tasks but continue looking for sequential tasks beyond them
           }
           
-          console.log('Found', (subsequentTasks as any[]).length, 'subsequent sequential tasks to shift');
+          console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
           console.log('Original task order:', originalTaskOrder, 'New date:', processedData.taskDate);
           console.log('Subsequent tasks to shift:', subsequentTasks.map(t => ({ name: t.name, order: t.order, dependentOnPrevious: t.dependentOnPrevious })));
           
@@ -1092,13 +1060,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
         
         console.log('Sequential cascading complete');
-      }
-      
-      // CRITICAL: Also trigger sequential cascading after linking operations
-      if (linkingChanged && !dateChanged && !dependencyChanged) {
-        console.log('Processing sequential dependencies after linking operation');
-        allUpdatedTasks = processSequentialDependencies(allUpdatedTasks);
-        console.log('Sequential cascading complete for linking');
       }
       
       // Filter to only tasks that actually changed
@@ -1369,62 +1330,44 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {(() => {
-                            // Include current task's linked partner if it exists
-                            let availableTasks = (existingTasks as any[])
-                              .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id));
-                            
-                            // If current task has a linked partner, make sure it's included
-                            if (task.linkedTaskGroup) {
-                              const currentPartner = (existingTasks as any[]).find((t: any) => 
-                                t.linkedTaskGroup === task.linkedTaskGroup && 
-                                (t.taskId || t.id) !== (task.taskId || task.id)
-                              );
-                              if (currentPartner && !availableTasks.find(t => (t.taskId || t.id) === (currentPartner.taskId || currentPartner.id))) {
-                                availableTasks.push(currentPartner);
-                              }
-                            }
-                            
-                            return availableTasks
-                              .sort((a: any, b: any) => {
-                                // Sort by date first, then by order
-                                const dateA = new Date(a.taskDate).getTime();
-                                const dateB = new Date(b.taskDate).getTime();
-                                if (dateA !== dateB) return dateA - dateB;
-                                return (a.order || 0) - (b.order || 0);
-                              })
-                              .map((linkTask: any) => {
-                                // Fix date display - use direct string formatting to avoid timezone issues
-                                const formatDate = (dateStr: string) => {
-                                  const [year, month, day] = dateStr.split('-');
-                                  return `${month}/${day}/${year}`;
-                                };
-                                
-                                // Check if this task is already linked to another task (excluding current task)
-                                let linkedPartnerInfo = '';
-                                if (linkTask.linkedTaskGroup) {
-                                  const linkedPartner = (existingTasks as any[]).find((t: any) => 
-                                    t.linkedTaskGroup === linkTask.linkedTaskGroup && 
-                                    (t.taskId || t.id) !== (linkTask.taskId || linkTask.id) &&
-                                    (t.taskId || t.id) !== (task.taskId || task.id) // Don't show current task as partner
-                                  );
-                                  if (linkedPartner) {
-                                    linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
-                                  } else if (linkTask.linkedTaskGroup === task.linkedTaskGroup) {
-                                    linkedPartnerInfo = ` → Currently linked to this task`;
-                                  }
-                                }
-                                
-                                return (
-                                  <SelectItem 
-                                    key={linkTask.id || linkTask.taskId} 
-                                    value={(linkTask.taskId || linkTask.id).toString()}
-                                  >
-                                    {linkTask.name} ({formatDate(linkTask.taskDate)}){linkedPartnerInfo}
-                                  </SelectItem>
+                          {(existingTasks as any[])
+                            .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id))
+                            .sort((a: any, b: any) => {
+                              // Sort by date first, then by order
+                              const dateA = new Date(a.taskDate).getTime();
+                              const dateB = new Date(b.taskDate).getTime();
+                              if (dateA !== dateB) return dateA - dateB;
+                              return (a.order || 0) - (b.order || 0);
+                            })
+                            .map((linkTask: any) => {
+                              // Fix date display - use direct string formatting to avoid timezone issues
+                              const formatDate = (dateStr: string) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${month}/${day}/${year}`;
+                              };
+                              
+                              // Check if this task is already linked to another task
+                              let linkedPartnerInfo = '';
+                              if (linkTask.linkedTaskGroup) {
+                                const linkedPartner = (existingTasks as any[]).find((t: any) => 
+                                  t.linkedTaskGroup === linkTask.linkedTaskGroup && 
+                                  (t.taskId || t.id) !== (linkTask.taskId || linkTask.id)
                                 );
-                              });
-                          })()}
+                                if (linkedPartner) {
+                                  linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
+                                }
+                              }
+                              
+                              return (
+                                <SelectItem 
+                                  key={linkTask.id || linkTask.taskId} 
+                                  value={(linkTask.taskId || linkTask.id).toString()}
+                                >
+                                  {linkTask.name} ({formatDate(linkTask.taskDate)}){linkedPartnerInfo}
+                                </SelectItem>
+                              );
+                            })
+                          }
                         </SelectContent>
                       </Select>
                       <FormMessage />
