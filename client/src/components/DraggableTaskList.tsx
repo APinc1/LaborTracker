@@ -350,29 +350,33 @@ export default function DraggableTaskList({
         const originalFirstTask = tasksWithUpdatedOrder[1]; // Now at position 1
         if (originalFirstTask) {
           draggedTask.taskDate = originalFirstTask.taskDate;
-          // CRITICAL: Original first task becomes sequential ONLY if it wasn't already sequential
-          // If the original first task was already unsequential, it should remain unsequential
-          // But if there was a sequential task that was second, it should become sequential
-          if (!originalFirstTask.dependentOnPrevious) {
-            // The original first was unsequential, so it should become sequential now
-            originalFirstTask.dependentOnPrevious = true;
-          }
+          
+          // CRITICAL: When a task moves to first position, the displaced task should become sequential
+          // This maintains the dependency chain - the displaced task now depends on the new first task
+          console.log('Making displaced task sequential:', originalFirstTask.name, 'was:', originalFirstTask.dependentOnPrevious);
+          originalFirstTask.dependentOnPrevious = true;
+          
           // If there are linked tasks with the original first, sync their status too
           if (originalFirstTask.linkedTaskGroup) {
             tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
               if (task.linkedTaskGroup === originalFirstTask.linkedTaskGroup) {
+                console.log('Making linked task sequential:', task.name);
                 return { ...task, dependentOnPrevious: true };
               }
               return task;
             });
           }
         }
+        
         // CRITICAL: First task must always be non-sequential
+        console.log('Making first task unsequential:', draggedTask.name, 'was:', draggedTask.dependentOnPrevious);
         draggedTask.dependentOnPrevious = false;
+        
         // If dragged task has linked partners, make them all unsequential too
         if (draggedTask.linkedTaskGroup) {
           tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
             if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+              console.log('Making linked task unsequential:', task.name);
               return { ...task, dependentOnPrevious: false };
             }
             return task;

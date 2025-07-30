@@ -252,6 +252,15 @@ Preferred communication style: Simple, everyday language.
 - ✅ Implemented linked task deletion handling: partner tasks become unlinked and sequential if either original task was sequential
 - ✅ Enhanced task deletion to properly cascade sequential task date adjustments after removal
 
+### July 30, 2025
+- ✅ Fixed critical first task sequential status display issue: first tasks created with wrong dependentOnPrevious value in sample data
+- ✅ Implemented multi-layer first task rule enforcement across EditTaskModal, CreateTaskModal, API routes, and batch operations
+- ✅ Enhanced drag-to-beginning logic: displaced task ALWAYS becomes sequential regardless of previous status
+- ✅ Added comprehensive logging for first task enforcement decisions and drag operations
+- ✅ Fixed "Link to existing task" required field validation with proper FormMessage display
+- ✅ Server-side protection: task creation and update routes now enforce first task rule automatically
+- ✅ Improved drag-and-drop sequential status transitions with detailed console logging for debugging
+
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
 - By default Hours = Conv Qty × PX
