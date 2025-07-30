@@ -530,12 +530,14 @@ export default function DraggableTaskList({
         // Skip the first task (can't be dependent)
         if (i === 0) {
           if (currentTask.dependentOnPrevious) {
+            console.log('CRITICAL: Enforcing first task unsequential in rebuild:', currentTask.name);
             currentTask.dependentOnPrevious = false;
           }
           continue;
         }
         
-        // Only update dependent tasks
+        // Only update dates for dependent tasks - DON'T change dependency status here
+        // The dependency status was already set correctly in the drag logic above
         if (!currentTask.dependentOnPrevious) continue;
         
         const prevTask = tasksWithUpdatedOrder[i - 1];
