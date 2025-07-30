@@ -376,24 +376,42 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           });
           
           allTasks.forEach(t => {
+            const originalOrder = t.order || 0;
+            
             if ((t.taskId || t.id) === (task.taskId || task.id)) {
+              // Current task keeps its position
               tasksToUpdate.push(currentTaskUpdate);
             } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
+              // Linked task moves to right after current task
               console.log('Setting linked task order to:', newLinkedOrder);
               tasksToUpdate.push({
                 ...linkedTaskUpdate,
                 order: newLinkedOrder
               });
             } else {
-              const originalOrder = t.order || 0;
+              // For other tasks, we need to shift them appropriately
               let newOrder = originalOrder;
-              if (originalOrder >= newLinkedOrder && originalOrder < linkedTaskOrder) {
-                newOrder = originalOrder + 1;
-                console.log('Shifting task forward:', t.name, 'from', originalOrder, 'to', newOrder);
-              } else if (originalOrder <= newLinkedOrder && originalOrder > linkedTaskOrder) {
-                newOrder = originalOrder - 1;
-                console.log('Shifting task backward:', t.name, 'from', originalOrder, 'to', newOrder);
+              
+              if (linkedTaskOrder < currentTaskOrder) {
+                // Linked task is moving forward (from earlier to later position)
+                if (originalOrder > linkedTaskOrder && originalOrder <= currentTaskOrder) {
+                  // Tasks between linked and current position shift backward
+                  newOrder = originalOrder - 1;
+                  console.log('Shifting task backward:', t.name, 'from', originalOrder, 'to', newOrder);
+                } else if (originalOrder > currentTaskOrder) {
+                  // Tasks after current position shift forward to make room
+                  newOrder = originalOrder + 1;
+                  console.log('Shifting task forward:', t.name, 'from', originalOrder, 'to', newOrder);
+                }
+              } else {
+                // Linked task is moving backward (from later to earlier position) 
+                if (originalOrder > currentTaskOrder && originalOrder < linkedTaskOrder) {
+                  // Tasks between current and linked position shift forward
+                  newOrder = originalOrder + 1;
+                  console.log('Shifting task forward:', t.name, 'from', originalOrder, 'to', newOrder);
+                }
               }
+              
               tasksToUpdate.push({ ...t, order: newOrder });
             }
           });
