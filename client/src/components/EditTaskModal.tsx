@@ -402,13 +402,21 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               tasksToUpdate.push(linkedTaskUpdate);
             } else {
               const originalOrder = t.order || 0;
-              // Shift tasks that are between the linked task and the new position
-              if (originalOrder > linkedTaskOrder && originalOrder < currentTaskOrder) {
-                tasksToUpdate.push({ ...t, order: originalOrder + 1 });
-              } else if (originalOrder > currentTaskOrder && originalOrder <= linkedTaskOrder) {
-                tasksToUpdate.push({ ...t, order: originalOrder - 1 });
+              // When moving current task to after linked task, shift tasks between them
+              if (currentTaskOrder > linkedTaskOrder) {
+                // Current task moving backward - shift tasks forward
+                if (originalOrder > linkedTaskOrder && originalOrder < currentTaskOrder) {
+                  tasksToUpdate.push({ ...t, order: originalOrder + 1 });
+                } else {
+                  tasksToUpdate.push(t);
+                }
               } else {
-                tasksToUpdate.push(t);
+                // Current task moving forward - shift tasks backward  
+                if (originalOrder > currentTaskOrder && originalOrder <= linkedTaskOrder) {
+                  tasksToUpdate.push({ ...t, order: originalOrder - 1 });
+                } else {
+                  tasksToUpdate.push(t);
+                }
               }
             }
           });

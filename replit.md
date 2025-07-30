@@ -260,6 +260,10 @@ Preferred communication style: Simple, everyday language.
 - ✅ Fixed "Link to existing task" required field validation with proper FormMessage display
 - ✅ Server-side protection: task creation and update routes now enforce first task rule automatically
 - ✅ Improved drag-and-drop sequential status transitions with detailed console logging for debugging
+- ✅ Added linked task partner information in task selection dropdowns (shows "Task Name → Linked to: Partner")
+- ✅ Enhanced positioning logic for linking to earlier tasks to ensure proper adjacent placement
+- ✅ Fixed order calculation bugs when moving current task to linked task position
+- ✅ Resolved server-side interference with drag operation sequential status changes
 
 ### Budget Calculation Rules (User Specification)
 **For line items without children:**
