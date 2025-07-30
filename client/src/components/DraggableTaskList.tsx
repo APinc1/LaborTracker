@@ -350,11 +350,34 @@ export default function DraggableTaskList({
         const originalFirstTask = tasksWithUpdatedOrder[1]; // Now at position 1
         if (originalFirstTask) {
           draggedTask.taskDate = originalFirstTask.taskDate;
-          // Original first task becomes sequential
-          originalFirstTask.dependentOnPrevious = true;
+          // CRITICAL: Original first task becomes sequential ONLY if it wasn't already sequential
+          // If the original first task was already unsequential, it should remain unsequential
+          // But if there was a sequential task that was second, it should become sequential
+          if (!originalFirstTask.dependentOnPrevious) {
+            // The original first was unsequential, so it should become sequential now
+            originalFirstTask.dependentOnPrevious = true;
+          }
+          // If there are linked tasks with the original first, sync their status too
+          if (originalFirstTask.linkedTaskGroup) {
+            tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
+              if (task.linkedTaskGroup === originalFirstTask.linkedTaskGroup) {
+                return { ...task, dependentOnPrevious: true };
+              }
+              return task;
+            });
+          }
         }
-        // First task must be non-sequential
+        // CRITICAL: First task must always be non-sequential
         draggedTask.dependentOnPrevious = false;
+        // If dragged task has linked partners, make them all unsequential too
+        if (draggedTask.linkedTaskGroup) {
+          tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
+            if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+              return { ...task, dependentOnPrevious: false };
+            }
+            return task;
+          });
+        }
       } 
       // For other positions, determine the best date for this position
       else if (previousTask) {
