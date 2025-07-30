@@ -920,8 +920,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       }
       
       // Process sequential dependencies after ANY date changes - shift subsequent tasks chronologically
-      if (dateChanged || dependencyChanged) {
+      // Also trigger cascading when linking operations change the chronological order
+      if (dateChanged || dependencyChanged || linkingChanged) {
         console.log('Processing sequential dependencies after date/dependency change');
+        
+        // CRITICAL: If linking changed, we need to recalculate ALL sequential tasks after this operation
+        // because the linked tasks may have moved positions chronologically
+        if (linkingChanged) {
+          console.log('Linking changed - triggering full sequential cascade for all subsequent tasks');
+        }
         
         // For "unsequential_shift_others" action, shift subsequent sequential tasks based on the changed task's new date
         if (dateChangeAction === 'unsequential_shift_others') {
@@ -1033,6 +1040,93 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 currentDate = newDate; // Update baseline for next task
               }
             });
+          }
+        } else if (linkingChanged) {
+          // CRITICAL: When linking changes, recalculate ALL sequential tasks chronologically after the linked group
+          console.log('Handling linking change - recalculating all sequential tasks after the linked group');
+          
+          // Sort all tasks by chronological order (date first, then order)
+          const chronologicalTasks = [...allUpdatedTasks].sort((a, b) => {
+            const dateA = new Date(a.taskDate).getTime();
+            const dateB = new Date(b.taskDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.order || 0) - (b.order || 0);
+          });
+          
+          // Find the position of the current task (or its linked group) in chronological order
+          const currentTaskIndex = chronologicalTasks.findIndex(t => 
+            (t.taskId || t.id) === (task.taskId || task.id)
+          );
+          
+          console.log('Current task chronological position:', currentTaskIndex, 'Date:', processedData.taskDate);
+          
+          // Process all tasks that come chronologically after this task/linked group
+          for (let i = currentTaskIndex + 1; i < chronologicalTasks.length; i++) {
+            const subsequentTask = chronologicalTasks[i];
+            
+            // Skip tasks in the same linked group (they were already synchronized)
+            if (processedData.linkedTaskGroup && subsequentTask.linkedTaskGroup === processedData.linkedTaskGroup) {
+              continue;
+            }
+            
+            // Only process sequential tasks
+            if (!subsequentTask.dependentOnPrevious) {
+              continue;
+            }
+            
+            // Find the date of the chronologically previous task (not in same linked group)
+            let previousTaskDate = null;
+            for (let j = i - 1; j >= 0; j--) {
+              const prevTask = chronologicalTasks[j];
+              
+              // Skip tasks from the same linked group as the current subsequent task
+              if (subsequentTask.linkedTaskGroup && prevTask.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
+                continue;
+              }
+              
+              previousTaskDate = prevTask.taskDate;
+              break;
+            }
+            
+            if (previousTaskDate) {
+              // Calculate next working day from the previous task
+              const baseDate = new Date(previousTaskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update the task in allUpdatedTasks
+              const taskIndex = allUpdatedTasks.findIndex(t => 
+                (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
+              );
+              
+              if (taskIndex >= 0 && allUpdatedTasks[taskIndex].taskDate !== newDate) {
+                console.log('Updating sequential task after linking:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
+                
+                allUpdatedTasks[taskIndex] = {
+                  ...allUpdatedTasks[taskIndex],
+                  taskDate: newDate
+                };
+                
+                // If this task is linked, update all tasks in its linked group
+                if (subsequentTask.linkedTaskGroup) {
+                  allUpdatedTasks = allUpdatedTasks.map(t => {
+                    if (t.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
+                      console.log('Syncing linked task:', t.name, 'to:', newDate);
+                      return { ...t, taskDate: newDate };
+                    }
+                    return t;
+                  });
+                }
+                
+                // Update the chronological list with the new date for subsequent calculations
+                chronologicalTasks[i] = { ...chronologicalTasks[i], taskDate: newDate };
+              }
+            }
           }
         } else {
           // For other actions (sequential, unsequential_move_only), use the existing cascading logic
