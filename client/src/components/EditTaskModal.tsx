@@ -711,7 +711,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
 
           // Update both tasks with the synchronized date and proper dependencies
-          // CRITICAL: Only the first chronologically positioned task should be sequential
           allUpdatedTasks[firstTaskIndex] = {
             ...allUpdatedTasks[firstTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
@@ -722,7 +721,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           allUpdatedTasks[secondTaskIndex] = {
             ...allUpdatedTasks[secondTaskIndex],
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: false, // Second task chronologically is NEVER sequential (linked only)
+            dependentOnPrevious: false, // Second task chronologically is just linked, never sequential
             taskDate: sequentialDate // Both tasks get the same synchronized date
           };
           
@@ -1063,13 +1062,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('Sequential cascading complete');
       }
       
-      // CRITICAL: Also trigger sequential cascading after linking operations
-      if (linkingChanged && !dateChanged && !dependencyChanged) {
-        console.log('Processing sequential dependencies after linking operation');
-        allUpdatedTasks = processSequentialDependencies(allUpdatedTasks);
-        console.log('Sequential cascading complete for linking');
-      }
-      
       // Filter to only tasks that actually changed
       const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
         const originalTask = locationTasks.find(orig => 
@@ -1338,62 +1330,44 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {(() => {
-                            // Include current task's linked partner if it exists
-                            let availableTasks = (existingTasks as any[])
-                              .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id));
-                            
-                            // If current task has a linked partner, make sure it's included
-                            if (task.linkedTaskGroup) {
-                              const currentPartner = (existingTasks as any[]).find((t: any) => 
-                                t.linkedTaskGroup === task.linkedTaskGroup && 
-                                (t.taskId || t.id) !== (task.taskId || task.id)
-                              );
-                              if (currentPartner && !availableTasks.find(t => (t.taskId || t.id) === (currentPartner.taskId || currentPartner.id))) {
-                                availableTasks.push(currentPartner);
-                              }
-                            }
-                            
-                            return availableTasks
-                              .sort((a: any, b: any) => {
-                                // Sort by date first, then by order
-                                const dateA = new Date(a.taskDate).getTime();
-                                const dateB = new Date(b.taskDate).getTime();
-                                if (dateA !== dateB) return dateA - dateB;
-                                return (a.order || 0) - (b.order || 0);
-                              })
-                              .map((linkTask: any) => {
-                                // Fix date display - use direct string formatting to avoid timezone issues
-                                const formatDate = (dateStr: string) => {
-                                  const [year, month, day] = dateStr.split('-');
-                                  return `${month}/${day}/${year}`;
-                                };
-                                
-                                // Check if this task is already linked to another task (excluding current task)
-                                let linkedPartnerInfo = '';
-                                if (linkTask.linkedTaskGroup) {
-                                  const linkedPartner = (existingTasks as any[]).find((t: any) => 
-                                    t.linkedTaskGroup === linkTask.linkedTaskGroup && 
-                                    (t.taskId || t.id) !== (linkTask.taskId || linkTask.id) &&
-                                    (t.taskId || t.id) !== (task.taskId || task.id) // Don't show current task as partner
-                                  );
-                                  if (linkedPartner) {
-                                    linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
-                                  } else if (linkTask.linkedTaskGroup === task.linkedTaskGroup) {
-                                    linkedPartnerInfo = ` → Currently linked to this task`;
-                                  }
-                                }
-                                
-                                return (
-                                  <SelectItem 
-                                    key={linkTask.id || linkTask.taskId} 
-                                    value={(linkTask.taskId || linkTask.id).toString()}
-                                  >
-                                    {linkTask.name} ({formatDate(linkTask.taskDate)}){linkedPartnerInfo}
-                                  </SelectItem>
+                          {(existingTasks as any[])
+                            .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id))
+                            .sort((a: any, b: any) => {
+                              // Sort by date first, then by order
+                              const dateA = new Date(a.taskDate).getTime();
+                              const dateB = new Date(b.taskDate).getTime();
+                              if (dateA !== dateB) return dateA - dateB;
+                              return (a.order || 0) - (b.order || 0);
+                            })
+                            .map((linkTask: any) => {
+                              // Fix date display - use direct string formatting to avoid timezone issues
+                              const formatDate = (dateStr: string) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${month}/${day}/${year}`;
+                              };
+                              
+                              // Check if this task is already linked to another task
+                              let linkedPartnerInfo = '';
+                              if (linkTask.linkedTaskGroup) {
+                                const linkedPartner = (existingTasks as any[]).find((t: any) => 
+                                  t.linkedTaskGroup === linkTask.linkedTaskGroup && 
+                                  (t.taskId || t.id) !== (linkTask.taskId || linkTask.id)
                                 );
-                              });
-                          })()}
+                                if (linkedPartner) {
+                                  linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
+                                }
+                              }
+                              
+                              return (
+                                <SelectItem 
+                                  key={linkTask.id || linkTask.taskId} 
+                                  value={(linkTask.taskId || linkTask.id).toString()}
+                                >
+                                  {linkTask.name} ({formatDate(linkTask.taskDate)}){linkedPartnerInfo}
+                                </SelectItem>
+                              );
+                            })
+                          }
                         </SelectContent>
                       </Select>
                       <FormMessage />
