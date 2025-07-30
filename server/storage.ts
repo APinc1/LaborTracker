@@ -353,8 +353,8 @@ export class MemStorage implements IStorage {
       finishTime: "16:00",
       workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
       notes: "Coordinate with utilities for underground clearance",
-      order: 1,
-      dependentOnPrevious: true
+      order: 0,
+      dependentOnPrevious: false  // CRITICAL: First task must always be unsequential
     });
 
     const pourTask = await this.createTask({

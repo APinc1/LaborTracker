@@ -530,6 +530,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationId: req.params.locationId
       });
       
+      // CRITICAL: Check if this will be the first task and enforce unsequential status
+      const existingTasks = await storage.getTasks(req.params.locationId);
+      const isFirstTask = existingTasks.length === 0 || 
+                         (validated.order !== undefined && validated.order === 0) ||
+                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order));
+      
+      if (isFirstTask && validated.dependentOnPrevious) {
+        console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
+        validated.dependentOnPrevious = false;
+      }
+      
       const task = await storage.createTask(validated);
       
       // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
@@ -560,6 +571,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/tasks/:id', async (req, res) => {
     try {
       const validated = insertTaskSchema.partial().parse(req.body);
+      
+      // CRITICAL: Check if this is the first task and enforce unsequential status
+      const currentTask = await storage.getTask(parseInt(req.params.id));
+      if (currentTask) {
+        const allTasks = await storage.getTasks(currentTask.locationId);
+        const sortedTasks = allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
+        
+        if (isFirstTask && validated.dependentOnPrevious === true) {
+          console.log('ENFORCING FIRST TASK RULE for task update:', currentTask.name);
+          validated.dependentOnPrevious = false;
+        }
+      }
+      
       const task = await storage.updateTask(parseInt(req.params.id), validated);
       res.json(task);
     } catch (error) {
