@@ -180,12 +180,28 @@ export default function CreateTaskModal({
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
-    // Sort existing tasks for position calculations  
+    // Sort existing tasks by ORDER first to match display logic  
     const sortedTasks = [...(existingTasks as any[])].sort((a: any, b: any) => {
+      // If both tasks have order values, use order as primary sort
+      if (a.order !== undefined && b.order !== undefined) {
+        return a.order - b.order;
+      }
+      
+      // If only one has order, prioritize the one with order
+      if (a.order !== undefined && b.order === undefined) {
+        return -1;
+      }
+      if (a.order === undefined && b.order !== undefined) {
+        return 1;
+      }
+      
+      // If neither has order, sort by date as fallback
       const dateA = new Date(a.taskDate).getTime();
       const dateB = new Date(b.taskDate).getTime();
       if (dateA !== dateB) return dateA - dateB;
-      return (a.order || 0) - (b.order || 0);
+      
+      // Final fallback to ID comparison
+      return (a.taskId || a.id).localeCompare(b.taskId || b.id);
     });
 
     let taskDate: string = new Date().toISOString().split('T')[0]; // Default fallback
@@ -305,8 +321,27 @@ export default function CreateTaskModal({
         );
         
         if (afterTaskIndex >= 0) {
-          insertIndex = afterTaskIndex + 1;
           const afterTask = sortedTasks[afterTaskIndex];
+          
+          // If the "after" task is linked, find the end of its linked group
+          if (afterTask.linkedTaskGroup) {
+            // Find all tasks in the same linked group
+            const linkedTasks = sortedTasks.filter(t => t.linkedTaskGroup === afterTask.linkedTaskGroup);
+            // Find the last task in this linked group (by order)
+            const lastLinkedTask = linkedTasks.reduce((last, current) => 
+              (current.order || 0) > (last.order || 0) ? current : last
+            );
+            // Insert after the entire linked group
+            const lastLinkedTaskIndex = sortedTasks.findIndex(t => 
+              (t.taskId || t.id) === (lastLinkedTask.taskId || lastLinkedTask.id)
+            );
+            insertIndex = lastLinkedTaskIndex + 1;
+          } else {
+            // Regular task, insert immediately after it
+            insertIndex = afterTaskIndex + 1;
+          }
+          
+          const referenceTask = afterTask;
           
           if (data.dependentOnPrevious) {
             // DEPENDENT TASK: Calculate next date and shift subsequent dependent tasks
@@ -477,10 +512,20 @@ export default function CreateTaskModal({
                         <SelectItem value="start">At the beginning</SelectItem>
                         {(existingTasks as any[])
                           .sort((a: any, b: any) => {
+                            // Use same ORDER-first sorting as display and logic
+                            if (a.order !== undefined && b.order !== undefined) {
+                              return a.order - b.order;
+                            }
+                            if (a.order !== undefined && b.order === undefined) {
+                              return -1;
+                            }
+                            if (a.order === undefined && b.order !== undefined) {
+                              return 1;
+                            }
                             const dateA = new Date(a.taskDate).getTime();
                             const dateB = new Date(b.taskDate).getTime();
                             if (dateA !== dateB) return dateA - dateB;
-                            return (a.order || 0) - (b.order || 0);
+                            return (a.taskId || a.id).localeCompare(b.taskId || b.id);
                           })
                           .map((task: any) => (
                           <SelectItem 
