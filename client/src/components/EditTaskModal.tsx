@@ -66,6 +66,15 @@ const editTaskSchema = z.object({
   dependentOnPrevious: z.boolean().optional(),
   linkToExistingTask: z.boolean().default(false),
   linkedTaskId: z.string().optional(),
+}).refine((data) => {
+  // If linking is enabled, linkedTaskId is required
+  if (data.linkToExistingTask && (!data.linkedTaskId || data.linkedTaskId === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "You must select a task to link with when linking is enabled",
+  path: ["linkedTaskId"]
 });
 
 export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
@@ -533,7 +542,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
       // UNLINKING FROM GROUP - also unlink the other task in the group
       processedData.linkedTaskGroup = null;
-      processedData.dependentOnPrevious = data.dependentOnPrevious ?? true;
+      
+      // For current task, determine if either task was sequential
+      const partnerTask = existingTasks.find((t: any) => 
+        t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+      );
+      const currentWasSequential = task.dependentOnPrevious;
+      const partnerWasSequential = partnerTask ? partnerTask.dependentOnPrevious : false;
+      const eitherWasSequential = currentWasSequential || partnerWasSequential;
+      
+      // Check if current task is first task - first task must stay unsequential
+      const isCurrentTaskFirst = task.order === 0 || (existingTasks && existingTasks.length > 0 && 
+        existingTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+      
+      processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
+      
+      console.log('Current task unlinking:', {
+        currentWasSequential,
+        partnerWasSequential,
+        eitherWasSequential,
+        isCurrentTaskFirst,
+        finalStatus: processedData.dependentOnPrevious
+      });
       
       // Mark that we need to unlink the partner task too
       linkingChanged = true;
@@ -550,6 +580,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     } else {
       // If not complete, clear actualHours
       processedData.actualHours = null;
+    }
+
+    // FIRST TASK ENFORCEMENT - Always make first task unsequential
+    if (task.order === 0 || (existingTasks && existingTasks.length > 0 && 
+        existingTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].id === task.id)) {
+      console.log('Enforcing first task rule: making first task unsequential');
+      processedData.dependentOnPrevious = false;
     }
 
     // Check if changes require cascading updates
@@ -710,14 +747,33 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
         );
         
-        // Determine if either task was sequential
-        const eitherWasSequential = task.dependentOnPrevious || (partnerTask && partnerTask.dependentOnPrevious);
+        // Determine if either task was sequential - use ORIGINAL status before unlinking
+        const currentWasSequential = task.dependentOnPrevious;
+        const partnerWasSequential = partnerTask ? partnerTask.dependentOnPrevious : false;
+        const eitherWasSequential = currentWasSequential || partnerWasSequential;
         
-        allUpdatedTasks = allUpdatedTasks.map(t => 
-          t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
-            ? { ...t, linkedTaskGroup: null, dependentOnPrevious: eitherWasSequential } // Both become sequential if either was
-            : t
-        );
+        console.log('Unlinking sequential status analysis:', {
+          currentWasSequential,
+          partnerWasSequential,
+          eitherWasSequential,
+          currentTaskOrder: task.order,
+          partnerTaskOrder: partnerTask?.order
+        });
+        
+        allUpdatedTasks = allUpdatedTasks.map(t => {
+          if (t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)) {
+            // Check if this is the first task (order 0) - first task must stay unsequential
+            const isFirstTask = t.order === 0 || (allUpdatedTasks.length > 0 && 
+              allUpdatedTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].id === t.id);
+            
+            return { 
+              ...t, 
+              linkedTaskGroup: null, 
+              dependentOnPrevious: isFirstTask ? false : eitherWasSequential 
+            };
+          }
+          return t;
+        });
         
         console.log('Unlinked partner task from group:', task.linkedTaskGroup, 'both become sequential:', eitherWasSequential);
         
