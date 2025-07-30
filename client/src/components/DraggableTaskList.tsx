@@ -283,8 +283,34 @@ export default function DraggableTaskList({
       targetDate: sortedTasks[newIndex].taskDate
     });
 
-    // Reorder the tasks array
-    const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
+    // Special handling for linked tasks - they should move as groups
+    const originalDraggedTask = sortedTasks[oldIndex];
+    let reorderedTasks = [...sortedTasks];
+    
+    if (originalDraggedTask.linkedTaskGroup) {
+      // Find all tasks in the same linked group
+      const linkedTasks = sortedTasks.filter(t => t.linkedTaskGroup === originalDraggedTask.linkedTaskGroup);
+      const linkedTaskIndices = linkedTasks.map(t => sortedTasks.findIndex(task => (task.taskId || task.id) === (t.taskId || t.id)));
+      
+      // Remove all linked tasks from their current positions
+      linkedTaskIndices.sort((a, b) => b - a); // Remove from end to start to maintain indices
+      const removedTasks: any[] = [];
+      linkedTaskIndices.forEach(index => {
+        removedTasks.unshift(reorderedTasks.splice(index, 1)[0]);
+      });
+      
+      // Find the target position (adjust for removed tasks)
+      let targetIndex = newIndex;
+      linkedTaskIndices.forEach(removedIndex => {
+        if (removedIndex < newIndex) targetIndex--;
+      });
+      
+      // Insert all linked tasks at the target position
+      reorderedTasks.splice(targetIndex, 0, ...removedTasks);
+    } else {
+      // Normal reordering for non-linked tasks
+      reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
+    }
 
     // Apply intelligent reordering with smart date handling
     let tasksWithUpdatedOrder = reorderedTasks.map((task, index) => ({
@@ -429,25 +455,27 @@ export default function DraggableTaskList({
 
       linkedGroups.forEach((groupTasks, groupId) => {
         if (groupTasks.length > 1) {
-          // Sort by order to find the first task
+          // Sort by current position to maintain relative order within the group
           groupTasks.sort((a: any, b: any) => a.index - b.index);
           const primaryDate = groupTasks[0].task.taskDate;
           
-          // Sync all linked tasks to the same date
-          groupTasks.forEach(({ task, index }: any) => {
+          // Sync all linked tasks to the same date and maintain their dependency structure
+          groupTasks.forEach(({ task, index }: any, groupIndex) => {
             tasksWithUpdatedOrder[index].taskDate = primaryDate;
             
-            // Ensure proper dependency ordering within linked group:
-            // First task in group (by position) should be sequential if not at position 0
-            // Second task in group should be non-sequential (linked)
-            if (index === 0) {
-              // First task in entire list is never sequential
-              tasksWithUpdatedOrder[index].dependentOnPrevious = false;
-            } else if (groupTasks[0].index === index) {
-              // This is the first task in the linked group (but not first overall)
-              tasksWithUpdatedOrder[index].dependentOnPrevious = true;
+            // Maintain dependency structure within linked group:
+            // First task in linked group handles external dependencies
+            // Subsequent tasks in group are non-sequential (linked)
+            if (groupIndex === 0) {
+              // First task in linked group keeps its current dependency status
+              // (could be sequential to previous non-linked task or non-sequential if first overall)
+              if (index === 0) {
+                // First task in entire list is never sequential
+                tasksWithUpdatedOrder[index].dependentOnPrevious = false;
+              }
+              // else: keep existing dependency status for first task in group
             } else {
-              // This is the second+ task in the linked group - should be non-sequential
+              // Subsequent tasks in linked group are always non-sequential
               tasksWithUpdatedOrder[index].dependentOnPrevious = false;
             }
           });
