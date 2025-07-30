@@ -281,52 +281,76 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       console.log('Current task update:', currentTaskUpdate);
       console.log('Linked task update:', linkedTaskUpdate);
       
-      // Move linked task to be adjacent to current task by updating orders
+      // Determine positioning based on whose date was chosen
       const allTasks = [...(existingTasks as any[])];
       const currentTaskOrder = task.order || 0;
       const linkedTaskOrder = linkedTask.order || 0;
+      const usingCurrentTaskDate = chosenDate === task.taskDate;
       
-      // If tasks are not adjacent, move linked task to position right after current task
+      console.log('Positioning logic:', {
+        chosenDate,
+        currentTaskDate: task.taskDate,
+        linkedTaskDate: linkedTask.taskDate,
+        usingCurrentTaskDate,
+        currentTaskOrder,
+        linkedTaskOrder
+      });
+      
+      // If tasks are not adjacent, move one to be adjacent to the other
       if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
-        console.log('Moving linked task to be adjacent');
+        console.log('Tasks not adjacent, repositioning required');
         
-        // Move linked task to position right after current task
-        const newLinkedOrder = currentTaskOrder + 1;
+        let tasksToUpdate = [];
         
-        // Update orders for all tasks to make space
-        const tasksToUpdate = [];
-        
-        allTasks.forEach(t => {
-          if ((t.taskId || t.id) === (task.taskId || task.id)) {
-            // Current task keeps its order
-            tasksToUpdate.push(currentTaskUpdate);
-          } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
-            // Linked task moves to new position
-            tasksToUpdate.push({
-              ...linkedTaskUpdate,
-              order: newLinkedOrder
-            });
-          } else {
-            // Other tasks shift if needed
-            const originalOrder = t.order || 0;
-            if (originalOrder >= newLinkedOrder && originalOrder < linkedTaskOrder) {
-              // Shift tasks down to make space
+        if (usingCurrentTaskDate) {
+          // Using current task's date - move linked task to position right after current task
+          console.log('Moving linked task to current task position');
+          const newLinkedOrder = currentTaskOrder + 1;
+          
+          allTasks.forEach(t => {
+            if ((t.taskId || t.id) === (task.taskId || task.id)) {
+              tasksToUpdate.push(currentTaskUpdate);
+            } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
               tasksToUpdate.push({
-                ...t,
-                order: originalOrder + 1
-              });
-            } else if (originalOrder <= newLinkedOrder && originalOrder > linkedTaskOrder) {
-              // Shift tasks up to fill gap
-              tasksToUpdate.push({
-                ...t,
-                order: originalOrder - 1
+                ...linkedTaskUpdate,
+                order: newLinkedOrder
               });
             } else {
-              // No change needed
-              tasksToUpdate.push(t);
+              const originalOrder = t.order || 0;
+              if (originalOrder >= newLinkedOrder && originalOrder < linkedTaskOrder) {
+                tasksToUpdate.push({ ...t, order: originalOrder + 1 });
+              } else if (originalOrder <= newLinkedOrder && originalOrder > linkedTaskOrder) {
+                tasksToUpdate.push({ ...t, order: originalOrder - 1 });
+              } else {
+                tasksToUpdate.push(t);
+              }
             }
-          }
-        });
+          });
+        } else {
+          // Using linked task's date - move current task to position right before linked task
+          console.log('Moving current task to linked task position');
+          const newCurrentOrder = linkedTaskOrder - 1;
+          
+          allTasks.forEach(t => {
+            if ((t.taskId || t.id) === (task.taskId || task.id)) {
+              tasksToUpdate.push({
+                ...currentTaskUpdate,
+                order: newCurrentOrder
+              });
+            } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
+              tasksToUpdate.push(linkedTaskUpdate);
+            } else {
+              const originalOrder = t.order || 0;
+              if (originalOrder >= newCurrentOrder && originalOrder < currentTaskOrder) {
+                tasksToUpdate.push({ ...t, order: originalOrder + 1 });
+              } else if (originalOrder <= newCurrentOrder && originalOrder > currentTaskOrder) {
+                tasksToUpdate.push({ ...t, order: originalOrder - 1 });
+              } else {
+                tasksToUpdate.push(t);
+              }
+            }
+          });
+        }
         
         console.log('Batch updating tasks for linking and positioning');
         batchUpdateTasksMutation.mutate(tasksToUpdate);
