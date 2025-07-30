@@ -234,10 +234,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   const handleLinkDateChoice = (chosenDate: string) => {
     console.log('Link date choice made:', chosenDate);
-    if (!linkingOptions || !pendingFormData) {
-      console.log('Missing linkingOptions or pendingFormData');
+    if (!linkingOptions || !pendingFormData || showLinkDateDialog === false) {
+      console.log('Missing linkingOptions, pendingFormData, or dialog already closed');
       return;
     }
+    
+    // Prevent multiple clicks
+    setShowLinkDateDialog(false);
     
     // Update the form data with the chosen date and process
     const updatedData = {
@@ -247,13 +250,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     
     console.log('Processing link with chosen date:', chosenDate);
     
-    // Close dialog and process with chosen date
-    setShowLinkDateDialog(false);
+    // Clear state
+    const savedLinkingOptions = linkingOptions;
+    const savedFormData = pendingFormData;
     setLinkingOptions(null);
     setPendingFormData(null);
     
-    // Continue with the linking process using the chosen date
-    processFormSubmission(updatedData);
+    // Continue with the linking process using the chosen date - delay slightly to ensure dialog closes
+    setTimeout(() => {
+      processFormSubmission(updatedData);
+    }, 100);
   };
 
   const processFormSubmission = (data: any) => {
@@ -1368,9 +1374,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Date for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600 space-y-2">
-              <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
-              <div>Both tasks must have the same date. Which date should both tasks use?</div>
+            <AlertDialogDescription className="text-gray-600">
+              You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}". Both tasks must have the same date. Which date should both tasks use?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
@@ -1378,11 +1383,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleLinkDateChoice(linkingOptions?.currentTaskDate || '');
+                if (showLinkDateDialog) {
+                  handleLinkDateChoice(linkingOptions?.currentTaskDate || '');
+                }
               }}
               variant="outline"
               className="w-full"
               type="button"
+              disabled={!showLinkDateDialog}
             >
               <div className="text-center">
                 <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
@@ -1399,11 +1407,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleLinkDateChoice(linkingOptions?.targetTaskDate || '');
+                if (showLinkDateDialog) {
+                  handleLinkDateChoice(linkingOptions?.targetTaskDate || '');
+                }
               }}
               variant="outline"
               className="w-full"
               type="button"
+              disabled={!showLinkDateDialog}
             >
               <div className="text-center">
                 <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
@@ -1420,14 +1431,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                // Cancel linking
-                setShowLinkDateDialog(false);
-                setLinkingOptions(null);
-                setPendingFormData(null);
+                if (showLinkDateDialog) {
+                  // Cancel linking
+                  setShowLinkDateDialog(false);
+                  setLinkingOptions(null);
+                  setPendingFormData(null);
+                }
               }}
               variant="ghost"
               className="w-full"
               type="button"
+              disabled={!showLinkDateDialog}
             >
               Cancel
             </Button>
