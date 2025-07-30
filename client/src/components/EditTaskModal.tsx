@@ -1081,7 +1081,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             >
               <div className="text-center">
                 <div className="font-medium">Make Unsequential & Shift Others</div>
-                <div className="text-xs text-gray-300 mt-1">
+                <div className="text-xs mt-1 text-[#6b7280]">
                   Task becomes non-sequential, shift subsequent sequential tasks
                 </div>
               </div>
