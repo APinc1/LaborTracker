@@ -92,6 +92,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     return date.toISOString().split('T')[0];
   };
 
+  // Helper function to generate linked task group ID
+  const generateLinkedTaskGroupId = () => {
+    return `group_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
   // Helper function to get cost code date range based on actual tasks
   const getCostCodeDateRangeFromTasks = (costCode: string, existingTasks: any[]) => {
     // Find all tasks with this cost code (including the current task being edited)
@@ -234,32 +239,42 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   const handleLinkDateChoice = (chosenDate: string) => {
     console.log('Link date choice made:', chosenDate);
-    if (!linkingOptions || !pendingFormData || showLinkDateDialog === false) {
-      console.log('Missing linkingOptions, pendingFormData, or dialog already closed');
+    if (!linkingOptions || !pendingFormData) {
+      console.log('Missing linkingOptions or pendingFormData');
       return;
     }
     
-    // Prevent multiple clicks
+    // Immediately close the dialog and clear state to prevent reopening
     setShowLinkDateDialog(false);
-    
-    // Update the form data with the chosen date and process
-    const updatedData = {
-      ...pendingFormData,
-      taskDate: chosenDate
-    };
-    
-    console.log('Processing link with chosen date:', chosenDate);
-    
-    // Clear state
     const savedLinkingOptions = linkingOptions;
     const savedFormData = pendingFormData;
     setLinkingOptions(null);
     setPendingFormData(null);
     
-    // Continue with the linking process using the chosen date - delay slightly to ensure dialog closes
-    setTimeout(() => {
-      processFormSubmission(updatedData);
-    }, 100);
+    // Process the linking directly without going through processFormSubmission again
+    // This prevents the dialog from reopening
+    console.log('Processing link with chosen date:', chosenDate);
+    
+    const linkedTask = (existingTasks as any[]).find((t: any) => 
+      (t.taskId || t.id).toString() === savedFormData.linkedTaskId
+    );
+    
+    if (linkedTask) {
+      // Create new linked group or use existing one
+      const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
+      
+      const processedData = {
+        ...task,
+        ...savedFormData,
+        taskDate: chosenDate,
+        linkedTaskGroup: linkedTaskGroup
+      };
+      
+      console.log('Direct task update with linking:', processedData);
+      
+      // Update the task directly without cascading checks that might retrigger the dialog
+      updateTaskMutation.mutate(processedData);
+    }
   };
 
   const processFormSubmission = (data: any) => {
@@ -307,8 +322,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         (t.taskId || t.id).toString() === data.linkedTaskId
       );
       if (linkedTask) {
-        // Show date choice dialog if dates are different
-        if (task.taskDate !== linkedTask.taskDate) {
+        // Show date choice dialog if dates are different and dialog not already open
+        if (task.taskDate !== linkedTask.taskDate && !showLinkDateDialog) {
           setLinkingOptions({
             currentTask: task,
             targetTask: linkedTask,
