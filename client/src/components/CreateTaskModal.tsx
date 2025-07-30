@@ -459,7 +459,7 @@ export default function CreateTaskModal({
     }));
 
     // Create new task first, then update existing tasks if needed
-    // Only update tasks that have actually changed (date, linkedTaskGroup, or dependentOnPrevious)
+    // Update tasks that have changed (date, linkedTaskGroup, dependentOnPrevious, OR order)
     const tasksToUpdate = updatedTasks.filter(task => {
       const originalTask = (existingTasks as any[]).find((orig: any) => 
         (orig.taskId || orig.id) === (task.taskId || task.id)
@@ -467,7 +467,8 @@ export default function CreateTaskModal({
       return originalTask && (
         originalTask.taskDate !== task.taskDate ||
         originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-        originalTask.dependentOnPrevious !== task.dependentOnPrevious
+        originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+        originalTask.order !== task.order  // IMPORTANT: Include order changes
       );
     });
 
