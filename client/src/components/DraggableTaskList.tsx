@@ -212,22 +212,30 @@ export default function DraggableTaskList({
     })
   );
 
-  // Always sort tasks by date first, then by order as secondary
+  // Sort tasks by order first to maintain user-intended positioning, then by date as fallback
   const sortedTasks = [...tasks].sort((a, b) => {
-    const dateA = new Date(a.taskDate).getTime();
-    const dateB = new Date(b.taskDate).getTime();
-    
-    // If dates are different, sort by date
-    if (dateA !== dateB) {
-      return dateA - dateB;
-    }
-    
-    // If dates are same, sort by order
+    // If both tasks have order values, use order as primary sort
     if (a.order !== undefined && b.order !== undefined) {
       return a.order - b.order;
     }
     
-    // Fallback to ID comparison
+    // If only one has order, prioritize the one with order
+    if (a.order !== undefined && b.order === undefined) {
+      return -1;
+    }
+    if (a.order === undefined && b.order !== undefined) {
+      return 1;
+    }
+    
+    // If neither has order, sort by date as fallback
+    const dateA = new Date(a.taskDate).getTime();
+    const dateB = new Date(b.taskDate).getTime();
+    
+    if (dateA !== dateB) {
+      return dateA - dateB;
+    }
+    
+    // Final fallback to ID comparison
     return (a.taskId || a.id).localeCompare(b.taskId || b.id);
   });
 
