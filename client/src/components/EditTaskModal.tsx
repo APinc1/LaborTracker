@@ -635,34 +635,62 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const currentSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
           const linkedSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
           
-          // Move linked task to be adjacent to current task for better positioning
-          const currentTaskOrder = currentTask.order || 0;
-          const linkedTaskOrder = linkedTask.order || 0;
+          // CRITICAL: Always reposition linked tasks to be chronologically adjacent
+          console.log('Positioning logic:', {
+            chosenDate: processedData.taskDate,
+            currentTaskDate: currentTask.taskDate,
+            linkedTaskDate: linkedTask.taskDate,
+            usingCurrentTaskDate: processedData.taskDate === currentTask.taskDate,
+            currentTaskOrder: currentTask.order,
+            linkedTaskOrder: linkedTask.order
+          });
           
-          // If tasks are not adjacent, move linked task to be next to current task
-          if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
-            console.log('Moving linked task to be adjacent to current task');
+          // Determine which task's chronological position to use based on chosen date
+          const useCurrentTaskPosition = processedData.taskDate === currentTask.taskDate;
+          const targetOrder = useCurrentTaskPosition ? currentTask.order : linkedTask.order;
+          const targetDate = processedData.taskDate;
+          
+          console.log('Target position for linked group:', targetOrder, 'Target date:', targetDate);
+          
+          // If tasks are not adjacent, reposition them to be chronologically together
+          if (Math.abs((currentTask.order || 0) - (linkedTask.order || 0)) > 1) {
+            console.log('Tasks not adjacent, repositioning required');
             
-            // Move linked task to position right after current task
-            const newLinkedOrder = currentTaskOrder + 1;
-            
-            // Shift other tasks to make space
-            allUpdatedTasks.forEach((t, idx) => {
-              if (idx !== linkedTaskIndex && idx !== mainTaskIndex) {
-                if ((t.order || 0) >= newLinkedOrder) {
+            if (useCurrentTaskPosition) {
+              console.log('Moving linked task to current task position');
+              // Move linked task to be right after current task
+              const newLinkedOrder = (currentTask.order || 0) + 1;
+              
+              // Shift tasks to make space
+              allUpdatedTasks.forEach((t, idx) => {
+                if (idx !== linkedTaskIndex && idx !== mainTaskIndex && (t.order || 0) >= newLinkedOrder) {
                   t.order = (t.order || 0) + 1;
                 }
-              }
-            });
+              });
+              
+              allUpdatedTasks[linkedTaskIndex].order = newLinkedOrder;
+            } else {
+              console.log('Moving current task to linked task position');
+              // Move current task to be right before linked task
+              const newCurrentOrder = (linkedTask.order || 0) - 1;
+              
+              // Shift tasks to make space
+              allUpdatedTasks.forEach((t, idx) => {
+                if (idx !== linkedTaskIndex && idx !== mainTaskIndex && (t.order || 0) >= newCurrentOrder) {
+                  t.order = (t.order || 0) + 1;
+                }
+              });
+              
+              allUpdatedTasks[mainTaskIndex].order = newCurrentOrder;
+            }
             
-            // Update linked task order
-            allUpdatedTasks[linkedTaskIndex].order = newLinkedOrder;
-            
-            // Re-assign order values to ensure consistency
+            // Re-normalize all order values
             allUpdatedTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
             allUpdatedTasks.forEach((task, index) => {
               task.order = index;
             });
+            
+            console.log('Tasks repositioned for adjacency');
           }
           
           // First task chronologically should be sequential, second should not be
@@ -1045,12 +1073,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // CRITICAL: When linking changes, recalculate ALL sequential tasks chronologically after the linked group
           console.log('Handling linking change - recalculating all sequential tasks after the linked group');
           
-          // Sort all tasks by chronological order (date first, then order)
+          // Sort all tasks by order first (which reflects positioning), then by date for ties
           const chronologicalTasks = [...allUpdatedTasks].sort((a, b) => {
+            // Primary sort: order (positioning)
+            if ((a.order || 0) !== (b.order || 0)) {
+              return (a.order || 0) - (b.order || 0);
+            }
+            // Secondary sort: date for tasks with same order
             const dateA = new Date(a.taskDate).getTime();
             const dateB = new Date(b.taskDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-            return (a.order || 0) - (b.order || 0);
+            return dateA - dateB;
           });
           
           // Find the position of the current task (or its linked group) in chronological order
