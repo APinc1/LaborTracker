@@ -546,15 +546,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             return taskOrder > originalTaskOrder && (t.taskId || t.id) !== (task.taskId || task.id);
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
-          // Only shift sequential tasks until we hit the next unsequential task
+          // Only shift sequential tasks until we hit the next unsequential task (but continue past linked tasks)
           const subsequentTasks = [];
           for (const subsequentTask of allSubsequentTasks) {
             if (subsequentTask.dependentOnPrevious) {
               subsequentTasks.push(subsequentTask);
             } else {
-              // Stop when we hit an unsequential task - it acts as a "break point"
-              console.log('Stopping at unsequential task:', subsequentTask.name, 'order:', subsequentTask.order);
-              break;
+              // Check if this unsequential task is linked to a task that was already shifted
+              const isLinkedToShiftedTask = subsequentTasks.some(shiftedTask => 
+                shiftedTask.linkedTaskGroup && shiftedTask.linkedTaskGroup === subsequentTask.linkedTaskGroup
+              );
+              
+              if (isLinkedToShiftedTask) {
+                // Continue past this unsequential task since it's linked to a shifted task
+                console.log('Continuing past unsequential linked task:', subsequentTask.name, 'order:', subsequentTask.order);
+                continue;
+              } else {
+                // Stop when we hit an unsequential task that's not linked to shifted tasks
+                console.log('Stopping at unsequential task:', subsequentTask.name, 'order:', subsequentTask.order);
+                break;
+              }
             }
           }
           
@@ -591,14 +602,53 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 
                 // If this task is linked, update all tasks in its linked group 
                 if (subsequentTask.linkedTaskGroup) {
+                  const linkedGroupDate = newDate;
                   allUpdatedTasks = allUpdatedTasks.map(t => {
                     if (t.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
-                      console.log('Syncing linked task:', t.name, 'to:', newDate);
-                      return { ...t, taskDate: newDate };
+                      console.log('Syncing linked task:', t.name, 'to:', linkedGroupDate);
+                      return { ...t, taskDate: linkedGroupDate };
                     }
                     return t;
                   });
+                  // Update currentDate to the linked group date for subsequent calculations
+                  currentDate = linkedGroupDate;
+                } else {
+                  currentDate = newDate; // Update baseline for next task
                 }
+              }
+            });
+            
+            // After shifting all sequential tasks, continue shifting any remaining sequential tasks after linked groups
+            const remainingTasks = allSubsequentTasks.filter(t => {
+              const taskOrder = t.order || 0;
+              const lastShiftedOrder = subsequentTasks.length > 0 ? Math.max(...subsequentTasks.map(st => st.order || 0)) : originalTaskOrder;
+              return taskOrder > lastShiftedOrder && t.dependentOnPrevious;
+            });
+            
+            console.log('Found', remainingTasks.length, 'additional sequential tasks after linked groups');
+            
+            remainingTasks.forEach(remainingTask => {
+              // Calculate next working day from the current baseline
+              const baseDate = new Date(currentDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              const originalIndex = allUpdatedTasks.findIndex((t: any) => 
+                (t.taskId || t.id) === (remainingTask.taskId || remainingTask.id)
+              );
+              
+              if (originalIndex >= 0) {
+                console.log('Shifting remaining sequential task:', remainingTask.name, 'from:', remainingTask.taskDate, 'to:', newDate);
+                
+                allUpdatedTasks[originalIndex] = {
+                  ...allUpdatedTasks[originalIndex],
+                  taskDate: newDate
+                };
                 
                 currentDate = newDate; // Update baseline for next task
               }
