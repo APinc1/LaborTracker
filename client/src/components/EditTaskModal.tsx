@@ -432,6 +432,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   const processFormSubmission = (data: any) => {
+    // Declare variables at the top to avoid scope issues
+    let cascadingRequired = false;
+    let linkingChanged = false;
+    let dateChanged = false;
+    let dependencyChanged = false;
+    
     // Update cost code based on task type
     const TASK_TYPE_TO_COST_CODE = {
       "Traffic Control": "TRAFFIC",
@@ -468,7 +474,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     // For 'sequential', keep the existing dependency status
 
     // Handle linking changes
-    let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
+    linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
     if (data.linkToExistingTask && data.linkedTaskId) {
       // LINKING TO A TASK
@@ -609,6 +615,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
     // Check if changes require cascading updates
     dateChanged = data.taskDate !== task.taskDate;
+    dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
@@ -631,7 +638,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
           const currentTask = allUpdatedTasks[mainTaskIndex];
           
-          // Sort tasks chronologically to determine proper first/second task
+          // CRITICAL FIX: Determine sequential status based on chronological order
+          // Only the FIRST chronological task should be sequential
           const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
             const dateA = new Date(a.taskDate).getTime();
             const dateB = new Date(b.taskDate).getTime();
@@ -642,7 +650,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const currentSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
           const linkedSortedIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
           
-          // Move linked task to be adjacent to current task for better positioning
+          // ONLY the chronologically first task should be sequential
+          const currentIsFirst = currentSortedIndex < linkedSortedIndex;
+          const linkedIsFirst = linkedSortedIndex < currentSortedIndex;
+          
+          console.log('FIXING SEQUENTIAL STATUS: Current is first:', currentIsFirst, 'Linked is first:', linkedIsFirst);
+          
+          // Update sequential status - only first chronological task is sequential
+          allUpdatedTasks[mainTaskIndex] = {
+            ...allUpdatedTasks[mainTaskIndex],
+            dependentOnPrevious: currentIsFirst
+          };
+          
+          allUpdatedTasks[linkedTaskIndex] = {
+            ...allUpdatedTasks[linkedTaskIndex],
+            dependentOnPrevious: linkedIsFirst
+          };
+          
           const currentTaskOrder = currentTask.order || 0;
           const linkedTaskOrder = linkedTask.order || 0;
           
