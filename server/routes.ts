@@ -572,15 +572,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validated = insertTaskSchema.partial().parse(req.body);
       
-      // CRITICAL: Check if this is the first task and enforce unsequential status
+      // CRITICAL: Only enforce first task rule in specific scenarios to avoid interfering with drag operations
       const currentTask = await storage.getTask(parseInt(req.params.id));
-      if (currentTask) {
+      if (currentTask && validated.dependentOnPrevious === true) {
         const allTasks = await storage.getTasks(currentTask.locationId);
         const sortedTasks = allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
         const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
         
-        if (isFirstTask && validated.dependentOnPrevious === true) {
-          console.log('ENFORCING FIRST TASK RULE for task update:', currentTask.name);
+        // Only enforce if this is clearly a direct edit attempt (not a drag operation)
+        if (isFirstTask && !req.body.order) {
+          console.log('ENFORCING FIRST TASK RULE for direct task edit:', currentTask.name);
           validated.dependentOnPrevious = false;
         }
       }
