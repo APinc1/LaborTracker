@@ -271,26 +271,37 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Apply linking rules for sequential status
       let finalCurrentSequential, finalLinkedSequential;
       
-      if (!currentIsSequential || !linkedIsSequential) {
-        // Rule 1: If one task is unsequential, both become unsequential
-        console.log('One task is unsequential - making both unsequential');
+      // Determine which task's date was chosen
+      const choseCurrentTaskDate = chosenDate === task.taskDate;
+      const choseLinkedTaskDate = chosenDate === linkedTask.taskDate;
+      
+      if (!currentIsSequential && !linkedIsSequential) {
+        // Both already unsequential - keep unsequential
+        console.log('Both tasks already unsequential - keeping both unsequential');
         finalCurrentSequential = false;
         finalLinkedSequential = false;
-      } else if (chosenDate === linkedTask.taskDate && !linkedIsSequential) {
-        // Rule 4: Choosing later date of unsequential task makes both unsequential
-        console.log('Chose date of unsequential task - making both unsequential');
+      } else if (currentIsSequential && !linkedIsSequential && choseLinkedTaskDate) {
+        // Sequential + Unsequential, chose unsequential date - both become unsequential
+        console.log('Chose unsequential task date - making both unsequential');
         finalCurrentSequential = false;
         finalLinkedSequential = false;
-      } else if (areAdjacent) {
-        // Rule 2 & 3: For adjacent tasks, only the earlier task stays sequential
+      } else if (!currentIsSequential && linkedIsSequential && choseCurrentTaskDate) {
+        // Unsequential + Sequential, chose unsequential date - both become unsequential
+        console.log('Chose unsequential task date - making both unsequential');
+        finalCurrentSequential = false;
+        finalLinkedSequential = false;
+      } else if (areAdjacent && currentIsSequential && linkedIsSequential) {
+        // Adjacent sequential tasks - only the earlier task stays sequential
         const currentOrder = task.order || 0;
         const linkedOrder = linkedTask.order || 0;
         finalCurrentSequential = currentOrder < linkedOrder;
         finalLinkedSequential = linkedOrder < currentOrder;
+        console.log('Adjacent sequential tasks - earlier task stays sequential');
       } else {
-        // Default: keep original sequential status for non-adjacent tasks
+        // Default: keep original sequential status
         finalCurrentSequential = currentIsSequential;
         finalLinkedSequential = linkedIsSequential;
+        console.log('Keeping original sequential status');
       }
       
       // Prepare both tasks for update
@@ -526,6 +537,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Mark that we need to unlink the partner task too
       linkingChanged = true;
+    } else if (task.linkedTaskGroup && dependencyChanged) {
+      // LINKED TASK SEQUENTIAL STATUS CHANGE - sync with partner task
+      console.log('Linked task sequential status changed - syncing partner');
+      linkingChanged = true; // Use this flag to trigger partner update
     }
 
     // Handle actualHours based on status
@@ -668,6 +683,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       }
 
+      // Handle linked task sequential status sync
+      if (task.linkedTaskGroup && linkingChanged && data.linkToExistingTask !== false) {
+        console.log('Syncing linked task sequential status');
+        
+        // Find partner task and sync sequential status
+        const partnerTaskIndex = allUpdatedTasks.findIndex(t => 
+          t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+        );
+        
+        if (partnerTaskIndex >= 0) {
+          const newSequentialStatus = processedData.dependentOnPrevious;
+          console.log('Updating partner task sequential status to:', newSequentialStatus);
+          
+          allUpdatedTasks[partnerTaskIndex] = {
+            ...allUpdatedTasks[partnerTaskIndex],
+            dependentOnPrevious: newSequentialStatus
+          };
+        }
+      }
+
       // Handle unlinking - unlink the partner task and trigger sequential cascading
       if (!data.linkToExistingTask && task.linkedTaskGroup && linkingChanged) {
         // Find and unlink the partner task
@@ -675,13 +710,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
         );
         
+        // Determine if either task was sequential
+        const eitherWasSequential = task.dependentOnPrevious || (partnerTask && partnerTask.dependentOnPrevious);
+        
         allUpdatedTasks = allUpdatedTasks.map(t => 
           t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
-            ? { ...t, linkedTaskGroup: null, dependentOnPrevious: true } // Make partner sequential by default
+            ? { ...t, linkedTaskGroup: null, dependentOnPrevious: eitherWasSequential } // Both become sequential if either was
             : t
         );
         
-        console.log('Unlinked partner task from group:', task.linkedTaskGroup);
+        console.log('Unlinked partner task from group:', task.linkedTaskGroup, 'both become sequential:', eitherWasSequential);
         
         // If the partner task becomes sequential, recalculate its date and trigger cascading
         if (partnerTask) {
@@ -1570,12 +1608,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               <div>Both tasks must have the same date. Which date should both tasks use?</div>
               {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
                 <div className="text-sm text-gray-500 mt-2">
-                  {!linkingOptions.currentIsSequential || !linkingOptions.linkedIsSequential ? (
-                    <div className="font-medium text-orange-600">Since one task is unsequential, both linked tasks will become unsequential.</div>
+                  {linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
+                    <div>
+                      <div>Current task is <span className="font-medium text-blue-600">sequential</span>, target is <span className="font-medium text-orange-600">unsequential</span>.</div>
+                      <div className="mt-1">Choosing <span className="font-medium text-orange-600">unsequential task's date</span> will make both unsequential.</div>
+                    </div>
+                  ) : !linkingOptions.currentIsSequential && linkingOptions.linkedIsSequential ? (
+                    <div>
+                      <div>Current task is <span className="font-medium text-orange-600">unsequential</span>, target is <span className="font-medium text-blue-600">sequential</span>.</div>
+                      <div className="mt-1">Choosing <span className="font-medium text-orange-600">unsequential task's date</span> will make both unsequential.</div>
+                    </div>
+                  ) : !linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
+                    <div className="font-medium text-orange-600">Both tasks are unsequential and will remain unsequential.</div>
                   ) : linkingOptions.areAdjacent ? (
-                    <div>Adjacent sequential tasks: Only the earlier task will remain sequential.</div>
+                    <div>Adjacent sequential tasks: Will use earlier date automatically, only earlier task stays sequential.</div>
                   ) : (
-                    <div>Both tasks will keep their current sequential status.</div>
+                    <div>Both sequential tasks will keep their sequential status.</div>
                   )}
                 </div>
               )}
