@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { reorderTasksWithDependencies } from '@shared/taskUtils';
+import { reorderTasksWithDependencies, realignDependentTasks } from '@shared/taskUtils';
 
 interface DraggableTaskListProps {
   tasks: any[];
@@ -596,10 +596,19 @@ export default function DraggableTaskList({
       }
     }
 
-    console.log('Reordered tasks with smart dependency updates:', tasksWithUpdatedOrder);
+    console.log('Before realignDependentTasks:', tasksWithUpdatedOrder.map(t => ({ 
+      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious 
+    })));
+
+    // CRITICAL: Apply sequential date logic to ensure proper date alignment
+    const finalOrderedTasks = realignDependentTasks(tasksWithUpdatedOrder);
+    
+    console.log('After realignDependentTasks:', finalOrderedTasks.map(t => ({ 
+      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious 
+    })));
 
     // Batch update all affected tasks
-    batchUpdateTasksMutation.mutate(tasksWithUpdatedOrder);
+    batchUpdateTasksMutation.mutate(finalOrderedTasks);
   };
 
   if (!tasks || tasks.length === 0) {
