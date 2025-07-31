@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -105,6 +106,15 @@ export default function CreateTaskModal({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [hasManuallyEditedName, setHasManuallyEditedName] = useState(false);
+  
+  // Date selection dialog states
+  const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
+  const [linkingOptions, setLinkingOptions] = useState<{
+    currentTask: any;
+    targetTasks: any[];
+    availableDates: { date: string; taskName: string }[];
+  } | null>(null);
+  const [pendingFormData, setPendingFormData] = useState<any>(null);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -176,6 +186,90 @@ export default function CreateTaskModal({
     },
   });
 
+  // Handle date choice from dialog
+  const handleDateChoice = (chosenDate: string) => {
+    console.log('Link date choice made:', chosenDate);
+    setShowLinkDateDialog(false);
+    
+    if (pendingFormData && linkingOptions) {
+      // Process the linking with the chosen date
+      console.log('Processing link with chosen date:', chosenDate);
+      processTaskCreationWithDate(pendingFormData, chosenDate);
+    }
+    
+    setLinkingOptions(null);
+    setPendingFormData(null);
+  };
+
+  // Process task creation with chosen date for linking
+  const processTaskCreationWithDate = (data: any, chosenDate: string) => {
+    const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
+    const sortedTasks = [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    
+    // Process with the chosen date - use same logic as EditTaskModal
+    const linkedTasks = (existingTasks as any[]).filter((task: any) => 
+      data.linkedTaskIds.includes((task.taskId || task.id).toString())
+    );
+    
+    const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+    
+    const newTask = {
+      locationId: selectedLocation,
+      projectId: selectedProject,
+      name: data.name,
+      taskType: data.taskType,
+      costCode,
+      taskDate: chosenDate,
+      startDate: chosenDate,
+      finishDate: chosenDate,
+      startTime: data.startTime || null,
+      finishTime: data.finishTime || null,
+      workDescription: data.workDescription || '',
+      notes: data.notes || '',
+      dependentOnPrevious: false, // New linked task is non-sequential
+      linkedTaskGroup,
+      order: 0 // Will be set correctly below
+    };
+
+    // Update all linked tasks to have the same group and chosen date
+    const updatedTasks = linkedTasks.map(task => ({
+      ...task,
+      linkedTaskGroup,
+      taskDate: chosenDate
+    }));
+    
+    // Add the new task to the updates
+    updatedTasks.push(newTask);
+    
+    // Set orders and handle sequential dependencies
+    const allTasks = [...sortedTasks, newTask];
+    allTasks.sort((a, b) => {
+      const dateA = new Date(a.taskDate).getTime();
+      const dateB = new Date(b.taskDate).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.order || 0) - (b.order || 0);
+    });
+    
+    // Assign new orders
+    allTasks.forEach((task, index) => {
+      task.order = index;
+    });
+    
+    // Find tasks that need updates
+    const tasksToUpdate = allTasks.filter(task => {
+      const original = sortedTasks.find(t => (t.taskId || t.id) === (task.taskId || task.id));
+      return !original || 
+             original.order !== task.order ||
+             original.linkedTaskGroup !== task.linkedTaskGroup ||
+             original.taskDate !== task.taskDate;
+    }).filter(task => task !== newTask); // Exclude the new task
+    
+    createTaskMutation.mutate({
+      newTask,
+      updatedTasks: tasksToUpdate
+    });
+  };
+
   const onSubmit = (data: any) => {
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
@@ -223,11 +317,40 @@ export default function CreateTaskModal({
     }
     // Handle different task creation modes
     else if (data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0) {
-      // LINKED TASK MODE: Use same date as linked tasks - use first selected task's date
-      const firstLinkedTask = (existingTasks as any[]).find((task: any) => 
-        (task.taskId || task.id).toString() === data.linkedTaskIds[0]
+      // LINKED TASK MODE: Check for multiple dates and show dialog if needed
+      const linkedTasks = (existingTasks as any[]).filter((task: any) => 
+        data.linkedTaskIds.includes((task.taskId || task.id).toString())
       );
-      if (firstLinkedTask) {
+      
+      if (linkedTasks.length > 0) {
+        // Collect all available dates from selected tasks
+        const availableDates = linkedTasks.map(t => ({
+          date: t.taskDate,
+          taskName: t.name
+        }));
+        
+        // Remove duplicates by date
+        const uniqueDates = availableDates.filter((item, index, self) => 
+          self.findIndex(d => d.date === item.date) === index
+        );
+        
+        if (uniqueDates.length > 1) {
+          // Show date choice dialog for multiple dates
+          console.log('Multiple dates available - showing date choice dialog');
+          setLinkingOptions({
+            currentTask: { name: data.name, taskDate: data.taskDate },
+            targetTasks: linkedTasks,
+            availableDates: uniqueDates
+          });
+          setShowLinkDateDialog(true);
+          setPendingFormData(data);
+          return;
+        }
+        
+        // All tasks have same date or only one unique date - proceed directly
+        console.log('All tasks have same date - linking directly');
+        const firstLinkedTask = linkedTasks[0];
+        
         // Check if any selected tasks already have a linked group, or create new one
         const existingGroup = data.linkedTaskIds.map((id: string) => {
           const task = (existingTasks as any[]).find((t: any) => (t.taskId || t.id).toString() === id);
@@ -903,6 +1026,37 @@ export default function CreateTaskModal({
           </form>
         </Form>
       </DialogContent>
+      
+      {/* Date Selection Dialog for Linking */}
+      <AlertDialog open={showLinkDateDialog} onOpenChange={setShowLinkDateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Choose Date for Linked Tasks</AlertDialogTitle>
+            <AlertDialogDescription>
+              The selected tasks have different dates. Which date should all linked tasks use?
+              <ul className="mt-2 space-y-1">
+                {linkingOptions?.availableDates.map((dateOption, index) => (
+                  <li key={index} className="text-sm">
+                    <strong>{dateOption.date}</strong> - {dateOption.taskName}
+                  </li>
+                ))}
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col gap-2">
+            {linkingOptions?.availableDates.map((dateOption, index) => (
+              <AlertDialogAction
+                key={index}
+                onClick={() => handleDateChoice(dateOption.date)}
+                className="w-full"
+              >
+                Use {dateOption.date}
+              </AlertDialogAction>
+            ))}
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
