@@ -463,6 +463,36 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           task.order = index;
         });
         
+        // After repositioning, fix sequential status for linked groups based on final order
+        console.log('Fixing sequential status for linked groups after repositioning');
+        const linkedGroupTaskIds = [
+          currentTaskUpdate.taskId || currentTaskUpdate.id,
+          linkedTaskUpdate.taskId || linkedTaskUpdate.id
+        ];
+        
+        // Find the linked tasks in the final sorted order
+        const linkedTasksInOrder = tasksToUpdate.filter(t => 
+          linkedGroupTaskIds.includes(t.taskId || t.id)
+        ).sort((a, b) => a.order - b.order);
+        
+        if (linkedTasksInOrder.length === 2) {
+          const firstTask = linkedTasksInOrder[0];
+          const secondTask = linkedTasksInOrder[1];
+          
+          // First task in final order should be sequential (if linking sequential tasks)
+          // Second task should only be linked
+          const shouldFirstBeSequential = finalCurrentSequential || finalLinkedSequential;
+          firstTask.dependentOnPrevious = shouldFirstBeSequential;
+          secondTask.dependentOnPrevious = false;
+          
+          console.log('Applied final sequential status:', {
+            firstTask: firstTask.name,
+            firstSequential: firstTask.dependentOnPrevious,
+            secondTask: secondTask.name,
+            secondSequential: secondTask.dependentOnPrevious
+          });
+        }
+        
         // After repositioning, recalculate sequential task dates
         console.log('Recalculating sequential task dates after repositioning');
         let processedLinkedGroups = new Set();
