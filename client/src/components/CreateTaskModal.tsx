@@ -506,9 +506,16 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // Calculate next date after last task
-          const lastTask = sortedTasks[sortedTasks.length - 1];
-          const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
+          // Find the chronologically last task to determine the next date
+          const chronologicalTasks = [...sortedTasks].sort((a, b) => {
+            const dateA = new Date(a.taskDate).getTime();
+            const dateB = new Date(b.taskDate).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            return (a.order || 0) - (b.order || 0);
+          });
+          
+          const lastChronologicalTask = chronologicalTasks[chronologicalTasks.length - 1];
+          const lastDate = new Date(lastChronologicalTask.taskDate + 'T00:00:00');
           const nextDate = new Date(lastDate);
           nextDate.setDate(nextDate.getDate() + 1);
           // Skip weekends
@@ -516,6 +523,7 @@ export default function CreateTaskModal({
             nextDate.setDate(nextDate.getDate() + 1);
           }
           taskDate = nextDate.toISOString().split('T')[0];
+          console.log('Sequential task at end - following chronologically last task:', lastChronologicalTask.name, lastChronologicalTask.taskDate, '-> new date:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
