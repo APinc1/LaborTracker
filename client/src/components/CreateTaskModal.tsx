@@ -338,6 +338,22 @@ export default function CreateTaskModal({
     createTaskMutation.mutate({
       newTask,
       updatedTasks: finalTasksToUpdate
+    }, {
+      onSuccess: async () => {
+        // After successful linking, recalculate all sequential dates
+        try {
+          const response = await fetch(`/api/locations/${location.id}/tasks/recalculate-dates`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (response.ok) {
+            // Refresh the task list to show updated dates
+            queryClient.invalidateQueries({ queryKey: ['/api/locations', location.id, 'tasks'] });
+          }
+        } catch (error) {
+          console.error('Failed to recalculate sequential dates:', error);
+        }
+      }
     });
   };
 
