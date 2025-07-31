@@ -503,7 +503,7 @@ export default function DraggableTaskList({
           const primaryDate = groupTasks[0].task.taskDate;
           
           // Sync all linked tasks to the same date and maintain their dependency structure
-          groupTasks.forEach(({ task, index }: any, groupIndex) => {
+          groupTasks.forEach(({ task, index }: any, groupIndex: number) => {
             tasksWithUpdatedOrder[index].taskDate = primaryDate;
             
             // Maintain dependency structure within linked group:

@@ -154,23 +154,61 @@ export function reorderTasksWithDependencies(
  * Re-align dependent tasks to follow previous task by one weekday
  */
 export function realignDependentTasks(tasks: any[]): any[] {
+  console.log('🔄 REALIGN DEPENDENT TASKS: Starting sequential date realignment');
+  console.log('Input tasks:', tasks.map(t => ({ 
+    name: t.name, 
+    date: t.taskDate, 
+    order: t.order, 
+    sequential: t.dependentOnPrevious,
+    linked: !!t.linkedTaskGroup 
+  })));
+  
   const updatedTasks = [...tasks];
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
     const previousTask = updatedTasks[i - 1];
     
+    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
+    
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
       const previousDate = parseDateString(previousTask.taskDate);
       const nextWeekday = getNextWeekday(previousDate);
+      const newDateString = formatDateToString(nextWeekday);
+      
+      console.log(`✅ SEQUENTIAL UPDATE: "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${previousTask.name}" on ${previousTask.taskDate})`);
       
       updatedTasks[i] = {
         ...currentTask,
-        taskDate: formatDateToString(nextWeekday)
+        taskDate: newDateString
       };
+      
+      // If this task is part of a linked group, update all tasks in the group
+      if (currentTask.linkedTaskGroup) {
+        console.log(`🔗 Updating linked group ${currentTask.linkedTaskGroup} to date ${newDateString}`);
+        for (let j = 0; j < updatedTasks.length; j++) {
+          if (updatedTasks[j].linkedTaskGroup === currentTask.linkedTaskGroup) {
+            console.log(`  └─ Linked task "${updatedTasks[j].name}" ${updatedTasks[j].taskDate} → ${newDateString}`);
+            updatedTasks[j] = {
+              ...updatedTasks[j],
+              taskDate: newDateString
+            };
+          }
+        }
+      }
+    } else {
+      console.log(`⏭️  Skipping non-sequential task: "${currentTask.name}"`);
     }
   }
+  
+  console.log('Output tasks:', updatedTasks.map(t => ({ 
+    name: t.name, 
+    date: t.taskDate, 
+    order: t.order, 
+    sequential: t.dependentOnPrevious,
+    linked: !!t.linkedTaskGroup 
+  })));
   
   return updatedTasks;
 }
