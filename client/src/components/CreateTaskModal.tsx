@@ -251,52 +251,75 @@ export default function CreateTaskModal({
       (lt.taskId || lt.id) === (t.taskId || t.id)
     )), ...tasksToUpdate, newTask];
     
-    // Separate linked and non-linked tasks
-    const linkedTasksFromGroup = allTasks.filter(t => t.linkedTaskGroup === linkedTaskGroup);
-    const nonLinkedTasks = allTasks.filter(t => t.linkedTaskGroup !== linkedTaskGroup);
+    // Group all tasks by linked group or individual tasks
+    const taskGroups = new Map();
+    const ungroupedTasks = [];
     
-    // Sort non-linked tasks by date
-    nonLinkedTasks.sort((a, b) => {
-      const dateA = new Date(a.taskDate).getTime();
-      const dateB = new Date(b.taskDate).getTime();
-      if (dateA !== dateB) return dateA - dateB;
-      return (a.order || 0) - (b.order || 0);
+    allTasks.forEach(task => {
+      if (task.linkedTaskGroup) {
+        if (!taskGroups.has(task.linkedTaskGroup)) {
+          taskGroups.set(task.linkedTaskGroup, []);
+        }
+        taskGroups.get(task.linkedTaskGroup).push(task);
+      } else {
+        ungroupedTasks.push(task);
+      }
     });
     
-    // Find where to insert the linked group chronologically
-    const linkedGroupDate = new Date(chosenDate).getTime();
-    let insertIndex = 0;
-    for (let i = 0; i < nonLinkedTasks.length; i++) {
-      const taskDate = new Date(nonLinkedTasks[i].taskDate).getTime();
-      if (taskDate < linkedGroupDate) {
-        insertIndex = i + 1;
-      } else {
-        break;
-      }
-    }
+    // Create array of task groups (each group has a date and tasks)
+    const groups = [];
     
-    // Reassemble tasks: non-linked before + linked group + non-linked after
-    const orderedTasks = [
-      ...nonLinkedTasks.slice(0, insertIndex),
-      ...linkedTasksFromGroup,
-      ...nonLinkedTasks.slice(insertIndex)
-    ];
+    // Add ungrouped tasks as individual groups
+    ungroupedTasks.forEach(task => {
+      groups.push({
+        date: new Date(task.taskDate).getTime(),
+        tasks: [task],
+        isLinkedGroup: false
+      });
+    });
+    
+    // Add linked groups
+    taskGroups.forEach((tasks, groupId) => {
+      groups.push({
+        date: new Date(tasks[0].taskDate).getTime(), // All tasks in group have same date
+        tasks: tasks,
+        isLinkedGroup: true
+      });
+    });
+    
+    // Sort groups by date
+    groups.sort((a, b) => a.date - b.date);
+    
+    // Flatten groups back to ordered task list
+    const orderedTasks = [];
+    groups.forEach(group => {
+      orderedTasks.push(...group.tasks);
+    });
     
     // Reassign orders and apply sequential logic
     orderedTasks.forEach((task, index) => {
       task.order = index;
-      
-      // Apply sequential logic: first task in linked group should be sequential if it has a predecessor
-      if (task.linkedTaskGroup === linkedTaskGroup) {
-        if (index === 0) {
-          // First task overall - must be non-sequential
-          task.dependentOnPrevious = false;
-        } else if (linkedTasksFromGroup.indexOf(task) === 0) {
-          // First task in linked group - make sequential if it has a predecessor
-          task.dependentOnPrevious = true;
+    });
+    
+    // Apply sequential logic group by group
+    groups.forEach((group, groupIndex) => {
+      if (group.isLinkedGroup) {
+        // For linked groups, only the first task should be sequential (if not overall first)
+        group.tasks.forEach((task, taskIndex) => {
+          if (taskIndex === 0 && groupIndex > 0) {
+            // First task in linked group with predecessor groups
+            task.dependentOnPrevious = true;
+          } else {
+            // All other tasks in linked group are non-sequential
+            task.dependentOnPrevious = false;
+          }
+        });
+      } else {
+        // For individual tasks, make sequential if not first overall
+        if (groupIndex > 0) {
+          group.tasks[0].dependentOnPrevious = true;
         } else {
-          // Other tasks in linked group - non-sequential
-          task.dependentOnPrevious = false;
+          group.tasks[0].dependentOnPrevious = false;
         }
       }
     });
