@@ -254,45 +254,56 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         return;
       }
       
-      // Refetch the latest tasks first
-      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${currentLocationId}/tasks`] });
+      // Direct API fetch to get the absolute latest tasks after linking
+      console.log('🔄 FETCHING LATEST TASKS for sequential realignment');
       
-      // Get the refreshed tasks
-      const refreshedTasksData = queryClient.getQueryData([`/api/locations/${currentLocationId}/tasks`]);
-      
-      if (refreshedTasksData && Array.isArray(refreshedTasksData)) {
-        console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
+      try {
+        const response = await apiRequest(`/api/locations/${currentLocationId}/tasks`);
+        const freshTasksData = await response.json();
         
-        // Import the realignment function
-        const { realignDependentTasks } = await import('../../../shared/taskUtils');
+        console.log('📊 FRESH TASKS FETCHED:', Array.isArray(freshTasksData) ? freshTasksData.length : 0, 'tasks');
         
-        // Apply sequential realignment to the refreshed tasks
-        const realignedTasks = realignDependentTasks(refreshedTasksData);
-        
-        // Check if any tasks need additional updates due to sequential realignment
-        const additionalUpdates = realignedTasks.filter((realignedTask, index) => {
-          const originalTask = refreshedTasksData[index];
-          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
-        });
-        
-        if (additionalUpdates.length > 0) {
-          console.log('📝 ADDITIONAL UPDATES needed after sequential realignment:', additionalUpdates.length, 'tasks');
+        if (freshTasksData && Array.isArray(freshTasksData)) {
+          console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
           
-          // Perform additional updates for tasks that need date changes
-          const additionalPromises = additionalUpdates.map(taskData => 
-            apiRequest(`/api/tasks/${taskData.id}`, {
-              method: 'PUT',
-              body: JSON.stringify(taskData),
-              headers: { 'Content-Type': 'application/json' }
-            })
-          );
+          // Import the realignment function
+          const { realignDependentTasks } = await import('../../../shared/taskUtils');
           
-          await Promise.all(additionalPromises);
-          console.log('✅ SEQUENTIAL REALIGNMENT COMPLETE: All dependent tasks updated');
+          // Apply sequential realignment to the fresh tasks
+          const realignedTasks = realignDependentTasks(freshTasksData);
+          
+          // Check if any tasks need additional updates due to sequential realignment
+          const additionalUpdates = realignedTasks.filter((realignedTask, index) => {
+            const originalTask = freshTasksData[index];
+            return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+          });
+          
+          if (additionalUpdates.length > 0) {
+            console.log('📝 ADDITIONAL UPDATES needed after sequential realignment:', additionalUpdates.length, 'tasks');
+            
+            // Perform additional updates for tasks that need date changes
+            const additionalPromises = additionalUpdates.map(taskData => 
+              apiRequest(`/api/tasks/${taskData.id}`, {
+                method: 'PUT',
+                body: JSON.stringify(taskData),
+                headers: { 'Content-Type': 'application/json' }
+              })
+            );
+            
+            await Promise.all(additionalPromises);
+            console.log('✅ SEQUENTIAL REALIGNMENT COMPLETE: All dependent tasks updated');
+          } else {
+            console.log('✅ NO ADDITIONAL UPDATES needed after sequential realignment');
+          }
         } else {
-          console.log('✅ NO ADDITIONAL UPDATES needed after sequential realignment');
+          console.log('❌ NO FRESH TASKS DATA available for sequential realignment');
         }
+      } catch (error) {
+        console.error('❌ ERROR during sequential realignment:', error);
       }
+      
+      // Always invalidate cache and update
+      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${currentLocationId}/tasks`] });
       
       // Final refetch to get the updated state
       onTaskUpdate();
