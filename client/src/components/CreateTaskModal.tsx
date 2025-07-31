@@ -237,12 +237,13 @@ export default function CreateTaskModal({
       order: 0 // Will be set correctly below
     };
 
-    // Update ALL linked tasks to have the exact same date and group
+    // Update all linked tasks to have the same group, chosen date, and proper sequential status
+    // Update all tasks to have the same group and chosen date
     const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
-      taskDate: chosenDate, // CRITICAL: ALL linked tasks MUST have identical dates
-      dependentOnPrevious: false // Linked tasks are not sequential
+      taskDate: chosenDate,
+      dependentOnPrevious: false // Initially set all to non-sequential
     }));
     
     // Create complete task list with ALL tasks (existing + new)
@@ -263,53 +264,29 @@ export default function CreateTaskModal({
       task.order = index;
     });
     
-    // Apply sequential logic and date shifting
+    // Apply sequential logic: first task chronologically should be sequential if it has a predecessor
+    let previousTaskIndex = -1;
     for (let i = 0; i < allTasks.length; i++) {
       const currentTask = allTasks[i];
       
       if (currentTask.linkedTaskGroup === linkedTaskGroup) {
         // This is our linked group - make first one sequential if it has a predecessor
-        if (i > 0) {
+        if (previousTaskIndex >= 0) {
           currentTask.dependentOnPrevious = true;
           console.log('Making linked task sequential:', currentTask.name, 'Position:', i);
         } else {
           currentTask.dependentOnPrevious = false;
           console.log('First task overall - keeping non-sequential:', currentTask.name);
         }
-        
         // All other tasks in this linked group should be non-sequential
         for (let j = i + 1; j < allTasks.length; j++) {
           if (allTasks[j].linkedTaskGroup === linkedTaskGroup) {
             allTasks[j].dependentOnPrevious = false;
           }
         }
-        
-        // Now shift any sequential tasks that come after this linked group
-        const linkedGroupEndIndex = allTasks.findLastIndex(t => t.linkedTaskGroup === linkedTaskGroup);
-        let currentDate = chosenDate; // Use the chosen date as baseline
-        
-        for (let k = linkedGroupEndIndex + 1; k < allTasks.length; k++) {
-          const subsequentTask = allTasks[k];
-          if (subsequentTask.dependentOnPrevious) {
-            // Calculate next working day
-            const baseDate = new Date(currentDate + 'T00:00:00');
-            const nextDate = new Date(baseDate);
-            nextDate.setDate(nextDate.getDate() + 1);
-            // Skip weekends
-            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-              nextDate.setDate(nextDate.getDate() + 1);
-            }
-            const newDate = nextDate.toISOString().split('T')[0];
-            
-            console.log('Shifting sequential task after linked group:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
-            subsequentTask.taskDate = newDate;
-            currentDate = newDate;
-          } else {
-            // Non-sequential task - update baseline but don't change its date
-            currentDate = subsequentTask.taskDate;
-          }
-        }
         break; // We've handled the linked group
+      } else {
+        previousTaskIndex = i;
       }
     }
     
@@ -337,26 +314,6 @@ export default function CreateTaskModal({
     createTaskMutation.mutate({
       newTask,
       updatedTasks: finalTasksToUpdate
-    }, {
-      onSuccess: async () => {
-        // After successful linking, recalculate all sequential dates
-        try {
-          console.log('Location object for API call:', location);
-          const locationIdForApi = location?.locationId || location?.id || selectedLocation;
-          console.log('Using locationId for API:', locationIdForApi);
-          const response = await fetch(`/api/locations/${locationIdForApi}/tasks/recalculate-dates`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          if (response.ok) {
-            // Refresh the task list to show updated dates
-            const locationIdForQuery = location?.locationId || location?.id || selectedLocation;
-            queryClient.invalidateQueries({ queryKey: ['/api/locations', locationIdForQuery, 'tasks'] });
-          }
-        } catch (error) {
-          console.error('Failed to recalculate sequential dates:', error);
-        }
-      }
     });
   };
 
@@ -525,21 +482,16 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // For sequential tasks at the end, follow the chronologically LAST task date 
-          // (regardless of order) and add 1 business day
-          const allTaskDates = sortedTasks.map(t => new Date(t.taskDate)).sort((a, b) => a.getTime() - b.getTime());
-          const latestDate = allTaskDates[allTaskDates.length - 1];
-          
-          const nextDate = new Date(latestDate);
+          // Calculate next date after last task
+          const lastTask = sortedTasks[sortedTasks.length - 1];
+          const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
+          const nextDate = new Date(lastDate);
           nextDate.setDate(nextDate.getDate() + 1);
           // Skip weekends
           while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
             nextDate.setDate(nextDate.getDate() + 1);
           }
           taskDate = nextDate.toISOString().split('T')[0];
-          
-          const latestTask = sortedTasks.find(t => new Date(t.taskDate).getTime() === latestDate.getTime());
-          console.log('Sequential task following chronologically latest task:', latestTask?.name, latestDate.toISOString().split('T')[0], '-> new date:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }

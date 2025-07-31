@@ -526,119 +526,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const { newTask, updatedTasks } = req.body;
+      const validated = insertTaskSchema.parse({
+        ...req.body,
+        locationId: req.params.locationId
+      });
       
-      if (newTask && updatedTasks) {
-        // Handle bulk task creation with updates (from CreateTaskModal linking)
-        const validatedNewTask = insertTaskSchema.parse({
-          ...newTask,
-          locationId: req.params.locationId
-        });
-        
-        // Create the new task
-        const createdTask = await storage.createTask(validatedNewTask);
-        
-        // Update all the related tasks
-        const updatePromises = updatedTasks.map(async (task: any) => {
-          const taskId = task.taskId || task.id;
-          if (typeof taskId === 'string' && taskId.startsWith('PRJ-')) {
-            // Find the task by taskId string
-            const allTasks = await storage.getTasks(req.params.locationId);
-            const existingTask = allTasks.find((t: any) => t.taskId === taskId);
-            if (existingTask) {
-              return storage.updateTask(existingTask.id, {
-                taskDate: task.taskDate,
-                order: task.order,
-                linkedTaskGroup: task.linkedTaskGroup,
-                dependentOnPrevious: task.dependentOnPrevious
-              });
-            }
-          } else {
-            return storage.updateTask(parseInt(taskId), {
-              taskDate: task.taskDate,
-              order: task.order,
-              linkedTaskGroup: task.linkedTaskGroup,
-              dependentOnPrevious: task.dependentOnPrevious
+      // CRITICAL: Check if this will be the first task and enforce unsequential status
+      const existingTasks = await storage.getTasks(req.params.locationId);
+      const isFirstTask = existingTasks.length === 0 || 
+                         (validated.order !== undefined && validated.order === 0) ||
+                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order));
+      
+      if (isFirstTask && validated.dependentOnPrevious) {
+        console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
+        validated.dependentOnPrevious = false;
+      }
+      
+      const task = await storage.createTask(validated);
+      
+      // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
+      if (validated.linkedTaskGroup && req.body.linkedTaskId) {
+        try {
+          const existingTask = await storage.getTask(parseInt(req.body.linkedTaskId));
+          if (existingTask && !existingTask.linkedTaskGroup) {
+            await storage.updateTask(parseInt(req.body.linkedTaskId), {
+              linkedTaskGroup: validated.linkedTaskGroup
             });
           }
-        });
-        
-        await Promise.all(updatePromises.filter(Boolean));
-        console.log('Tasks to update:', updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate })));
-        
-        res.status(201).json(createdTask);
-      } else {
-        // Handle single task creation
-        const validated = insertTaskSchema.parse({
-          ...req.body,
-          locationId: req.params.locationId
-        });
-        
-        // CRITICAL: Check if this will be the first task and enforce unsequential status
-        const existingTasks = await storage.getTasks(req.params.locationId);
-        const isFirstTask = existingTasks.length === 0 || 
-                           (validated.order !== undefined && validated.order === 0) ||
-                           (validated.order !== undefined && existingTasks.every((t: any) => (t.order || 0) > validated.order));
-        
-        if (isFirstTask && validated.dependentOnPrevious) {
-          console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
-          validated.dependentOnPrevious = false;
+        } catch (updateError) {
+          console.error('Failed to update linked task group:', updateError);
+          // Continue with task creation even if linking fails
         }
-        
-        const task = await storage.createTask(validated);
-        
-        // Apply sequential date logic to all tasks after creation
-        if (validated.dependentOnPrevious) {
-          const allTasks = await storage.getTasks(req.params.locationId);
-          const { realignDependentTasks } = await import('../shared/taskUtils.js');
-          const realignedTasks = realignDependentTasks(allTasks);
-          
-          // Update all tasks that had their dates changed
-          const updatePromises = realignedTasks.map(async (realignedTask, index) => {
-            const original = allTasks[index];
-            if (original && realignedTask.taskDate !== original.taskDate) {
-              await storage.updateTask(original.id, { taskDate: realignedTask.taskDate });
-            }
-          });
-          
-          await Promise.all(updatePromises);
-        }
-        
-        res.status(201).json(task);
       }
+      
+      res.status(201).json(task);
     } catch (error: any) {
       console.error('Task validation error:', error);
       if (error.issues) {
         console.error('Validation issues:', error.issues);
       }
       res.status(400).json({ error: 'Invalid task data', details: error.message });
-    }
-  });
-
-  // Recalculate sequential dates for all tasks in a location
-  app.post('/api/locations/:locationId/tasks/recalculate-dates', async (req, res) => {
-    try {
-      const allTasks = await storage.getTasks(req.params.locationId);
-      const { realignDependentTasks } = await import('../shared/taskUtils.js');
-      const realignedTasks = realignDependentTasks(allTasks);
-      
-      // Update all tasks that had their dates changed
-      const updatePromises = realignedTasks.map(async (realignedTask, index) => {
-        const original = allTasks[index];
-        if (original && realignedTask.taskDate !== original.taskDate) {
-          console.log('Realigning task date:', original.name, 'from', original.taskDate, 'to', realignedTask.taskDate);
-          await storage.updateTask(original.id, { taskDate: realignedTask.taskDate });
-        }
-      });
-      
-      await Promise.all(updatePromises);
-      
-      // Return updated tasks
-      const updatedTasks = await storage.getTasks(req.params.locationId);
-      res.json(updatedTasks);
-    } catch (error) {
-      console.error('Failed to recalculate dates:', error);
-      res.status(500).json({ error: 'Failed to recalculate sequential dates' });
     }
   });
 
