@@ -137,9 +137,9 @@ export default function CreateTaskModal({
       
       // Then update existing tasks if needed (for date shifting)
       if (data.updatedTasks.length > 0) {
-        console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate })));
+        console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate, id: t.taskId || t.id })));
         const updatePromises = data.updatedTasks.map(task => 
-          apiRequest(`/api/tasks/${task.id}`, {
+          apiRequest(`/api/tasks/${task.taskId || task.id}`, {
             method: 'PUT',
             body: JSON.stringify(task),
             headers: { 'Content-Type': 'application/json' }
@@ -408,8 +408,20 @@ export default function CreateTaskModal({
     });
     
     console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
-      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious 
+      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious,
+      id: t.taskId || t.id
     })));
+    
+    // Log specific Base/Grading task details
+    const baseGradingTask = finalTasksToUpdate.find(t => t.name?.includes('Base/Grading'));
+    if (baseGradingTask) {
+      console.log('Base/Grading task being updated:', {
+        id: baseGradingTask.taskId || baseGradingTask.id,
+        name: baseGradingTask.name,
+        date: baseGradingTask.taskDate,
+        order: baseGradingTask.order
+      });
+    }
     
     createTaskMutation.mutate({
       newTask,
