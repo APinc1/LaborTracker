@@ -137,30 +137,14 @@ export default function CreateTaskModal({
       
       // Then update existing tasks if needed (for date shifting)
       if (data.updatedTasks.length > 0) {
-        console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate, id: t.taskId || t.id })));
-        
-        // Log Base/Grading specifically
-        const baseGradingUpdate = data.updatedTasks.find(t => t.name?.includes('Base/Grading'));
-        if (baseGradingUpdate) {
-          console.log('Base/Grading UPDATE PAYLOAD:', {
-            id: baseGradingUpdate.taskId || baseGradingUpdate.id,
-            name: baseGradingUpdate.name,
-            taskDate: baseGradingUpdate.taskDate,
-            startDate: baseGradingUpdate.startDate,
-            finishDate: baseGradingUpdate.finishDate,
-            order: baseGradingUpdate.order
-          });
-        }
-        
-        const updatePromises = data.updatedTasks.map(task => {
-          const taskId = task.taskId || task.id;
-          console.log(`Sending PUT request for task ${task.name} (ID: ${taskId}) with date: ${task.taskDate}`);
-          return apiRequest(`/api/tasks/${taskId}`, {
+        console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate })));
+        const updatePromises = data.updatedTasks.map(task => 
+          apiRequest(`/api/tasks/${task.id}`, {
             method: 'PUT',
             body: JSON.stringify(task),
             headers: { 'Content-Type': 'application/json' }
-          });
-        });
+          })
+        );
         await Promise.all(updatePromises);
       }
       
@@ -267,10 +251,7 @@ export default function CreateTaskModal({
       (lt.taskId || lt.id) === (t.taskId || t.id)
     )), ...tasksToUpdate, newTask];
     
-    // Sort by existing order first to maintain intended sequence
-    allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-    
-    // Group by linked groups and individual tasks FIRST (using original dates)
+    // Group all tasks by linked group or individual tasks
     const taskGroups = new Map();
     const ungroupedTasks = [];
     
@@ -306,7 +287,7 @@ export default function CreateTaskModal({
       });
     });
     
-    // Sort groups by date for chronological order
+    // Sort groups by date
     groups.sort((a, b) => a.date - b.date);
     
     // Flatten groups back to ordered task list
@@ -315,7 +296,7 @@ export default function CreateTaskModal({
       orderedTasks.push(...group.tasks);
     });
     
-    // Assign orders and sequential flags based on group position
+    // Reassign orders and apply sequential logic
     orderedTasks.forEach((task, index) => {
       task.order = index;
     });
@@ -347,62 +328,20 @@ export default function CreateTaskModal({
     allTasks.length = 0;
     allTasks.push(...orderedTasks);
     
-    console.log('Task ordering after grouping and sequential flags:', 
+    console.log('Task ordering after linked group placement:', 
                 allTasks.map((t, i) => ({ 
                   order: i, name: t.name, date: t.taskDate, 
                   linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
                 })));
     
-    // NOW apply sequential date logic to align dependent tasks
-    console.log('Before realignDependentTasks:', 
-                allTasks.map((t, i) => ({ 
-                  order: i, name: t.name, date: t.taskDate, 
-                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
-                })));
-    
+    // CRITICAL: Apply sequential date logic to align dependent tasks
     const finalOrderedTasks = realignDependentTasks(allTasks);
     
-    console.log('After realignDependentTasks:', 
-                finalOrderedTasks.map((t, i) => ({ 
-                  order: i, name: t.name, date: t.taskDate, 
-                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious,
-                  linkGroup: t.linkedTaskGroup 
-                })));
-    
-    // Preserve linked group dates - all tasks in a group should have the same date
-    // Use the realigned tasks (not original allTasks) to get correct dates after sequential alignment
-    const linkedGroupDates = new Map();
-    finalOrderedTasks.forEach(task => {
-      if (task.linkedTaskGroup) {
-        if (!linkedGroupDates.has(task.linkedTaskGroup)) {
-          linkedGroupDates.set(task.linkedTaskGroup, task.taskDate);
-        }
-      }
-    });
-    
-    console.log('Linked group dates to preserve:', Array.from(linkedGroupDates.entries()));
-    
-    // Restore linked task dates after sequential alignment
-    const preservedLinkedTasks = finalOrderedTasks.map(task => {
-      if (task.linkedTaskGroup && linkedGroupDates.has(task.linkedTaskGroup)) {
-        console.log(`Restoring linked task ${task.name} (group: ${task.linkedTaskGroup}) from ${task.taskDate} to ${linkedGroupDates.get(task.linkedTaskGroup)}`);
-        return {
-          ...task,
-          taskDate: linkedGroupDates.get(task.linkedTaskGroup)
-        };
-      } else if (task.linkedTaskGroup) {
-        console.log(`Task ${task.name} has linked group ${task.linkedTaskGroup} but no date found in map`);
-      } else {
-        console.log(`Task ${task.name} is not linked, keeping date ${task.taskDate}`);
-      }
-      return task;
-    });
-    
-    // Update allTasks with final results
+    // Update allTasks with properly aligned dates
     allTasks.length = 0;
-    allTasks.push(...preservedLinkedTasks);
+    allTasks.push(...finalOrderedTasks);
     
-    console.log('Final task ordering after date alignment and grouping:', 
+    console.log('Task ordering after date realignment:', 
                 allTasks.map((t, i) => ({ 
                   order: i, name: t.name, date: t.taskDate, 
                   linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
@@ -415,29 +354,14 @@ export default function CreateTaskModal({
       date: t.taskDate 
     })));
     // CRITICAL: Update ALL existing tasks with new order values to ensure no duplicates
-    // Exclude new task by finding tasks that were part of existing tasks
     const finalTasksToUpdate = allTasks.filter(task => {
-      // Only include tasks that exist in the original existingTasks array
-      return sortedTasks.some(originalTask => 
-        (originalTask.taskId || originalTask.id) === (task.taskId || task.id)
-      );
+      if (task === newTask) return false; // Exclude new task
+      return true; // Update all existing tasks to ensure proper ordering
     });
     
     console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
-      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious,
-      id: t.taskId || t.id
+      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious 
     })));
-    
-    // Log specific Base/Grading task details
-    const baseGradingTask = finalTasksToUpdate.find(t => t.name?.includes('Base/Grading'));
-    if (baseGradingTask) {
-      console.log('Base/Grading task being updated:', {
-        id: baseGradingTask.taskId || baseGradingTask.id,
-        name: baseGradingTask.name,
-        date: baseGradingTask.taskDate,
-        order: baseGradingTask.order
-      });
-    }
     
     createTaskMutation.mutate({
       newTask,
@@ -446,14 +370,6 @@ export default function CreateTaskModal({
   };
 
   const onSubmit = (data: any) => {
-    console.log('onSubmit called with data:', {
-      linkToExistingTask: data.linkToExistingTask,
-      linkedTaskIds: data.linkedTaskIds,
-      dependentOnPrevious: data.dependentOnPrevious,
-      insertPosition: data.insertPosition,
-      name: data.name
-    });
-    
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
@@ -618,9 +534,16 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // For sequential tasks at end, use a valid placeholder date - realignDependentTasks will fix it
-          taskDate = "2025-01-01"; // Valid placeholder date that will be corrected
-          console.log('Creating sequential task at end - using valid placeholder date that will be corrected');
+          // Calculate next date after last task
+          const lastTask = sortedTasks[sortedTasks.length - 1];
+          const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
+          const nextDate = new Date(lastDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          // Skip weekends
+          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+          taskDate = nextDate.toISOString().split('T')[0];
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
@@ -768,44 +691,6 @@ export default function CreateTaskModal({
       ...task,
       order: index
     }));
-
-    console.log('Regular task creation - before realignDependentTasks:', 
-                updatedTasks.map((t, i) => ({ 
-                  order: i, name: t.name, date: t.taskDate, 
-                  sequential: t.dependentOnPrevious, isNew: t === newTask
-                })));
-    
-    console.log('New task details:', {
-      name: newTask.name, 
-      date: newTask.taskDate, 
-      sequential: newTask.dependentOnPrevious,
-      insertIndex,
-      position: data.insertPosition
-    });
-
-    // NOW apply sequential date logic to the entire array
-    const realignedTasks = realignDependentTasks(updatedTasks);
-    
-    console.log('Regular task creation - after realignDependentTasks:', 
-                realignedTasks.map((t, i) => ({ 
-                  order: i, name: t.name, date: t.taskDate, 
-                  sequential: t.dependentOnPrevious, isNew: t === newTask
-                })));
-
-    // Update the updatedTasks array with realigned dates
-    updatedTasks = realignedTasks;
-
-    // Update the newTask reference to reflect any date changes from realignment
-    // Find the task at the insert position (which should be our new task)
-    const realignedNewTask = updatedTasks[insertIndex];
-    if (realignedNewTask) {
-      // Update all key properties from the realigned task
-      newTask.taskDate = realignedNewTask.taskDate;
-      newTask.startDate = realignedNewTask.taskDate;
-      newTask.finishDate = realignedNewTask.taskDate;
-      newTask.order = realignedNewTask.order;
-      console.log('Updated newTask with realigned date:', newTask.taskDate);
-    }
 
     // Create new task first, then update existing tasks if needed
     // Update tasks that have changed (date, linkedTaskGroup, dependentOnPrevious, OR order)

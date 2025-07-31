@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, realignDependentTasks } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -238,47 +238,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const responses = await Promise.all(promises);
       return responses.map(response => response.json());
     },
-    onSuccess: async () => {
-      // After batch updates complete, refetch tasks and apply sequential recalculation
-      try {
-        console.log('EditTaskModal: Batch update successful, applying sequential recalculation');
-        
-        // Refetch the latest tasks to get updated data
-        const latestTasks = await queryClient.fetchQuery({
-          queryKey: ["/api/locations", task.locationId, "tasks"],
-          staleTime: 0
-        });
-        
-        if (latestTasks && latestTasks.length > 0) {
-          // Apply realignDependentTasks to fix sequential dates
-          const realignedTasks = realignDependentTasks(latestTasks);
-          
-          // Find tasks that need date updates
-          const tasksNeedingDateUpdates = realignedTasks.filter((aligned: any, index: number) => {
-            const original = latestTasks[index];
-            return aligned.taskDate !== original.taskDate;
-          });
-          
-          if (tasksNeedingDateUpdates.length > 0) {
-            console.log('EditTaskModal: Applying sequential date fixes to', tasksNeedingDateUpdates.length, 'tasks');
-            
-            // Update tasks with corrected sequential dates
-            const dateUpdatePromises = tasksNeedingDateUpdates.map((alignedTask: any) => 
-              apiRequest(`/api/tasks/${alignedTask.id}`, {
-                method: 'PUT',
-                body: JSON.stringify(alignedTask),
-                headers: { 'Content-Type': 'application/json' }
-              })
-            );
-            
-            await Promise.all(dateUpdatePromises);
-            console.log('EditTaskModal: Sequential date fixes applied successfully');
-          }
-        }
-      } catch (error) {
-        console.error('EditTaskModal: Error applying sequential recalculation:', error);
-      }
-      
+    onSuccess: () => {
       onTaskUpdate();
       toast({ 
         title: "Success", 
@@ -467,18 +427,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       console.log('Multi-task linking - final updates with sequential dates:', finalTasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
       console.log('Insertion order:', insertionOrder, 'Chosen date:', chosenDate);
       
-      // Log Base/Grading specifically before submission
-      const baseGradingUpdate = finalTasksToUpdate.find(t => t.name?.includes('Base/Grading'));
-      if (baseGradingUpdate) {
-        console.log('EditTaskModal Base/Grading FINAL UPDATE PAYLOAD:', {
-          id: baseGradingUpdate.taskId || baseGradingUpdate.id,
-          name: baseGradingUpdate.name,
-          taskDate: baseGradingUpdate.taskDate,
-          order: baseGradingUpdate.order,
-          sequential: baseGradingUpdate.dependentOnPrevious
-        });
-      }
-      
       // Update tasks using batch mutation
       console.log('Submitting multi-task linking updates with sequential date fixes');
       batchUpdateTasksMutation.mutate(finalTasksToUpdate);
@@ -638,14 +586,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Force the form value too to ensure UI updates
       form.setValue('dependentOnPrevious', false);
     }
-    
-    console.log('EditTaskModal change analysis:', {
-      dateChanged,
-      linkingChanged, 
-      dependencyChanged,
-      hasLocationTasks: locationTasks && locationTasks.length > 0,
-      shouldCascade: (dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0
-    });
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
@@ -1110,20 +1050,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('Sequential cascading complete');
       }
       
-      // Apply sequential date recalculation after all other changes (like CreateTaskModal does)
-      console.log('EditTaskModal: Applying realignDependentTasks for sequential date fixes');
-      console.log('EditTaskModal: Tasks before realignDependentTasks:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
-      
-      try {
-        const finalAlignedTasks = realignDependentTasks(allUpdatedTasks);
-        console.log('EditTaskModal: Tasks after realignDependentTasks:', finalAlignedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
-        
-        // Replace allUpdatedTasks with the properly aligned ones
-        allUpdatedTasks = finalAlignedTasks;
-      } catch (error) {
-        console.error('EditTaskModal: realignDependentTasks error:', error);
-      }
-      
       // Filter to only tasks that actually changed
       const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
         const originalTask = locationTasks.find(orig => 
@@ -1137,18 +1063,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           originalTask.costCode !== updatedTask.costCode
         );
       });
-      
-      // Log Base/Grading specifically
-      const baseGradingUpdate = tasksToUpdate.find(t => t.name?.includes('Base/Grading'));
-      if (baseGradingUpdate) {
-        console.log('EditTaskModal FINAL Base/Grading UPDATE:', {
-          id: baseGradingUpdate.taskId || baseGradingUpdate.id,
-          name: baseGradingUpdate.name,
-          taskDate: baseGradingUpdate.taskDate,
-          order: baseGradingUpdate.order,
-          sequential: baseGradingUpdate.dependentOnPrevious
-        });
-      }
       
       console.log('Cascading updates for', tasksToUpdate.length, 'tasks');
       batchUpdateTasksMutation.mutate(tasksToUpdate);
