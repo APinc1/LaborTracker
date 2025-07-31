@@ -498,7 +498,7 @@ export default function CreateTaskModal({
             updatedTasks[taskIndex] = { 
               ...updatedTasks[taskIndex], 
               linkedTaskGroup,
-              dependentOnPrevious: true // Linked tasks are sequential
+              dependentOnPrevious: false // Initially set to false - sequential logic will be applied later
             };
           }
         });
@@ -690,6 +690,92 @@ export default function CreateTaskModal({
       ...task,
       order: index
     }));
+
+    // CRITICAL: Apply group-based sequential logic before date alignment
+    if (linkedTaskGroup) {
+      console.log('Applying group-based sequential logic for linked tasks');
+      
+      // Group all tasks by linked group or individual tasks
+      const taskGroups = new Map();
+      const ungroupedTasks = [];
+      
+      updatedTasks.forEach(task => {
+        if (task.linkedTaskGroup) {
+          if (!taskGroups.has(task.linkedTaskGroup)) {
+            taskGroups.set(task.linkedTaskGroup, []);
+          }
+          taskGroups.get(task.linkedTaskGroup).push(task);
+        } else {
+          ungroupedTasks.push(task);
+        }
+      });
+      
+      // Create array of task groups (each group has a date and tasks)
+      const groups = [];
+      
+      // Add ungrouped tasks as individual groups
+      ungroupedTasks.forEach(task => {
+        groups.push({
+          date: new Date(task.taskDate).getTime(),
+          tasks: [task],
+          isLinkedGroup: false
+        });
+      });
+      
+      // Add linked groups
+      taskGroups.forEach((tasks, groupId) => {
+        groups.push({
+          date: new Date(tasks[0].taskDate).getTime(), // All tasks in group have same date
+          tasks: tasks,
+          isLinkedGroup: true
+        });
+      });
+      
+      // Sort groups by date
+      groups.sort((a, b) => a.date - b.date);
+      
+      // Flatten groups back to ordered task list
+      const orderedTasks = [];
+      groups.forEach(group => {
+        orderedTasks.push(...group.tasks);
+      });
+      
+      // Reassign orders
+      orderedTasks.forEach((task, index) => {
+        task.order = index;
+      });
+      
+      // Apply sequential logic group by group
+      groups.forEach((group, groupIndex) => {
+        if (group.isLinkedGroup) {
+          // For linked groups, only first task is sequential (depends on previous group)
+          group.tasks.forEach((task, taskIndex) => {
+            if (taskIndex === 0 && groupIndex > 0) {
+              task.dependentOnPrevious = true;
+            } else {
+              task.dependentOnPrevious = false;
+            }
+          });
+        } else {
+          // For individual tasks, make sequential if not first overall
+          if (groupIndex > 0) {
+            group.tasks[0].dependentOnPrevious = true;
+          } else {
+            group.tasks[0].dependentOnPrevious = false;
+          }
+        }
+      });
+      
+      // Update updatedTasks with reordered and properly configured tasks
+      updatedTasks.length = 0;
+      updatedTasks.push(...orderedTasks);
+      
+      console.log('After group-based sequential logic:', 
+                  updatedTasks.map((t, i) => ({ 
+                    order: i, name: t.name, date: t.taskDate, 
+                    linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                  })));
+    }
 
     // CRITICAL: Apply sequential date logic to ensure proper date dependencies
     console.log('Before sequential date alignment:', 
