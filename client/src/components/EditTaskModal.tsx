@@ -290,13 +290,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Create new linked group or use existing one from any of the linked tasks
       const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
       
-      // For multi-task linking, update all selected tasks with the chosen date and linked group
-      // Only the first task (lowest order) should be sequential, others should just be linked
+      // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
-      const sortedTasks = allTasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
-        const isFirstTask = taskToUpdate === sortedTasks[0];
+      // Sort by original order to determine the earliest task position
+      const sortedByOrder = allTasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
+      const earliestOrder = sortedByOrder[0].order || 0;
+      
+      // Create updated tasks array with consecutive ordering starting from earliest position
+      const tasksToUpdate = sortedByOrder.map((taskToUpdate, index) => {
+        const isFirstTask = index === 0; // First in the linked group
         
         if (taskToUpdate === task) {
           // Current task being edited
@@ -305,6 +308,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...savedFormData,
             taskDate: chosenDate,
             linkedTaskGroup: linkedTaskGroup,
+            order: earliestOrder + index, // Consecutive ordering
             dependentOnPrevious: isFirstTask ? (task.dependentOnPrevious || false) : false
           };
         } else {
@@ -313,16 +317,32 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...taskToUpdate,
             taskDate: chosenDate,
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: isFirstTask ? true : false // Only first task in sorted order is sequential
+            order: earliestOrder + index, // Consecutive ordering
+            dependentOnPrevious: isFirstTask ? taskToUpdate.dependentOnPrevious : false // Only first task keeps sequential status
           };
         }
       });
       
-      console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate })));
+      // Now we need to update all OTHER tasks to shift their order values if needed
+      const allOtherTasks = (existingTasks as any[]).filter((t: any) => 
+        !allTasksToUpdate.some(linkTask => (linkTask.taskId || linkTask.id) === (t.taskId || t.id))
+      );
+      
+      // Shift tasks that come after the linked group to make room
+      const tasksToShift = allOtherTasks.filter(t => (t.order || 0) > earliestOrder);
+      const finalTasksToUpdate = [
+        ...tasksToUpdate,
+        ...tasksToShift.map(t => ({
+          ...t,
+          order: (t.order || 0) + allTasksToUpdate.length - 1 // Shift by number of linked tasks minus 1
+        }))
+      ];
+      
+      console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
       
       // Update tasks using batch mutation
-      console.log('Submitting multi-task linking updates');
-      batchUpdateTasksMutation.mutate(tasksToUpdate);
+      console.log('Submitting multi-task linking updates with order fixes');
+      batchUpdateTasksMutation.mutate(finalTasksToUpdate);
     }
   };
 
