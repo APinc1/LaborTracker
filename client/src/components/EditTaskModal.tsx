@@ -96,6 +96,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   } | null>(null);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [unlinkingGroupSize, setUnlinkingGroupSize] = useState(0);
+  const [skipUnlinkDialog, setSkipUnlinkDialog] = useState(false);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -162,8 +163,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   // Update form when task changes
   useEffect(() => {
     if (task) {
-      // Reset date change action when opening a different task
+      // Reset date change action and unlink dialog flag when opening a different task
       setDateChangeAction('sequential');
+      setSkipUnlinkDialog(false);
       
       // Use the task's existing status if available, otherwise determine it
       let status = task.status || "upcoming";
@@ -597,8 +599,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
       );
       
-      if (groupTasks.length >= 2) {
-        // Multi-task group - show unlink dialog
+      if (groupTasks.length >= 2 && !skipUnlinkDialog) {
+        // Multi-task group - show unlink dialog (unless user already chose to skip it)
         setUnlinkingGroupSize(groupTasks.length + 1); // +1 for current task
         setShowUnlinkDialog(true);
         setPendingFormData(data);
@@ -1360,7 +1362,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => {
-                          if (!checked && task.linkedTaskGroup) {
+                          if (!checked && task.linkedTaskGroup && !skipUnlinkDialog) {
                             // User is unchecking link - determine group size for unlink dialog
                             const groupTasks = (existingTasks as any[]).filter((t: any) => 
                               t.linkedTaskGroup === task.linkedTaskGroup
@@ -1961,6 +1963,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // User closed dialog - cancel unlinking
           setShowUnlinkDialog(false);
           setPendingFormData(null);
+          setSkipUnlinkDialog(false); // Reset flag
           // Reset checkbox to checked state
           form.setValue('linkToExistingTask', true);
         }
@@ -2049,6 +2052,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               onClick={() => {
                 // Just unlink this task - continue with normal editing
                 setShowUnlinkDialog(false);
+                setSkipUnlinkDialog(true); // Set flag to prevent dialog from showing again
                 
                 // Apply the pending form data (which has linkToExistingTask: false)
                 if (pendingFormData) {
@@ -2076,6 +2080,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 // Cancel - keep task linked
                 setShowUnlinkDialog(false);
                 setPendingFormData(null);
+                setSkipUnlinkDialog(false); // Reset flag
                 // Reset checkbox to checked state
                 form.setValue('linkToExistingTask', true);
               }}
