@@ -1064,10 +1064,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Apply sequential date recalculation after all other changes (like CreateTaskModal does)
       console.log('EditTaskModal: Applying realignDependentTasks for sequential date fixes');
-      const finalAlignedTasks = realignDependentTasks(allUpdatedTasks);
+      console.log('EditTaskModal: Tasks before realignDependentTasks:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
       
-      // Replace allUpdatedTasks with the properly aligned ones
-      allUpdatedTasks = finalAlignedTasks;
+      try {
+        const finalAlignedTasks = realignDependentTasks(allUpdatedTasks);
+        console.log('EditTaskModal: Tasks after realignDependentTasks:', finalAlignedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
+        
+        // Replace allUpdatedTasks with the properly aligned ones
+        allUpdatedTasks = finalAlignedTasks;
+      } catch (error) {
+        console.error('EditTaskModal: realignDependentTasks error:', error);
+      }
       
       // Filter to only tasks that actually changed
       const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
