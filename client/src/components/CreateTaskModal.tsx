@@ -138,13 +138,29 @@ export default function CreateTaskModal({
       // Then update existing tasks if needed (for date shifting)
       if (data.updatedTasks.length > 0) {
         console.log('Tasks to update:', data.updatedTasks.map(t => ({ name: t.name, newDate: t.taskDate, id: t.taskId || t.id })));
-        const updatePromises = data.updatedTasks.map(task => 
-          apiRequest(`/api/tasks/${task.taskId || task.id}`, {
+        
+        // Log Base/Grading specifically
+        const baseGradingUpdate = data.updatedTasks.find(t => t.name?.includes('Base/Grading'));
+        if (baseGradingUpdate) {
+          console.log('Base/Grading UPDATE PAYLOAD:', {
+            id: baseGradingUpdate.taskId || baseGradingUpdate.id,
+            name: baseGradingUpdate.name,
+            taskDate: baseGradingUpdate.taskDate,
+            startDate: baseGradingUpdate.startDate,
+            finishDate: baseGradingUpdate.finishDate,
+            order: baseGradingUpdate.order
+          });
+        }
+        
+        const updatePromises = data.updatedTasks.map(task => {
+          const taskId = task.taskId || task.id;
+          console.log(`Sending PUT request for task ${task.name} (ID: ${taskId}) with date: ${task.taskDate}`);
+          return apiRequest(`/api/tasks/${taskId}`, {
             method: 'PUT',
             body: JSON.stringify(task),
             headers: { 'Content-Type': 'application/json' }
-          })
-        );
+          });
+        });
         await Promise.all(updatePromises);
       }
       
