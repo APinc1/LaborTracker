@@ -86,7 +86,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
   const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
-  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTasks: any[], availableDates: {date: string, taskName: string}[]} | null>(null);
+  const [linkingOptions, setLinkingOptions] = useState<{
+    currentTask: any, 
+    targetTasks: any[], 
+    availableDates: {date: string, taskName: string}[],
+    currentIsSequential?: boolean,
+    linkedIsSequential?: boolean,
+    areAdjacent?: boolean
+  } | null>(null);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [unlinkingGroupSize, setUnlinkingGroupSize] = useState(0);
 
@@ -173,10 +180,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
       // Find all current linked tasks if this task is already linked
       const currentLinkedTasks = task.linkedTaskGroup ? 
-        existingTasks?.filter((t: any) => 
+        (Array.isArray(existingTasks) ? existingTasks : []).filter((t: any) => 
           t.linkedTaskGroup === task.linkedTaskGroup && 
           (t.taskId || t.id) !== (task.taskId || task.id)
-        ) || [] : [];
+        ) : [];
 
       form.reset({
         name: task.name || "",
@@ -188,7 +195,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
-        linkedTaskIds: currentLinkedTasks.map(t => (t.taskId || t.id?.toString())),
+        linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id?.toString())),
       });
     }
   }, [task, form, existingTasks]);
@@ -355,6 +362,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
     // For 'sequential', keep the existing dependency status
 
+    // Early variable declarations
+    const dateChanged = data.taskDate !== task.taskDate;
+    const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
+    
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
@@ -468,10 +479,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Force the form value too to ensure UI updates
       form.setValue('dependentOnPrevious', false);
     }
-
-    // Check if changes require cascading updates
-    const dateChanged = data.taskDate !== task.taskDate;
-    const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
@@ -489,6 +496,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const linkedTaskIndices = data.linkedTaskIds.map((taskId: string) => 
           allUpdatedTasks.findIndex((t: any) => (t.taskId || t.id).toString() === taskId)
         ).filter((index: number) => index >= 0);
+        
+        // Process each linked task
+        linkedTaskIndices.forEach((linkedTaskIndex: number) => {
         if (linkedTaskIndex >= 0) {
           const linkedTaskGroup = processedData.linkedTaskGroup;
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
@@ -598,6 +608,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           console.log('Updated sequential task (first chronologically):', allUpdatedTasks[firstTaskIndex].name, 'with date:', sequentialDate);
           console.log('Updated linked task (second chronologically):', allUpdatedTasks[secondTaskIndex].name, 'with date:', sequentialDate);
         }
+        });
       }
 
       // Handle linked task sequential status sync
@@ -807,7 +818,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
           // Collect ALL sequential tasks, regardless of linked groups in between
-          const subsequentTasks = [];
+          const subsequentTasks: any[] = [];
           for (const subsequentTask of allSubsequentTasks) {
             if (subsequentTask.dependentOnPrevious) {
               subsequentTasks.push(subsequentTask);
@@ -1185,9 +1196,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   </FormItem>
                 )}
               />
-
-              )}
-            </div>
             </div>
 
             {/* Cost Code - Read Only */}
