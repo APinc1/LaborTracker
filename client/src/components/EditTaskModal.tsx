@@ -361,13 +361,74 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         order: (t.order || 0) + allTasksToUpdate.length // Shift by number of linked tasks
       }));
       
-      const finalTasksToUpdate = [...tasksToUpdate, ...shiftedTasks];
+      // After positioning, recalculate sequential dates for all tasks
+      const allTasksWithNewOrder = [...tasksToUpdate, ...shiftedTasks];
       
-      console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
+      // Sort all tasks by their new order to recalculate sequential dates
+      const sortedAllTasks = [...(existingTasks as any[])];
+      
+      // Update the tasks in the sorted list with new values
+      allTasksWithNewOrder.forEach(updatedTask => {
+        const existingIndex = sortedAllTasks.findIndex(t => 
+          (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+        );
+        if (existingIndex >= 0) {
+          sortedAllTasks[existingIndex] = updatedTask;
+        }
+      });
+      
+      // Sort by order to process sequential dependencies
+      sortedAllTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      // Recalculate dates for sequential tasks
+      for (let i = 1; i < sortedAllTasks.length; i++) {
+        const currentTask = sortedAllTasks[i];
+        const prevTask = sortedAllTasks[i - 1];
+        
+        // If this task is sequential and not in a linked group that overrides dates
+        if (currentTask.dependentOnPrevious) {
+          const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+          const nextDate = new Date(baseDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          
+          // Skip weekends
+          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+          
+          const newSequentialDate = nextDate.toISOString().split('T')[0];
+          
+          // Update the task date
+          currentTask.taskDate = newSequentialDate;
+          
+          // If this task is part of a linked group, update all linked tasks to the same date
+          if (currentTask.linkedTaskGroup) {
+            sortedAllTasks.forEach(task => {
+              if (task.linkedTaskGroup === currentTask.linkedTaskGroup) {
+                task.taskDate = newSequentialDate;
+              }
+            });
+          }
+        }
+      }
+      
+      // Find all tasks that were modified (either directly updated or had dates recalculated)
+      const finalTasksToUpdate = sortedAllTasks.filter(task => {
+        const originalTask = (existingTasks as any[]).find(t => 
+          (t.taskId || t.id) === (task.taskId || task.id)
+        );
+        return !originalTask || 
+               originalTask.taskDate !== task.taskDate ||
+               originalTask.order !== task.order ||
+               originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+               originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+      });
+      
+      console.log('Multi-task linking - final updates with sequential dates:', finalTasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
       console.log('Insertion order:', insertionOrder, 'Chosen date:', chosenDate);
       
       // Update tasks using batch mutation
-      console.log('Submitting multi-task linking updates with chronological order fixes');
+      console.log('Submitting multi-task linking updates with sequential date fixes');
       batchUpdateTasksMutation.mutate(finalTasksToUpdate);
     }
   };
