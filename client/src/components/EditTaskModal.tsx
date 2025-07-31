@@ -1360,6 +1360,21 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => {
+                          if (!checked && task.linkedTaskGroup) {
+                            // User is unchecking link - determine group size for unlink dialog
+                            const groupTasks = (existingTasks as any[]).filter((t: any) => 
+                              t.linkedTaskGroup === task.linkedTaskGroup
+                            );
+                            
+                            if (groupTasks.length > 2) {
+                              // Multi-task group - show unlink dialog
+                              setUnlinkingGroupSize(groupTasks.length);
+                              setShowUnlinkDialog(true);
+                              setPendingFormData({ ...form.getValues(), linkToExistingTask: false });
+                              return;
+                            }
+                          }
+                          
                           field.onChange(checked);
                           // Don't automatically change sequential status when linking
                           // Users should be able to control both independently
@@ -1933,6 +1948,139 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               className="w-full"
               type="button"
               disabled={!showLinkDateDialog}
+            >
+              Cancel
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unlink Task Dialog */}
+      <AlertDialog open={showUnlinkDialog} onOpenChange={(open) => {
+        if (!open) {
+          // User closed dialog - cancel unlinking
+          setShowUnlinkDialog(false);
+          setPendingFormData(null);
+          // Reset checkbox to checked state
+          form.setValue('linkToExistingTask', true);
+        }
+      }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold">
+              Unlink Task Options
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <div>
+                You're unlinking "{task?.name}" from a group of {unlinkingGroupSize} linked tasks.
+              </div>
+              <div>
+                How would you like to proceed?
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
+            <Button 
+              onClick={async () => {
+                // Unlink whole group
+                setShowUnlinkDialog(false);
+                
+                if (task.linkedTaskGroup && existingTasks) {
+                  const groupTasks = (existingTasks as any[]).filter((t: any) => 
+                    t.linkedTaskGroup === task.linkedTaskGroup
+                  );
+                  
+                  // Determine if any task in the group is sequential
+                  const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious);
+                  
+                  // Unlink all tasks in the group and make them sequential if any was sequential
+                  const unlinkPromises = groupTasks.map((groupTask: any) => 
+                    apiRequest(`/api/tasks/${groupTask.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify({
+                        linkedTaskGroup: null,
+                        dependentOnPrevious: anyTaskSequential && groupTask.order > 0 // First task stays unsequential
+                      }),
+                      headers: {
+                        'Content-Type': 'application/json'
+                      }
+                    })
+                  );
+                  
+                  try {
+                    await Promise.all(unlinkPromises);
+                    
+                    // Update form and close modal
+                    form.setValue('linkToExistingTask', false);
+                    form.setValue('linkedTaskIds', []);
+                    
+                    toast({
+                      title: "Success",
+                      description: `Unlinked all ${unlinkingGroupSize} tasks from the group`,
+                    });
+                    
+                    queryClient.invalidateQueries({ queryKey: ["/api/locations", task.locationId, "tasks"] });
+                    onTaskUpdate();
+                    onClose();
+                  } catch (error) {
+                    console.error('Failed to unlink group:', error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to unlink task group",
+                      variant: "destructive",
+                    });
+                    // Reset checkbox state
+                    form.setValue('linkToExistingTask', true);
+                  }
+                }
+              }}
+              variant="default"
+              className="w-full"
+            >
+              <div className="text-center">
+                <div className="font-medium">Unlink Whole Group</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  All {unlinkingGroupSize} tasks become unlinked and sequential if any was sequential
+                </div>
+              </div>
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                // Just unlink this task - continue with normal editing
+                setShowUnlinkDialog(false);
+                
+                // Apply the pending form data (which has linkToExistingTask: false)
+                if (pendingFormData) {
+                  Object.keys(pendingFormData).forEach(key => {
+                    if (key in form.getValues()) {
+                      form.setValue(key as any, pendingFormData[key]);
+                    }
+                  });
+                }
+                setPendingFormData(null);
+              }}
+              variant="outline"
+              className="w-full"
+            >
+              <div className="text-center">
+                <div className="font-medium">Just Unlink This Task</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Continue editing - other tasks stay linked
+                </div>
+              </div>
+            </Button>
+            
+            <Button 
+              onClick={() => {
+                // Cancel - keep task linked
+                setShowUnlinkDialog(false);
+                setPendingFormData(null);
+                // Reset checkbox to checked state
+                form.setValue('linkToExistingTask', true);
+              }}
+              variant="ghost"
+              className="w-full"
             >
               Cancel
             </Button>
