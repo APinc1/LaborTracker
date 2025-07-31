@@ -293,11 +293,42 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
       
-      // Sort by original order to determine the earliest task position
-      const sortedByOrder = allTasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
-      const earliestOrder = sortedByOrder[0].order || 0;
+      // Get all other tasks for chronological positioning
+      const allOtherTasks = (existingTasks as any[]).filter((t: any) => 
+        !allTasksToUpdate.some(linkTask => (linkTask.taskId || linkTask.id) === (t.taskId || t.id))
+      );
       
-      // Create updated tasks array with consecutive ordering starting from earliest position
+      // Find the correct chronological position based on the chosen date
+      // Sort all other tasks by date and order to find insertion point
+      const sortedOtherTasks = allOtherTasks.sort((a, b) => {
+        const dateA = new Date(a.taskDate).getTime();
+        const dateB = new Date(b.taskDate).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.order || 0) - (b.order || 0);
+      });
+      
+      // Find where to insert the linked group based on chosen date
+      let insertionOrder = 0;
+      for (let i = 0; i < sortedOtherTasks.length; i++) {
+        const otherTask = sortedOtherTasks[i];
+        const otherDate = new Date(otherTask.taskDate).getTime();
+        const chosenDateTime = new Date(chosenDate).getTime();
+        
+        if (otherDate < chosenDateTime) {
+          insertionOrder = (otherTask.order || 0) + 1;
+        } else if (otherDate === chosenDateTime) {
+          // Same date - insert after this task
+          insertionOrder = (otherTask.order || 0) + 1;
+        } else {
+          // Future date - insert before this task
+          break;
+        }
+      }
+      
+      // Sort the linked tasks by their original order to maintain relative positioning
+      const sortedByOrder = allTasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      // Create updated tasks array with consecutive ordering starting from insertion point
       const tasksToUpdate = sortedByOrder.map((taskToUpdate, index) => {
         const isFirstTask = index === 0; // First in the linked group
         
@@ -308,7 +339,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...savedFormData,
             taskDate: chosenDate,
             linkedTaskGroup: linkedTaskGroup,
-            order: earliestOrder + index, // Consecutive ordering
+            order: insertionOrder + index, // Consecutive ordering from insertion point
             dependentOnPrevious: isFirstTask ? (task.dependentOnPrevious || false) : false
           };
         } else {
@@ -317,31 +348,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...taskToUpdate,
             taskDate: chosenDate,
             linkedTaskGroup: linkedTaskGroup,
-            order: earliestOrder + index, // Consecutive ordering
+            order: insertionOrder + index, // Consecutive ordering from insertion point
             dependentOnPrevious: isFirstTask ? taskToUpdate.dependentOnPrevious : false // Only first task keeps sequential status
           };
         }
       });
       
-      // Now we need to update all OTHER tasks to shift their order values if needed
-      const allOtherTasks = (existingTasks as any[]).filter((t: any) => 
-        !allTasksToUpdate.some(linkTask => (linkTask.taskId || linkTask.id) === (t.taskId || t.id))
-      );
+      // Shift other tasks that come after the insertion point to make room
+      const tasksToShift = allOtherTasks.filter(t => (t.order || 0) >= insertionOrder);
+      const shiftedTasks = tasksToShift.map(t => ({
+        ...t,
+        order: (t.order || 0) + allTasksToUpdate.length // Shift by number of linked tasks
+      }));
       
-      // Shift tasks that come after the linked group to make room
-      const tasksToShift = allOtherTasks.filter(t => (t.order || 0) > earliestOrder);
-      const finalTasksToUpdate = [
-        ...tasksToUpdate,
-        ...tasksToShift.map(t => ({
-          ...t,
-          order: (t.order || 0) + allTasksToUpdate.length - 1 // Shift by number of linked tasks minus 1
-        }))
-      ];
+      const finalTasksToUpdate = [...tasksToUpdate, ...shiftedTasks];
       
       console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
+      console.log('Insertion order:', insertionOrder, 'Chosen date:', chosenDate);
       
       // Update tasks using batch mutation
-      console.log('Submitting multi-task linking updates with order fixes');
+      console.log('Submitting multi-task linking updates with chronological order fixes');
       batchUpdateTasksMutation.mutate(finalTasksToUpdate);
     }
   };
