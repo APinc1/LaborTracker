@@ -284,21 +284,32 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
       
       // For multi-task linking, update all selected tasks with the chosen date and linked group
-      const tasksToUpdate = [
-        {
-          ...task,
-          ...savedFormData,
-          taskDate: chosenDate,
-          linkedTaskGroup: linkedTaskGroup,
-          dependentOnPrevious: task.dependentOnPrevious // Keep current task's sequential status
-        },
-        ...linkedTasks.map(linkedTask => ({
-          ...linkedTask,
-          taskDate: chosenDate,
-          linkedTaskGroup: linkedTaskGroup,
-          dependentOnPrevious: true // Linked tasks become sequential
-        }))
-      ];
+      // Only the first task (lowest order) should be sequential, others should just be linked
+      const allTasksToUpdate = [task, ...linkedTasks];
+      const sortedTasks = allTasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
+      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
+        const isFirstTask = taskToUpdate === sortedTasks[0];
+        
+        if (taskToUpdate === task) {
+          // Current task being edited
+          return {
+            ...task,
+            ...savedFormData,
+            taskDate: chosenDate,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: isFirstTask ? (task.dependentOnPrevious || false) : false
+          };
+        } else {
+          // Linked tasks
+          return {
+            ...taskToUpdate,
+            taskDate: chosenDate,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: isFirstTask ? true : false // Only first task in sorted order is sequential
+          };
+        }
+      });
       
       console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate })));
       
@@ -1598,23 +1609,25 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Date for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600 space-y-2">
-              {linkingOptions?.targetTasks ? (
-                <div>
-                  <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
-                  <ul className="text-sm mt-1 ml-4 list-disc">
-                    {linkingOptions.targetTasks.map((t: any, idx: number) => (
-                      <li key={idx}>{t.name}</li>
-                    ))}
-                  </ul>
-                  <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
-                </div>
-              ) : (
-                <div>
-                  <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
-                  <div>Both tasks must have the same date. Which date should both tasks use?</div>
-                </div>
-              )}
+            <AlertDialogDescription asChild>
+              <div className="text-gray-600 space-y-2">
+                {linkingOptions?.targetTasks ? (
+                  <div>
+                    <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
+                    <ul className="text-sm mt-1 ml-4 list-disc">
+                      {linkingOptions.targetTasks.map((t: any, idx: number) => (
+                        <li key={idx}>{t.name}</li>
+                      ))}
+                    </ul>
+                    <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
+                  </div>
+                ) : (
+                  <div>
+                    <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTasks?.[0]?.name || 'target task'}".</div>
+                    <div>Both tasks must have the same date. Which date should both tasks use?</div>
+                  </div>
+                )}
+              </div>
               {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
                 <div className="text-sm text-gray-500 mt-2">
                   {linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
@@ -1699,7 +1712,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     e.preventDefault();
                     e.stopPropagation();
                     if (showLinkDateDialog) {
-                      handleLinkDateChoice(linkingOptions?.targetTask?.taskDate || '');
+                      // For single task linking fallback, use the first target task
+                      const firstTargetTask = linkingOptions?.targetTasks?.[0];
+                      handleLinkDateChoice(firstTargetTask?.taskDate || '');
                     }
                   }}
                   variant="outline"
@@ -1708,9 +1723,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   disabled={!showLinkDateDialog}
                 >
                   <div className="text-center">
-                    <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
+                    <div className="font-medium">Use "{linkingOptions?.targetTasks?.[0]?.name || 'Target Task'}" Date</div>
                     <div className="text-xs mt-1 text-gray-500">
-                      {linkingOptions?.targetTask?.taskDate && new Date(linkingOptions.targetTask.taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                      {linkingOptions?.targetTasks?.[0]?.taskDate && new Date(linkingOptions.targetTasks[0].taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
                         month: '2-digit', 
                         day: '2-digit', 
                         year: 'numeric' 
