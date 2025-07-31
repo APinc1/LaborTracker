@@ -573,16 +573,8 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // Calculate next date after last task
-          const lastTask = sortedTasks[sortedTasks.length - 1];
-          const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
-          const nextDate = new Date(lastDate);
-          nextDate.setDate(nextDate.getDate() + 1);
-          // Skip weekends
-          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-            nextDate.setDate(nextDate.getDate() + 1);
-          }
-          taskDate = nextDate.toISOString().split('T')[0];
+          // For sequential tasks, use a placeholder date - it will be corrected by realignDependentTasks
+          taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
@@ -730,6 +722,30 @@ export default function CreateTaskModal({
       ...task,
       order: index
     }));
+
+    console.log('Regular task creation - before realignDependentTasks:', 
+                updatedTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  sequential: t.dependentOnPrevious, isNew: t === newTask
+                })));
+
+    // NOW apply sequential date logic to the entire array
+    const realignedTasks = realignDependentTasks(updatedTasks);
+    
+    console.log('Regular task creation - after realignDependentTasks:', 
+                realignedTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  sequential: t.dependentOnPrevious, isNew: t === newTask
+                })));
+
+    // Update the updatedTasks array with realigned dates
+    updatedTasks = realignedTasks;
+
+    // Update the newTask reference to reflect any date changes
+    const newTaskAfterAlignment = updatedTasks.find(t => t === newTask);
+    if (newTaskAfterAlignment) {
+      Object.assign(newTask, newTaskAfterAlignment);
+    }
 
     // Create new task first, then update existing tasks if needed
     // Update tasks that have changed (date, linkedTaskGroup, dependentOnPrevious, OR order)
