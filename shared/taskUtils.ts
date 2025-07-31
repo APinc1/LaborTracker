@@ -286,7 +286,7 @@ export function getLinkedTasks(tasks: any[], taskId: string): any[] {
 }
 
 /**
- * Handle linked task deletion - unlink partner tasks and set appropriate dependency
+ * Handle linked task deletion - unlink partner tasks only if group becomes too small
  */
 export function handleLinkedTaskDeletion(
   tasks: any[],
@@ -296,22 +296,27 @@ export function handleLinkedTaskDeletion(
   const unlinkUpdates: any[] = [];
   
   if (deletedTask?.linkedTaskGroup) {
-    // Find partner tasks in the same linked group
+    // Find remaining tasks in the same linked group (after deletion)
     const linkedPartners = tasks.filter(t => 
       t.linkedTaskGroup === deletedTask.linkedTaskGroup && 
       (t.taskId || t.id) !== deletedTaskId
     );
     
-    linkedPartners.forEach(partnerTask => {
-      // If either task was sequential, make the remaining task sequential
-      const shouldBeSequential = deletedTask.dependentOnPrevious || partnerTask.dependentOnPrevious;
-      
-      unlinkUpdates.push({
-        ...partnerTask,
-        linkedTaskGroup: null,
-        dependentOnPrevious: shouldBeSequential
+    // Only unlink if there's 1 or fewer tasks remaining
+    // (A single task can't be "linked" to anything)
+    if (linkedPartners.length <= 1) {
+      linkedPartners.forEach(partnerTask => {
+        // If either task was sequential, make the remaining task sequential
+        const shouldBeSequential = deletedTask.dependentOnPrevious || partnerTask.dependentOnPrevious;
+        
+        unlinkUpdates.push({
+          ...partnerTask,
+          linkedTaskGroup: null,
+          dependentOnPrevious: shouldBeSequential
+        });
       });
-    });
+    }
+    // If 2+ tasks remain, they stay linked (no updates needed)
   }
   
   const remainingTasks = tasks.filter(t => (t.taskId || t.id) !== deletedTaskId);
