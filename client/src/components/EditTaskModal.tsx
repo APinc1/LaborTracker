@@ -1196,6 +1196,117 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   </FormItem>
                 )}
               />
+
+              {/* Multi-Select Linked Tasks */}
+              {form.watch("linkToExistingTask") && (
+                <FormField
+                  control={form.control}
+                  name="linkedTaskIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Tasks to Link With</FormLabel>
+                      <div className="relative">
+                        <div className="min-h-[40px] w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                          {/* Selected tasks display as chips */}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(field.value || []).length > 0 && (field.value || []).map((taskId: string) => {
+                              const selectedTask = (Array.isArray(existingTasks) ? existingTasks : []).find((t: any) => 
+                                (t.taskId || t.id).toString() === taskId
+                              );
+                              if (!selectedTask) return null;
+                              
+                              const formatDate = (dateStr: string) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${month}/${day}/${year}`;
+                              };
+                              
+                              return (
+                                <div key={taskId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                  <span>{selectedTask.name} ({formatDate(selectedTask.taskDate)})</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newValue = (field.value || []).filter((id: string) => id !== taskId);
+                                      field.onChange(newValue);
+                                    }}
+                                    className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Dropdown - only show if there are available tasks to select */}
+                          {(Array.isArray(existingTasks) ? existingTasks : [])
+                            .filter((t: any) => 
+                              (t.taskId || t.id) !== (task.taskId || task.id) && // Exclude current task
+                              !(field.value || []).includes((t.taskId || t.id).toString())
+                            ).length > 0 && (
+                            <Select 
+                              onValueChange={(value) => {
+                                if (value && !(field.value || []).includes(value)) {
+                                  field.onChange([...(field.value || []), value]);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
+                                <SelectValue placeholder={(field.value || []).length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(Array.isArray(existingTasks) ? existingTasks : [])
+                                  .filter((t: any) => 
+                                    (t.taskId || t.id) !== (task.taskId || task.id) && // Exclude current task
+                                    !(field.value || []).includes((t.taskId || t.id).toString())
+                                  )
+                                  .sort((a: any, b: any) => {
+                                    const dateA = new Date(a.taskDate).getTime();
+                                    const dateB = new Date(b.taskDate).getTime();
+                                    if (dateA !== dateB) return dateA - dateB;
+                                    return (a.order || 0) - (b.order || 0);
+                                  })
+                                  .map((task: any) => {
+                                    const formatDate = (dateStr: string) => {
+                                      const [year, month, day] = dateStr.split('-');
+                                      return `${month}/${day}/${year}`;
+                                    };
+                                    
+                                    return (
+                                      <SelectItem 
+                                        key={task.taskId || task.id} 
+                                        value={(task.taskId || task.id).toString()}
+                                      >
+                                        <div className="flex items-center justify-between w-full">
+                                          <span className="flex-1">{task.name}</span>
+                                          <span className="text-xs text-gray-500 ml-2">
+                                            {formatDate(task.taskDate)}
+                                          </span>
+                                        </div>
+                                      </SelectItem>
+                                    );
+                                  })}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          
+                          {/* Show message if no tasks available */}
+                          {(Array.isArray(existingTasks) ? existingTasks : [])
+                            .filter((t: any) => 
+                              (t.taskId || t.id) !== (task.taskId || task.id) && // Exclude current task
+                              !(field.value || []).includes((t.taskId || t.id).toString())
+                            ).length === 0 && (
+                            <p className="text-sm text-gray-500 py-2">
+                              No other tasks available to link with
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
 
             {/* Cost Code - Read Only */}
