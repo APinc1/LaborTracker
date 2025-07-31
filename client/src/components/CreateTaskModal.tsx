@@ -257,25 +257,25 @@ export default function CreateTaskModal({
     )), ...tasksToUpdate, newTask];
     
     // Group all tasks by linked group or individual tasks
-    const taskGroups = new Map();
-    const ungroupedTasks = [];
+    const taskGroups = new Map<string, any[]>();
+    const ungroupedTasks: any[] = [];
     
-    allTasks.forEach(task => {
+    allTasks.forEach((task: any) => {
       if (task.linkedTaskGroup) {
         if (!taskGroups.has(task.linkedTaskGroup)) {
           taskGroups.set(task.linkedTaskGroup, []);
         }
-        taskGroups.get(task.linkedTaskGroup).push(task);
+        taskGroups.get(task.linkedTaskGroup)!.push(task);
       } else {
         ungroupedTasks.push(task);
       }
     });
     
     // Create array of task groups (each group has a date and tasks)
-    const groups = [];
+    const groups: any[] = [];
     
     // Add ungrouped tasks as individual groups
-    ungroupedTasks.forEach(task => {
+    ungroupedTasks.forEach((task: any) => {
       groups.push({
         date: new Date(task.taskDate).getTime(),
         tasks: [task],
@@ -284,7 +284,7 @@ export default function CreateTaskModal({
     });
     
     // Add linked groups
-    taskGroups.forEach((tasks, groupId) => {
+    taskGroups.forEach((tasks: any[], groupId: string) => {
       groups.push({
         date: new Date(tasks[0].taskDate).getTime(), // All tasks in group have same date
         tasks: tasks,
@@ -293,24 +293,24 @@ export default function CreateTaskModal({
     });
     
     // Sort groups by date
-    groups.sort((a, b) => a.date - b.date);
+    groups.sort((a: any, b: any) => a.date - b.date);
     
     // Flatten groups back to ordered task list
-    const orderedTasks = [];
-    groups.forEach(group => {
+    const orderedTasks: any[] = [];
+    groups.forEach((group: any) => {
       orderedTasks.push(...group.tasks);
     });
     
     // Reassign orders and apply sequential logic
-    orderedTasks.forEach((task, index) => {
+    orderedTasks.forEach((task: any, index: number) => {
       task.order = index;
     });
     
     // Apply sequential logic group by group
-    groups.forEach((group, groupIndex) => {
+    groups.forEach((group: any, groupIndex: number) => {
       if (group.isLinkedGroup) {
         // For linked groups, only the first task should be sequential (if not overall first)
-        group.tasks.forEach((task, taskIndex) => {
+        group.tasks.forEach((task: any, taskIndex: number) => {
           if (taskIndex === 0 && groupIndex > 0) {
             // First task in linked group with predecessor groups
             task.dependentOnPrevious = true;
