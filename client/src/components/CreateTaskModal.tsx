@@ -399,10 +399,12 @@ export default function CreateTaskModal({
       date: t.taskDate 
     })));
     // CRITICAL: Update ALL existing tasks with new order values to ensure no duplicates
-    // Exclude new task by checking if it has an ID (existing tasks have IDs, new tasks don't)
+    // Exclude new task by finding tasks that were part of existing tasks
     const finalTasksToUpdate = allTasks.filter(task => {
-      // Exclude tasks without an ID (these are new tasks)
-      return task.taskId || task.id;
+      // Only include tasks that exist in the original existingTasks array
+      return sortedTasks.some(originalTask => 
+        (originalTask.taskId || originalTask.id) === (task.taskId || task.id)
+      );
     });
     
     console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
