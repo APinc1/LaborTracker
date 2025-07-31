@@ -241,11 +241,24 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     onSuccess: async () => {
       console.log('🔗 BATCH UPDATE SUCCESS: Running sequential realignment after linking operations');
       
+      // Get locationId from the current task
+      const currentLocationId = task?.locationId;
+      if (!currentLocationId) {
+        console.log('❌ No locationId found, skipping sequential realignment');
+        onTaskUpdate();
+        toast({ 
+          title: "Success", 
+          description: "Task and dependent tasks updated successfully" 
+        });
+        onClose();
+        return;
+      }
+      
       // Refetch the latest tasks first
-      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${locationId}/tasks`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${currentLocationId}/tasks`] });
       
       // Get the refreshed tasks
-      const refreshedTasksData = queryClient.getQueryData([`/api/locations/${locationId}/tasks`]);
+      const refreshedTasksData = queryClient.getQueryData([`/api/locations/${currentLocationId}/tasks`]);
       
       if (refreshedTasksData && Array.isArray(refreshedTasksData)) {
         console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
