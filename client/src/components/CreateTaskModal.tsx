@@ -760,10 +760,14 @@ export default function CreateTaskModal({
     updatedTasks = realignedTasks;
 
     // Update the newTask reference to reflect any date changes from realignment
-    const newTaskIndex = updatedTasks.findIndex(t => t === newTask);
-    if (newTaskIndex >= 0) {
-      // Copy all properties from the realigned task back to newTask
-      Object.assign(newTask, updatedTasks[newTaskIndex]);
+    // Find the task at the insert position (which should be our new task)
+    const realignedNewTask = updatedTasks[insertIndex];
+    if (realignedNewTask) {
+      // Update all key properties from the realigned task
+      newTask.taskDate = realignedNewTask.taskDate;
+      newTask.startDate = realignedNewTask.taskDate;
+      newTask.finishDate = realignedNewTask.taskDate;
+      newTask.order = realignedNewTask.order;
       console.log('Updated newTask with realigned date:', newTask.taskDate);
     }
 
