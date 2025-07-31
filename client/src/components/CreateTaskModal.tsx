@@ -341,13 +341,17 @@ export default function CreateTaskModal({
       onSuccess: async () => {
         // After successful linking, recalculate all sequential dates
         try {
-          const response = await fetch(`/api/locations/${location.locationId || location.id}/tasks/recalculate-dates`, {
+          console.log('Location object for API call:', location);
+          const locationIdForApi = location?.locationId || location?.id || selectedLocation;
+          console.log('Using locationId for API:', locationIdForApi);
+          const response = await fetch(`/api/locations/${locationIdForApi}/tasks/recalculate-dates`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
           if (response.ok) {
             // Refresh the task list to show updated dates
-            queryClient.invalidateQueries({ queryKey: ['/api/locations', location.locationId || location.id, 'tasks'] });
+            const locationIdForQuery = location?.locationId || location?.id || selectedLocation;
+            queryClient.invalidateQueries({ queryKey: ['/api/locations', locationIdForQuery, 'tasks'] });
           }
         } catch (error) {
           console.error('Failed to recalculate sequential dates:', error);
@@ -521,24 +525,21 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // Find the previous task in the sequence based on the insert position
-          let previousTaskIndex = insertIndex - 1;
-          if (previousTaskIndex >= 0 && previousTaskIndex < sortedTasks.length) {
-            const previousTask = sortedTasks[previousTaskIndex];
-            const lastDate = new Date(previousTask.taskDate + 'T00:00:00');
-            const nextDate = new Date(lastDate);
+          // For sequential tasks at the end, follow the chronologically LAST task date 
+          // (regardless of order) and add 1 business day
+          const allTaskDates = sortedTasks.map(t => new Date(t.taskDate)).sort((a, b) => a.getTime() - b.getTime());
+          const latestDate = allTaskDates[allTaskDates.length - 1];
+          
+          const nextDate = new Date(latestDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          // Skip weekends
+          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
             nextDate.setDate(nextDate.getDate() + 1);
-            // Skip weekends
-            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-              nextDate.setDate(nextDate.getDate() + 1);
-            }
-            taskDate = nextDate.toISOString().split('T')[0];
-            console.log('Sequential task following previous task:', previousTask.name, previousTask.taskDate, '-> new date:', taskDate);
-          } else {
-            // No previous task, use today's date
-            taskDate = data.taskDate || new Date().toISOString().split('T')[0];
-            console.log('Sequential task but no previous task, using provided/current date:', taskDate);
           }
+          taskDate = nextDate.toISOString().split('T')[0];
+          
+          const latestTask = sortedTasks.find(t => new Date(t.taskDate).getTime() === latestDate.getTime());
+          console.log('Sequential task following chronologically latest task:', latestTask?.name, latestDate.toISOString().split('T')[0], '-> new date:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
