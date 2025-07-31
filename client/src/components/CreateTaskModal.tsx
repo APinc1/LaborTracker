@@ -238,17 +238,45 @@ export default function CreateTaskModal({
     };
 
     // Update all linked tasks to have the same group, chosen date, and proper sequential status
-    const tasksToUpdate = linkedTasks.map((task, index) => ({
+    // Update all tasks to have the same group and chosen date
+    const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
       taskDate: chosenDate,
-      // First task in linked group should be sequential, others non-sequential
-      dependentOnPrevious: index === 0 ? true : false
+      dependentOnPrevious: false // Initially set all to non-sequential
     }));
     
-    // Set the new task to be non-sequential in the linked group
-    newTask.dependentOnPrevious = false;
-    newTask.taskDate = chosenDate;
+    // Create complete task list with ALL tasks (existing + new)
+    const allTasks = [...existingTasks.filter(t => !linkedTasks.some(lt => 
+      (lt.taskId || lt.id) === (t.taskId || t.id)
+    )), ...tasksToUpdate, newTask];
+    
+    // Sort by chronological order: date first, then original order
+    allTasks.sort((a, b) => {
+      const dateA = new Date(a.taskDate).getTime();
+      const dateB = new Date(b.taskDate).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      return (a.order || 0) - (b.order || 0);
+    });
+    
+    // Reassign orders based on chronological position
+    allTasks.forEach((task, index) => {
+      task.order = index;
+    });
+    
+    // Find the first linked task in chronological order and make it sequential
+    const linkedTasksInOrder = allTasks.filter(t => t.linkedTaskGroup === linkedTaskGroup);
+    if (linkedTasksInOrder.length > 0) {
+      const firstLinkedTask = linkedTasksInOrder[0];
+      
+      // Only make it sequential if it's not the very first task in the project
+      const isFirstTaskOverall = allTasks.findIndex(t => t === firstLinkedTask) === 0;
+      firstLinkedTask.dependentOnPrevious = !isFirstTaskOverall;
+      
+      console.log('First linked task in chronological order:', firstLinkedTask.name, 
+                 'Position:', allTasks.findIndex(t => t === firstLinkedTask),
+                 'Sequential:', firstLinkedTask.dependentOnPrevious);
+    }
     
     console.log('Linking tasks - updating existing tasks:', tasksToUpdate.map(t => ({ 
       name: t.name, 
@@ -256,16 +284,24 @@ export default function CreateTaskModal({
       sequential: t.dependentOnPrevious,
       date: t.taskDate 
     })));
-    console.log('Creating new linked task:', { 
-      name: newTask.name, 
-      linked: newTask.linkedTaskGroup, 
-      sequential: newTask.dependentOnPrevious,
-      date: newTask.taskDate 
+    // Find tasks that need updates (excluding the new task)
+    const finalTasksToUpdate = allTasks.filter(task => {
+      if (task === newTask) return false; // Exclude new task
+      const original = existingTasks.find(t => (t.taskId || t.id) === (task.taskId || task.id));
+      return !original || 
+             original.order !== task.order ||
+             original.linkedTaskGroup !== task.linkedTaskGroup ||
+             original.taskDate !== task.taskDate ||
+             original.dependentOnPrevious !== task.dependentOnPrevious;
     });
+    
+    console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
+      name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious 
+    })));
     
     createTaskMutation.mutate({
       newTask,
-      updatedTasks: tasksToUpdate
+      updatedTasks: finalTasksToUpdate
     });
   };
 
