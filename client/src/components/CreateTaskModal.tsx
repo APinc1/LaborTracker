@@ -484,37 +484,6 @@ export default function CreateTaskModal({
           sortedTasks.findIndex(t => (t.taskId || t.id).toString() === id)
         ).filter(index => index >= 0);
         insertIndex = Math.max(...linkedTaskIndices) + 1;
-        
-        // Shift all subsequent sequential tasks (but NOT linked tasks)
-        let currentDate = taskDate;
-        for (let i = insertIndex; i < updatedTasks.length; i++) {
-          const task = updatedTasks[i];
-          
-          // Skip linked tasks - they maintain their synchronized date
-          if (task.linkedTaskGroup) {
-            currentDate = task.taskDate;
-            continue;
-          }
-          
-          if (task.dependentOnPrevious) {
-            // Calculate next date based on the current reference date
-            const baseDate = new Date(currentDate + 'T00:00:00');
-            const shiftedDate = new Date(baseDate);
-            shiftedDate.setDate(shiftedDate.getDate() + 1);
-            // Skip weekends
-            while (shiftedDate.getDay() === 0 || shiftedDate.getDay() === 6) {
-              shiftedDate.setDate(shiftedDate.getDate() + 1);
-            }
-            updatedTasks[i] = { 
-              ...task, 
-              taskDate: shiftedDate.toISOString().split('T')[0] 
-            };
-            currentDate = shiftedDate.toISOString().split('T')[0];
-          } else {
-            // Non-dependent task keeps its date
-            currentDate = task.taskDate;
-          }
-        }
       } else {
         taskDate = new Date().toISOString().split('T')[0]; // Fallback
       }
@@ -697,6 +666,21 @@ export default function CreateTaskModal({
       ...task,
       order: index
     }));
+
+    // CRITICAL: Apply sequential date logic to ensure proper date dependencies
+    console.log('Before sequential date alignment:', 
+                updatedTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
+    
+    updatedTasks = realignDependentTasks(updatedTasks);
+    
+    console.log('After sequential date alignment:', 
+                updatedTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
 
     // Create new task first, then update existing tasks if needed
     // Update tasks that have changed (date, linkedTaskGroup, dependentOnPrevious, OR order)
