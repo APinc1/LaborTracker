@@ -497,6 +497,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         if (uniqueDates.length === 1) {
           // All tasks already have the same date - proceed with linking directly
           console.log('All tasks have same date - linking directly');
+          
+          // Create new linked group or use existing one from any of the linked tasks
+          const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+          processedData.linkedTaskGroup = linkedTaskGroup;
+          
+          // Use the common date (since all tasks have same date at this point)
+          processedData.taskDate = uniqueDates[0].date;
         } else {
           // Show date choice dialog for multiple dates
           console.log('Multiple dates available - showing date choice dialog');
@@ -508,13 +515,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           setShowLinkDateDialog(true);
           setPendingFormData(data);
           return;
-          
-          // Create new linked group or use existing one from any of the linked tasks
-          const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
-          processedData.linkedTaskGroup = linkedTaskGroup;
-          
-          // Use the common date (since all tasks have same date at this point)
-          processedData.taskDate = uniqueDates[0].date;
         }
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {

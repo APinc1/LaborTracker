@@ -617,14 +617,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update unlinked tasks before deletion
+      // Update tasks that need sequential status changes before deletion
       if (tasksToUpdateForUnlinking.length > 0) {
-        const unlinkingPromises = tasksToUpdateForUnlinking.map(task => 
-          storage.updateTask(task.id, { 
-            linkedTaskGroup: null, 
-            dependentOnPrevious: task.dependentOnPrevious 
-          })
-        );
+        const unlinkingPromises = tasksToUpdateForUnlinking.map(task => {
+          const updateData: any = { dependentOnPrevious: task.dependentOnPrevious };
+          // Only set linkedTaskGroup to null if the task is being unlinked
+          if (task.linkedTaskGroup === null) {
+            updateData.linkedTaskGroup = null;
+          }
+          return storage.updateTask(task.id, updateData);
+        });
         await Promise.all(unlinkingPromises);
       }
       
