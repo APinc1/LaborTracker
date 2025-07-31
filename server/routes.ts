@@ -6,6 +6,7 @@ import {
   insertProjectSchema, insertBudgetLineItemSchema, insertLocationSchema, insertCrewSchema, 
   insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema 
 } from "@shared/schema";
+import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -606,28 +607,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get all tasks in the same location for sequential cascading
       const locationTasks = await storage.getTasks(taskToDelete.locationId);
       
-      // Handle linked task unlinking before deletion
-      let tasksToUpdateForUnlinking = [];
-      if (taskToDelete.linkedTaskGroup) {
+      // Handle linked task unlinking before deletion using the proper utility function
+      const { unlinkUpdates: tasksToUpdateForUnlinking } = handleLinkedTaskDeletion(locationTasks, taskId);
+      
+      if (tasksToUpdateForUnlinking.length > 0) {
         console.log('Deleting linked task, processing partner task unlinking');
-        
-        // Find partner task(s) in the same linked group
-        const linkedPartners = locationTasks.filter(t => 
-          t.linkedTaskGroup === taskToDelete.linkedTaskGroup && t.id !== taskId
-        );
-        
-        linkedPartners.forEach(partnerTask => {
-          console.log('Unlinking partner task:', partnerTask.name);
-          
-          // Determine if remaining task should be sequential
-          // If either the deleted task or partner was sequential, make partner sequential
-          const shouldBeSequential = taskToDelete.dependentOnPrevious || partnerTask.dependentOnPrevious;
-          
-          tasksToUpdateForUnlinking.push({
-            ...partnerTask,
-            linkedTaskGroup: null,
-            dependentOnPrevious: shouldBeSequential
-          });
+        tasksToUpdateForUnlinking.forEach(task => {
+          console.log('Unlinking partner task:', task.name);
         });
       }
       
