@@ -335,11 +335,33 @@ export default function CreateTaskModal({
                 })));
     
     // CRITICAL: Apply sequential date logic to align dependent tasks
+    // BUT preserve linked task dates - they should all share the same date
     const finalOrderedTasks = realignDependentTasks(allTasks);
+    
+    // Post-process: Ensure all linked tasks maintain their chosen date
+    const linkedGroups = new Map();
+    allTasks.forEach(task => {
+      if (task.linkedTaskGroup) {
+        if (!linkedGroups.has(task.linkedTaskGroup)) {
+          linkedGroups.set(task.linkedTaskGroup, task.taskDate);
+        }
+      }
+    });
+    
+    // Restore linked task dates after realignment
+    const preservedLinkedTasks = finalOrderedTasks.map(task => {
+      if (task.linkedTaskGroup && linkedGroups.has(task.linkedTaskGroup)) {
+        return {
+          ...task,
+          taskDate: linkedGroups.get(task.linkedTaskGroup)
+        };
+      }
+      return task;
+    });
     
     // Update allTasks with properly aligned dates
     allTasks.length = 0;
-    allTasks.push(...finalOrderedTasks);
+    allTasks.push(...preservedLinkedTasks);
     
     console.log('Task ordering after date realignment:', 
                 allTasks.map((t, i) => ({ 
