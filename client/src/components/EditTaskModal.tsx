@@ -1062,6 +1062,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('Sequential cascading complete');
       }
       
+      // Apply sequential date recalculation after all other changes (like CreateTaskModal does)
+      console.log('EditTaskModal: Applying realignDependentTasks for sequential date fixes');
+      const finalAlignedTasks = realignDependentTasks(allUpdatedTasks);
+      
+      // Replace allUpdatedTasks with the properly aligned ones
+      allUpdatedTasks = finalAlignedTasks;
+      
       // Filter to only tasks that actually changed
       const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
         const originalTask = locationTasks.find(orig => 
@@ -1075,6 +1082,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           originalTask.costCode !== updatedTask.costCode
         );
       });
+      
+      // Log Base/Grading specifically
+      const baseGradingUpdate = tasksToUpdate.find(t => t.name?.includes('Base/Grading'));
+      if (baseGradingUpdate) {
+        console.log('EditTaskModal FINAL Base/Grading UPDATE:', {
+          id: baseGradingUpdate.taskId || baseGradingUpdate.id,
+          name: baseGradingUpdate.name,
+          taskDate: baseGradingUpdate.taskDate,
+          order: baseGradingUpdate.order,
+          sequential: baseGradingUpdate.dependentOnPrevious
+        });
+      }
       
       console.log('Cascading updates for', tasksToUpdate.length, 'tasks');
       batchUpdateTasksMutation.mutate(tasksToUpdate);
