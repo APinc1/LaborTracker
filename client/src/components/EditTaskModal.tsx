@@ -1498,24 +1498,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 return `${month}/${day}/${year}`;
                               };
                               
-                              // Check if this task is already linked to another task
-                              let linkedPartnerInfo = '';
-                              if (linkTask.linkedTaskGroup) {
-                                const linkedPartner = (existingTasks as any[]).find((t: any) => 
-                                  t.linkedTaskGroup === linkTask.linkedTaskGroup && 
-                                  (t.taskId || t.id) !== (linkTask.taskId || linkTask.id)
-                                );
-                                if (linkedPartner) {
-                                  linkedPartnerInfo = ` → Linked to: ${linkedPartner.name}`;
-                                }
-                              }
-                              
                               return (
                                 <SelectItem 
                                   key={linkTask.id || linkTask.taskId} 
                                   value={(linkTask.taskId || linkTask.id).toString()}
                                 >
-                                  {linkTask.name} ({formatDate(linkTask.taskDate)}){linkedPartnerInfo}
+                                  {linkTask.name} ({formatDate(linkTask.taskDate)})
                                 </SelectItem>
                               );
                             })
