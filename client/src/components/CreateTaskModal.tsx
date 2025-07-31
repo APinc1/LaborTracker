@@ -237,12 +237,12 @@ export default function CreateTaskModal({
       order: 0 // Will be set correctly below
     };
 
-    // Update all linked tasks to have the same group and chosen date
+    // Update ALL linked tasks to have the exact same date and group
     const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
-      taskDate: chosenDate, // ALL linked tasks must have the same date
-      dependentOnPrevious: false // Initially set all to non-sequential
+      taskDate: chosenDate, // CRITICAL: ALL linked tasks MUST have identical dates
+      dependentOnPrevious: false // Linked tasks are not sequential
     }));
     
     // Create complete task list with ALL tasks (existing + new)
@@ -341,13 +341,13 @@ export default function CreateTaskModal({
       onSuccess: async () => {
         // After successful linking, recalculate all sequential dates
         try {
-          const response = await fetch(`/api/locations/${location.locationId}/tasks/recalculate-dates`, {
+          const response = await fetch(`/api/locations/${location.locationId || location.id}/tasks/recalculate-dates`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
           });
           if (response.ok) {
             // Refresh the task list to show updated dates
-            queryClient.invalidateQueries({ queryKey: ['/api/locations', location.locationId, 'tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/locations', location.locationId || location.id, 'tasks'] });
           }
         } catch (error) {
           console.error('Failed to recalculate sequential dates:', error);
@@ -521,24 +521,24 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // For sequential tasks, find the chronologically last task by date (not the last added)
-          const chronologicalTasks = [...sortedTasks].sort((a, b) => {
-            const dateA = new Date(a.taskDate).getTime();
-            const dateB = new Date(b.taskDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-            return (a.order || 0) - (b.order || 0);
-          });
-          
-          const lastChronologicalTask = chronologicalTasks[chronologicalTasks.length - 1];
-          const lastDate = new Date(lastChronologicalTask.taskDate + 'T00:00:00');
-          const nextDate = new Date(lastDate);
-          nextDate.setDate(nextDate.getDate() + 1);
-          // Skip weekends
-          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+          // Find the previous task in the sequence based on the insert position
+          let previousTaskIndex = insertIndex - 1;
+          if (previousTaskIndex >= 0 && previousTaskIndex < sortedTasks.length) {
+            const previousTask = sortedTasks[previousTaskIndex];
+            const lastDate = new Date(previousTask.taskDate + 'T00:00:00');
+            const nextDate = new Date(lastDate);
             nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            taskDate = nextDate.toISOString().split('T')[0];
+            console.log('Sequential task following previous task:', previousTask.name, previousTask.taskDate, '-> new date:', taskDate);
+          } else {
+            // No previous task, use today's date
+            taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+            console.log('Sequential task but no previous task, using provided/current date:', taskDate);
           }
-          taskDate = nextDate.toISOString().split('T')[0];
-          console.log('Sequential task at end - following chronologically last task:', lastChronologicalTask.name, lastChronologicalTask.taskDate, '-> new date:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
