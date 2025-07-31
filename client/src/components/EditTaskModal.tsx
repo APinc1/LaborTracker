@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, realignDependentTasks } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -238,7 +238,47 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const responses = await Promise.all(promises);
       return responses.map(response => response.json());
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // After batch updates complete, refetch tasks and apply sequential recalculation
+      try {
+        console.log('EditTaskModal: Batch update successful, applying sequential recalculation');
+        
+        // Refetch the latest tasks to get updated data
+        const latestTasks = await queryClient.fetchQuery({
+          queryKey: ["/api/locations", task.locationId, "tasks"],
+          staleTime: 0
+        });
+        
+        if (latestTasks && latestTasks.length > 0) {
+          // Apply realignDependentTasks to fix sequential dates
+          const realignedTasks = realignDependentTasks(latestTasks);
+          
+          // Find tasks that need date updates
+          const tasksNeedingDateUpdates = realignedTasks.filter((aligned: any, index: number) => {
+            const original = latestTasks[index];
+            return aligned.taskDate !== original.taskDate;
+          });
+          
+          if (tasksNeedingDateUpdates.length > 0) {
+            console.log('EditTaskModal: Applying sequential date fixes to', tasksNeedingDateUpdates.length, 'tasks');
+            
+            // Update tasks with corrected sequential dates
+            const dateUpdatePromises = tasksNeedingDateUpdates.map((alignedTask: any) => 
+              apiRequest(`/api/tasks/${alignedTask.id}`, {
+                method: 'PUT',
+                body: JSON.stringify(alignedTask),
+                headers: { 'Content-Type': 'application/json' }
+              })
+            );
+            
+            await Promise.all(dateUpdatePromises);
+            console.log('EditTaskModal: Sequential date fixes applied successfully');
+          }
+        }
+      } catch (error) {
+        console.error('EditTaskModal: Error applying sequential recalculation:', error);
+      }
+      
       onTaskUpdate();
       toast({ 
         title: "Success", 
