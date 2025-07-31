@@ -409,6 +409,14 @@ export default function CreateTaskModal({
   };
 
   const onSubmit = (data: any) => {
+    console.log('onSubmit called with data:', {
+      linkToExistingTask: data.linkToExistingTask,
+      linkedTaskIds: data.linkedTaskIds,
+      dependentOnPrevious: data.dependentOnPrevious,
+      insertPosition: data.insertPosition,
+      name: data.name
+    });
+    
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
