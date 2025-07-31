@@ -152,9 +152,21 @@ export function reorderTasksWithDependencies(
 
 /**
  * Re-align dependent tasks to follow previous task by one weekday
+ * Respects linked task groups - linked tasks maintain their shared date
  */
 export function realignDependentTasks(tasks: any[]): any[] {
   const updatedTasks = [...tasks];
+  
+  // Group linked tasks to preserve their shared dates
+  const linkedGroups = new Map<string, any[]>();
+  updatedTasks.forEach((task, index) => {
+    if (task.linkedTaskGroup) {
+      if (!linkedGroups.has(task.linkedTaskGroup)) {
+        linkedGroups.set(task.linkedTaskGroup, []);
+      }
+      linkedGroups.get(task.linkedTaskGroup)!.push({ task, index });
+    }
+  });
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
@@ -162,13 +174,42 @@ export function realignDependentTasks(tasks: any[]): any[] {
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
-      const previousDate = parseDateString(previousTask.taskDate);
-      const nextWeekday = getNextWeekday(previousDate);
+      // If current task is part of a linked group, don't change its date
+      if (currentTask.linkedTaskGroup) {
+        console.log(`Skipping sequential recalculation for linked task: ${currentTask.name} (group: ${currentTask.linkedTaskGroup})`);
+        continue;
+      }
       
-      updatedTasks[i] = {
-        ...currentTask,
-        taskDate: formatDateToString(nextWeekday)
-      };
+      // Find the actual previous task date (skip over linked groups to find the real predecessor)
+      let previousDate: Date;
+      let j = i - 1;
+      
+      // Look backwards to find the last non-linked task or the representative date of a linked group
+      while (j >= 0) {
+        const candidateTask = updatedTasks[j];
+        
+        if (!candidateTask.linkedTaskGroup) {
+          // Non-linked task - use its date directly
+          previousDate = parseDateString(candidateTask.taskDate);
+          break;
+        } else {
+          // Linked task - find the latest date among all tasks in this group
+          const groupTasks = linkedGroups.get(candidateTask.linkedTaskGroup) || [];
+          const groupDates = groupTasks.map(({ task }) => parseDateString(task.taskDate));
+          previousDate = new Date(Math.max(...groupDates.map(d => d.getTime())));
+          break;
+        }
+      }
+      
+      if (previousDate!) {
+        const nextWeekday = getNextWeekday(previousDate);
+        console.log(`Sequential recalculation: ${currentTask.name} from ${currentTask.taskDate} to ${formatDateToString(nextWeekday)}`);
+        
+        updatedTasks[i] = {
+          ...currentTask,
+          taskDate: formatDateToString(nextWeekday)
+        };
+      }
     }
   }
   
