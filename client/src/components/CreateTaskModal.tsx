@@ -581,8 +581,9 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // For sequential tasks, use a placeholder date - it will be corrected by realignDependentTasks
-          taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+          // For sequential tasks at end, use placeholder - realignDependentTasks will fix it
+          taskDate = "PLACEHOLDER-WILL-BE-FIXED";
+          console.log('Creating sequential task at end - using placeholder date that will be corrected');
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
@@ -736,6 +737,14 @@ export default function CreateTaskModal({
                   order: i, name: t.name, date: t.taskDate, 
                   sequential: t.dependentOnPrevious, isNew: t === newTask
                 })));
+    
+    console.log('New task details:', {
+      name: newTask.name, 
+      date: newTask.taskDate, 
+      sequential: newTask.dependentOnPrevious,
+      insertIndex,
+      position: data.insertPosition
+    });
 
     // NOW apply sequential date logic to the entire array
     const realignedTasks = realignDependentTasks(updatedTasks);
