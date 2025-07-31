@@ -506,16 +506,29 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // Find the chronologically last task to determine the next date
-          const chronologicalTasks = [...sortedTasks].sort((a, b) => {
-            const dateA = new Date(a.taskDate).getTime();
-            const dateB = new Date(b.taskDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-            return (a.order || 0) - (b.order || 0);
-          });
+          // For sequential tasks at the end, we need to find the last sequential task in the chain
+          // Sequential tasks should follow each other in a continuous chain
+          let latestDate = null;
+          let referenceTask = null;
           
-          const lastChronologicalTask = chronologicalTasks[chronologicalTasks.length - 1];
-          const lastDate = new Date(lastChronologicalTask.taskDate + 'T00:00:00');
+          // Walk through all tasks and find the last one in the sequential chain
+          for (let i = sortedTasks.length - 1; i >= 0; i--) {
+            const task = sortedTasks[i];
+            if (task.dependentOnPrevious || i === 0) { // First task or sequential task
+              if (!latestDate || new Date(task.taskDate) > new Date(latestDate)) {
+                latestDate = task.taskDate;
+                referenceTask = task;
+              }
+            }
+          }
+          
+          // If no sequential tasks found, use the very first task
+          if (!referenceTask) {
+            referenceTask = sortedTasks[0];
+            latestDate = referenceTask.taskDate;
+          }
+          
+          const lastDate = new Date(latestDate + 'T00:00:00');
           const nextDate = new Date(lastDate);
           nextDate.setDate(nextDate.getDate() + 1);
           // Skip weekends
@@ -523,7 +536,7 @@ export default function CreateTaskModal({
             nextDate.setDate(nextDate.getDate() + 1);
           }
           taskDate = nextDate.toISOString().split('T')[0];
-          console.log('Sequential task at end - following chronologically last task:', lastChronologicalTask.name, lastChronologicalTask.taskDate, '-> new date:', taskDate);
+          console.log('Sequential task at end - following latest sequential task:', referenceTask.name, referenceTask.taskDate, '-> new date:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
