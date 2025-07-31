@@ -65,16 +65,16 @@ const editTaskSchema = z.object({
   status: z.string().optional(),
   dependentOnPrevious: z.boolean().optional(),
   linkToExistingTask: z.boolean().default(false),
-  linkedTaskId: z.string().optional(),
+  linkedTaskIds: z.array(z.string()).optional(),
 }).refine((data) => {
-  // If linking is enabled, linkedTaskId is required
-  if (data.linkToExistingTask && (!data.linkedTaskId || data.linkedTaskId === "")) {
+  // If linking is enabled, linkedTaskIds must have at least one item
+  if (data.linkToExistingTask && (!data.linkedTaskIds || data.linkedTaskIds.length === 0)) {
     return false;
   }
   return true;
 }, {
-  message: "You must select a task to link with when linking is enabled",
-  path: ["linkedTaskId"]
+  message: "You must select at least one task to link with when linking is enabled",
+  path: ["linkedTaskIds"]
 });
 
 export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, locationTasks = [] }: EditTaskModalProps) {
@@ -86,7 +86,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showNonSequentialDialog, setShowNonSequentialDialog] = useState(false);
   const [pendingNonSequentialData, setPendingNonSequentialData] = useState<any>(null);
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
-  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTask: any, currentTaskDate: string, targetTaskDate: string} | null>(null);
+  const [linkingOptions, setLinkingOptions] = useState<{currentTask: any, targetTasks: any[], availableDates: {date: string, taskName: string}[]} | null>(null);
+  const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
+  const [unlinkingGroupSize, setUnlinkingGroupSize] = useState(0);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -146,7 +148,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       status: "upcoming",
       dependentOnPrevious: true,
       linkToExistingTask: false,
-      linkedTaskId: "",
+      linkedTaskIds: [],
     },
   });
 
@@ -169,12 +171,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       }
 
-      // Find the current linked task if this task is already linked
-      const currentLinkedTask = task.linkedTaskGroup ? 
-        existingTasks?.find((t: any) => 
+      // Find all current linked tasks if this task is already linked
+      const currentLinkedTasks = task.linkedTaskGroup ? 
+        existingTasks?.filter((t: any) => 
           t.linkedTaskGroup === task.linkedTaskGroup && 
           (t.taskId || t.id) !== (task.taskId || task.id)
-        ) : null;
+        ) || [] : [];
 
       form.reset({
         name: task.name || "",
@@ -186,7 +188,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
-        linkedTaskId: currentLinkedTask ? (currentLinkedTask.taskId || currentLinkedTask.id?.toString()) : "",
+        linkedTaskIds: currentLinkedTasks.map(t => (t.taskId || t.id?.toString())),
       });
     }
   }, [task, form, existingTasks]);
@@ -613,112 +615,86 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
-    if (data.linkToExistingTask && data.linkedTaskId) {
-      // LINKING TO A TASK
-      const linkedTask = (existingTasks as any[]).find((t: any) => 
-        (t.taskId || t.id).toString() === data.linkedTaskId
+    if (data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0) {
+      // LINKING TO MULTIPLE TASKS
+      const linkedTasks = (existingTasks as any[]).filter((t: any) => 
+        data.linkedTaskIds!.includes((t.taskId || t.id).toString())
       );
-      if (linkedTask) {
-        // Check if tasks are adjacent (next to each other in order)
-        const currentOrder = task.order || 0;
-        const linkedOrder = linkedTask.order || 0;
-        const areAdjacent = Math.abs(currentOrder - linkedOrder) === 1;
+      if (linkedTasks.length > 0) {
+        // Collect all available dates from selected tasks plus current task
+        const allTasks = [task, ...linkedTasks];
+        const availableDates = allTasks.map(t => ({
+          date: t.taskDate,
+          taskName: t.name
+        }));
         
-        // Determine sequential status
-        const currentIsSequential = task.dependentOnPrevious;
-        const linkedIsSequential = linkedTask.dependentOnPrevious;
+        // Remove duplicates by date
+        const uniqueDates = availableDates.filter((item, index, self) => 
+          self.findIndex(d => d.date === item.date) === index
+        );
         
-        console.log('Linking analysis:', {
-          areAdjacent,
-          currentIsSequential,
-          linkedIsSequential,
-          currentDate: task.taskDate,
-          linkedDate: linkedTask.taskDate,
-          sameDate: task.taskDate === linkedTask.taskDate
-        });
-        
-        if (task.taskDate === linkedTask.taskDate) {
-          // Same date - proceed with linking directly
-          console.log('Same date linking - no dialog needed');
-        } else if (areAdjacent && currentIsSequential && linkedIsSequential) {
-          // Adjacent sequential tasks - use earlier date automatically
-          const earlierDate = task.taskDate < linkedTask.taskDate ? task.taskDate : linkedTask.taskDate;
-          console.log('Adjacent sequential tasks - using earlier date:', earlierDate);
-          
-          // Process directly with earlier date
-          const updatedData = { ...data, taskDate: earlierDate };
-          const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
-          
-          const currentTaskUpdate = {
-            ...task,
-            ...updatedData,
-            linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: currentOrder < linkedOrder ? currentIsSequential : false
-          };
-          
-          const linkedTaskUpdate = {
-            ...linkedTask,
-            taskDate: earlierDate,
-            linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: linkedOrder < currentOrder ? linkedIsSequential : false
-          };
-          
-          console.log('Direct linking with earlier date - no dialog');
-          batchUpdateTasksMutation.mutate([currentTaskUpdate, linkedTaskUpdate]);
-          return;
+        if (uniqueDates.length === 1) {
+          // All tasks already have the same date - proceed with linking directly
+          console.log('All tasks have same date - linking directly');
         } else {
-          // Show date choice dialog for other cases
-          console.log('Showing date choice dialog');
+          // Show date choice dialog for multiple dates
+          console.log('Multiple dates available - showing date choice dialog');
           setLinkingOptions({
             currentTask: task,
-            targetTask: linkedTask,
-            currentTaskDate: task.taskDate,
-            targetTaskDate: linkedTask.taskDate,
-            currentIsSequential,
-            linkedIsSequential,
-            areAdjacent
+            targetTasks: linkedTasks,
+            availableDates: uniqueDates
           });
           setShowLinkDateDialog(true);
           setPendingFormData(data);
           return;
+          
+          // Create new linked group or use existing one from any of the linked tasks
+          const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+          processedData.linkedTaskGroup = linkedTaskGroup;
+          
+          // Use the common date (since all tasks have same date at this point)
+          processedData.taskDate = uniqueDates[0].date;
         }
-        
-        // Create new linked group or use existing one
-        const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
-        processedData.linkedTaskGroup = linkedTaskGroup;
-        processedData.taskDate = linkedTask.taskDate; // Must use same date as linked task
-        
-        // When linking two tasks, we need to determine which should be sequential based on their positions
-        // This will be handled in the cascading updates section where we have access to the task list
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
-      // UNLINKING FROM GROUP - also unlink the other task in the group
-      processedData.linkedTaskGroup = null;
-      
-      // For current task, determine if either task was sequential
-      const partnerTask = existingTasks.find((t: any) => 
+      // UNLINKING FROM GROUP
+      const groupTasks = (existingTasks as any[]).filter((t: any) => 
         t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
       );
-      const currentWasSequential = task.dependentOnPrevious;
-      const partnerWasSequential = partnerTask ? partnerTask.dependentOnPrevious : false;
-      const eitherWasSequential = currentWasSequential || partnerWasSequential;
       
-      // Check if current task is first task - first task must stay unsequential
-      const isCurrentTaskFirst = task.order === 0 || (existingTasks && existingTasks.length > 0 && 
-        existingTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
-      
-      processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
-      
-      console.log('Current task unlinking:', {
-        currentWasSequential,
-        partnerWasSequential,
-        eitherWasSequential,
-        isCurrentTaskFirst,
-        finalStatus: processedData.dependentOnPrevious
-      });
-      
-      // Mark that we need to unlink the partner task too
-      linkingChanged = true;
+      if (groupTasks.length >= 2) {
+        // Multi-task group - show unlink dialog
+        setUnlinkingGroupSize(groupTasks.length + 1); // +1 for current task
+        setShowUnlinkDialog(true);
+        setPendingFormData(data);
+        return;
+      } else {
+        // Two-task group - use existing logic
+        processedData.linkedTaskGroup = null;
+        
+        // For current task, determine if either task was sequential
+        const partnerTask = groupTasks[0];
+        const currentWasSequential = task.dependentOnPrevious;
+        const partnerWasSequential = partnerTask ? partnerTask.dependentOnPrevious : false;
+        const eitherWasSequential = currentWasSequential || partnerWasSequential;
+        
+        // Check if current task is first task - first task must stay unsequential
+        const isCurrentTaskFirst = task.order === 0 || ((existingTasks as any[]).length > 0 && 
+          (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+        
+        processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
+        
+        console.log('Current task unlinking:', {
+          currentWasSequential,
+          partnerWasSequential,
+          eitherWasSequential,
+          isCurrentTaskFirst,
+          finalStatus: processedData.dependentOnPrevious
+        });
+        
+        // Mark that we need to unlink the partner task too
+        linkingChanged = true;
+      }
     } else if (task.linkedTaskGroup && dependencyChanged) {
       // LINKED TASK SEQUENTIAL STATUS CHANGE - sync with partner task
       console.log('Linked task sequential status changed - syncing partner');
@@ -735,7 +711,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     }
 
     // FIRST TASK ENFORCEMENT - Always make first task unsequential
-    const sortedTasks = existingTasks ? [...existingTasks].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
+    const sortedTasks = (existingTasks as any[]) ? [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
     const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && sortedTasks[0].id === task.id);
     
     if (isFirstTask) {
@@ -765,11 +741,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         allUpdatedTasks[mainTaskIndex] = { ...allUpdatedTasks[mainTaskIndex], ...processedData };
       }
 
-      // Handle new linking - update both tasks based on their sequence position
-      if (data.linkToExistingTask && data.linkedTaskId && linkingChanged) {
-        const linkedTaskIndex = allUpdatedTasks.findIndex(t => 
-          (t.taskId || t.id).toString() === data.linkedTaskId
-        );
+      // Handle new linking - update all linked tasks based on their sequence position
+      if (data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0 && linkingChanged) {
+        const linkedTaskIndices = data.linkedTaskIds.map((taskId: string) => 
+          allUpdatedTasks.findIndex((t: any) => (t.taskId || t.id).toString() === taskId)
+        ).filter((index: number) => index >= 0);
         if (linkedTaskIndex >= 0) {
           const linkedTaskGroup = processedData.linkedTaskGroup;
           const linkedTask = allUpdatedTasks[linkedTaskIndex];
@@ -1470,46 +1446,93 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               {form.watch("linkToExistingTask") && (
                 <FormField
                   control={form.control}
-                  name="linkedTaskId"
+                  name="linkedTaskIds"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Linked Task
-</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose an existing task" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(existingTasks as any[])
-                            .filter((t: any) => (t.taskId || t.id) !== (task.taskId || task.id))
-                            .sort((a: any, b: any) => {
-                              // Sort by date first, then by order
-                              const dateA = new Date(a.taskDate).getTime();
-                              const dateB = new Date(b.taskDate).getTime();
-                              if (dateA !== dateB) return dateA - dateB;
-                              return (a.order || 0) - (b.order || 0);
-                            })
-                            .map((linkTask: any) => {
-                              // Fix date display - use direct string formatting to avoid timezone issues
+                      <FormLabel>Select Tasks to Link With</FormLabel>
+                      <div className="space-y-2">
+                        {/* Selected tasks display */}
+                        {field.value && field.value.length > 0 && (
+                          <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-gray-50">
+                            {field.value.map((taskId: string) => {
+                              const selectedTask = (existingTasks as any[]).find((t: any) => 
+                                (t.taskId || t.id).toString() === taskId
+                              );
+                              if (!selectedTask) return null;
+                              
                               const formatDate = (dateStr: string) => {
                                 const [year, month, day] = dateStr.split('-');
                                 return `${month}/${day}/${year}`;
                               };
                               
                               return (
-                                <SelectItem 
-                                  key={linkTask.id || linkTask.taskId} 
-                                  value={(linkTask.taskId || linkTask.id).toString()}
-                                >
-                                  {linkTask.name} ({formatDate(linkTask.taskDate)})
-                                </SelectItem>
+                                <div key={taskId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                  <span>{selectedTask.name} ({formatDate(selectedTask.taskDate)})</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newValue = field.value.filter((id: string) => id !== taskId);
+                                      field.onChange(newValue);
+                                    }}
+                                    className="ml-1 text-blue-600 hover:text-blue-800"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
                               );
-                            })
-                          }
-                        </SelectContent>
-                      </Select>
+                            })}
+                          </div>
+                        )}
+                        
+                        {/* Multi-select dropdown */}
+                        <Select 
+                          onValueChange={(value) => {
+                            if (value && !field.value.includes(value)) {
+                              field.onChange([...field.value, value]);
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose tasks to link with" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(existingTasks as any[])
+                              .filter((t: any) => 
+                                (t.taskId || t.id) !== (task.taskId || task.id) &&
+                                !field.value.includes((t.taskId || t.id).toString())
+                              )
+                              .sort((a: any, b: any) => {
+                                // Sort by date first, then by order
+                                const dateA = new Date(a.taskDate).getTime();
+                                const dateB = new Date(b.taskDate).getTime();
+                                if (dateA !== dateB) return dateA - dateB;
+                                return (a.order || 0) - (b.order || 0);
+                              })
+                              .map((linkTask: any) => {
+                                // Fix date display - use direct string formatting to avoid timezone issues
+                                const formatDate = (dateStr: string) => {
+                                  const [year, month, day] = dateStr.split('-');
+                                  return `${month}/${day}/${year}`;
+                                };
+                                
+                                const isSelected = field.value.includes((linkTask.taskId || linkTask.id).toString());
+                                
+                                return (
+                                  <SelectItem 
+                                    key={linkTask.id || linkTask.taskId} 
+                                    value={(linkTask.taskId || linkTask.id).toString()}
+                                    className={isSelected ? "bg-blue-100" : ""}
+                                  >
+                                    {linkTask.name} ({formatDate(linkTask.taskDate)})
+                                  </SelectItem>
+                                );
+                              })
+                            }
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
