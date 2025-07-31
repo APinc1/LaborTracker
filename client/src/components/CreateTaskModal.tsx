@@ -237,38 +237,31 @@ export default function CreateTaskModal({
       order: 0 // Will be set correctly below
     };
 
-    // Update all linked tasks to have the same group and chosen date
-    const updatedTasks = linkedTasks.map(task => ({
+    // Update all linked tasks to have the same group, chosen date, and proper sequential status
+    const tasksToUpdate = linkedTasks.map((task, index) => ({
       ...task,
       linkedTaskGroup,
-      taskDate: chosenDate
+      taskDate: chosenDate,
+      // First task in linked group should be sequential, others non-sequential
+      dependentOnPrevious: index === 0 ? true : false
     }));
     
-    // Add the new task to the updates
-    updatedTasks.push(newTask);
+    // Set the new task to be non-sequential in the linked group
+    newTask.dependentOnPrevious = false;
+    newTask.taskDate = chosenDate;
     
-    // Set orders and handle sequential dependencies
-    const allTasks = [...sortedTasks, newTask];
-    allTasks.sort((a, b) => {
-      const dateA = new Date(a.taskDate).getTime();
-      const dateB = new Date(b.taskDate).getTime();
-      if (dateA !== dateB) return dateA - dateB;
-      return (a.order || 0) - (b.order || 0);
+    console.log('Linking tasks - updating existing tasks:', tasksToUpdate.map(t => ({ 
+      name: t.name, 
+      linked: t.linkedTaskGroup, 
+      sequential: t.dependentOnPrevious,
+      date: t.taskDate 
+    })));
+    console.log('Creating new linked task:', { 
+      name: newTask.name, 
+      linked: newTask.linkedTaskGroup, 
+      sequential: newTask.dependentOnPrevious,
+      date: newTask.taskDate 
     });
-    
-    // Assign new orders
-    allTasks.forEach((task, index) => {
-      task.order = index;
-    });
-    
-    // Find tasks that need updates
-    const tasksToUpdate = allTasks.filter(task => {
-      const original = sortedTasks.find(t => (t.taskId || t.id) === (task.taskId || task.id));
-      return !original || 
-             original.order !== task.order ||
-             original.linkedTaskGroup !== task.linkedTaskGroup ||
-             original.taskDate !== task.taskDate;
-    }).filter(task => task !== newTask); // Exclude the new task
     
     createTaskMutation.mutate({
       newTask,
