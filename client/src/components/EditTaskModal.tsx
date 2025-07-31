@@ -254,29 +254,45 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         return;
       }
       
-      // Refetch the latest tasks first
+      // Refetch the latest tasks first and wait for fresh data
       await queryClient.invalidateQueries({ queryKey: [`/api/locations/${currentLocationId}/tasks`] });
       
-      // Get the refreshed tasks
-      const refreshedTasksData = queryClient.getQueryData([`/api/locations/${currentLocationId}/tasks`]);
+      // Force refetch to get the latest data
+      const refreshedTasksData = await queryClient.fetchQuery({
+        queryKey: [`/api/locations/${currentLocationId}/tasks`],
+        staleTime: 0 // Force fresh fetch
+      });
       
       if (refreshedTasksData && Array.isArray(refreshedTasksData)) {
         console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
+        console.log('🔍 Tasks before realignment:', refreshedTasksData.map(t => ({ 
+          name: t.name, 
+          order: t.order, 
+          date: t.taskDate, 
+          sequential: t.dependentOnPrevious,
+          linked: !!t.linkedTaskGroup
+        })));
         
         // Import the realignment function
         const { realignDependentTasks } = await import('../../../shared/taskUtils');
         
-        // Apply sequential realignment to the refreshed tasks
-        const realignedTasks = realignDependentTasks(refreshedTasksData);
+        // Apply sequential realignment to the refreshed tasks sorted by order
+        const sortedTasks = [...refreshedTasksData].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const realignedTasks = realignDependentTasks(sortedTasks);
         
         // Check if any tasks need additional updates due to sequential realignment
         const additionalUpdates = realignedTasks.filter((realignedTask, index) => {
-          const originalTask = refreshedTasksData[index];
+          const originalTask = sortedTasks[index];
           return originalTask && originalTask.taskDate !== realignedTask.taskDate;
         });
         
         if (additionalUpdates.length > 0) {
           console.log('📝 ADDITIONAL UPDATES needed after sequential realignment:', additionalUpdates.length, 'tasks');
+          console.log('📝 Updates needed:', additionalUpdates.map(t => ({ 
+            name: t.name, 
+            oldDate: sortedTasks.find(st => st.id === t.id)?.taskDate,
+            newDate: t.taskDate 
+          })));
           
           // Perform additional updates for tasks that need date changes
           const additionalPromises = additionalUpdates.map(taskData => 
@@ -292,6 +308,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         } else {
           console.log('✅ NO ADDITIONAL UPDATES needed after sequential realignment');
         }
+      } else {
+        console.log('❌ Failed to get refreshed tasks data for sequential realignment');
       }
       
       // Final refetch to get the updated state
