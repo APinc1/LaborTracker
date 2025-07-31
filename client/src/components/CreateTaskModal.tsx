@@ -251,44 +251,65 @@ export default function CreateTaskModal({
       (lt.taskId || lt.id) === (t.taskId || t.id)
     )), ...tasksToUpdate, newTask];
     
-    // Sort by chronological order: date first, then original order
-    allTasks.sort((a, b) => {
+    // Separate linked and non-linked tasks
+    const linkedTasksFromGroup = allTasks.filter(t => t.linkedTaskGroup === linkedTaskGroup);
+    const nonLinkedTasks = allTasks.filter(t => t.linkedTaskGroup !== linkedTaskGroup);
+    
+    // Sort non-linked tasks by date
+    nonLinkedTasks.sort((a, b) => {
       const dateA = new Date(a.taskDate).getTime();
       const dateB = new Date(b.taskDate).getTime();
       if (dateA !== dateB) return dateA - dateB;
       return (a.order || 0) - (b.order || 0);
     });
     
-    // Reassign orders based on chronological position
-    allTasks.forEach((task, index) => {
-      task.order = index;
-    });
-    
-    // Apply sequential logic: first task chronologically should be sequential if it has a predecessor
-    let previousTaskIndex = -1;
-    for (let i = 0; i < allTasks.length; i++) {
-      const currentTask = allTasks[i];
-      
-      if (currentTask.linkedTaskGroup === linkedTaskGroup) {
-        // This is our linked group - make first one sequential if it has a predecessor
-        if (previousTaskIndex >= 0) {
-          currentTask.dependentOnPrevious = true;
-          console.log('Making linked task sequential:', currentTask.name, 'Position:', i);
-        } else {
-          currentTask.dependentOnPrevious = false;
-          console.log('First task overall - keeping non-sequential:', currentTask.name);
-        }
-        // All other tasks in this linked group should be non-sequential
-        for (let j = i + 1; j < allTasks.length; j++) {
-          if (allTasks[j].linkedTaskGroup === linkedTaskGroup) {
-            allTasks[j].dependentOnPrevious = false;
-          }
-        }
-        break; // We've handled the linked group
+    // Find where to insert the linked group chronologically
+    const linkedGroupDate = new Date(chosenDate).getTime();
+    let insertIndex = 0;
+    for (let i = 0; i < nonLinkedTasks.length; i++) {
+      const taskDate = new Date(nonLinkedTasks[i].taskDate).getTime();
+      if (taskDate < linkedGroupDate) {
+        insertIndex = i + 1;
       } else {
-        previousTaskIndex = i;
+        break;
       }
     }
+    
+    // Reassemble tasks: non-linked before + linked group + non-linked after
+    const orderedTasks = [
+      ...nonLinkedTasks.slice(0, insertIndex),
+      ...linkedTasksFromGroup,
+      ...nonLinkedTasks.slice(insertIndex)
+    ];
+    
+    // Reassign orders and apply sequential logic
+    orderedTasks.forEach((task, index) => {
+      task.order = index;
+      
+      // Apply sequential logic: first task in linked group should be sequential if it has a predecessor
+      if (task.linkedTaskGroup === linkedTaskGroup) {
+        if (index === 0) {
+          // First task overall - must be non-sequential
+          task.dependentOnPrevious = false;
+        } else if (linkedTasksFromGroup.indexOf(task) === 0) {
+          // First task in linked group - make sequential if it has a predecessor
+          task.dependentOnPrevious = true;
+        } else {
+          // Other tasks in linked group - non-sequential
+          task.dependentOnPrevious = false;
+        }
+      }
+    });
+    
+    // Update allTasks reference for the rest of the function
+    allTasks.length = 0;
+    allTasks.push(...orderedTasks);
+    
+    console.log('Task ordering after linked group placement:', 
+                allTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
     
     console.log('Linking tasks - updating existing tasks:', tasksToUpdate.map(t => ({ 
       name: t.name, 
