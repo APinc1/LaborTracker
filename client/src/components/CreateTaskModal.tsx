@@ -214,6 +214,7 @@ export default function CreateTaskModal({
     const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
     
     const newTask = {
+      taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocation,
       projectId: selectedProject,
       name: data.name,
@@ -224,10 +225,15 @@ export default function CreateTaskModal({
       finishDate: chosenDate,
       startTime: data.startTime || null,
       finishTime: data.finishTime || null,
+      status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
       dependentOnPrevious: false, // New linked task is non-sequential
       linkedTaskGroup,
+      superintendentId: null,
+      foremanId: null,
+      scheduledHours: "0.00",
+      actualHours: data.status === 'complete' ? "0.00" : null,
       order: 0 // Will be set correctly below
     };
 
@@ -1032,17 +1038,19 @@ export default function CreateTaskModal({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Choose Date for Linked Tasks</AlertDialogTitle>
-            <AlertDialogDescription>
-              The selected tasks have different dates. Which date should all linked tasks use?
-              <ul className="mt-2 space-y-1">
-                {linkingOptions?.availableDates.map((dateOption, index) => (
-                  <li key={index} className="text-sm">
-                    <strong>{dateOption.date}</strong> - {dateOption.taskName}
-                  </li>
-                ))}
-              </ul>
-            </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-3">
+              The selected tasks have different dates. Which date should all linked tasks use?
+            </p>
+            <div className="space-y-2">
+              {linkingOptions?.availableDates.map((dateOption, index) => (
+                <div key={index} className="text-sm border rounded p-2">
+                  <span className="font-medium">{dateOption.date}</span> - {dateOption.taskName}
+                </div>
+              ))}
+            </div>
+          </div>
           <AlertDialogFooter className="flex flex-col gap-2">
             {linkingOptions?.availableDates.map((dateOption, index) => (
               <AlertDialogAction
