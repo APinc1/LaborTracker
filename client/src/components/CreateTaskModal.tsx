@@ -150,14 +150,19 @@ export default function CreateTaskModal({
       
       return createResponse.json();
     },
-    onSuccess: (result, variables) => {
+    onSuccess: async (result, variables) => {
       const successMsg = variables.updatedTasks.length > 0 
         ? `Task created and ${variables.updatedTasks.length} existing tasks shifted`
         : "Task created successfully";
       
-      // Invalidate both general tasks and location-specific tasks
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
+      // Force immediate cache invalidation and refetch
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
+      
+      // Also refetch the current location tasks immediately
+      await queryClient.refetchQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
+      
+      console.log('Cache invalidated and refetched after task creation');
       toast({ title: "Success", description: successMsg });
       onClose();
       form.reset();
