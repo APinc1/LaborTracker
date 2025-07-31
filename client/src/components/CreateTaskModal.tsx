@@ -359,10 +359,34 @@ export default function CreateTaskModal({
       sequential: t.dependentOnPrevious,
       date: t.taskDate 
     })));
-    // CRITICAL: Update ALL existing tasks with new order values to ensure no duplicates
+    
+    // CRITICAL: Only update tasks that have actually changed (date, linkedTaskGroup, dependentOnPrevious, OR order)
     const finalTasksToUpdate = allTasks.filter(task => {
       if (task === newTask) return false; // Exclude new task
-      return true; // Update all existing tasks to ensure proper ordering
+      
+      const originalTask = (existingTasks as any[]).find((orig: any) => 
+        (orig.taskId || orig.id) === (task.taskId || task.id)
+      );
+      
+      if (!originalTask) return false; // Skip if not found in original tasks
+      
+      const hasChanges = (
+        originalTask.taskDate !== task.taskDate ||
+        originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+        originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+        originalTask.order !== task.order
+      );
+      
+      if (hasChanges) {
+        console.log(`Task "${task.name}" has changes:`, {
+          dateChanged: originalTask.taskDate !== task.taskDate ? `${originalTask.taskDate} → ${task.taskDate}` : 'no',
+          linkedChanged: originalTask.linkedTaskGroup !== task.linkedTaskGroup ? `${originalTask.linkedTaskGroup} → ${task.linkedTaskGroup}` : 'no',
+          sequentialChanged: originalTask.dependentOnPrevious !== task.dependentOnPrevious ? `${originalTask.dependentOnPrevious} → ${task.dependentOnPrevious}` : 'no',
+          orderChanged: originalTask.order !== task.order ? `${originalTask.order} → ${task.order}` : 'no'
+        });
+      }
+      
+      return hasChanges;
     });
     
     console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
