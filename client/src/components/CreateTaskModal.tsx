@@ -264,18 +264,30 @@ export default function CreateTaskModal({
       task.order = index;
     });
     
-    // Find the first linked task in chronological order and make it sequential
-    const linkedTasksInOrder = allTasks.filter(t => t.linkedTaskGroup === linkedTaskGroup);
-    if (linkedTasksInOrder.length > 0) {
-      const firstLinkedTask = linkedTasksInOrder[0];
+    // Apply sequential logic: first task chronologically should be sequential if it has a predecessor
+    let previousTaskIndex = -1;
+    for (let i = 0; i < allTasks.length; i++) {
+      const currentTask = allTasks[i];
       
-      // Only make it sequential if it's not the very first task in the project
-      const isFirstTaskOverall = allTasks.findIndex(t => t === firstLinkedTask) === 0;
-      firstLinkedTask.dependentOnPrevious = !isFirstTaskOverall;
-      
-      console.log('First linked task in chronological order:', firstLinkedTask.name, 
-                 'Position:', allTasks.findIndex(t => t === firstLinkedTask),
-                 'Sequential:', firstLinkedTask.dependentOnPrevious);
+      if (currentTask.linkedTaskGroup === linkedTaskGroup) {
+        // This is our linked group - make first one sequential if it has a predecessor
+        if (previousTaskIndex >= 0) {
+          currentTask.dependentOnPrevious = true;
+          console.log('Making linked task sequential:', currentTask.name, 'Position:', i);
+        } else {
+          currentTask.dependentOnPrevious = false;
+          console.log('First task overall - keeping non-sequential:', currentTask.name);
+        }
+        // All other tasks in this linked group should be non-sequential
+        for (let j = i + 1; j < allTasks.length; j++) {
+          if (allTasks[j].linkedTaskGroup === linkedTaskGroup) {
+            allTasks[j].dependentOnPrevious = false;
+          }
+        }
+        break; // We've handled the linked group
+      } else {
+        previousTaskIndex = i;
+      }
     }
     
     console.log('Linking tasks - updating existing tasks:', tasksToUpdate.map(t => ({ 
