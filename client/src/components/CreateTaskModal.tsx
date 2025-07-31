@@ -353,8 +353,9 @@ export default function CreateTaskModal({
                 })));
     
     // Preserve linked group dates - all tasks in a group should have the same date
+    // Use the realigned tasks (not original allTasks) to get correct dates after sequential alignment
     const linkedGroupDates = new Map();
-    allTasks.forEach(task => {
+    finalOrderedTasks.forEach(task => {
       if (task.linkedTaskGroup) {
         if (!linkedGroupDates.has(task.linkedTaskGroup)) {
           linkedGroupDates.set(task.linkedTaskGroup, task.taskDate);
@@ -581,9 +582,9 @@ export default function CreateTaskModal({
       } else if (data.insertPosition === 'end') {
         insertIndex = sortedTasks.length;
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
-          // For sequential tasks at end, use placeholder - realignDependentTasks will fix it
-          taskDate = "PLACEHOLDER-WILL-BE-FIXED";
-          console.log('Creating sequential task at end - using placeholder date that will be corrected');
+          // For sequential tasks at end, use a valid placeholder date - realignDependentTasks will fix it
+          taskDate = "2025-01-01"; // Valid placeholder date that will be corrected
+          console.log('Creating sequential task at end - using valid placeholder date that will be corrected');
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
         }
