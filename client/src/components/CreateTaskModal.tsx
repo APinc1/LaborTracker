@@ -76,7 +76,7 @@ const createTaskFormSchema = z.object({
   notes: z.string().optional(),
   dependentOnPrevious: z.boolean().default(true),
   linkToExistingTask: z.boolean().default(false),
-  linkedTaskId: z.string().optional()
+  linkedTaskIds: z.array(z.string()).default([])
 }).refine((data) => {
   // Insert position is required UNLESS linking to existing task
   if (!data.linkToExistingTask && !data.insertPosition) {
@@ -86,8 +86,8 @@ const createTaskFormSchema = z.object({
   if (!data.dependentOnPrevious && !data.linkToExistingTask && !data.taskDate) {
     return false;
   }
-  // LinkedTaskId is required when linking to existing task
-  if (data.linkToExistingTask && !data.linkedTaskId) {
+  // LinkedTaskIds is required when linking to existing task
+  if (data.linkToExistingTask && data.linkedTaskIds.length === 0) {
     return false;
   }
   return true;
@@ -172,7 +172,7 @@ export default function CreateTaskModal({
       notes: '',
       dependentOnPrevious: true,
       linkToExistingTask: false,
-      linkedTaskId: '',
+      linkedTaskIds: [],
     },
   });
 
@@ -222,34 +222,40 @@ export default function CreateTaskModal({
       console.log('Creating task at beginning - forcing to unsequential');
     }
     // Handle different task creation modes
-    else if (data.linkToExistingTask && data.linkedTaskId) {
-      // LINKED TASK MODE: Use same date as linked task
-      const linkedTask = (existingTasks as any[]).find((task: any) => 
-        (task.taskId || task.id).toString() === data.linkedTaskId
+    else if (data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0) {
+      // LINKED TASK MODE: Use same date as linked tasks - use first selected task's date
+      const firstLinkedTask = (existingTasks as any[]).find((task: any) => 
+        (task.taskId || task.id).toString() === data.linkedTaskIds[0]
       );
-      if (linkedTask) {
-        linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
-        taskDate = linkedTask.taskDate;
+      if (firstLinkedTask) {
+        // Check if any selected tasks already have a linked group, or create new one
+        const existingGroup = data.linkedTaskIds.map((id: string) => {
+          const task = (existingTasks as any[]).find((t: any) => (t.taskId || t.id).toString() === id);
+          return task?.linkedTaskGroup;
+        }).find(group => group);
         
-        // Update the original linked task to have the group ID and make it sequential + linked
-        if (!linkedTask.linkedTaskGroup) {
-          const linkedTaskIndex = updatedTasks.findIndex(t => 
-            (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)
+        linkedTaskGroup = existingGroup || generateLinkedTaskGroupId();
+        taskDate = firstLinkedTask.taskDate;
+        
+        // Update all selected linked tasks to have the same group ID
+        data.linkedTaskIds.forEach((taskId: string) => {
+          const taskIndex = updatedTasks.findIndex(t => 
+            (t.taskId || t.id).toString() === taskId
           );
-          if (linkedTaskIndex >= 0) {
-            updatedTasks[linkedTaskIndex] = { 
-              ...updatedTasks[linkedTaskIndex], 
+          if (taskIndex >= 0) {
+            updatedTasks[taskIndex] = { 
+              ...updatedTasks[taskIndex], 
               linkedTaskGroup,
-              dependentOnPrevious: true // First task in linked group is sequential
+              dependentOnPrevious: true // Linked tasks are sequential
             };
           }
-        }
+        });
         
-        // Find position to insert (after the linked task)
-        const linkedTaskIndex = sortedTasks.findIndex(t => 
-          (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)
-        );
-        insertIndex = linkedTaskIndex + 1;
+        // Find position to insert (after the last linked task)
+        const linkedTaskIndices = data.linkedTaskIds.map((id: string) => 
+          sortedTasks.findIndex(t => (t.taskId || t.id).toString() === id)
+        ).filter(index => index >= 0);
+        insertIndex = Math.max(...linkedTaskIndices) + 1;
         
         // Shift all subsequent sequential tasks (but NOT linked tasks)
         let currentDate = taskDate;
@@ -664,46 +670,108 @@ export default function CreateTaskModal({
                 )}
               />
 
-              {/* Linked Task Selection */}
+              {/* Multi-Select Linked Tasks */}
               {form.watch("linkToExistingTask") && (
                 <FormField
                   control={form.control}
-                  name="linkedTaskId"
+                  name="linkedTaskIds"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Select Task to Link With</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Choose an existing task" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {(existingTasks as any[])
-                            .sort((a: any, b: any) => {
-                              const dateA = new Date(a.taskDate).getTime();
-                              const dateB = new Date(b.taskDate).getTime();
-                              if (dateA !== dateB) return dateA - dateB;
-                              return (a.order || 0) - (b.order || 0);
-                            })
-                            .map((task: any) => {
-                              // Fix date display - use direct string formatting to avoid timezone issues
+                      <FormLabel>Select Tasks to Link With</FormLabel>
+                      <div className="relative">
+                        <div className="min-h-[40px] w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                          {/* Selected tasks display as chips */}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {field.value && field.value.length > 0 && field.value.map((taskId: string) => {
+                              const selectedTask = (existingTasks as any[]).find((t: any) => 
+                                (t.taskId || t.id).toString() === taskId
+                              );
+                              if (!selectedTask) return null;
+                              
                               const formatDate = (dateStr: string) => {
                                 const [year, month, day] = dateStr.split('-');
                                 return `${month}/${day}/${year}`;
                               };
                               
                               return (
-                                <SelectItem 
-                                  key={task.id || task.taskId} 
-                                  value={(task.taskId || task.id).toString()}
-                                >
-                                  {task.name} ({formatDate(task.taskDate)})
-                                </SelectItem>
+                                <div key={taskId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                  <span>{selectedTask.name} ({formatDate(selectedTask.taskDate)})</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newValue = field.value.filter((id: string) => id !== taskId);
+                                      field.onChange(newValue);
+                                    }}
+                                    className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
                               );
                             })}
-                        </SelectContent>
-                      </Select>
+                          </div>
+                          
+                          {/* Dropdown - only show if there are available tasks to select */}
+                          {(existingTasks as any[])
+                            .filter((t: any) => 
+                              !field.value.includes((t.taskId || t.id).toString())
+                            ).length > 0 && (
+                            <Select 
+                              onValueChange={(value) => {
+                                if (value && !field.value.includes(value)) {
+                                  field.onChange([...field.value, value]);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
+                                <SelectValue placeholder={field.value.length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(existingTasks as any[])
+                                  .filter((t: any) => 
+                                    !field.value.includes((t.taskId || t.id).toString())
+                                  )
+                                  .sort((a: any, b: any) => {
+                                    const dateA = new Date(a.taskDate).getTime();
+                                    const dateB = new Date(b.taskDate).getTime();
+                                    if (dateA !== dateB) return dateA - dateB;
+                                    return (a.order || 0) - (b.order || 0);
+                                  })
+                                  .map((task: any) => {
+                                    const formatDate = (dateStr: string) => {
+                                      const [year, month, day] = dateStr.split('-');
+                                      return `${month}/${day}/${year}`;
+                                    };
+                                    
+                                    return (
+                                      <SelectItem 
+                                        key={task.id || task.taskId} 
+                                        value={(task.taskId || task.id).toString()}
+                                      >
+                                        {task.name} ({formatDate(task.taskDate)})
+                                      </SelectItem>
+                                    );
+                                  })
+                                }
+                              </SelectContent>
+                            </Select>
+                            )}
+                            
+                            {/* Show placeholder when no tasks selected but there are available tasks */}
+                            {field.value.length === 0 && (existingTasks as any[]).length > 0 && (
+                              <div className="text-muted-foreground text-sm py-2">
+                                Choose tasks to link with
+                              </div>
+                            )}
+                            
+                            {/* Show placeholder text when no available tasks */}
+                            {(existingTasks as any[]).length === 0 && (
+                              <div className="text-muted-foreground text-sm py-2">
+                                No tasks available to link with
+                              </div>
+                            )}
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

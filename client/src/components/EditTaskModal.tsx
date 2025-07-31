@@ -1483,17 +1483,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                             })}
                           </div>
                           
-                          {/* Dropdown */}
-                          <Select 
-                            onValueChange={(value) => {
-                              if (value && !field.value.includes(value)) {
-                                field.onChange([...field.value, value]);
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
-                              <SelectValue placeholder={field.value.length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
-                            </SelectTrigger>
+                          {/* Dropdown - only show if there are available tasks to select */}
+                          {(existingTasks as any[])
+                            .filter((t: any) => 
+                              (t.taskId || t.id) !== (task.taskId || task.id) &&
+                              !field.value.includes((t.taskId || t.id).toString())
+                            ).length > 0 && (
+                            <Select 
+                              onValueChange={(value) => {
+                                if (value && !field.value.includes(value)) {
+                                  field.onChange([...field.value, value]);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
+                                <SelectValue placeholder={field.value.length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
+                              </SelectTrigger>
                             <SelectContent>
                               {(existingTasks as any[])
                                 .filter((t: any) => 
@@ -1526,6 +1531,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               }
                             </SelectContent>
                           </Select>
+                          )}
+                          
+                          {/* Show placeholder text when no tasks selected and no available tasks */}
+                          {field.value.length === 0 && (existingTasks as any[])
+                            .filter((t: any) => 
+                              (t.taskId || t.id) !== (task.taskId || task.id)
+                            ).length === 0 && (
+                            <div className="text-muted-foreground text-sm py-2">
+                              No other tasks available to link with
+                            </div>
+                          )}
+                          
+                          {/* Show placeholder when no tasks selected but there are available tasks */}
+                          {field.value.length === 0 && (existingTasks as any[])
+                            .filter((t: any) => 
+                              (t.taskId || t.id) !== (task.taskId || task.id)
+                            ).length > 0 && (
+                            <div className="text-muted-foreground text-sm py-2">
+                              Choose tasks to link with
+                            </div>
+                          )}
                         </div>
                       </div>
                       <FormMessage />
