@@ -1286,16 +1286,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                             </div>
                           )}
                           
-                          {/* Show placeholder when no tasks selected but there are available tasks */}
-                          {field.value.length === 0 && (existingTasks as any[])
-                            .filter((t: any) => 
-                              (t.taskId || t.id) !== (task.taskId || task.id) &&
-                              !field.value.includes((t.taskId || t.id).toString())
-                            ).length > 0 && (
-                            <div className="text-muted-foreground text-sm py-2">
-                              Choose tasks to link with
-                            </div>
-                          )}
+                          
                         </div>
                       </div>
                       <FormMessage />

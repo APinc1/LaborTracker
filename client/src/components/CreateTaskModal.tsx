@@ -756,26 +756,6 @@ export default function CreateTaskModal({
                               </SelectContent>
                             </Select>
                             )}
-                            
-                            {/* Show placeholder when no tasks selected but there are available tasks */}
-                            {field.value.length === 0 && (existingTasks as any[])
-                              .filter((t: any) => 
-                                !field.value.includes((t.taskId || t.id).toString())
-                              ).length > 0 && (
-                              <div className="text-muted-foreground text-sm py-2">
-                                Choose tasks to link with
-                              </div>
-                            )}
-                            
-                            {/* Show placeholder text when no available tasks */}
-                            {field.value.length === 0 && (existingTasks as any[])
-                              .filter((t: any) => 
-                                !field.value.includes((t.taskId || t.id).toString())
-                              ).length === 0 && (
-                              <div className="text-muted-foreground text-sm py-2">
-                                No tasks available to link with
-                              </div>
-                            )}
                         </div>
                       </div>
                       <FormMessage />
