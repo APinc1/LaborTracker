@@ -1613,25 +1613,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Date for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-gray-600 space-y-2">
-                {linkingOptions?.targetTasks ? (
-                  <div>
-                    <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
-                    <ul className="text-sm mt-1 ml-4 list-disc">
-                      {linkingOptions.targetTasks.map((t: any, idx: number) => (
-                        <li key={idx}>{t.name}</li>
-                      ))}
-                    </ul>
-                    <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
-                  </div>
-                ) : (
-                  <div>
-                    <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTasks?.[0]?.name || 'target task'}".</div>
-                    <div>Both tasks must have the same date. Which date should both tasks use?</div>
-                  </div>
-                )}
-              </div>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              {linkingOptions?.targetTasks ? (
+                <div>
+                  <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
+                  <ul className="text-sm mt-1 ml-4 list-disc">
+                    {linkingOptions.targetTasks.map((t: any, idx: number) => (
+                      <li key={idx}>{t.name}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
+                </div>
+              ) : (
+                <div>
+                  <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTasks?.[0]?.name || 'target task'}".</div>
+                  <div>Both tasks must have the same date. Which date should both tasks use?</div>
+                </div>
+              )}
               {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
                 <div className="text-sm text-gray-500 mt-2">
                   {linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
