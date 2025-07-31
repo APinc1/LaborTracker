@@ -608,12 +608,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const locationTasks = await storage.getTasks(taskToDelete.locationId);
       
       // Handle linked task unlinking before deletion using the proper utility function
+      console.log('🔍 DELETION: Checking if task needs unlinking:', {
+        taskId,
+        taskName: taskToDelete.name,
+        linkedGroup: taskToDelete.linkedTaskGroup,
+        sequential: taskToDelete.dependentOnPrevious
+      });
+      
       const { unlinkUpdates: tasksToUpdateForUnlinking } = handleLinkedTaskDeletion(locationTasks, taskId);
       
+      console.log('🔗 UNLINKING RESULT:', {
+        updatesNeeded: tasksToUpdateForUnlinking.length,
+        updates: tasksToUpdateForUnlinking.map(t => ({
+          id: t.id,
+          name: t.name,
+          newSequential: t.dependentOnPrevious,
+          newLinkedGroup: t.linkedTaskGroup
+        }))
+      });
+      
       if (tasksToUpdateForUnlinking.length > 0) {
-        console.log('Deleting linked task, processing partner task unlinking');
+        console.log('🔗 UNLINKING: Processing partner task unlinking');
         tasksToUpdateForUnlinking.forEach(task => {
-          console.log('Unlinking partner task:', task.name);
+          console.log(`  └─ Unlinking partner task: ${task.name} (sequential: ${task.dependentOnPrevious})`);
         });
       }
       
