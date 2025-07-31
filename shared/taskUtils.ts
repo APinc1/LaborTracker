@@ -336,7 +336,7 @@ export function handleLinkedTaskDeletion(
     taskDetails: tasks.map(t => ({ id: t.id || t.taskId, name: t.name, linkedGroup: t.linkedTaskGroup }))
   });
   
-  const deletedTask = tasks.find(t => (t.taskId || t.id) === deletedTaskId);
+  const deletedTask = tasks.find(t => (t.id || t.taskId) === deletedTaskId);
   const unlinkUpdates: any[] = [];
   
   console.log('🔍 DELETED TASK DETAILS:', {
@@ -353,7 +353,7 @@ export function handleLinkedTaskDeletion(
     // Find remaining tasks in the same linked group (after deletion)
     const linkedPartners = tasks.filter(t => 
       t.linkedTaskGroup === deletedTask.linkedTaskGroup && 
-      (t.taskId || t.id) !== deletedTaskId
+      (t.id || t.taskId) !== deletedTaskId
     );
     
     console.log('🔗 LINKED PARTNERS FOUND:', {
@@ -407,7 +407,7 @@ export function handleLinkedTaskDeletion(
     console.log('⏭️  SKIP UNLINKING: Task has no linked group');
   }
   
-  const remainingTasks = tasks.filter(t => (t.taskId || t.id) !== deletedTaskId);
+  const remainingTasks = tasks.filter(t => (t.id || t.taskId) !== deletedTaskId);
   
   console.log('🎯 UNLINKING FINAL RESULT:', {
     unlinkUpdatesCount: unlinkUpdates.length,
