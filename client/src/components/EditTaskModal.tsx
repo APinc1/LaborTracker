@@ -305,13 +305,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const currentOrder = task.order || 0;
         const linkedOrder = linkedTask.order || 0;
         finalCurrentSequential = currentOrder < linkedOrder;
-        finalLinkedSequential = linkedOrder < currentOrder;
-        console.log('Adjacent sequential tasks - earlier task stays sequential');
+        finalLinkedSequential = false; // Second task should only be linked, not sequential
+        console.log('Adjacent sequential tasks - earlier task stays sequential, later becomes link-only');
       } else {
-        // Default: keep original sequential status
-        finalCurrentSequential = currentIsSequential;
-        finalLinkedSequential = linkedIsSequential;
-        console.log('Keeping original sequential status');
+        // Default: earlier task stays sequential, later becomes link-only
+        const currentOrder = task.order || 0;
+        const linkedOrder = linkedTask.order || 0;
+        if (currentOrder < linkedOrder) {
+          finalCurrentSequential = currentIsSequential;
+          finalLinkedSequential = false;
+        } else {
+          finalCurrentSequential = false;
+          finalLinkedSequential = linkedIsSequential;
+        }
+        console.log('Default linking - earlier task sequential, later link-only');
       }
       
       // Prepare both tasks for update
