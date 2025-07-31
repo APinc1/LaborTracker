@@ -399,9 +399,10 @@ export default function CreateTaskModal({
       date: t.taskDate 
     })));
     // CRITICAL: Update ALL existing tasks with new order values to ensure no duplicates
+    // Exclude new task by checking if it has an ID (existing tasks have IDs, new tasks don't)
     const finalTasksToUpdate = allTasks.filter(task => {
-      if (task === newTask) return false; // Exclude new task
-      return true; // Update all existing tasks to ensure proper ordering
+      // Exclude tasks without an ID (these are new tasks)
+      return task.taskId || task.id;
     });
     
     console.log('Final linking updates:', finalTasksToUpdate.map(t => ({ 
