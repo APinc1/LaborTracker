@@ -664,7 +664,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Apply enhanced sequential realignment using the comprehensive function
         console.log('🗑️ DELETION: Applying sequential realignment after task deletion');
-        const { realignDependentTasks } = require('../shared/taskUtils');
+        const { realignDependentTasks } = await import('../shared/taskUtils.js');
         
         // Sort tasks by order for proper sequential processing
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
