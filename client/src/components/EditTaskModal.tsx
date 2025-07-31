@@ -169,6 +169,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       }
 
+      // Find the current linked task if this task is already linked
+      const currentLinkedTask = task.linkedTaskGroup ? 
+        existingTasks?.find((t: any) => 
+          t.linkedTaskGroup === task.linkedTaskGroup && 
+          (t.taskId || t.id) !== (task.taskId || task.id)
+        ) : null;
+
       form.reset({
         name: task.name || "",
         taskDate: task.taskDate || "",
@@ -179,10 +186,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
-        linkedTaskId: "",
+        linkedTaskId: currentLinkedTask ? (currentLinkedTask.taskId || currentLinkedTask.id?.toString()) : "",
       });
     }
-  }, [task, form]);
+  }, [task, form, existingTasks]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: any) => {
