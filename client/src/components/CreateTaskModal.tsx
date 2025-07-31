@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
 import { z } from "zod";
-import { generateLinkedTaskGroupId, getLinkedTasks } from "@shared/taskUtils";
+import { generateLinkedTaskGroupId, getLinkedTasks, realignDependentTasks } from "@shared/taskUtils";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -329,6 +329,19 @@ export default function CreateTaskModal({
     allTasks.push(...orderedTasks);
     
     console.log('Task ordering after linked group placement:', 
+                allTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
+    
+    // CRITICAL: Apply sequential date logic to align dependent tasks
+    const finalOrderedTasks = realignDependentTasks(allTasks);
+    
+    // Update allTasks with properly aligned dates
+    allTasks.length = 0;
+    allTasks.push(...finalOrderedTasks);
+    
+    console.log('Task ordering after date realignment:', 
                 allTasks.map((t, i) => ({ 
                   order: i, name: t.name, date: t.taskDate, 
                   linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
