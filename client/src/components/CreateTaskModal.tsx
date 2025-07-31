@@ -254,38 +254,11 @@ export default function CreateTaskModal({
     // Sort by existing order first to maintain intended sequence
     allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
     
-    // Apply sequential flags first before any grouping
-    allTasks.forEach((task, index) => {
-      task.order = index;
-      // Only first task is non-sequential
-      task.dependentOnPrevious = index > 0;
-    });
-    
-    // Now apply sequential date logic to get proper dates
-    const datesAppliedTasks = realignDependentTasks(allTasks);
-    
-    // Preserve linked group dates - all tasks in a group should have the same date
-    const linkedGroupDates = new Map();
-    allTasks.forEach(task => {
-      if (task.linkedTaskGroup) {
-        if (!linkedGroupDates.has(task.linkedTaskGroup)) {
-          linkedGroupDates.set(task.linkedTaskGroup, task.taskDate);
-        }
-      }
-    });
-    
-    // Restore linked task dates after sequential alignment
-    datesAppliedTasks.forEach(task => {
-      if (task.linkedTaskGroup && linkedGroupDates.has(task.linkedTaskGroup)) {
-        task.taskDate = linkedGroupDates.get(task.linkedTaskGroup);
-      }
-    });
-    
-    // Now group by linked groups and individual tasks for final ordering
+    // Group by linked groups and individual tasks FIRST (using original dates)
     const taskGroups = new Map();
     const ungroupedTasks = [];
     
-    datesAppliedTasks.forEach(task => {
+    allTasks.forEach(task => {
       if (task.linkedTaskGroup) {
         if (!taskGroups.has(task.linkedTaskGroup)) {
           taskGroups.set(task.linkedTaskGroup, []);
@@ -317,7 +290,7 @@ export default function CreateTaskModal({
       });
     });
     
-    // Sort groups by date for final chronological order
+    // Sort groups by date for chronological order
     groups.sort((a, b) => a.date - b.date);
     
     // Flatten groups back to ordered task list
@@ -326,12 +299,12 @@ export default function CreateTaskModal({
       orderedTasks.push(...group.tasks);
     });
     
-    // Final order assignment and sequential flags
+    // Assign orders and sequential flags based on group position
     orderedTasks.forEach((task, index) => {
       task.order = index;
     });
     
-    // Apply correct sequential logic for final ordering
+    // Apply sequential logic group by group
     groups.forEach((group, groupIndex) => {
       if (group.isLinkedGroup) {
         // For linked groups, only the first task should be sequential (if not overall first)
@@ -357,6 +330,40 @@ export default function CreateTaskModal({
     // Update allTasks reference for the rest of the function
     allTasks.length = 0;
     allTasks.push(...orderedTasks);
+    
+    console.log('Task ordering after grouping and sequential flags:', 
+                allTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
+    
+    // NOW apply sequential date logic to align dependent tasks
+    const finalOrderedTasks = realignDependentTasks(allTasks);
+    
+    // Preserve linked group dates - all tasks in a group should have the same date
+    const linkedGroupDates = new Map();
+    allTasks.forEach(task => {
+      if (task.linkedTaskGroup) {
+        if (!linkedGroupDates.has(task.linkedTaskGroup)) {
+          linkedGroupDates.set(task.linkedTaskGroup, task.taskDate);
+        }
+      }
+    });
+    
+    // Restore linked task dates after sequential alignment
+    const preservedLinkedTasks = finalOrderedTasks.map(task => {
+      if (task.linkedTaskGroup && linkedGroupDates.has(task.linkedTaskGroup)) {
+        return {
+          ...task,
+          taskDate: linkedGroupDates.get(task.linkedTaskGroup)
+        };
+      }
+      return task;
+    });
+    
+    // Update allTasks with final results
+    allTasks.length = 0;
+    allTasks.push(...preservedLinkedTasks);
     
     console.log('Final task ordering after date alignment and grouping:', 
                 allTasks.map((t, i) => ({ 
