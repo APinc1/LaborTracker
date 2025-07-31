@@ -315,8 +315,21 @@ export function handleLinkedTaskDeletion(
           dependentOnPrevious: shouldBeSequential
         });
       });
+    } else if (linkedPartners.length >= 2) {
+      // If 2+ tasks remain linked, ensure the first one (lowest order) is sequential
+      // if the deleted task was sequential
+      if (deletedTask.dependentOnPrevious) {
+        // Sort remaining tasks by order to find the new first task
+        const sortedPartners = linkedPartners.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const newFirstTask = sortedPartners[0];
+        
+        // Make the new first task sequential, others stay as they are
+        unlinkUpdates.push({
+          ...newFirstTask,
+          dependentOnPrevious: true
+        });
+      }
     }
-    // If 2+ tasks remain, they stay linked (no updates needed)
   }
   
   const remainingTasks = tasks.filter(t => (t.taskId || t.id) !== deletedTaskId);
