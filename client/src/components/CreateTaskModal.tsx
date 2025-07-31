@@ -264,29 +264,53 @@ export default function CreateTaskModal({
       task.order = index;
     });
     
-    // Apply sequential logic: first task chronologically should be sequential if it has a predecessor
-    let previousTaskIndex = -1;
+    // Apply sequential logic and date shifting
     for (let i = 0; i < allTasks.length; i++) {
       const currentTask = allTasks[i];
       
       if (currentTask.linkedTaskGroup === linkedTaskGroup) {
         // This is our linked group - make first one sequential if it has a predecessor
-        if (previousTaskIndex >= 0) {
+        if (i > 0) {
           currentTask.dependentOnPrevious = true;
           console.log('Making linked task sequential:', currentTask.name, 'Position:', i);
         } else {
           currentTask.dependentOnPrevious = false;
           console.log('First task overall - keeping non-sequential:', currentTask.name);
         }
+        
         // All other tasks in this linked group should be non-sequential
         for (let j = i + 1; j < allTasks.length; j++) {
           if (allTasks[j].linkedTaskGroup === linkedTaskGroup) {
             allTasks[j].dependentOnPrevious = false;
           }
         }
+        
+        // Now shift any sequential tasks that come after this linked group
+        const linkedGroupEndIndex = allTasks.findLastIndex(t => t.linkedTaskGroup === linkedTaskGroup);
+        let currentDate = chosenDate; // Use the chosen date as baseline
+        
+        for (let k = linkedGroupEndIndex + 1; k < allTasks.length; k++) {
+          const subsequentTask = allTasks[k];
+          if (subsequentTask.dependentOnPrevious) {
+            // Calculate next working day
+            const baseDate = new Date(currentDate + 'T00:00:00');
+            const nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            const newDate = nextDate.toISOString().split('T')[0];
+            
+            console.log('Shifting sequential task after linked group:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
+            subsequentTask.taskDate = newDate;
+            currentDate = newDate;
+          } else {
+            // Non-sequential task - update baseline but don't change its date
+            currentDate = subsequentTask.taskDate;
+          }
+        }
         break; // We've handled the linked group
-      } else {
-        previousTaskIndex = i;
       }
     }
     
