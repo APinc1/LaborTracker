@@ -330,8 +330,24 @@ export function handleLinkedTaskDeletion(
   tasks: any[],
   deletedTaskId: string | number
 ): { unlinkUpdates: any[]; remainingTasks: any[] } {
+  console.log('🔗 HANDLE LINKED TASK DELETION:', {
+    deletedTaskId,
+    totalTasks: tasks.length,
+    taskDetails: tasks.map(t => ({ id: t.id || t.taskId, name: t.name, linkedGroup: t.linkedTaskGroup }))
+  });
+  
   const deletedTask = tasks.find(t => (t.taskId || t.id) === deletedTaskId);
   const unlinkUpdates: any[] = [];
+  
+  console.log('🔍 DELETED TASK DETAILS:', {
+    found: !!deletedTask,
+    task: deletedTask ? {
+      id: deletedTask.id || deletedTask.taskId,
+      name: deletedTask.name,
+      linkedGroup: deletedTask.linkedTaskGroup,
+      sequential: deletedTask.dependentOnPrevious
+    } : null
+  });
   
   if (deletedTask?.linkedTaskGroup) {
     // Find remaining tasks in the same linked group (after deletion)
@@ -340,12 +356,30 @@ export function handleLinkedTaskDeletion(
       (t.taskId || t.id) !== deletedTaskId
     );
     
+    console.log('🔗 LINKED PARTNERS FOUND:', {
+      count: linkedPartners.length,
+      partners: linkedPartners.map(p => ({
+        id: p.id || p.taskId,
+        name: p.name,
+        sequential: p.dependentOnPrevious,
+        linkedGroup: p.linkedTaskGroup
+      }))
+    });
+    
     // Only unlink if there's 1 or fewer tasks remaining
     // (A single task can't be "linked" to anything)
     if (linkedPartners.length <= 1) {
+      console.log('🔓 UNLINKING: 1 or fewer partners remain');
       linkedPartners.forEach(partnerTask => {
         // If either task was sequential, make the remaining task sequential
         const shouldBeSequential = deletedTask.dependentOnPrevious || partnerTask.dependentOnPrevious;
+        
+        console.log('🔄 UNLINKING PARTNER:', {
+          partnerName: partnerTask.name,
+          deletedWasSequential: deletedTask.dependentOnPrevious,
+          partnerWasSequential: partnerTask.dependentOnPrevious,
+          shouldBeSequential
+        });
         
         unlinkUpdates.push({
           ...partnerTask,
@@ -354,6 +388,7 @@ export function handleLinkedTaskDeletion(
         });
       });
     } else if (linkedPartners.length >= 2) {
+      console.log('🔗 KEEPING LINKED: 2+ partners remain');
       // If 2+ tasks remain linked, ensure the first one (lowest order) is sequential
       // if the deleted task was sequential
       if (deletedTask.dependentOnPrevious) {
@@ -368,9 +403,21 @@ export function handleLinkedTaskDeletion(
         });
       }
     }
+  } else {
+    console.log('⏭️  SKIP UNLINKING: Task has no linked group');
   }
   
   const remainingTasks = tasks.filter(t => (t.taskId || t.id) !== deletedTaskId);
+  
+  console.log('🎯 UNLINKING FINAL RESULT:', {
+    unlinkUpdatesCount: unlinkUpdates.length,
+    unlinkUpdates: unlinkUpdates.map(u => ({
+      id: u.id || u.taskId,
+      name: u.name,
+      newLinkedGroup: u.linkedTaskGroup,
+      newSequential: u.dependentOnPrevious
+    }))
+  });
   
   return { unlinkUpdates, remainingTasks };
 }
