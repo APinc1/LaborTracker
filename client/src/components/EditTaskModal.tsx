@@ -238,7 +238,50 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       const responses = await Promise.all(promises);
       return responses.map(response => response.json());
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      console.log('🔗 BATCH UPDATE SUCCESS: Running sequential realignment after linking operations');
+      
+      // Refetch the latest tasks first
+      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${locationId}/tasks`] });
+      
+      // Get the refreshed tasks
+      const refreshedTasksData = queryClient.getQueryData([`/api/locations/${locationId}/tasks`]);
+      
+      if (refreshedTasksData && Array.isArray(refreshedTasksData)) {
+        console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
+        
+        // Import the realignment function
+        const { realignDependentTasks } = await import('../../../shared/taskUtils');
+        
+        // Apply sequential realignment to the refreshed tasks
+        const realignedTasks = realignDependentTasks(refreshedTasksData);
+        
+        // Check if any tasks need additional updates due to sequential realignment
+        const additionalUpdates = realignedTasks.filter((realignedTask, index) => {
+          const originalTask = refreshedTasksData[index];
+          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+        });
+        
+        if (additionalUpdates.length > 0) {
+          console.log('📝 ADDITIONAL UPDATES needed after sequential realignment:', additionalUpdates.length, 'tasks');
+          
+          // Perform additional updates for tasks that need date changes
+          const additionalPromises = additionalUpdates.map(taskData => 
+            apiRequest(`/api/tasks/${taskData.id}`, {
+              method: 'PUT',
+              body: JSON.stringify(taskData),
+              headers: { 'Content-Type': 'application/json' }
+            })
+          );
+          
+          await Promise.all(additionalPromises);
+          console.log('✅ SEQUENTIAL REALIGNMENT COMPLETE: All dependent tasks updated');
+        } else {
+          console.log('✅ NO ADDITIONAL UPDATES needed after sequential realignment');
+        }
+      }
+      
+      // Final refetch to get the updated state
       onTaskUpdate();
       toast({ 
         title: "Success", 
