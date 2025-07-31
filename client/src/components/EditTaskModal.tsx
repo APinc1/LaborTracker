@@ -599,6 +599,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       form.setValue('dependentOnPrevious', false);
     }
     
+    console.log('EditTaskModal change analysis:', {
+      dateChanged,
+      linkingChanged, 
+      dependencyChanged,
+      hasLocationTasks: locationTasks && locationTasks.length > 0,
+      shouldCascade: (dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0
+    });
+    
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
       console.log('Task changes require cascading updates');
       
