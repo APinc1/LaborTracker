@@ -478,6 +478,7 @@ export default function CreateTaskModal({
         
         // All tasks have same date or only one unique date - proceed directly
         console.log('All tasks have same date - linking directly');
+        console.log('Linked tasks:', linkedTasks.map(t => ({ name: t.name, date: t.taskDate })));
         const firstLinkedTask = linkedTasks[0];
         
         // Check if any selected tasks already have a linked group, or create new one
@@ -692,6 +693,7 @@ export default function CreateTaskModal({
     }));
 
     // CRITICAL: Apply group-based sequential logic before date alignment
+    console.log('Checking for linked task group:', linkedTaskGroup);
     if (linkedTaskGroup) {
       console.log('Applying group-based sequential logic for linked tasks');
       
