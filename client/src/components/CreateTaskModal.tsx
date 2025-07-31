@@ -338,7 +338,19 @@ export default function CreateTaskModal({
                 })));
     
     // NOW apply sequential date logic to align dependent tasks
+    console.log('Before realignDependentTasks:', 
+                allTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
+    
     const finalOrderedTasks = realignDependentTasks(allTasks);
+    
+    console.log('After realignDependentTasks:', 
+                finalOrderedTasks.map((t, i) => ({ 
+                  order: i, name: t.name, date: t.taskDate, 
+                  linked: !!t.linkedTaskGroup, sequential: t.dependentOnPrevious 
+                })));
     
     // Preserve linked group dates - all tasks in a group should have the same date
     const linkedGroupDates = new Map();
@@ -350,9 +362,12 @@ export default function CreateTaskModal({
       }
     });
     
+    console.log('Linked group dates to preserve:', Array.from(linkedGroupDates.entries()));
+    
     // Restore linked task dates after sequential alignment
     const preservedLinkedTasks = finalOrderedTasks.map(task => {
       if (task.linkedTaskGroup && linkedGroupDates.has(task.linkedTaskGroup)) {
+        console.log(`Restoring linked task ${task.name} from ${task.taskDate} to ${linkedGroupDates.get(task.linkedTaskGroup)}`);
         return {
           ...task,
           taskDate: linkedGroupDates.get(task.linkedTaskGroup)
