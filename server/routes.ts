@@ -662,72 +662,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return (a.order || 0) - (b.order || 0);
         });
         
-        // Find sequential tasks that need date recalculation after deletion
-        const tasksToUpdate = [];
-        let needsCascading = false;
+        // Apply enhanced sequential realignment using the comprehensive function
+        console.log('🗑️ DELETION: Applying sequential realignment after task deletion');
+        const { realignDependentTasks } = require('../shared/taskUtils');
         
-        for (let i = 0; i < sortedTasks.length; i++) {
-          const currentTask = sortedTasks[i];
-          
-          // Skip linked tasks and non-sequential tasks
-          if (currentTask.linkedTaskGroup || !currentTask.dependentOnPrevious) {
-            continue;
-          }
-          
-          if (i > 0) {
-            // Find the chronologically previous task (could be linked or sequential)
-            let prevTask = null;
-            for (let j = i - 1; j >= 0; j--) {
-              prevTask = sortedTasks[j];
-              break; // Take the immediately previous task chronologically
-            }
-            
-            if (prevTask) {
-              // Calculate what the date should be based on previous task
-              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const expectedDate = nextDate.toISOString().split('T')[0];
-              
-              // If current date doesn't match expected date, update it
-              if (currentTask.taskDate !== expectedDate) {
-                needsCascading = true;
-                tasksToUpdate.push({
-                  ...currentTask,
-                  taskDate: expectedDate
-                });
-                
-                // Update all linked tasks in the same group to maintain synchronization
-                if (currentTask.linkedTaskGroup) {
-                  const linkedTasks = sortedTasks.filter(t => 
-                    t.linkedTaskGroup === currentTask.linkedTaskGroup && 
-                    t.id !== currentTask.id
-                  );
-                  linkedTasks.forEach(linkedTask => {
-                    if (linkedTask.taskDate !== expectedDate) {
-                      tasksToUpdate.push({
-                        ...linkedTask,
-                        taskDate: expectedDate
-                      });
-                    }
-                  });
-                }
-              }
-            }
-          }
-        }
+        // Sort tasks by order for proper sequential processing
+        const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const realignedTasks = realignDependentTasks(tasksToProcess);
+        
+        // Find tasks that need date updates
+        const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
+          const originalTask = tasksToProcess[index];
+          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+        });
         
         // Update tasks if cascading is needed
-        if (needsCascading && tasksToUpdate.length > 0) {
-          console.log(`Cascading ${tasksToUpdate.length} tasks after deletion`);
+        if (tasksToUpdate.length > 0) {
+          console.log(`🔄 Cascading ${tasksToUpdate.length} tasks after deletion with enhanced sequential logic`);
           const updatePromises = tasksToUpdate.map(task => 
             storage.updateTask(task.id, { taskDate: task.taskDate })
           );
           await Promise.all(updatePromises);
+        } else {
+          console.log('✅ No sequential date updates needed after deletion');
         }
       }
       
