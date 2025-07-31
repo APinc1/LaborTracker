@@ -1473,7 +1473,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   name="linkedTaskId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Select Task to Link With</FormLabel>
+                      <FormLabel>Linked Task
+</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -1818,7 +1819,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {/* Linking Date Choice Dialog */}
       <AlertDialog open={showLinkDateDialog} onOpenChange={(open) => {
         if (!open) {
