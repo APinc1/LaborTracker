@@ -239,6 +239,14 @@ export default function DraggableTaskList({
     return (a.taskId || a.id).localeCompare(b.taskId || b.id);
   });
 
+  console.log('DraggableTaskList - Task ordering:', sortedTasks.map(t => ({ 
+    name: t.name, 
+    order: t.order, 
+    date: t.taskDate, 
+    linked: !!t.linkedTaskGroup,
+    sequential: t.dependentOnPrevious 
+  })));
+
   const batchUpdateTasksMutation = useMutation({
     mutationFn: async (updatedTasks: any[]) => {
       // Update each task individually
