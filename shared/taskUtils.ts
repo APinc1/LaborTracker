@@ -157,6 +157,14 @@ export function reorderTasksWithDependencies(
 export function realignDependentTasks(tasks: any[]): any[] {
   const updatedTasks = [...tasks];
   
+  console.log('realignDependentTasks: Input tasks:', updatedTasks.map(t => ({ 
+    name: t.name, 
+    order: t.order, 
+    date: t.taskDate, 
+    sequential: t.dependentOnPrevious, 
+    linked: !!t.linkedTaskGroup 
+  })));
+  
   // Group linked tasks to preserve their shared dates
   const linkedGroups = new Map<string, any[]>();
   updatedTasks.forEach((task, index) => {
@@ -184,9 +192,15 @@ export function realignDependentTasks(tasks: any[]): any[] {
       let previousDate: Date;
       let j = i - 1;
       
-      // Look backwards to find the last non-linked task or the representative date of a linked group
+      // Look backwards to find the actual previous task (skip over linked tasks from same group)
       while (j >= 0) {
         const candidateTask = updatedTasks[j];
+        
+        // Skip tasks from the same linked group as the current task
+        if (currentTask.linkedTaskGroup && candidateTask.linkedTaskGroup === currentTask.linkedTaskGroup) {
+          j--;
+          continue;
+        }
         
         if (!candidateTask.linkedTaskGroup) {
           // Non-linked task - use its date directly
