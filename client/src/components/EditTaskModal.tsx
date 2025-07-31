@@ -1450,11 +1450,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Select Tasks to Link With</FormLabel>
-                      <div className="space-y-2">
-                        {/* Selected tasks display */}
-                        {field.value && field.value.length > 0 && (
-                          <div className="flex flex-wrap gap-2 p-2 border rounded-md bg-gray-50">
-                            {field.value.map((taskId: string) => {
+                      <div className="relative">
+                        <div className="min-h-[40px] w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                          {/* Selected tasks display as chips */}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {field.value && field.value.length > 0 && field.value.map((taskId: string) => {
                               const selectedTask = (existingTasks as any[]).find((t: any) => 
                                 (t.taskId || t.id).toString() === taskId
                               );
@@ -1474,7 +1474,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                       const newValue = field.value.filter((id: string) => id !== taskId);
                                       field.onChange(newValue);
                                     }}
-                                    className="ml-1 text-blue-600 hover:text-blue-800"
+                                    className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
                                   >
                                     ×
                                   </button>
@@ -1482,56 +1482,51 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               );
                             })}
                           </div>
-                        )}
-                        
-                        {/* Multi-select dropdown */}
-                        <Select 
-                          onValueChange={(value) => {
-                            if (value && !field.value.includes(value)) {
-                              field.onChange([...field.value, value]);
-                            }
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose tasks to link with" />
+                          
+                          {/* Dropdown */}
+                          <Select 
+                            onValueChange={(value) => {
+                              if (value && !field.value.includes(value)) {
+                                field.onChange([...field.value, value]);
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
+                              <SelectValue placeholder={field.value.length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
                             </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {(existingTasks as any[])
-                              .filter((t: any) => 
-                                (t.taskId || t.id) !== (task.taskId || task.id) &&
-                                !field.value.includes((t.taskId || t.id).toString())
-                              )
-                              .sort((a: any, b: any) => {
-                                // Sort by date first, then by order
-                                const dateA = new Date(a.taskDate).getTime();
-                                const dateB = new Date(b.taskDate).getTime();
-                                if (dateA !== dateB) return dateA - dateB;
-                                return (a.order || 0) - (b.order || 0);
-                              })
-                              .map((linkTask: any) => {
-                                // Fix date display - use direct string formatting to avoid timezone issues
-                                const formatDate = (dateStr: string) => {
-                                  const [year, month, day] = dateStr.split('-');
-                                  return `${month}/${day}/${year}`;
-                                };
-                                
-                                const isSelected = field.value.includes((linkTask.taskId || linkTask.id).toString());
-                                
-                                return (
-                                  <SelectItem 
-                                    key={linkTask.id || linkTask.taskId} 
-                                    value={(linkTask.taskId || linkTask.id).toString()}
-                                    className={isSelected ? "bg-blue-100" : ""}
-                                  >
-                                    {linkTask.name} ({formatDate(linkTask.taskDate)})
-                                  </SelectItem>
-                                );
-                              })
-                            }
-                          </SelectContent>
-                        </Select>
+                            <SelectContent>
+                              {(existingTasks as any[])
+                                .filter((t: any) => 
+                                  (t.taskId || t.id) !== (task.taskId || task.id) &&
+                                  !field.value.includes((t.taskId || t.id).toString())
+                                )
+                                .sort((a: any, b: any) => {
+                                  // Sort by date first, then by order
+                                  const dateA = new Date(a.taskDate).getTime();
+                                  const dateB = new Date(b.taskDate).getTime();
+                                  if (dateA !== dateB) return dateA - dateB;
+                                  return (a.order || 0) - (b.order || 0);
+                                })
+                                .map((linkTask: any) => {
+                                  // Fix date display - use direct string formatting to avoid timezone issues
+                                  const formatDate = (dateStr: string) => {
+                                    const [year, month, day] = dateStr.split('-');
+                                    return `${month}/${day}/${year}`;
+                                  };
+                                  
+                                  return (
+                                    <SelectItem 
+                                      key={linkTask.id || linkTask.taskId} 
+                                      value={(linkTask.taskId || linkTask.id).toString()}
+                                    >
+                                      {linkTask.name} ({formatDate(linkTask.taskDate)})
+                                    </SelectItem>
+                                  );
+                                })
+                              }
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <FormMessage />
                     </FormItem>
