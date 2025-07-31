@@ -274,305 +274,37 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     // This prevents the dialog from reopening
     console.log('Processing link with chosen date:', chosenDate);
     
-    const linkedTask = (existingTasks as any[]).find((t: any) => 
-      (t.taskId || t.id).toString() === savedFormData.linkedTaskId
+    // Handle both single task and multi-task linking
+    const linkedTasks = (existingTasks as any[]).filter((t: any) => 
+      savedFormData.linkedTaskIds?.includes((t.taskId || t.id).toString())
     );
     
-    if (linkedTask) {
-      // Create new linked group or use existing one
-      const linkedTaskGroup = linkedTask.linkedTaskGroup || generateLinkedTaskGroupId();
+    if (linkedTasks.length > 0) {
+      // Create new linked group or use existing one from any of the linked tasks
+      const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
       
-      // Determine sequential status based on linking rules
-      const currentIsSequential = savedLinkingOptions?.currentIsSequential || task.dependentOnPrevious;
-      const linkedIsSequential = savedLinkingOptions?.linkedIsSequential || linkedTask.dependentOnPrevious;
-      const areAdjacent = savedLinkingOptions?.areAdjacent || false;
+      // For multi-task linking, update all selected tasks with the chosen date and linked group
+      const tasksToUpdate = [
+        {
+          ...task,
+          ...savedFormData,
+          taskDate: chosenDate,
+          linkedTaskGroup: linkedTaskGroup,
+          dependentOnPrevious: task.dependentOnPrevious // Keep current task's sequential status
+        },
+        ...linkedTasks.map(linkedTask => ({
+          ...linkedTask,
+          taskDate: chosenDate,
+          linkedTaskGroup: linkedTaskGroup,
+          dependentOnPrevious: true // Linked tasks become sequential
+        }))
+      ];
       
-      // Apply linking rules for sequential status
-      let finalCurrentSequential, finalLinkedSequential;
+      console.log('Multi-task linking - updating tasks:', tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate })));
       
-      // Determine which task's date was chosen
-      const choseCurrentTaskDate = chosenDate === task.taskDate;
-      const choseLinkedTaskDate = chosenDate === linkedTask.taskDate;
-      
-      if (!currentIsSequential && !linkedIsSequential) {
-        // Both already unsequential - keep unsequential
-        console.log('Both tasks already unsequential - keeping both unsequential');
-        finalCurrentSequential = false;
-        finalLinkedSequential = false;
-      } else if (currentIsSequential && !linkedIsSequential && choseLinkedTaskDate) {
-        // Sequential + Unsequential, chose unsequential date - both become unsequential
-        console.log('Chose unsequential task date - making both unsequential');
-        finalCurrentSequential = false;
-        finalLinkedSequential = false;
-      } else if (!currentIsSequential && linkedIsSequential && choseCurrentTaskDate) {
-        // Unsequential + Sequential, chose unsequential date - both become unsequential
-        console.log('Chose unsequential task date - making both unsequential');
-        finalCurrentSequential = false;
-        finalLinkedSequential = false;
-      } else if (areAdjacent && currentIsSequential && linkedIsSequential) {
-        // Adjacent sequential tasks - only the earlier task stays sequential
-        const currentOrder = task.order || 0;
-        const linkedOrder = linkedTask.order || 0;
-        finalCurrentSequential = currentOrder < linkedOrder;
-        finalLinkedSequential = false; // Second task should only be linked, not sequential
-        console.log('Adjacent sequential tasks - earlier task stays sequential, later becomes link-only');
-      } else {
-        // Default: earlier task stays sequential, later becomes link-only
-        const currentOrder = task.order || 0;
-        const linkedOrder = linkedTask.order || 0;
-        if (currentOrder < linkedOrder) {
-          finalCurrentSequential = currentIsSequential;
-          finalLinkedSequential = false;
-        } else {
-          finalCurrentSequential = false;
-          finalLinkedSequential = linkedIsSequential;
-        }
-        console.log('Default linking - earlier task sequential, later link-only');
-      }
-      
-      // Prepare both tasks for update
-      const currentTaskUpdate = {
-        ...task,
-        ...savedFormData,
-        taskDate: chosenDate,
-        linkedTaskGroup: linkedTaskGroup,
-        dependentOnPrevious: finalCurrentSequential
-      };
-      
-      const linkedTaskUpdate = {
-        ...linkedTask,
-        taskDate: chosenDate,
-        linkedTaskGroup: linkedTaskGroup,
-        dependentOnPrevious: finalLinkedSequential
-      };
-      
-      console.log('Linking tasks with date:', chosenDate);
-      console.log('Sequential status rules applied:', {
-        currentWasSequential: currentIsSequential,
-        linkedWasSequential: linkedIsSequential,
-        finalCurrentSequential,
-        finalLinkedSequential,
-        reason: !currentIsSequential || !linkedIsSequential ? 'One unsequential' : 
-                areAdjacent ? 'Adjacent tasks' : 'Default'
-      });
-      console.log('Current task update:', currentTaskUpdate);
-      console.log('Linked task update:', linkedTaskUpdate);
-      
-      // Determine positioning based on whose date was chosen
-      const allTasks = [...(existingTasks as any[])];
-      const currentTaskOrder = task.order || 0;
-      const linkedTaskOrder = linkedTask.order || 0;
-      const usingCurrentTaskDate = chosenDate === task.taskDate;
-      
-      console.log('Positioning logic:', {
-        chosenDate,
-        currentTaskDate: task.taskDate,
-        linkedTaskDate: linkedTask.taskDate,
-        usingCurrentTaskDate,
-        currentTaskOrder,
-        linkedTaskOrder
-      });
-      
-      // If tasks are not adjacent, move one to be adjacent to the other
-      if (Math.abs(currentTaskOrder - linkedTaskOrder) > 1) {
-        console.log('Tasks not adjacent, repositioning required');
-        
-        let tasksToUpdate = [];
-        
-        if (usingCurrentTaskDate) {
-          // Using current task's date - move linked task to position right after current task
-          console.log('Moving linked task to current task position');
-          const newLinkedOrder = currentTaskOrder + 1;
-          console.log('Positioning details:', {
-            currentTaskOrder,
-            linkedTaskOrder,
-            newLinkedOrder,
-            currentTaskName: task.name,
-            linkedTaskName: linkedTask.name
-          });
-          
-          allTasks.forEach(t => {
-            const originalOrder = t.order || 0;
-            
-            if ((t.taskId || t.id) === (task.taskId || task.id)) {
-              // Current task keeps its position
-              tasksToUpdate.push(currentTaskUpdate);
-            } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
-              // Linked task moves to right after current task
-              console.log('Setting linked task order to:', newLinkedOrder);
-              tasksToUpdate.push({
-                ...linkedTaskUpdate,
-                order: newLinkedOrder
-              });
-            } else {
-              // For other tasks, we need to shift them appropriately
-              let newOrder = originalOrder;
-              
-              if (linkedTaskOrder < currentTaskOrder) {
-                // Linked task is moving forward (from earlier to later position)
-                if (originalOrder > linkedTaskOrder && originalOrder <= currentTaskOrder) {
-                  // Tasks between linked and current position shift backward
-                  newOrder = originalOrder - 1;
-                  console.log('Shifting task backward:', t.name, 'from', originalOrder, 'to', newOrder);
-                } else if (originalOrder > currentTaskOrder) {
-                  // Tasks after current position shift forward to make room
-                  newOrder = originalOrder + 1;
-                  console.log('Shifting task forward:', t.name, 'from', originalOrder, 'to', newOrder);
-                }
-              } else {
-                // Linked task is moving backward (from later to earlier position) 
-                if (originalOrder > currentTaskOrder && originalOrder < linkedTaskOrder) {
-                  // Tasks between current and linked position shift forward
-                  newOrder = originalOrder + 1;
-                  console.log('Shifting task forward:', t.name, 'from', originalOrder, 'to', newOrder);
-                }
-              }
-              
-              tasksToUpdate.push({ ...t, order: newOrder });
-            }
-          });
-        } else {
-          // Using linked task's date - move current task to position right after linked task
-          console.log('Moving current task to linked task position');
-          const newCurrentOrder = linkedTaskOrder + 1;
-          
-          allTasks.forEach(t => {
-            if ((t.taskId || t.id) === (task.taskId || task.id)) {
-              tasksToUpdate.push({
-                ...currentTaskUpdate,
-                order: newCurrentOrder
-              });
-            } else if ((t.taskId || t.id) === (linkedTask.taskId || linkedTask.id)) {
-              tasksToUpdate.push(linkedTaskUpdate);
-            } else {
-              const originalOrder = t.order || 0;
-              // When moving current task to after linked task, shift tasks between them
-              if (currentTaskOrder > linkedTaskOrder) {
-                // Current task moving backward - shift tasks forward
-                if (originalOrder > linkedTaskOrder && originalOrder < currentTaskOrder) {
-                  tasksToUpdate.push({ ...t, order: originalOrder + 1 });
-                } else {
-                  tasksToUpdate.push(t);
-                }
-              } else {
-                // Current task moving forward - shift tasks backward  
-                if (originalOrder > currentTaskOrder && originalOrder <= linkedTaskOrder) {
-                  tasksToUpdate.push({ ...t, order: originalOrder - 1 });
-                } else {
-                  tasksToUpdate.push(t);
-                }
-              }
-            }
-          });
-        }
-        
-        // Sort tasks by their new order values and reassign sequential order
-        tasksToUpdate.sort((a, b) => (a.order || 0) - (b.order || 0));
-        tasksToUpdate.forEach((task, index) => {
-          task.order = index;
-        });
-        
-        // After repositioning, fix sequential status for linked groups based on final order
-        console.log('Fixing sequential status for linked groups after repositioning');
-        const linkedGroupTaskIds = [
-          currentTaskUpdate.taskId || currentTaskUpdate.id,
-          linkedTaskUpdate.taskId || linkedTaskUpdate.id
-        ];
-        
-        // Find the linked tasks in the final sorted order
-        const linkedTasksInOrder = tasksToUpdate.filter(t => 
-          linkedGroupTaskIds.includes(t.taskId || t.id)
-        ).sort((a, b) => a.order - b.order);
-        
-        if (linkedTasksInOrder.length === 2) {
-          const firstTask = linkedTasksInOrder[0];
-          const secondTask = linkedTasksInOrder[1];
-          
-          // First task in final order should be sequential (if linking sequential tasks)
-          // Second task should only be linked
-          const shouldFirstBeSequential = finalCurrentSequential || finalLinkedSequential;
-          firstTask.dependentOnPrevious = shouldFirstBeSequential;
-          secondTask.dependentOnPrevious = false;
-          
-          console.log('Applied final sequential status:', {
-            firstTask: firstTask.name,
-            firstSequential: firstTask.dependentOnPrevious,
-            secondTask: secondTask.name,
-            secondSequential: secondTask.dependentOnPrevious
-          });
-        }
-        
-        // After repositioning, recalculate sequential task dates
-        console.log('Recalculating sequential task dates after repositioning');
-        let processedLinkedGroups = new Set();
-        
-        for (let i = 1; i < tasksToUpdate.length; i++) {
-          const currentTask = tasksToUpdate[i];
-          const previousTask = tasksToUpdate[i - 1];
-          
-          if (currentTask.dependentOnPrevious) {
-            // Check if this is part of a linked group
-            if (currentTask.linkedTaskGroup && !processedLinkedGroups.has(currentTask.linkedTaskGroup)) {
-              // This is the first task in a linked group - calculate sequential date from previous task
-              processedLinkedGroups.add(currentTask.linkedTaskGroup);
-              
-              // Calculate next working day from previous task
-              const baseDate = new Date(previousTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              console.log('Updating linked group date:', currentTask.name, 'from', currentTask.taskDate, 'to', newDate);
-              currentTask.taskDate = newDate;
-              currentTask.startDate = newDate;
-              currentTask.finishDate = newDate;
-              
-              // Find partner task and sync to same date
-              const partnerTaskIndex = tasksToUpdate.findIndex(t => 
-                t.linkedTaskGroup === currentTask.linkedTaskGroup && 
-                (t.taskId || t.id) !== (currentTask.taskId || currentTask.id)
-              );
-              
-              if (partnerTaskIndex >= 0) {
-                const partnerTask = tasksToUpdate[partnerTaskIndex];
-                partnerTask.taskDate = newDate;
-                partnerTask.startDate = newDate;
-                partnerTask.finishDate = newDate;
-                console.log('Syncing linked partner date:', partnerTask.name, 'to', newDate);
-              }
-            } else if (!currentTask.linkedTaskGroup) {
-              // This is a non-linked sequential task
-              // Calculate next working day from previous task
-              const baseDate = new Date(previousTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              console.log('Updating sequential task date:', currentTask.name, 'from', currentTask.taskDate, 'to', newDate);
-              currentTask.taskDate = newDate;
-              currentTask.startDate = newDate;
-              currentTask.finishDate = newDate;
-            }
-            // Skip processing if this is the second task in a linked group (already processed)
-          }
-        }
-        
-        console.log('Batch updating tasks for linking and positioning');
-        console.log('Final task order:', tasksToUpdate.map(t => ({ name: t.name, order: t.order, date: t.taskDate })));
-        batchUpdateTasksMutation.mutate(tasksToUpdate);
-      } else {
-        // Tasks are already adjacent, just update linking and dates
-        console.log('Tasks already adjacent, updating linking and dates only');
-        batchUpdateTasksMutation.mutate([currentTaskUpdate, linkedTaskUpdate]);
-      }
+      // Update tasks using batch mutation
+      console.log('Submitting multi-task linking updates');
+      batchUpdateTasksMutation.mutate(tasksToUpdate);
     }
   };
 
@@ -1546,7 +1278,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           {/* Show placeholder when no tasks selected but there are available tasks */}
                           {field.value.length === 0 && (existingTasks as any[])
                             .filter((t: any) => 
-                              (t.taskId || t.id) !== (task.taskId || task.id)
+                              (t.taskId || t.id) !== (task.taskId || task.id) &&
+                              !field.value.includes((t.taskId || t.id).toString())
                             ).length > 0 && (
                             <div className="text-muted-foreground text-sm py-2">
                               Choose tasks to link with
@@ -1866,8 +1599,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               Choose Date for Linked Tasks
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600 space-y-2">
-              <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
-              <div>Both tasks must have the same date. Which date should both tasks use?</div>
+              {linkingOptions?.targetTasks ? (
+                <div>
+                  <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
+                  <ul className="text-sm mt-1 ml-4 list-disc">
+                    {linkingOptions.targetTasks.map((t: any, idx: number) => (
+                      <li key={idx}>{t.name}</li>
+                    ))}
+                  </ul>
+                  <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
+                </div>
+              ) : (
+                <div>
+                  <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTask?.name}".</div>
+                  <div>Both tasks must have the same date. Which date should both tasks use?</div>
+                </div>
+              )}
               {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
                 <div className="text-sm text-gray-500 mt-2">
                   {linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
@@ -1892,54 +1639,87 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
-            <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (showLinkDateDialog) {
-                  handleLinkDateChoice(linkingOptions?.currentTaskDate || '');
-                }
-              }}
-              variant="outline"
-              className="w-full"
-              type="button"
-              disabled={!showLinkDateDialog}
-            >
-              <div className="text-center">
-                <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
-                <div className="text-xs mt-1 text-gray-500">
-                  {linkingOptions?.currentTaskDate && new Date(linkingOptions.currentTaskDate + 'T00:00:00').toLocaleDateString('en-US', { 
-                    month: '2-digit', 
-                    day: '2-digit', 
-                    year: 'numeric' 
-                  })}
-                </div>
-              </div>
-            </Button>
-            <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (showLinkDateDialog) {
-                  handleLinkDateChoice(linkingOptions?.targetTaskDate || '');
-                }
-              }}
-              variant="outline"
-              className="w-full"
-              type="button"
-              disabled={!showLinkDateDialog}
-            >
-              <div className="text-center">
-                <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
-                <div className="text-xs mt-1 text-gray-500">
-                  {linkingOptions?.targetTaskDate && new Date(linkingOptions.targetTaskDate + 'T00:00:00').toLocaleDateString('en-US', { 
-                    month: '2-digit', 
-                    day: '2-digit', 
-                    year: 'numeric' 
-                  })}
-                </div>
-              </div>
-            </Button>
+            {/* Show buttons for available dates */}
+            {linkingOptions?.availableDates ? (
+              linkingOptions.availableDates.map((dateOption, idx) => (
+                <Button 
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (showLinkDateDialog) {
+                      handleLinkDateChoice(dateOption.date);
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  disabled={!showLinkDateDialog}
+                >
+                  <div className="text-center">
+                    <div className="font-medium">Use "{dateOption.taskName}" Date</div>
+                    <div className="text-xs mt-1 text-gray-500">
+                      {new Date(dateOption.date + 'T00:00:00').toLocaleDateString('en-US', { 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        year: 'numeric' 
+                      })}
+                    </div>
+                  </div>
+                </Button>
+              ))
+            ) : (
+              <>
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (showLinkDateDialog) {
+                      handleLinkDateChoice(linkingOptions?.currentTask?.taskDate || '');
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  disabled={!showLinkDateDialog}
+                >
+                  <div className="text-center">
+                    <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
+                    <div className="text-xs mt-1 text-gray-500">
+                      {linkingOptions?.currentTask?.taskDate && new Date(linkingOptions.currentTask.taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        year: 'numeric' 
+                      })}
+                    </div>
+                  </div>
+                </Button>
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (showLinkDateDialog) {
+                      handleLinkDateChoice(linkingOptions?.targetTask?.taskDate || '');
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full"
+                  type="button"
+                  disabled={!showLinkDateDialog}
+                >
+                  <div className="text-center">
+                    <div className="font-medium">Use "{linkingOptions?.targetTask?.name}" Date</div>
+                    <div className="text-xs mt-1 text-gray-500">
+                      {linkingOptions?.targetTask?.taskDate && new Date(linkingOptions.targetTask.taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        year: 'numeric' 
+                      })}
+                    </div>
+                  </div>
+                </Button>
+              </>
+            )}
             <Button 
               onClick={(e) => {
                 e.preventDefault();
