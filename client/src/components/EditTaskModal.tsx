@@ -427,6 +427,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       console.log('Multi-task linking - final updates with sequential dates:', finalTasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
       console.log('Insertion order:', insertionOrder, 'Chosen date:', chosenDate);
       
+      // Log Base/Grading specifically before submission
+      const baseGradingUpdate = finalTasksToUpdate.find(t => t.name?.includes('Base/Grading'));
+      if (baseGradingUpdate) {
+        console.log('EditTaskModal Base/Grading FINAL UPDATE PAYLOAD:', {
+          id: baseGradingUpdate.taskId || baseGradingUpdate.id,
+          name: baseGradingUpdate.name,
+          taskDate: baseGradingUpdate.taskDate,
+          order: baseGradingUpdate.order,
+          sequential: baseGradingUpdate.dependentOnPrevious
+        });
+      }
+      
       // Update tasks using batch mutation
       console.log('Submitting multi-task linking updates with sequential date fixes');
       batchUpdateTasksMutation.mutate(finalTasksToUpdate);
