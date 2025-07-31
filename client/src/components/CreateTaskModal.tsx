@@ -1038,30 +1038,39 @@ export default function CreateTaskModal({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Choose Date for Linked Tasks</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <div>
+                <div>You're linking "{pendingFormData?.name}" to {linkingOptions?.targetTasks?.length || 0} task(s):</div>
+                {linkingOptions?.targetTasks && (
+                  <ul className="text-sm mt-1 ml-4 list-disc">
+                    {linkingOptions.targetTasks.map((t: any, idx: number) => (
+                      <li key={idx}>{t.name}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
+              </div>
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-3">
-              The selected tasks have different dates. Which date should all linked tasks use?
-            </p>
-            <div className="space-y-2">
-              {linkingOptions?.availableDates.map((dateOption, index) => (
-                <div key={index} className="text-sm border rounded p-2">
-                  <span className="font-medium">{dateOption.date}</span> - {dateOption.taskName}
-                </div>
-              ))}
-            </div>
-          </div>
-          <AlertDialogFooter className="flex flex-col gap-2">
-            {linkingOptions?.availableDates.map((dateOption, index) => (
-              <AlertDialogAction
-                key={index}
-                onClick={() => handleDateChoice(dateOption.date)}
-                className="w-full"
+          <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
+            {linkingOptions?.availableDates?.map((dateOption, idx) => (
+              <Button 
+                key={idx}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDateChoice(dateOption.date);
+                }}
+                variant="outline"
+                className="w-full text-center px-4 py-3"
               >
-                Use {dateOption.date}
-              </AlertDialogAction>
+                <div>
+                  <div className="font-medium">Use "{dateOption.taskName}" Date</div>
+                  <div className="text-sm text-gray-500">{dateOption.date}</div>
+                </div>
+              </Button>
             ))}
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
