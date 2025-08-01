@@ -339,10 +339,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     processFormSubmission(data);
   };
 
-  // Function to analyze task list and create position-based options
+  // Function to analyze ALL tasks and create position-based options where linked tasks can be placed
   const createPositionOptions = (targetTasks: any[]) => {
-    // Only process the linked target tasks, not all existing tasks
-    const sortedTasks = targetTasks
+    // Get ALL existing tasks to show positioning options
+    const allTasks = existingTasks as any[];
+    
+    // Remove the current task and target tasks from the list to see available positions
+    const linkedTaskIds = new Set([
+      task.taskId || task.id,
+      ...targetTasks.map(t => t.taskId || t.id)
+    ]);
+    
+    const availablePositionTasks = allTasks.filter(t => 
+      !linkedTaskIds.has(t.taskId || t.id)
+    );
+    
+    // Sort the available position tasks
+    const sortedTasks = availablePositionTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
@@ -351,8 +364,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       });
 
     const options: any[] = [];
-    let i = 0;
     
+    // Add option for beginning of list
+    options.push({
+      type: 'beginning',
+      name: 'At Beginning',
+      description: 'Place at the start of the task list',
+      position: 0,
+      date: null
+    });
+    
+    let i = 0;
     while (i < sortedTasks.length) {
       const currentTask = sortedTasks[i];
       
@@ -376,38 +398,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
         }
         
-        // Create option for this sequential group
+        // Create option for after this sequential group
         if (sequentialGroup.length > 1) {
           options.push({
-            type: 'sequential-group',
+            type: 'after-sequential-group',
             tasks: sequentialGroup,
             names: sequentialGroup.map(t => t.name),
-            position: i,
+            name: `After ${sequentialGroup.map(t => t.name).join(", ")}`,
+            position: i + sequentialGroup.length,
             date: sequentialGroup[0].taskDate
           });
         } else {
           options.push({
-            type: 'sequential-single',
+            type: 'after-sequential-single',
             task: currentTask,
-            name: currentTask.name,
-            position: i,
+            name: `After ${currentTask.name}`,
+            position: i + 1,
             date: currentTask.taskDate
           });
         }
         
         i = j;
       } else {
-        // Unsequential task
+        // Unsequential task - option to place after it
         options.push({
-          type: 'unsequential',
+          type: 'after-unsequential',
           task: currentTask,
-          name: currentTask.name,
-          position: i,
+          name: `After ${currentTask.name}`,
+          description: `${currentTask.taskDate} (will make all linked tasks unsequential)`,
+          position: i + 1,
           date: currentTask.taskDate
         });
         i++;
       }
     }
+    
+    // Add option for end of list
+    options.push({
+      type: 'end',
+      name: 'At End',
+      description: 'Place at the end of the task list',
+      position: sortedTasks.length,
+      date: null
+    });
     
     return options;
   };
@@ -427,7 +460,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     setPendingFormData(null);
   };
 
-  // Process task edit with chosen position for linking (similar to CreateTaskModal)
+  // Process task edit with chosen position for linking
   const processTaskEditWithPosition = (data: any, selectedOption: any) => {
     const linkedTasks = (existingTasks as any[]).filter((t: any) => 
       data.linkedTaskIds?.includes((t.taskId || t.id).toString())
@@ -440,6 +473,24 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
       
+      // Determine the base date and sequential status based on position choice
+      let baseDate = selectedOption.date;
+      let makeSequential = false;
+      
+      if (selectedOption.type === 'beginning' || selectedOption.type === 'end') {
+        // For beginning/end positions, use current task's date and make unsequential
+        baseDate = task.taskDate;
+        makeSequential = false;
+      } else if (selectedOption.type.includes('after-sequential')) {
+        // After sequential tasks - make first linked task sequential
+        makeSequential = true;
+        baseDate = selectedOption.date;
+      } else if (selectedOption.type === 'after-unsequential') {
+        // After unsequential task - make all linked tasks unsequential
+        makeSequential = false;
+        baseDate = selectedOption.date;
+      }
+      
       // Update all tasks with the chosen position data
       const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
         const isFirstTask = index === 0; // First in the linked group
@@ -449,17 +500,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           return {
             ...task,
             ...data,
-            taskDate: selectedOption.date,
+            taskDate: baseDate,
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: selectedOption.type.includes('sequential'), // Set based on position choice
+            dependentOnPrevious: makeSequential && isFirstTask, // Only first task can be sequential
           };
         } else {
           // Linked task
           return {
             ...taskToUpdate,
             linkedTaskGroup: linkedTaskGroup,
-            taskDate: selectedOption.date,
-            dependentOnPrevious: selectedOption.type === 'unsequential' ? false : true, // Set based on position choice
+            taskDate: baseDate,
+            dependentOnPrevious: false, // Linked tasks are never sequential in edit mode
           };
         }
       });
@@ -2071,21 +2122,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   className="w-full text-left px-4 py-3"
                 >
                   <div>
-                    {option.type === 'sequential-group' ? (
-                      <div>
-                        <div className="font-medium">{option.names.join(", ")}</div>
-                        <div className="text-sm text-gray-500">Sequential tasks (will make first linked task sequential)</div>
-                      </div>
-                    ) : option.type === 'sequential-single' ? (
-                      <div>
-                        <div className="font-medium">{option.name}</div>
-                        <div className="text-sm text-gray-500">Sequential task (will make first linked task sequential)</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="font-medium">{option.name}</div>
-                        <div className="text-sm text-gray-500">{option.date} (will make all linked tasks unsequential)</div>
-                      </div>
+                    <div className="font-medium">{option.name}</div>
+                    {option.description && (
+                      <div className="text-sm text-gray-500">{option.description}</div>
                     )}
                   </div>
                 </Button>
