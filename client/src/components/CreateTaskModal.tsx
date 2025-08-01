@@ -191,9 +191,10 @@ export default function CreateTaskModal({
     },
   });
 
-  // Function to analyze task list and create position-based options
+  // Function to analyze task list and create position-based options (matches EditTaskModal)
   const createPositionOptions = (targetTasks: any[]) => {
-    const sortedTasks = existingTasks
+    // Sort all tasks by date and order
+    const sortedTargetTasks = existingTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
@@ -202,62 +203,99 @@ export default function CreateTaskModal({
       });
 
     const options: any[] = [];
-    let i = 0;
     
-    while (i < sortedTasks.length) {
-      const currentTask = sortedTasks[i];
+    let i = 0;
+    while (i < sortedTargetTasks.length) {
+      const currentTask = sortedTargetTasks[i];
       
-      // Check if this is a sequential task group
-      if (currentTask.dependentOnPrevious) {
-        // Collect consecutive sequential tasks
-        const sequentialGroup = [currentTask];
-        let j = i + 1;
+      // Special case: Check for non-consecutive task (not first) + sequential task after it
+      if (!currentTask.dependentOnPrevious && (currentTask.order || 0) > 0 && i + 1 < sortedTargetTasks.length) {
+        const nextTask = sortedTargetTasks[i + 1];
+        const isConsecutiveOrder = (nextTask.order || 0) === (currentTask.order || 0) + 1;
+        const isNextTaskSequential = nextTask.dependentOnPrevious;
         
-        while (j < sortedTasks.length && sortedTasks[j].dependentOnPrevious) {
+        if (isNextTaskSequential && isConsecutiveOrder) {
+          // This is the special case: non-consecutive + sequential consecutive tasks
+          options.push({
+            type: 'special-unsequential-pair',
+            tasks: [currentTask, nextTask],
+            name: `${currentTask.name} + ${nextTask.name}`,
+            description: `${currentTask.taskDate} (will make both tasks unsequential and linked)`,
+            date: currentTask.taskDate,
+            position: i
+          });
+          
+          i += 2; // Skip both tasks
+          continue;
+        }
+      }
+      
+      // Check if this task is sequential and part of a group with the next task
+      if (currentTask.dependentOnPrevious && i + 1 < sortedTargetTasks.length) {
+        // Check if next task is also sequential and consecutive
+        const nextTask = sortedTargetTasks[i + 1];
+        if (nextTask.dependentOnPrevious) {
           // Check if they're consecutive (same or next day)
-          const prevDate = new Date(sortedTasks[j-1].taskDate);
-          const currDate = new Date(sortedTasks[j].taskDate);
-          const dayDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          const currDate = new Date(currentTask.taskDate);
+          const nextDate = new Date(nextTask.taskDate);
+          const dayDiff = (nextDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
           
           if (dayDiff <= 1) {
-            sequentialGroup.push(sortedTasks[j]);
-            j++;
-          } else {
-            break;
+            // Collect consecutive sequential tasks
+            const sequentialGroup = [currentTask];
+            let j = i + 1;
+            
+            while (j < sortedTargetTasks.length && sortedTargetTasks[j].dependentOnPrevious) {
+              const prevDate = new Date(sortedTargetTasks[j-1].taskDate);
+              const currTaskDate = new Date(sortedTargetTasks[j].taskDate);
+              const dayDifference = (currTaskDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+              
+              if (dayDifference <= 1) {
+                sequentialGroup.push(sortedTargetTasks[j]);
+                j++;
+              } else {
+                break;
+              }
+            }
+            
+            // Create option for this sequential group
+            options.push({
+              type: 'sequential-group',
+              tasks: sequentialGroup,
+              names: sequentialGroup.map(t => t.name),
+              description: `${sequentialGroup[0].taskDate} (will make first linked task sequential)`,
+              date: sequentialGroup[0].taskDate,
+              position: i
+            });
+            
+            i = j;
+            continue;
           }
         }
-        
-        // Create option for this sequential group
-        if (sequentialGroup.length > 1) {
-          options.push({
-            type: 'sequential-group',
-            tasks: sequentialGroup,
-            names: sequentialGroup.map(t => t.name),
-            position: i,
-            date: sequentialGroup[0].taskDate
-          });
-        } else {
-          options.push({
-            type: 'sequential-single',
-            task: currentTask,
-            name: currentTask.name,
-            position: i,
-            date: currentTask.taskDate
-          });
-        }
-        
-        i = j;
+      }
+      
+      // Single task (either sequential or unsequential)
+      if (currentTask.dependentOnPrevious) {
+        options.push({
+          type: 'sequential-single',
+          task: currentTask,
+          name: currentTask.name,
+          description: `${currentTask.taskDate} (will make first linked task sequential)`,
+          date: currentTask.taskDate,
+          position: i
+        });
       } else {
-        // Unsequential task
         options.push({
           type: 'unsequential',
           task: currentTask,
           name: currentTask.name,
-          position: i,
-          date: currentTask.taskDate
+          description: `${currentTask.taskDate} (will make tasks unsequential and linked)`,
+          date: currentTask.taskDate,
+          position: i
         });
-        i++;
       }
+      
+      i++;
     }
     
     return options;
@@ -1337,20 +1375,25 @@ export default function CreateTaskModal({
                   className="w-full text-left px-4 py-3"
                 >
                   <div>
-                    {option.type === 'sequential-group' ? (
+                    {option.type === 'special-unsequential-pair' ? (
+                      <div>
+                        <div className="font-medium">{option.name}</div>
+                        <div className="text-sm text-gray-500">{option.description}</div>
+                      </div>
+                    ) : option.type === 'sequential-group' ? (
                       <div>
                         <div className="font-medium">{option.names.join(", ")}</div>
-                        <div className="text-sm text-gray-500">Sequential tasks (will make first linked task sequential)</div>
+                        <div className="text-sm text-gray-500">{option.description}</div>
                       </div>
                     ) : option.type === 'sequential-single' ? (
                       <div>
                         <div className="font-medium">{option.name}</div>
-                        <div className="text-sm text-gray-500">Sequential task (will make first linked task sequential)</div>
+                        <div className="text-sm text-gray-500">{option.description}</div>
                       </div>
                     ) : (
                       <div>
                         <div className="font-medium">{option.name}</div>
-                        <div className="text-sm text-gray-500">{option.date} (will make all linked tasks unsequential)</div>
+                        <div className="text-sm text-gray-500">{option.description}</div>
                       </div>
                     )}
                   </div>
