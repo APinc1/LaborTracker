@@ -2113,15 +2113,47 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             </Button>
             
             <Button 
-              onClick={() => {
+              onClick={async () => {
                 // Just unlink this task - apply changes immediately
                 setShowUnlinkDialog(false);
                 setSkipUnlinkDialog(true); // Set flag to prevent dialog from showing again
                 
                 // Apply the pending form data and submit immediately
                 if (pendingFormData) {
-                  // Directly call the submit function with the pending data
-                  onSubmit(pendingFormData);
+                  try {
+                    // Prepare the data for immediate submission
+                    const processedData = {
+                      ...pendingFormData,
+                      linkedTaskGroup: null, // Remove from linked group
+                      dependentOnPrevious: true // Make sequential to linked group
+                    };
+                    
+                    console.log('🔗 JUST UNLINKING CURRENT TASK - submitting directly');
+                    
+                    // Find all other tasks in the linked group to position after them
+                    const linkedGroupTasks = (existingTasks as any[]).filter((t: any) => 
+                      t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
+                    );
+                    
+                    // Trigger batch update with positioning logic
+                    if (linkedGroupTasks.length > 0) {
+                      setSkipUnlinkDialog(true);
+                      batchUpdateTasksMutation.mutate([{
+                        ...task,
+                        ...processedData
+                      }]);
+                    } else {
+                      // Fallback to single task update
+                      updateTaskMutation.mutate(processedData);
+                    }
+                  } catch (error) {
+                    console.error('Failed to unlink task:', error);
+                    toast({
+                      title: "Error",
+                      description: "Failed to unlink task",
+                      variant: "destructive",
+                    });
+                  }
                 }
                 setPendingFormData(null);
               }}
