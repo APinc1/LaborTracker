@@ -1494,7 +1494,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                   <span>{selectedTask.name} ({formatDate(selectedTask.taskDate)})</span>
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       console.log('Removing task from selection:', taskId);
                                       console.log('Current field value:', field.value);
                                       const newValue = (field.value || []).filter((id: string) => id !== taskId);
@@ -1517,6 +1519,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               !(field.value || []).includes((t.taskId || t.id).toString())
                             ).length > 0 && (
                             <Select 
+                              key={`select-${(field.value || []).join('-')}`}
                               onValueChange={(value) => {
                                 if (value && !(field.value || []).includes(value)) {
                                   // Check if selected task is part of a linked group

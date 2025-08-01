@@ -118,12 +118,10 @@ export function findTaskLinkedGroup(taskId: string, tasks: any[]): any[] | null 
 export function getLinkedGroupTaskIds(taskId: string, tasks: any[]): string[] {
   const linkedGroup = findTaskLinkedGroup(taskId, tasks);
   if (!linkedGroup) {
-    console.log(`🔍 getLinkedGroupTaskIds: No linked group found for taskId ${taskId}`);
     return [taskId]; // Return the task itself
   }
   
   const groupIds = linkedGroup.map((task: any) => (task.taskId || task.id).toString());
-  console.log(`🔍 getLinkedGroupTaskIds: Found group for ${taskId}:`, groupIds);
   return groupIds;
 }
 

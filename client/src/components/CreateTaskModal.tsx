@@ -1027,20 +1027,14 @@ export default function CreateTaskModal({
                                   <span>{selectedTask.name} ({formatDate(selectedTask.taskDate)})</span>
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       console.log('Removing task from selection:', taskId);
                                       console.log('Current field value:', field.value);
                                       const newValue = (field.value || []).filter((id: string) => id !== taskId);
                                       console.log('New field value after removal:', newValue);
                                       field.onChange(newValue);
-                                      // Force re-render by clearing the select value
-                                      setTimeout(() => {
-                                        const selectTrigger = document.querySelector('[role="combobox"]') as HTMLElement;
-                                        if (selectTrigger) {
-                                          selectTrigger.click();
-                                          setTimeout(() => selectTrigger.click(), 50);
-                                        }
-                                      }, 100);
                                     }}
                                     className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
                                   >
@@ -1057,6 +1051,7 @@ export default function CreateTaskModal({
                               !(field.value || []).includes((t.taskId || t.id).toString())
                             ).length > 0 && (
                             <Select 
+                              key={`select-${(field.value || []).join('-')}`}
                               onValueChange={(value) => {
                                 if (value && !(field.value || []).includes(value)) {
                                   // Check if selected task is part of a linked group
@@ -1099,17 +1094,7 @@ export default function CreateTaskModal({
                                     const linkedGroupIds = getLinkedGroupTaskIds(taskId, existingTasks as any[]);
                                     const isPartOfLinkedGroup = linkedGroupIds.length > 1;
                                     
-                                    // Debug logging
-                                    if (task.name === "Form" || task.name === "Pour") {
-                                      console.log(`🔍 Visual Indicator Debug for ${task.name}:`, {
-                                        taskId,
-                                        linkedTaskGroup: task.linkedTaskGroup,
-                                        linked: task.linked,
-                                        linkedGroupIds,
-                                        isPartOfLinkedGroup,
-                                        existingTasksCount: existingTasks.length
-                                      });
-                                    }
+
                                     
                                     const linkedGroupNames = isPartOfLinkedGroup 
                                       ? linkedGroupIds
