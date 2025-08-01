@@ -283,6 +283,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     while (i < sortedTargetTasks.length) {
       const currentTask = sortedTargetTasks[i];
       
+      // Special case: Check for non-consecutive task (not first) + sequential task after it
+      if (!currentTask.dependentOnPrevious && (currentTask.order || 0) > 0 && i + 1 < sortedTargetTasks.length) {
+        const nextTask = sortedTargetTasks[i + 1];
+        const isConsecutiveOrder = (nextTask.order || 0) === (currentTask.order || 0) + 1;
+        const isNextTaskSequential = nextTask.dependentOnPrevious;
+        
+        if (isNextTaskSequential && isConsecutiveOrder) {
+          // This is the special case: non-consecutive + sequential consecutive tasks
+          options.push({
+            type: 'special-unsequential-pair',
+            tasks: [currentTask, nextTask],
+            name: `${currentTask.name} + ${nextTask.name}`,
+            description: `${currentTask.taskDate} (will make both tasks unsequential and linked)`,
+            date: currentTask.taskDate,
+            position: i
+          });
+          
+          i += 2; // Skip both tasks
+          continue;
+        }
+      }
+      
       // Check if this task is sequential and part of a group with the next task
       if (currentTask.dependentOnPrevious && i + 1 < sortedTargetTasks.length) {
         // Check if next task is also sequential and consecutive
@@ -404,8 +426,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Position with sequential tasks - make first linked task sequential
         makeSequential = true;
         baseDate = selectedOption.date;
-      } else if (selectedOption.type === 'unsequential') {
-        // Position with unsequential task - make all linked tasks unsequential
+      } else if (selectedOption.type === 'unsequential' || selectedOption.type === 'special-unsequential-pair') {
+        // Position with unsequential task or special pair - make all linked tasks unsequential
         makeSequential = false;
         baseDate = selectedOption.date;
       }
@@ -694,7 +716,47 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           self.findIndex(d => d.date === item.date) === index
         );
         
-        // Always show position dialog for linked tasks - let user choose where to place them
+        // Check for special case: non-consecutive task (not first) + sequential task after it
+        const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        if (allTasksSorted.length === 2) {
+          const firstTask = allTasksSorted[0];
+          const secondTask = allTasksSorted[1];
+          
+          // Check if first task is unsequential and not the first task in the entire list
+          // AND second task is sequential and comes right after the first
+          const firstTaskOrder = firstTask.order || 0;
+          const secondTaskOrder = secondTask.order || 0;
+          const isConsecutiveOrder = secondTaskOrder === firstTaskOrder + 1;
+          const isFirstTaskNonSequentialNotFirst = !firstTask.dependentOnPrevious && firstTaskOrder > 0;
+          const isSecondTaskSequential = secondTask.dependentOnPrevious;
+          
+          if (isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder) {
+            console.log('🔗 SPECIAL CASE: Non-consecutive + sequential consecutive tasks - auto-linking as unsequential');
+            
+            // Auto-link them as unsequential at the first task's date
+            const linkedTaskGroup = generateLinkedTaskGroupId();
+            const targetDate = firstTask.taskDate;
+            
+            const tasksToUpdate = allTasksSorted.map(taskToUpdate => ({
+              ...taskToUpdate,
+              linkedTaskGroup: linkedTaskGroup,
+              taskDate: targetDate,
+              dependentOnPrevious: false // Both become unsequential
+            }));
+            
+            console.log('Special case auto-linking:', tasksToUpdate.map(t => ({ 
+              name: t.name, 
+              date: t.taskDate, 
+              sequential: t.dependentOnPrevious 
+            })));
+            
+            batchUpdateTasksMutation.mutate(tasksToUpdate);
+            return;
+          }
+        }
+        
+        // Show position dialog for other linking cases
         console.log('🔗 Linking tasks - showing position choice dialog');
         console.log('🔗 Current task:', task.name);
         console.log('🔗 Linked tasks:', linkedTasks.map(t => t.name));
