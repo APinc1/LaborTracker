@@ -605,8 +605,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         setShowUnlinkDialog(true);
         setPendingFormData(data);
         return;
+      } else if (skipUnlinkDialog && groupTasks.length >= 2) {
+        // User chose "Just unlink this task" - only unlink current task
+        console.log('🔗 JUST UNLINKING CURRENT TASK - other tasks remain linked');
+        processedData.linkedTaskGroup = null;
+        
+        // Check if current task is first task - first task must stay unsequential
+        const isCurrentTaskFirst = task.order === 0 || ((existingTasks as any[]).length > 0 && 
+          (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+        
+        // Keep current sequential status unless it's the first task
+        processedData.dependentOnPrevious = isCurrentTaskFirst ? false : task.dependentOnPrevious;
+        
+        console.log('Current task unlinking (just this task):', {
+          isCurrentTaskFirst,
+          originalSequential: task.dependentOnPrevious,
+          finalStatus: processedData.dependentOnPrevious
+        });
+        
+        // Do NOT mark linkingChanged = true because we don't want to affect other tasks
       } else {
-        // Two-task group - use existing logic
+        // Two-task group - use existing logic to unlink both
         processedData.linkedTaskGroup = null;
         
         // For current task, determine if either task was sequential
@@ -621,7 +640,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         processedData.dependentOnPrevious = isCurrentTaskFirst ? false : eitherWasSequential;
         
-        console.log('Current task unlinking:', {
+        console.log('Current task unlinking (both tasks):', {
           currentWasSequential,
           partnerWasSequential,
           eitherWasSequential,
