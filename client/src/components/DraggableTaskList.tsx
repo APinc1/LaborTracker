@@ -245,7 +245,8 @@ export default function DraggableTaskList({
     
     // Add linked groups as group units
     linkedGroups.forEach(groupTasks => {
-      // Find the task with the earliest order/date to represent the group position
+      // Since linked tasks should all have the same date, use that date for positioning
+      // Sort tasks within the group by their original order for internal consistency
       const sortedGroupTasks = [...groupTasks].sort((a, b) => {
         if (a.order !== undefined && b.order !== undefined) {
           return a.order - b.order;
@@ -255,24 +256,37 @@ export default function DraggableTaskList({
         return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
       });
       
-      const representativeTask = sortedGroupTasks[0];
+      // Use the date from any task in the group (they should all be the same)
+      // But find the position where this date should appear chronologically
+      const groupDate = new Date(groupTasks[0].taskDate).getTime();
+      
+      // To position the group correctly, we need to find where this date falls
+      // in the overall chronological order, not use the earliest order number
       sortableUnits.push({
         type: 'group',
-        task: representativeTask,
-        sortOrder: representativeTask.order ?? 999,
-        sortDate: new Date(representativeTask.taskDate).getTime(),
+        task: sortedGroupTasks[0], // Representative task for fallback sorting
+        sortOrder: 999, // Don't use order for positioning groups
+        sortDate: groupDate, // Use the group's target date
         tasks: sortedGroupTasks
       });
     });
     
-    // Sort the units by order first, then by date
+    // Sort the units by date first for proper chronological positioning
     sortableUnits.sort((a, b) => {
-      if (a.sortOrder !== b.sortOrder) {
-        return a.sortOrder - b.sortOrder;
-      }
+      // Primary sort: by date for chronological order
       if (a.sortDate !== b.sortDate) {
         return a.sortDate - b.sortDate;
       }
+      
+      // Secondary sort: by order for tasks on the same date
+      // But only use order if both are unlinked tasks (not groups)
+      if (a.type === 'single' && b.type === 'single') {
+        if (a.sortOrder !== b.sortOrder) {
+          return a.sortOrder - b.sortOrder;
+        }
+      }
+      
+      // Final fallback to ID comparison
       return (a.task.taskId || a.task.id).localeCompare(b.task.taskId || b.task.id);
     });
     
