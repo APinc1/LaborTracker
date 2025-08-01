@@ -445,16 +445,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Process task edit with chosen position for linking
   const processTaskEditWithPosition = (data: any, selectedOption: any) => {
+    console.log('processTaskEditWithPosition called with:', { data, selectedOption });
+    
     const linkedTasks = (existingTasks as any[]).filter((t: any) => 
       data.linkedTaskIds?.includes((t.taskId || t.id).toString())
     );
     
+    console.log('Linked tasks found:', linkedTasks);
+    
     if (linkedTasks.length > 0) {
       // Create new linked group or use existing one from any of the linked tasks
       const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+      console.log('Using linked task group:', linkedTaskGroup);
       
       // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
+      console.log('All tasks to update:', allTasksToUpdate.map(t => t.name));
       
       // Determine the base date and sequential status based on position choice
       let baseDate = selectedOption.date;
@@ -470,35 +476,48 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         baseDate = selectedOption.date;
       }
       
+      console.log('Linking configuration:', { baseDate, makeSequential, linkedTaskGroup });
+      
       // Update all tasks with the chosen position data
       const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
         const isFirstTask = index === 0; // First in the linked group
         
         if (taskToUpdate === task) {
           // Current task being edited
-          return {
+          const updatedTask = {
             ...task,
             ...data,
             taskDate: baseDate,
             linkedTaskGroup: linkedTaskGroup,
             dependentOnPrevious: makeSequential && isFirstTask, // Only first task can be sequential
           };
+          console.log('Updated main task:', updatedTask);
+          return updatedTask;
         } else {
           // Linked task
-          return {
+          const updatedLinkedTask = {
             ...taskToUpdate,
             linkedTaskGroup: linkedTaskGroup,
             taskDate: baseDate,
             dependentOnPrevious: false, // Linked tasks are never sequential in edit mode
           };
+          console.log('Updated linked task:', updatedLinkedTask);
+          return updatedLinkedTask;
         }
       });
       
+      const mainTask = tasksToUpdate.find(t => t === task || (t.taskId || t.id) === (task.taskId || task.id));
+      const updatedTasks = tasksToUpdate.filter(t => t !== task && (t.taskId || t.id) !== (task.taskId || task.id));
+      
+      console.log('Submitting updates:', { mainTask, updatedTasks });
+      
       // Submit the updates
       updateTaskMutation.mutate({
-        mainTask: tasksToUpdate.find(t => t === task || (t.taskId || t.id) === (task.taskId || task.id)),
-        updatedTasks: tasksToUpdate.filter(t => t !== task && (t.taskId || t.id) !== (task.taskId || task.id))
+        mainTask: mainTask,
+        updatedTasks: updatedTasks
       });
+    } else {
+      console.log('No linked tasks found to process');
     }
   };
 
