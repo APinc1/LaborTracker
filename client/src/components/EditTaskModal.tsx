@@ -2175,13 +2175,46 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         allTasks[currentTaskIndex].order = newOrder;
                       }
                       
+                      // Check if the current task being unlinked was the sequential one in the group
+                      const currentTaskWasSequential = task.dependentOnPrevious;
+                      if (currentTaskWasSequential) {
+                        // Find the new first task in the linked group (lowest order among remaining linked tasks)
+                        const remainingLinkedTasks = linkedGroupTasks.filter(t => 
+                          t.linkedTaskGroup === task.linkedTaskGroup
+                        );
+                        
+                        if (remainingLinkedTasks.length > 0) {
+                          // Sort by order to find the new first task
+                          const sortedLinkedTasks = remainingLinkedTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+                          const newFirstLinkedTask = sortedLinkedTasks[0];
+                          
+                          // Update the new first linked task to be sequential
+                          const newFirstTaskIndex = allTasks.findIndex(t => 
+                            (t.taskId || t.id) === (newFirstLinkedTask.taskId || newFirstLinkedTask.id)
+                          );
+                          
+                          if (newFirstTaskIndex >= 0) {
+                            allTasks[newFirstTaskIndex] = {
+                              ...allTasks[newFirstTaskIndex],
+                              dependentOnPrevious: true
+                            };
+                            
+                            console.log('Making new first linked task sequential:', {
+                              taskName: newFirstLinkedTask.name,
+                              previouslySequential: newFirstLinkedTask.dependentOnPrevious,
+                              nowSequential: true
+                            });
+                          }
+                        }
+                      }
+                      
                       // Re-sort and reassign orders
                       allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
                       allTasks.forEach((t, index) => {
                         t.order = index;
                       });
                       
-                      console.log('Final task ordering:', allTasks.map(t => ({ name: t.name, order: t.order })));
+                      console.log('Final task ordering:', allTasks.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious })));
                       
                       // Update all tasks with the new ordering
                       batchUpdateTasksMutation.mutate(allTasks);
