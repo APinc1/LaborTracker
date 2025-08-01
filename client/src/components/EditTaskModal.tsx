@@ -265,8 +265,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Function to create position-based options based on the target tasks being linked to
   const createPositionOptions = (targetTasks: any[]) => {
-    // Sort the target tasks (the ones being linked to) by date and order
-    const sortedTargetTasks = targetTasks
+    // Include the current task as well as the target tasks for position options
+    const allRelevantTasks = [task, ...targetTasks];
+    
+    // Sort all tasks (current + target) by date and order
+    const sortedTargetTasks = allRelevantTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
@@ -409,9 +412,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('Linking configuration:', { baseDate, makeSequential, linkedTaskGroup });
       
+      // Sort all tasks to update by their original order to determine which should be first
+      const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+      });
+      
       // Update all tasks with the chosen position data
-      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
-        const isFirstTask = index === 0; // First in the linked group
+      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate) => {
+        // Find if this is the first task in the chronologically sorted linked group
+        const isFirstInGroup = sortedTasksToUpdate[0] === taskToUpdate;
         
         if (taskToUpdate === task) {
           // Current task being edited
@@ -420,7 +434,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...data,
             taskDate: baseDate,
             linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: makeSequential && isFirstTask, // Only first task can be sequential
+            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
           };
           console.log('Updated main task:', updatedTask);
           return updatedTask;
@@ -430,7 +444,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             ...taskToUpdate,
             linkedTaskGroup: linkedTaskGroup,
             taskDate: baseDate,
-            dependentOnPrevious: false, // Linked tasks are never sequential in edit mode
+            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
           };
           console.log('Updated linked task:', updatedLinkedTask);
           return updatedLinkedTask;
