@@ -850,18 +850,24 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
     // FIRST TASK ENFORCEMENT - Always make first task unsequential
     const sortedTasks = (existingTasks as any[]) ? [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0)) : [];
-    const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && sortedTasks[0].id === task.id);
+    const isFirstTask = task.order === 0 || (sortedTasks.length > 0 && (sortedTasks[0].taskId || sortedTasks[0].id) === (task.taskId || task.id));
     
     if (isFirstTask) {
-      console.log('Enforcing first task rule: making first task unsequential', {
-        taskId: task.id,
+      console.log('🔗 Enforcing first task rule: making first task unsequential', {
+        taskId: task.taskId || task.id,
         taskOrder: task.order,
-        originalDependency: data.dependentOnPrevious,
+        originalDependency: processedData.dependentOnPrevious,
         forcingToFalse: true
       });
       processedData.dependentOnPrevious = false;
       // Force the form value too to ensure UI updates
       form.setValue('dependentOnPrevious', false);
+    } else {
+      console.log('🔗 Task is not first, keeping sequential status:', {
+        taskId: task.taskId || task.id,
+        taskOrder: task.order,
+        sequentialStatus: processedData.dependentOnPrevious
+      });
     }
     
     if ((dateChanged || linkingChanged || dependencyChanged) && locationTasks && locationTasks.length > 0) {
@@ -1072,18 +1078,29 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           );
           
           // When unlinking, restore natural sequential dependencies based on task order
-          console.log('Unlinking all tasks - restoring natural sequential dependencies');
+          console.log('🔗 Unlinking all tasks - restoring natural sequential dependencies');
+          console.log('🔗 All tasks before unlinking:', allUpdatedTasks.map(t => ({ 
+            name: t.name, 
+            order: t.order, 
+            id: t.taskId || t.id, 
+            linkedGroup: t.linkedTaskGroup 
+          })));
+          
+          // Get sorted list to determine first task properly
+          const sortedForFirstCheck = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+          const firstTaskId = sortedForFirstCheck[0]?.taskId || sortedForFirstCheck[0]?.id;
+          console.log('🔗 First task ID in list:', firstTaskId);
           
           allUpdatedTasks = allUpdatedTasks.map(t => {
             if (t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)) {
-              // Check if this is the first task (order 0) - first task must stay unsequential
-              const isFirstTask = t.order === 0 || (allUpdatedTasks.length > 0 && 
-                allUpdatedTasks.sort((a, b) => (a.order || 0) - (b.order || 0))[0].id === t.id);
+              // Check if this is the first task in the entire list
+              const taskId = t.taskId || t.id;
+              const isFirstTask = t.order === 0 || taskId === firstTaskId;
               
               // Natural sequential status: sequential if not the first task
               const naturalSequentialStatus = !isFirstTask;
               
-              console.log('Unlinking task:', t.name, 'order:', t.order, 'isFirst:', isFirstTask, 'natural sequential:', naturalSequentialStatus);
+              console.log('🔗 Unlinking task:', t.name, 'order:', t.order, 'taskId:', taskId, 'isFirst:', isFirstTask, 'natural sequential:', naturalSequentialStatus);
               
               return { 
                 ...t, 
