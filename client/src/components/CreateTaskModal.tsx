@@ -193,8 +193,8 @@ export default function CreateTaskModal({
 
   // Function to analyze task list and create position-based options (matches EditTaskModal)
   const createPositionOptions = (targetTasks: any[]) => {
-    // Sort all tasks by date and order
-    const sortedTargetTasks = existingTasks
+    // Only consider the target tasks being linked to, not all existing tasks
+    const sortedTargetTasks = targetTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
