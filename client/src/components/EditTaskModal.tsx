@@ -2127,6 +2127,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 <Button 
                   key={idx}
                   onClick={(e) => {
+                    console.log('🚨 Button clicked! Event:', e);
+                    console.log('🚨 Option:', option);
                     e.preventDefault();
                     e.stopPropagation();
                     handlePositionChoice(option);
