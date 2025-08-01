@@ -1028,7 +1028,10 @@ export default function CreateTaskModal({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      const newValue = field.value.filter((id: string) => id !== taskId);
+                                      console.log('Removing task from selection:', taskId);
+                                      console.log('Current field value:', field.value);
+                                      const newValue = (field.value || []).filter((id: string) => id !== taskId);
+                                      console.log('New field value after removal:', newValue);
                                       field.onChange(newValue);
                                     }}
                                     className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
@@ -1043,22 +1046,22 @@ export default function CreateTaskModal({
                           {/* Dropdown - only show if there are available tasks to select */}
                           {(existingTasks as any[])
                             .filter((t: any) => 
-                              !field.value.includes((t.taskId || t.id).toString())
+                              !(field.value || []).includes((t.taskId || t.id).toString())
                             ).length > 0 && (
                             <Select 
                               onValueChange={(value) => {
-                                if (value && !field.value.includes(value)) {
-                                  field.onChange([...field.value, value]);
+                                if (value && !(field.value || []).includes(value)) {
+                                  field.onChange([...(field.value || []), value]);
                                 }
                               }}
                             >
                               <SelectTrigger className="border-none shadow-none p-0 h-auto focus:ring-0">
-                                <SelectValue placeholder={field.value.length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
+                                <SelectValue placeholder={(field.value || []).length === 0 ? "Choose tasks to link with" : "Add more tasks..."} />
                               </SelectTrigger>
                               <SelectContent>
                                 {(existingTasks as any[])
                                   .filter((t: any) => 
-                                    !field.value.includes((t.taskId || t.id).toString())
+                                    !(field.value || []).includes((t.taskId || t.id).toString())
                                   )
                                   .sort((a: any, b: any) => {
                                     const dateA = new Date(a.taskDate).getTime();
