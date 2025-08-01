@@ -430,13 +430,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Handle position choice from dialog (replaces handleLinkDateChoice for new UI)
   const handlePositionChoice = (selectedOption: any) => {
-    console.log('Position choice made:', selectedOption);
+    console.log('🎯 Position choice made:', selectedOption);
+    console.log('🎯 pendingFormData:', pendingFormData);
+    console.log('🎯 linkingOptions:', linkingOptions);
+    
     setShowLinkDateDialog(false);
     
     if (pendingFormData && linkingOptions) {
       // Process the linking with the chosen position
-      console.log('Processing link with chosen position:', selectedOption);
+      console.log('🎯 Processing link with chosen position:', selectedOption);
       processTaskEditWithPosition(pendingFormData, selectedOption);
+    } else {
+      console.log('🎯 ERROR: Missing pendingFormData or linkingOptions');
+      console.log('🎯 pendingFormData exists:', !!pendingFormData);
+      console.log('🎯 linkingOptions exists:', !!linkingOptions);
     }
     
     setLinkingOptions(null);
@@ -753,14 +760,22 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         );
         
         // Always show position dialog for linked tasks - let user choose where to place them
-        console.log('Linking tasks - showing position choice dialog');
-        setLinkingOptions({
+        console.log('🔗 Linking tasks - showing position choice dialog');
+        console.log('🔗 Current task:', task.name);
+        console.log('🔗 Linked tasks:', linkedTasks.map(t => t.name));
+        console.log('🔗 Form data being stored:', data);
+        
+        const linkingOptionsData = {
           currentTask: task,
           targetTasks: linkedTasks,
           availableDates: [] // No longer used, but keeping for compatibility
-        });
+        };
+        
+        console.log('🔗 Setting linking options:', linkingOptionsData);
+        setLinkingOptions(linkingOptionsData);
         setShowLinkDateDialog(true);
         setPendingFormData(data);
+        console.log('🔗 Dialog should now be visible');
         return;
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
