@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
 import { z } from "zod";
-import { generateLinkedTaskGroupId, getLinkedTasks, realignDependentTasks } from "@shared/taskUtils";
+import { generateLinkedTaskGroupId, getLinkedTasks, realignDependentTasks, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -1051,7 +1051,18 @@ export default function CreateTaskModal({
                             <Select 
                               onValueChange={(value) => {
                                 if (value && !(field.value || []).includes(value)) {
-                                  field.onChange([...(field.value || []), value]);
+                                  // Check if selected task is part of a linked group
+                                  const linkedGroupIds = getLinkedGroupTaskIds(value, existingTasks as any[]);
+                                  
+                                  if (linkedGroupIds.length > 1) {
+                                    // Auto-select entire linked group
+                                    console.log('Auto-selecting linked group:', linkedGroupIds);
+                                    const newSelection = [...(field.value || []), ...linkedGroupIds.filter(id => !(field.value || []).includes(id))];
+                                    field.onChange(newSelection);
+                                  } else {
+                                    // Single task selection
+                                    field.onChange([...(field.value || []), value]);
+                                  }
                                 }
                               }}
                             >
@@ -1075,12 +1086,35 @@ export default function CreateTaskModal({
                                       return `${month}/${day}/${year}`;
                                     };
                                     
+                                    // Check if this task is part of a linked group
+                                    const linkedGroupIds = getLinkedGroupTaskIds((task.taskId || task.id).toString(), existingTasks as any[]);
+                                    const isPartOfLinkedGroup = linkedGroupIds.length > 1;
+                                    const linkedGroupNames = isPartOfLinkedGroup 
+                                      ? linkedGroupIds
+                                          .map(id => (existingTasks as any[]).find(t => (t.taskId || t.id).toString() === id)?.name)
+                                          .filter(name => name && name !== task.name)
+                                          .slice(0, 2) // Show max 2 other names
+                                      : [];
+                                    
                                     return (
                                       <SelectItem 
                                         key={task.id || task.taskId} 
                                         value={(task.taskId || task.id).toString()}
+                                        className={isPartOfLinkedGroup ? "bg-blue-50 border-l-4 border-blue-400" : ""}
                                       >
-                                        {task.name} ({formatDate(task.taskDate)})
+                                        <div className="flex flex-col">
+                                          <div className="flex items-center gap-2">
+                                            {isPartOfLinkedGroup && (
+                                              <span className="text-blue-600 text-xs font-semibold">🔗</span>
+                                            )}
+                                            <span>{task.name} ({formatDate(task.taskDate)})</span>
+                                          </div>
+                                          {isPartOfLinkedGroup && linkedGroupNames.length > 0 && (
+                                            <div className="text-xs text-blue-600 mt-1">
+                                              Linked with: {linkedGroupNames.join(", ")}{linkedGroupNames.length === 2 ? "..." : ""}
+                                            </div>
+                                          )}
+                                        </div>
                                       </SelectItem>
                                     );
                                   })

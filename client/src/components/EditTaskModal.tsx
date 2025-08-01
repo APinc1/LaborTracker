@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -1519,7 +1519,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                             <Select 
                               onValueChange={(value) => {
                                 if (value && !(field.value || []).includes(value)) {
-                                  field.onChange([...(field.value || []), value]);
+                                  // Check if selected task is part of a linked group
+                                  const linkedGroupIds = getLinkedGroupTaskIds(value, existingTasks as any[]);
+                                  
+                                  if (linkedGroupIds.length > 1) {
+                                    // Auto-select entire linked group
+                                    console.log('Auto-selecting linked group:', linkedGroupIds);
+                                    const newSelection = [...(field.value || []), ...linkedGroupIds.filter(id => !(field.value || []).includes(id))];
+                                    field.onChange(newSelection);
+                                  } else {
+                                    // Single task selection
+                                    field.onChange([...(field.value || []), value]);
+                                  }
                                 }
                               }}
                             >
@@ -1538,22 +1549,43 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                     if (dateA !== dateB) return dateA - dateB;
                                     return (a.order || 0) - (b.order || 0);
                                   })
-                                  .map((task: any) => {
+                                  .map((taskItem: any) => {
                                     const formatDate = (dateStr: string) => {
                                       const [year, month, day] = dateStr.split('-');
                                       return `${month}/${day}/${year}`;
                                     };
                                     
+                                    // Check if this task is part of a linked group
+                                    const linkedGroupIds = getLinkedGroupTaskIds((taskItem.taskId || taskItem.id).toString(), existingTasks as any[]);
+                                    const isPartOfLinkedGroup = linkedGroupIds.length > 1;
+                                    const linkedGroupNames = isPartOfLinkedGroup 
+                                      ? linkedGroupIds
+                                          .map(id => (existingTasks as any[]).find(t => (t.taskId || t.id).toString() === id)?.name)
+                                          .filter(name => name && name !== taskItem.name)
+                                          .slice(0, 2) // Show max 2 other names
+                                      : [];
+                                    
                                     return (
                                       <SelectItem 
-                                        key={task.taskId || task.id} 
-                                        value={(task.taskId || task.id).toString()}
+                                        key={taskItem.taskId || taskItem.id} 
+                                        value={(taskItem.taskId || taskItem.id).toString()}
+                                        className={isPartOfLinkedGroup ? "bg-blue-50 border-l-4 border-blue-400" : ""}
                                       >
-                                        <div className="flex items-center justify-between w-full">
-                                          <span className="flex-1">{task.name}</span>
-                                          <span className="text-xs text-gray-500 ml-2">
-                                            {formatDate(task.taskDate)}
-                                          </span>
+                                        <div className="flex flex-col">
+                                          <div className="flex items-center gap-2">
+                                            {isPartOfLinkedGroup && (
+                                              <span className="text-blue-600 text-xs font-semibold">🔗</span>
+                                            )}
+                                            <span className="flex-1">{taskItem.name}</span>
+                                            <span className="text-xs text-gray-500 ml-2">
+                                              {formatDate(taskItem.taskDate)}
+                                            </span>
+                                          </div>
+                                          {isPartOfLinkedGroup && linkedGroupNames.length > 0 && (
+                                            <div className="text-xs text-blue-600 mt-1">
+                                              Linked with: {linkedGroupNames.join(", ")}{linkedGroupNames.length === 2 ? "..." : ""}
+                                            </div>
+                                          )}
                                         </div>
                                       </SelectItem>
                                     );

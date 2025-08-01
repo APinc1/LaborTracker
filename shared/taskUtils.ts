@@ -66,6 +66,62 @@ export function parseDateString(dateString: string): Date {
 }
 
 /**
+ * Find all tasks that are linked together (same date and linked = true)
+ */
+export function findLinkedTaskGroups(tasks: any[]): Map<string, any[]> {
+  const linkedGroups = new Map<string, any[]>();
+  
+  // Group tasks by date that are marked as linked
+  const linkedTasks = tasks.filter(task => task.linked);
+  
+  linkedTasks.forEach(task => {
+    const dateKey = task.taskDate || task.date;
+    if (!linkedGroups.has(dateKey)) {
+      linkedGroups.set(dateKey, []);
+    }
+    linkedGroups.get(dateKey)!.push(task);
+  });
+  
+  // Only return groups with more than 1 task
+  const filteredGroups = new Map<string, any[]>();
+  linkedGroups.forEach((group, date) => {
+    if (group.length > 1) {
+      filteredGroups.set(date, group);
+    }
+  });
+  
+  return filteredGroups;
+}
+
+/**
+ * Find which linked group a task belongs to
+ */
+export function findTaskLinkedGroup(taskId: string, tasks: any[]): any[] | null {
+  const linkedGroups = findLinkedTaskGroups(tasks);
+  
+  for (const [date, group] of linkedGroups.entries()) {
+    const foundTask = group.find(task => 
+      (task.taskId || task.id).toString() === taskId
+    );
+    if (foundTask) {
+      return group;
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Get all task IDs in the same linked group as the given task
+ */
+export function getLinkedGroupTaskIds(taskId: string, tasks: any[]): string[] {
+  const linkedGroup = findTaskLinkedGroup(taskId, tasks);
+  if (!linkedGroup) return [];
+  
+  return linkedGroup.map(task => (task.taskId || task.id).toString());
+}
+
+/**
  * Update task dependencies when a task date changes
  */
 export function updateTaskDependencies(
