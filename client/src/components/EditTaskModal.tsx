@@ -2108,7 +2108,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   }
                 }
               }}
-              variant="default"
+              variant="outline"
               className="w-full"
             >
               <div className="text-center">
