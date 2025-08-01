@@ -339,22 +339,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     processFormSubmission(data);
   };
 
-  // Function to create position-based options based on where linked tasks should be positioned
+  // Function to create position-based options based on the target tasks being linked to
   const createPositionOptions = (targetTasks: any[]) => {
-    const allTasks = existingTasks as any[];
-    
-    // Remove the current task and target tasks from the list to see remaining tasks
-    const linkedTaskIds = new Set([
-      task.taskId || task.id,
-      ...targetTasks.map(t => t.taskId || t.id)
-    ]);
-    
-    const remainingTasks = allTasks.filter(t => 
-      !linkedTaskIds.has(t.taskId || t.id)
-    );
-    
-    // Sort the remaining tasks by date and order
-    const sortedTasks = remainingTasks
+    // Sort the target tasks (the ones being linked to) by date and order
+    const sortedTargetTasks = targetTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
@@ -365,54 +353,65 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const options: any[] = [];
     
     let i = 0;
-    while (i < sortedTasks.length) {
-      const currentTask = sortedTasks[i];
+    while (i < sortedTargetTasks.length) {
+      const currentTask = sortedTargetTasks[i];
       
-      // Check if this task is sequential and part of a group
-      if (currentTask.dependentOnPrevious) {
-        // Collect consecutive sequential tasks
-        const sequentialGroup = [currentTask];
-        let j = i + 1;
-        
-        while (j < sortedTasks.length && sortedTasks[j].dependentOnPrevious) {
+      // Check if this task is sequential and part of a group with the next task
+      if (currentTask.dependentOnPrevious && i + 1 < sortedTargetTasks.length) {
+        // Check if next task is also sequential and consecutive
+        const nextTask = sortedTargetTasks[i + 1];
+        if (nextTask.dependentOnPrevious) {
           // Check if they're consecutive (same or next day)
-          const prevDate = new Date(sortedTasks[j-1].taskDate);
-          const currDate = new Date(sortedTasks[j].taskDate);
-          const dayDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          const currDate = new Date(currentTask.taskDate);
+          const nextDate = new Date(nextTask.taskDate);
+          const dayDiff = (nextDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
           
           if (dayDiff <= 1) {
-            sequentialGroup.push(sortedTasks[j]);
-            j++;
-          } else {
-            break;
+            // Collect consecutive sequential tasks
+            const sequentialGroup = [currentTask];
+            let j = i + 1;
+            
+            while (j < sortedTargetTasks.length && sortedTargetTasks[j].dependentOnPrevious) {
+              const prevDate = new Date(sortedTargetTasks[j-1].taskDate);
+              const currTaskDate = new Date(sortedTargetTasks[j].taskDate);
+              const dayDifference = (currTaskDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+              
+              if (dayDifference <= 1) {
+                sequentialGroup.push(sortedTargetTasks[j]);
+                j++;
+              } else {
+                break;
+              }
+            }
+            
+            // Create option for this sequential group
+            options.push({
+              type: 'sequential-group',
+              tasks: sequentialGroup,
+              names: sequentialGroup.map(t => t.name),
+              name: sequentialGroup.map(t => t.name).join(", "),
+              description: 'Sequential tasks (will make first linked task sequential)',
+              date: sequentialGroup[0].taskDate,
+              position: i
+            });
+            
+            i = j;
+            continue;
           }
         }
-        
-        // For sequential groups, create one option that groups them together
-        if (sequentialGroup.length > 1) {
-          options.push({
-            type: 'sequential-group',
-            tasks: sequentialGroup,
-            names: sequentialGroup.map(t => t.name),
-            name: sequentialGroup.map(t => t.name).join(", "),
-            description: 'Sequential tasks (will make first linked task sequential)',
-            date: sequentialGroup[0].taskDate,
-            position: i
-          });
-        } else {
-          options.push({
-            type: 'sequential-single',
-            task: currentTask,
-            name: currentTask.name,
-            description: 'Sequential task (will make first linked task sequential)',
-            date: currentTask.taskDate,
-            position: i
-          });
-        }
-        
-        i = j;
+      }
+      
+      // Single task (either sequential or unsequential)
+      if (currentTask.dependentOnPrevious) {
+        options.push({
+          type: 'sequential-single',
+          task: currentTask,
+          name: currentTask.name,
+          description: 'Sequential task (will make first linked task sequential)',
+          date: currentTask.taskDate,
+          position: i
+        });
       } else {
-        // Unsequential task
         options.push({
           type: 'unsequential',
           task: currentTask,
@@ -421,8 +420,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           date: currentTask.taskDate,
           position: i
         });
-        i++;
       }
+      
+      i++;
     }
     
     return options;
