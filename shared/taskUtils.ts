@@ -71,24 +71,25 @@ export function parseDateString(dateString: string): Date {
 export function findLinkedTaskGroups(tasks: any[]): Map<string, any[]> {
   const linkedGroups = new Map<string, any[]>();
   
-  // Group tasks by date that are marked as linked
-  const linkedTasks = tasks.filter(task => task.linked);
+  // Group tasks by linkedTaskGroup OR by date if they're marked as linked
+  const linkedTasks = tasks.filter((task: any) => task.linked || task.linkedTaskGroup);
   
-  linkedTasks.forEach(task => {
-    const dateKey = task.taskDate || task.date;
-    if (!linkedGroups.has(dateKey)) {
-      linkedGroups.set(dateKey, []);
+  linkedTasks.forEach((task: any) => {
+    // Use linkedTaskGroup as primary key, fallback to date
+    const groupKey = task.linkedTaskGroup || (task.taskDate || task.date);
+    if (!linkedGroups.has(groupKey)) {
+      linkedGroups.set(groupKey, []);
     }
-    linkedGroups.get(dateKey)!.push(task);
+    linkedGroups.get(groupKey)!.push(task);
   });
   
   // Only return groups with more than 1 task
   const filteredGroups = new Map<string, any[]>();
-  linkedGroups.forEach((group, date) => {
+  for (const [groupKey, group] of linkedGroups) {
     if (group.length > 1) {
-      filteredGroups.set(date, group);
+      filteredGroups.set(groupKey, group);
     }
-  });
+  }
   
   return filteredGroups;
 }
@@ -99,8 +100,8 @@ export function findLinkedTaskGroups(tasks: any[]): Map<string, any[]> {
 export function findTaskLinkedGroup(taskId: string, tasks: any[]): any[] | null {
   const linkedGroups = findLinkedTaskGroups(tasks);
   
-  for (const [date, group] of linkedGroups.entries()) {
-    const foundTask = group.find(task => 
+  for (const [groupKey, group] of linkedGroups) {
+    const foundTask = group.find((task: any) => 
       (task.taskId || task.id).toString() === taskId
     );
     if (foundTask) {
@@ -116,9 +117,14 @@ export function findTaskLinkedGroup(taskId: string, tasks: any[]): any[] | null 
  */
 export function getLinkedGroupTaskIds(taskId: string, tasks: any[]): string[] {
   const linkedGroup = findTaskLinkedGroup(taskId, tasks);
-  if (!linkedGroup) return [];
+  if (!linkedGroup) {
+    console.log(`🔍 getLinkedGroupTaskIds: No linked group found for taskId ${taskId}`);
+    return [taskId]; // Return the task itself
+  }
   
-  return linkedGroup.map(task => (task.taskId || task.id).toString());
+  const groupIds = linkedGroup.map((task: any) => (task.taskId || task.id).toString());
+  console.log(`🔍 getLinkedGroupTaskIds: Found group for ${taskId}:`, groupIds);
+  return groupIds;
 }
 
 /**

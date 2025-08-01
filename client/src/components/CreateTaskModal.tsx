@@ -1033,6 +1033,14 @@ export default function CreateTaskModal({
                                       const newValue = (field.value || []).filter((id: string) => id !== taskId);
                                       console.log('New field value after removal:', newValue);
                                       field.onChange(newValue);
+                                      // Force re-render by clearing the select value
+                                      setTimeout(() => {
+                                        const selectTrigger = document.querySelector('[role="combobox"]') as HTMLElement;
+                                        if (selectTrigger) {
+                                          selectTrigger.click();
+                                          setTimeout(() => selectTrigger.click(), 50);
+                                        }
+                                      }, 100);
                                     }}
                                     className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
                                   >
@@ -1087,8 +1095,22 @@ export default function CreateTaskModal({
                                     };
                                     
                                     // Check if this task is part of a linked group
-                                    const linkedGroupIds = getLinkedGroupTaskIds((task.taskId || task.id).toString(), existingTasks as any[]);
+                                    const taskId = (task.taskId || task.id).toString();
+                                    const linkedGroupIds = getLinkedGroupTaskIds(taskId, existingTasks as any[]);
                                     const isPartOfLinkedGroup = linkedGroupIds.length > 1;
+                                    
+                                    // Debug logging
+                                    if (task.name === "Form" || task.name === "Pour") {
+                                      console.log(`🔍 Visual Indicator Debug for ${task.name}:`, {
+                                        taskId,
+                                        linkedTaskGroup: task.linkedTaskGroup,
+                                        linked: task.linked,
+                                        linkedGroupIds,
+                                        isPartOfLinkedGroup,
+                                        existingTasksCount: existingTasks.length
+                                      });
+                                    }
+                                    
                                     const linkedGroupNames = isPartOfLinkedGroup 
                                       ? linkedGroupIds
                                           .map(id => (existingTasks as any[]).find(t => (t.taskId || t.id).toString() === id)?.name)
