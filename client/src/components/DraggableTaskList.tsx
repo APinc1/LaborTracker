@@ -212,32 +212,78 @@ export default function DraggableTaskList({
     })
   );
 
-  // Sort tasks by order first to maintain user-intended positioning, then by date as fallback
-  const sortedTasks = [...tasks].sort((a, b) => {
-    // If both tasks have order values, use order as primary sort
-    if (a.order !== undefined && b.order !== undefined) {
-      return a.order - b.order;
-    }
+  // Enhanced sorting that properly groups linked tasks and positions them chronologically
+  const sortedTasks = (() => {
+    // Group tasks by their linked group (if any)
+    const linkedGroups = new Map();
+    const unlinkedTasks = [];
     
-    // If only one has order, prioritize the one with order
-    if (a.order !== undefined && b.order === undefined) {
-      return -1;
-    }
-    if (a.order === undefined && b.order !== undefined) {
-      return 1;
-    }
+    tasks.forEach(task => {
+      if (task.linkedTaskGroup) {
+        if (!linkedGroups.has(task.linkedTaskGroup)) {
+          linkedGroups.set(task.linkedTaskGroup, []);
+        }
+        linkedGroups.get(task.linkedTaskGroup).push(task);
+      } else {
+        unlinkedTasks.push(task);
+      }
+    });
     
-    // If neither has order, sort by date as fallback
-    const dateA = new Date(a.taskDate).getTime();
-    const dateB = new Date(b.taskDate).getTime();
+    // Convert linked groups to sortable units (use earliest order/date as group position)
+    const sortableUnits = [];
     
-    if (dateA !== dateB) {
-      return dateA - dateB;
-    }
+    // Add unlinked tasks as individual units
+    unlinkedTasks.forEach(task => {
+      sortableUnits.push({
+        type: 'single',
+        task: task,
+        sortOrder: task.order ?? 999,
+        sortDate: new Date(task.taskDate).getTime(),
+        tasks: [task]
+      });
+    });
     
-    // Final fallback to ID comparison
-    return (a.taskId || a.id).localeCompare(b.taskId || b.id);
-  });
+    // Add linked groups as group units
+    linkedGroups.forEach(groupTasks => {
+      // Find the task with the earliest order/date to represent the group position
+      const sortedGroupTasks = [...groupTasks].sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+      });
+      
+      const representativeTask = sortedGroupTasks[0];
+      sortableUnits.push({
+        type: 'group',
+        task: representativeTask,
+        sortOrder: representativeTask.order ?? 999,
+        sortDate: new Date(representativeTask.taskDate).getTime(),
+        tasks: sortedGroupTasks
+      });
+    });
+    
+    // Sort the units by order first, then by date
+    sortableUnits.sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) {
+        return a.sortOrder - b.sortOrder;
+      }
+      if (a.sortDate !== b.sortDate) {
+        return a.sortDate - b.sortDate;
+      }
+      return (a.task.taskId || a.task.id).localeCompare(b.task.taskId || b.task.id);
+    });
+    
+    // Flatten the sorted units back into a task array
+    const result = [];
+    sortableUnits.forEach(unit => {
+      result.push(...unit.tasks);
+    });
+    
+    return result;
+  })();
 
   console.log('DraggableTaskList - Task ordering:', sortedTasks.map(t => ({ 
     name: t.name, 
