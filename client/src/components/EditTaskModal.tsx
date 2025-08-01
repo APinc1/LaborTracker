@@ -1102,7 +1102,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           console.log('🔗 First task ID in list:', firstTaskId);
           
           allUpdatedTasks = allUpdatedTasks.map(t => {
-            if (t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)) {
+            if (t.linkedTaskGroup === task.linkedTaskGroup) {
               // Check if this is the first task in the entire list
               const taskId = t.taskId || t.id;
               const isFirstTask = t.order === 0 || taskId === firstTaskId;
@@ -1120,6 +1120,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             }
             return t;
           });
+          
+          // Also update the current task (processedData) being edited
+          const currentTaskId = task.taskId || task.id;
+          const isCurrentTaskFirst = task.order === 0 || currentTaskId === firstTaskId;
+          const currentTaskNaturalSequential = !isCurrentTaskFirst;
+          
+          console.log('🔗 Updating current task sequential status:', currentTaskNaturalSequential, 'order:', task.order);
+          processedData.linkedTaskGroup = null;
+          processedData.dependentOnPrevious = currentTaskNaturalSequential;
           
           console.log('Unlinked all tasks from group:', task.linkedTaskGroup, 'restored natural sequential dependencies');
           
