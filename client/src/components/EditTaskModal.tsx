@@ -845,9 +845,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           );
           
           if (linkedGroupTasks.length > 0) {
-            // Find the highest order task in the linked group
-            const maxOrderInGroup = Math.max(...linkedGroupTasks.map(t => t.order || 0));
+            // Find the highest order task in the linked group (including all linked tasks)
+            const allLinkedOrders = linkedGroupTasks.map(t => t.order || 0);
+            const maxOrderInGroup = Math.max(...allLinkedOrders);
             const newOrder = maxOrderInGroup + 1;
+            
+            console.log('Positioning unlinked task after linked group:', {
+              linkedGroupTasks: linkedGroupTasks.map(t => ({ name: t.name, order: t.order })),
+              maxOrderInGroup,
+              newOrder
+            });
             
             // Shift all tasks after the linked group to make space
             allUpdatedTasks.forEach(t => {
