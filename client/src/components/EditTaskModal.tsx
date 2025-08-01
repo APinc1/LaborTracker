@@ -1636,21 +1636,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={(checked) => {
+                          console.log('🔗 Checkbox changed - checked:', checked, 'linkedTaskGroup:', task.linkedTaskGroup);
+                          
                           if (!checked && task.linkedTaskGroup && !skipUnlinkDialog) {
                             // User is unchecking link - determine group size for unlink dialog
                             const groupTasks = (existingTasks as any[]).filter((t: any) => 
                               t.linkedTaskGroup === task.linkedTaskGroup
                             );
                             
-                            if (groupTasks.length > 2) {
+                            console.log('🔗 Found groupTasks:', groupTasks.length, 'total group size:', groupTasks.length + 1);
+                            
+                            if (groupTasks.length >= 2) { // Changed from > 2 to >= 2 (3+ total tasks)
                               // Multi-task group - show unlink dialog
-                              setUnlinkingGroupSize(groupTasks.length);
+                              setUnlinkingGroupSize(groupTasks.length + 1); // +1 to include current task
                               setShowUnlinkDialog(true);
                               setPendingFormData({ ...form.getValues(), linkToExistingTask: false });
+                              console.log('🔗 Showing unlink dialog for group size:', groupTasks.length + 1);
                               return;
                             }
                           }
                           
+                          console.log('🔗 Setting linkToExistingTask to:', checked);
                           field.onChange(checked);
                           // Don't automatically change sequential status when linking
                           // Users should be able to control both independently
