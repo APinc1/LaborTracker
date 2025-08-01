@@ -2114,17 +2114,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             
             <Button 
               onClick={() => {
-                // Just unlink this task - continue with normal editing
+                // Just unlink this task - apply changes immediately
                 setShowUnlinkDialog(false);
                 setSkipUnlinkDialog(true); // Set flag to prevent dialog from showing again
                 
-                // Apply the pending form data (which has linkToExistingTask: false)
+                // Apply the pending form data and submit immediately
                 if (pendingFormData) {
-                  Object.keys(pendingFormData).forEach(key => {
-                    if (key in form.getValues()) {
-                      form.setValue(key as any, pendingFormData[key]);
-                    }
-                  });
+                  // Directly call the submit function with the pending data
+                  onSubmit(pendingFormData);
                 }
                 setPendingFormData(null);
               }}
