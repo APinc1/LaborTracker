@@ -656,6 +656,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   const processFormSubmission = (data: any) => {
+    console.log('🔗 processFormSubmission called with data:', data);
+    console.log('🔗 Task linkedTaskGroup:', task.linkedTaskGroup);
+    console.log('🔗 data.linkToExistingTask:', data.linkToExistingTask);
+    
     // Update cost code based on task type
     const TASK_TYPE_TO_COST_CODE = {
       "Traffic Control": "TRAFFIC",
@@ -777,9 +781,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
       // UNLINKING FROM GROUP
+      console.log('🔗 ENTERING UNLINKING LOGIC');
+      console.log('🔗 Task linkedTaskGroup:', task.linkedTaskGroup);
+      console.log('🔗 skipUnlinkDialog:', skipUnlinkDialog);
+      
       const groupTasks = (existingTasks as any[]).filter((t: any) => 
         t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
       );
+      
+      console.log('🔗 Found group tasks:', groupTasks.length, groupTasks.map(t => t.name));
       
       if (groupTasks.length >= 2 && !skipUnlinkDialog) {
         // Multi-task group - show unlink dialog (unless user already chose to skip it)
