@@ -1495,7 +1495,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                   <button
                                     type="button"
                                     onClick={() => {
+                                      console.log('Removing task from selection:', taskId);
+                                      console.log('Current field value:', field.value);
                                       const newValue = (field.value || []).filter((id: string) => id !== taskId);
+                                      console.log('New field value after removal:', newValue);
                                       field.onChange(newValue);
                                     }}
                                     className="ml-1 text-blue-600 hover:text-blue-800 w-4 h-4 flex items-center justify-center rounded"
