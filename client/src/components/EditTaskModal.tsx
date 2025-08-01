@@ -341,7 +341,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Function to analyze task list and create position-based options
   const createPositionOptions = (targetTasks: any[]) => {
-    const sortedTasks = existingTasks
+    // Only process the linked target tasks, not all existing tasks
+    const sortedTasks = targetTasks
       .sort((a: any, b: any) => {
         const dateA = new Date(a.taskDate).getTime();
         const dateB = new Date(b.taskDate).getTime();
