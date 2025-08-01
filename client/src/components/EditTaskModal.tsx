@@ -2142,13 +2142,49 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
                     );
                     
-                    // Trigger batch update with positioning logic
+                    console.log('Linked group tasks:', linkedGroupTasks.map(t => ({ name: t.name, order: t.order })));
+                    
+                    // Trigger batch update with ALL tasks to properly handle positioning logic
                     if (linkedGroupTasks.length > 0) {
-                      setSkipUnlinkDialog(true);
-                      batchUpdateTasksMutation.mutate([{
-                        ...task,
-                        ...processedData
-                      }]);
+                      // Create the full task list with the current task updated
+                      let allTasks = [...(existingTasks as any[])];
+                      const currentTaskIndex = allTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+                      
+                      if (currentTaskIndex >= 0) {
+                        allTasks[currentTaskIndex] = {
+                          ...allTasks[currentTaskIndex],
+                          ...processedData
+                        };
+                      }
+                      
+                      // Find the highest order in the linked group and position current task after it
+                      const maxOrderInGroup = Math.max(...linkedGroupTasks.map(t => t.order || 0));
+                      const newOrder = maxOrderInGroup + 1;
+                      
+                      console.log('Positioning task after order:', maxOrderInGroup, 'new order:', newOrder);
+                      
+                      // Shift tasks to make space
+                      allTasks.forEach(t => {
+                        if ((t.order || 0) >= newOrder && (t.taskId || t.id) !== (task.taskId || task.id)) {
+                          t.order = (t.order || 0) + 1;
+                        }
+                      });
+                      
+                      // Set current task's new order
+                      if (currentTaskIndex >= 0) {
+                        allTasks[currentTaskIndex].order = newOrder;
+                      }
+                      
+                      // Re-sort and reassign orders
+                      allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+                      allTasks.forEach((t, index) => {
+                        t.order = index;
+                      });
+                      
+                      console.log('Final task ordering:', allTasks.map(t => ({ name: t.name, order: t.order })));
+                      
+                      // Update all tasks with the new ordering
+                      batchUpdateTasksMutation.mutate(allTasks);
                     } else {
                       // Fallback to single task update
                       updateTaskMutation.mutate(processedData);
