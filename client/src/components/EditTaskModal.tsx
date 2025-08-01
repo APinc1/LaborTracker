@@ -226,10 +226,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   });
 
   const batchUpdateTasksMutation = useMutation({
-    mutationFn: async (updatedTasks: any[]) => {
-      // Update each task individually but batch the requests
-      // Note: First task rule enforcement is handled by drag logic and server-side validation
-      const promises = updatedTasks.map(taskData => 
+    mutationFn: async (tasksToUpdate: any[]) => {
+      console.log('Batch updating tasks:', tasksToUpdate.map(t => ({ name: t.name, linkedTaskGroup: t.linkedTaskGroup })));
+      
+      // Update each task individually
+      const promises = tasksToUpdate.map(taskData => 
         apiRequest(`/api/tasks/${taskData.id}`, {
           method: 'PUT',
           body: JSON.stringify(taskData),
@@ -238,94 +239,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       );
       
       const responses = await Promise.all(promises);
-      return responses.map(response => response.json());
+      return Promise.all(responses.map(response => response.json()));
     },
-    onSuccess: async () => {
-      console.log('🔗 BATCH UPDATE SUCCESS: Running sequential realignment after linking operations');
-      
-      // Get locationId from the current task
-      const currentLocationId = task?.locationId;
-      if (!currentLocationId) {
-        console.log('❌ No locationId found, skipping sequential realignment');
-        onTaskUpdate();
-        toast({ 
-          title: "Success", 
-          description: "Task and dependent tasks updated successfully" 
-        });
-        onClose();
-        return;
-      }
-      
-      // Refetch the latest tasks first and wait for fresh data
-      await queryClient.invalidateQueries({ queryKey: [`/api/locations/${currentLocationId}/tasks`] });
-      
-      // Force refetch to get the latest data
-      const refreshedTasksData = await queryClient.fetchQuery({
-        queryKey: [`/api/locations/${currentLocationId}/tasks`],
-        staleTime: 0 // Force fresh fetch
-      });
-      
-      if (refreshedTasksData && Array.isArray(refreshedTasksData)) {
-        console.log('🔄 RUNNING SEQUENTIAL REALIGNMENT after linking operations');
-        console.log('🔍 Tasks before realignment:', refreshedTasksData.map(t => ({ 
-          name: t.name, 
-          order: t.order, 
-          date: t.taskDate, 
-          sequential: t.dependentOnPrevious,
-          linked: !!t.linkedTaskGroup
-        })));
-        
-        // Import the realignment function
-        const { realignDependentTasks } = await import('../../../shared/taskUtils');
-        
-        // Apply sequential realignment to the refreshed tasks sorted by order
-        const sortedTasks = [...refreshedTasksData].sort((a, b) => (a.order || 0) - (b.order || 0));
-        const realignedTasks = realignDependentTasks(sortedTasks);
-        
-        // Check if any tasks need additional updates due to sequential realignment
-        const additionalUpdates = realignedTasks.filter((realignedTask, index) => {
-          const originalTask = sortedTasks[index];
-          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
-        });
-        
-        if (additionalUpdates.length > 0) {
-          console.log('📝 ADDITIONAL UPDATES needed after sequential realignment:', additionalUpdates.length, 'tasks');
-          console.log('📝 Updates needed:', additionalUpdates.map(t => ({ 
-            name: t.name, 
-            oldDate: sortedTasks.find(st => st.id === t.id)?.taskDate,
-            newDate: t.taskDate 
-          })));
-          
-          // Perform additional updates for tasks that need date changes
-          const additionalPromises = additionalUpdates.map(taskData => 
-            apiRequest(`/api/tasks/${taskData.id}`, {
-              method: 'PUT',
-              body: JSON.stringify(taskData),
-              headers: { 'Content-Type': 'application/json' }
-            })
-          );
-          
-          await Promise.all(additionalPromises);
-          console.log('✅ SEQUENTIAL REALIGNMENT COMPLETE: All dependent tasks updated');
-        } else {
-          console.log('✅ NO ADDITIONAL UPDATES needed after sequential realignment');
-        }
-      } else {
-        console.log('❌ Failed to get refreshed tasks data for sequential realignment');
-      }
-      
-      // Final refetch to get the updated state
+    onSuccess: () => {
       onTaskUpdate();
-      toast({ 
-        title: "Success", 
-        description: "Task and dependent tasks updated successfully" 
-      });
+      toast({ title: "Success", description: "Tasks linked successfully" });
       onClose();
     },
     onError: (error: any) => {
       toast({ 
         title: "Error", 
-        description: error.message || "Failed to update tasks with dependencies", 
+        description: error.message || "Failed to link tasks", 
         variant: "destructive" 
       });
     },
@@ -518,11 +442,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('Submitting updates:', { mainTask, updatedTasks });
       
-      // Submit the updates
-      updateTaskMutation.mutate({
-        mainTask: mainTask,
-        updatedTasks: updatedTasks
-      });
+      // Submit the updates using batch mutation
+      batchUpdateTasksMutation.mutate([mainTask, ...updatedTasks]);
     } else {
       console.log('No linked tasks found to process');
     }
