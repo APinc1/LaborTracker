@@ -339,6 +339,138 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     processFormSubmission(data);
   };
 
+  // Function to analyze task list and create position-based options
+  const createPositionOptions = (targetTasks: any[]) => {
+    const sortedTasks = existingTasks
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.taskDate).getTime();
+        const dateB = new Date(b.taskDate).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.order || 0) - (b.order || 0);
+      });
+
+    const options: any[] = [];
+    let i = 0;
+    
+    while (i < sortedTasks.length) {
+      const currentTask = sortedTasks[i];
+      
+      // Check if this is a sequential task group
+      if (currentTask.dependentOnPrevious) {
+        // Collect consecutive sequential tasks
+        const sequentialGroup = [currentTask];
+        let j = i + 1;
+        
+        while (j < sortedTasks.length && sortedTasks[j].dependentOnPrevious) {
+          // Check if they're consecutive (same or next day)
+          const prevDate = new Date(sortedTasks[j-1].taskDate);
+          const currDate = new Date(sortedTasks[j].taskDate);
+          const dayDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (dayDiff <= 1) {
+            sequentialGroup.push(sortedTasks[j]);
+            j++;
+          } else {
+            break;
+          }
+        }
+        
+        // Create option for this sequential group
+        if (sequentialGroup.length > 1) {
+          options.push({
+            type: 'sequential-group',
+            tasks: sequentialGroup,
+            names: sequentialGroup.map(t => t.name),
+            position: i,
+            date: sequentialGroup[0].taskDate
+          });
+        } else {
+          options.push({
+            type: 'sequential-single',
+            task: currentTask,
+            name: currentTask.name,
+            position: i,
+            date: currentTask.taskDate
+          });
+        }
+        
+        i = j;
+      } else {
+        // Unsequential task
+        options.push({
+          type: 'unsequential',
+          task: currentTask,
+          name: currentTask.name,
+          position: i,
+          date: currentTask.taskDate
+        });
+        i++;
+      }
+    }
+    
+    return options;
+  };
+
+  // Handle position choice from dialog (replaces handleLinkDateChoice for new UI)
+  const handlePositionChoice = (selectedOption: any) => {
+    console.log('Position choice made:', selectedOption);
+    setShowLinkDateDialog(false);
+    
+    if (pendingFormData && linkingOptions) {
+      // Process the linking with the chosen position
+      console.log('Processing link with chosen position:', selectedOption);
+      processTaskEditWithPosition(pendingFormData, selectedOption);
+    }
+    
+    setLinkingOptions(null);
+    setPendingFormData(null);
+  };
+
+  // Process task edit with chosen position for linking (similar to CreateTaskModal)
+  const processTaskEditWithPosition = (data: any, selectedOption: any) => {
+    const linkedTasks = (existingTasks as any[]).filter((t: any) => 
+      data.linkedTaskIds?.includes((t.taskId || t.id).toString())
+    );
+    
+    if (linkedTasks.length > 0) {
+      // Create new linked group or use existing one from any of the linked tasks
+      const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+      
+      // Get all tasks to be updated (current task + linked tasks)
+      const allTasksToUpdate = [task, ...linkedTasks];
+      
+      // Update all tasks with the chosen position data
+      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
+        const isFirstTask = index === 0; // First in the linked group
+        
+        if (taskToUpdate === task) {
+          // Current task being edited
+          return {
+            ...task,
+            ...data,
+            taskDate: selectedOption.date,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: selectedOption.type.includes('sequential'), // Set based on position choice
+          };
+        } else {
+          // Linked task
+          return {
+            ...taskToUpdate,
+            linkedTaskGroup: linkedTaskGroup,
+            taskDate: selectedOption.date,
+            dependentOnPrevious: selectedOption.type === 'unsequential' ? false : true, // Set based on position choice
+          };
+        }
+      });
+      
+      // Submit the updates
+      updateTaskMutation.mutate({
+        mainTask: tasksToUpdate.find(t => t === task || (t.taskId || t.id) === (task.taskId || task.id)),
+        updatedTasks: tasksToUpdate.filter(t => t !== task && (t.taskId || t.id) !== (task.taskId || task.id))
+      });
+    }
+  };
+
   const handleLinkDateChoice = (chosenDate: string) => {
     console.log('Link date choice made:', chosenDate);
     if (!linkingOptions || !pendingFormData) {
@@ -570,28 +702,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           self.findIndex(d => d.date === item.date) === index
         );
         
-        if (uniqueDates.length === 1) {
-          // All tasks already have the same date - proceed with linking directly
-          console.log('All tasks have same date - linking directly');
-          
-          // Create new linked group or use existing one from any of the linked tasks
-          const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
-          processedData.linkedTaskGroup = linkedTaskGroup;
-          
-          // Use the common date (since all tasks have same date at this point)
-          processedData.taskDate = uniqueDates[0].date;
-        } else {
-          // Show date choice dialog for multiple dates
-          console.log('Multiple dates available - showing date choice dialog');
-          setLinkingOptions({
-            currentTask: task,
-            targetTasks: linkedTasks,
-            availableDates: uniqueDates
-          });
-          setShowLinkDateDialog(true);
-          setPendingFormData(data);
-          return;
-        }
+        // Always show position dialog for linked tasks - let user choose where to place them
+        console.log('Linking tasks - showing position choice dialog');
+        setLinkingOptions({
+          currentTask: task,
+          targetTasks: linkedTasks,
+          availableDates: [] // No longer used, but keeping for compatibility
+        });
+        setShowLinkDateDialog(true);
+        setPendingFormData(data);
+        return;
       }
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
       // UNLINKING FROM GROUP
@@ -1918,147 +2038,66 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold">
-              Choose Date for Linked Tasks
+              Choose Position for Linked Tasks
             </AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600 space-y-2">
-              {linkingOptions?.targetTasks ? (
-                <div>
-                  <div>You're linking "{linkingOptions.currentTask?.name}" to {linkingOptions.targetTasks.length} task(s):</div>
+              <div>
+                <div>You're linking "{linkingOptions?.currentTask?.name}" to {linkingOptions?.targetTasks?.length || 0} task(s):</div>
+                {linkingOptions?.targetTasks && (
                   <ul className="text-sm mt-1 ml-4 list-disc">
                     {linkingOptions.targetTasks.map((t: any, idx: number) => (
                       <li key={idx}>{t.name}</li>
                     ))}
                   </ul>
-                  <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
-                </div>
-              ) : (
-                <div>
-                  <div>You're linking "{linkingOptions?.currentTask?.name}" to "{linkingOptions?.targetTasks?.[0]?.name || 'target task'}".</div>
-                  <div>Both tasks must have the same date. Which date should both tasks use?</div>
-                </div>
-              )}
-              {linkingOptions?.currentIsSequential !== undefined && linkingOptions?.linkedIsSequential !== undefined && (
-                <div className="text-sm text-gray-500 mt-2">
-                  {linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
-                    <div>
-                      <div>Current task is <span className="font-medium text-blue-600">sequential</span>, target is <span className="font-medium text-orange-600">unsequential</span>.</div>
-                      <div className="mt-1">Choosing <span className="font-medium text-orange-600">unsequential task's date</span> will make both unsequential.</div>
-                    </div>
-                  ) : !linkingOptions.currentIsSequential && linkingOptions.linkedIsSequential ? (
-                    <div>
-                      <div>Current task is <span className="font-medium text-orange-600">unsequential</span>, target is <span className="font-medium text-blue-600">sequential</span>.</div>
-                      <div className="mt-1">Choosing <span className="font-medium text-orange-600">unsequential task's date</span> will make both unsequential.</div>
-                    </div>
-                  ) : !linkingOptions.currentIsSequential && !linkingOptions.linkedIsSequential ? (
-                    <div className="font-medium text-orange-600">Both tasks are unsequential and will remain unsequential.</div>
-                  ) : linkingOptions.areAdjacent ? (
-                    <div>Adjacent sequential tasks: Will use earlier date automatically, only earlier task stays sequential.</div>
-                  ) : (
-                    <div>Both sequential tasks will keep their sequential status.</div>
-                  )}
-                </div>
-              )}
+                )}
+                <div className="mt-2">Choose the position in the task list where linked tasks should be placed:</div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
-            {/* Show buttons for available dates */}
-            {linkingOptions?.availableDates ? (
-              linkingOptions.availableDates.map((dateOption, idx) => (
+            {(() => {
+              if (!linkingOptions?.targetTasks) return null;
+              const positionOptions = createPositionOptions(linkingOptions.targetTasks);
+              return positionOptions.map((option, idx) => (
                 <Button 
                   key={idx}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (showLinkDateDialog) {
-                      handleLinkDateChoice(dateOption.date);
-                    }
+                    handlePositionChoice(option);
                   }}
                   variant="outline"
-                  className="w-full"
-                  type="button"
-                  disabled={!showLinkDateDialog}
+                  className="w-full text-left px-4 py-3"
                 >
-                  <div className="text-center">
-                    <div className="font-medium">Use "{dateOption.taskName}" Date</div>
-                    <div className="text-xs mt-1 text-gray-500">
-                      {new Date(dateOption.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                        month: '2-digit', 
-                        day: '2-digit', 
-                        year: 'numeric' 
-                      })}
-                    </div>
+                  <div>
+                    {option.type === 'sequential-group' ? (
+                      <div>
+                        <div className="font-medium">{option.names.join(", ")}</div>
+                        <div className="text-sm text-gray-500">Sequential tasks (will make first linked task sequential)</div>
+                      </div>
+                    ) : option.type === 'sequential-single' ? (
+                      <div>
+                        <div className="font-medium">{option.name}</div>
+                        <div className="text-sm text-gray-500">Sequential task (will make first linked task sequential)</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-medium">{option.name}</div>
+                        <div className="text-sm text-gray-500">{option.date} (will make all linked tasks unsequential)</div>
+                      </div>
+                    )}
                   </div>
                 </Button>
-              ))
-            ) : (
-              <>
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (showLinkDateDialog) {
-                      handleLinkDateChoice(linkingOptions?.currentTask?.taskDate || '');
-                    }
-                  }}
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  disabled={!showLinkDateDialog}
-                >
-                  <div className="text-center">
-                    <div className="font-medium">Use "{linkingOptions?.currentTask?.name}" Date</div>
-                    <div className="text-xs mt-1 text-gray-500">
-                      {linkingOptions?.currentTask?.taskDate && new Date(linkingOptions.currentTask.taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
-                        month: '2-digit', 
-                        day: '2-digit', 
-                        year: 'numeric' 
-                      })}
-                    </div>
-                  </div>
-                </Button>
-                <Button 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (showLinkDateDialog) {
-                      // For single task linking fallback, use the first target task
-                      const firstTargetTask = linkingOptions?.targetTasks?.[0];
-                      handleLinkDateChoice(firstTargetTask?.taskDate || '');
-                    }
-                  }}
-                  variant="outline"
-                  className="w-full"
-                  type="button"
-                  disabled={!showLinkDateDialog}
-                >
-                  <div className="text-center">
-                    <div className="font-medium">Use "{linkingOptions?.targetTasks?.[0]?.name || 'Target Task'}" Date</div>
-                    <div className="text-xs mt-1 text-gray-500">
-                      {linkingOptions?.targetTasks?.[0]?.taskDate && new Date(linkingOptions.targetTasks[0].taskDate + 'T00:00:00').toLocaleDateString('en-US', { 
-                        month: '2-digit', 
-                        day: '2-digit', 
-                        year: 'numeric' 
-                      })}
-                    </div>
-                  </div>
-                </Button>
-              </>
-            )}
+              ));
+            })()}
             <Button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (showLinkDateDialog) {
-                  // Cancel linking
-                  setShowLinkDateDialog(false);
-                  setLinkingOptions(null);
-                  setPendingFormData(null);
-                }
+              onClick={() => {
+                setShowLinkDateDialog(false);
+                setLinkingOptions(null);
+                setPendingFormData(null);
               }}
               variant="ghost"
               className="w-full"
-              type="button"
-              disabled={!showLinkDateDialog}
             >
               Cancel
             </Button>

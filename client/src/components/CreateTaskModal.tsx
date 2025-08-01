@@ -191,23 +191,95 @@ export default function CreateTaskModal({
     },
   });
 
-  // Handle date choice from dialog
-  const handleDateChoice = (chosenDate: string) => {
-    console.log('Link date choice made:', chosenDate);
+  // Function to analyze task list and create position-based options
+  const createPositionOptions = (targetTasks: any[]) => {
+    const sortedTasks = existingTasks
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.taskDate).getTime();
+        const dateB = new Date(b.taskDate).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return (a.order || 0) - (b.order || 0);
+      });
+
+    const options: any[] = [];
+    let i = 0;
+    
+    while (i < sortedTasks.length) {
+      const currentTask = sortedTasks[i];
+      
+      // Check if this is a sequential task group
+      if (currentTask.dependentOnPrevious) {
+        // Collect consecutive sequential tasks
+        const sequentialGroup = [currentTask];
+        let j = i + 1;
+        
+        while (j < sortedTasks.length && sortedTasks[j].dependentOnPrevious) {
+          // Check if they're consecutive (same or next day)
+          const prevDate = new Date(sortedTasks[j-1].taskDate);
+          const currDate = new Date(sortedTasks[j].taskDate);
+          const dayDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+          
+          if (dayDiff <= 1) {
+            sequentialGroup.push(sortedTasks[j]);
+            j++;
+          } else {
+            break;
+          }
+        }
+        
+        // Create option for this sequential group
+        if (sequentialGroup.length > 1) {
+          options.push({
+            type: 'sequential-group',
+            tasks: sequentialGroup,
+            names: sequentialGroup.map(t => t.name),
+            position: i,
+            date: sequentialGroup[0].taskDate
+          });
+        } else {
+          options.push({
+            type: 'sequential-single',
+            task: currentTask,
+            name: currentTask.name,
+            position: i,
+            date: currentTask.taskDate
+          });
+        }
+        
+        i = j;
+      } else {
+        // Unsequential task
+        options.push({
+          type: 'unsequential',
+          task: currentTask,
+          name: currentTask.name,
+          position: i,
+          date: currentTask.taskDate
+        });
+        i++;
+      }
+    }
+    
+    return options;
+  };
+
+  // Handle position choice from dialog (replaces handleDateChoice)
+  const handlePositionChoice = (selectedOption: any) => {
+    console.log('Position choice made:', selectedOption);
     setShowLinkDateDialog(false);
     
     if (pendingFormData && linkingOptions) {
-      // Process the linking with the chosen date
-      console.log('Processing link with chosen date:', chosenDate);
-      processTaskCreationWithDate(pendingFormData, chosenDate);
+      // Process the linking with the chosen position
+      console.log('Processing link with chosen position:', selectedOption);
+      processTaskCreationWithPosition(pendingFormData, selectedOption);
     }
     
     setLinkingOptions(null);
     setPendingFormData(null);
   };
 
-  // Process task creation with chosen date for linking
-  const processTaskCreationWithDate = (data: any, chosenDate: string) => {
+  // Process task creation with chosen position for linking
+  const processTaskCreationWithPosition = (data: any, selectedOption: any) => {
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     const sortedTasks = [...(existingTasks as any[])].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     
@@ -225,15 +297,15 @@ export default function CreateTaskModal({
       name: data.name,
       taskType: data.taskType,
       costCode,
-      taskDate: chosenDate,
-      startDate: chosenDate,
-      finishDate: chosenDate,
+      taskDate: selectedOption.date,
+      startDate: selectedOption.date,
+      finishDate: selectedOption.date,
       startTime: data.startTime || null,
       finishTime: data.finishTime || null,
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: false, // New linked task is non-sequential
+      dependentOnPrevious: selectedOption.type.includes('sequential'), // Set based on position choice
       linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
@@ -247,8 +319,8 @@ export default function CreateTaskModal({
     const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
-      taskDate: chosenDate,
-      dependentOnPrevious: false // Initially set all to non-sequential
+      taskDate: selectedOption.date,
+      dependentOnPrevious: selectedOption.type === 'unsequential' ? false : true // Set based on position choice
     }));
     
     // Create complete task list with ALL tasks (existing + new)
@@ -457,63 +529,16 @@ export default function CreateTaskModal({
       );
       
       if (linkedTasks.length > 0) {
-        // Collect all available dates from selected tasks
-        const availableDates = linkedTasks.map(t => ({
-          date: t.taskDate,
-          taskName: t.name
-        }));
-        
-        // Remove duplicates by date
-        const uniqueDates = availableDates.filter((item, index, self) => 
-          self.findIndex(d => d.date === item.date) === index
-        );
-        
-        if (uniqueDates.length > 1) {
-          // Show date choice dialog for multiple dates
-          console.log('Multiple dates available - showing date choice dialog');
-          setLinkingOptions({
-            currentTask: { name: data.name, taskDate: data.taskDate },
-            targetTasks: linkedTasks,
-            availableDates: uniqueDates
-          });
-          setShowLinkDateDialog(true);
-          setPendingFormData(data);
-          return;
-        }
-        
-        // All tasks have same date or only one unique date - proceed directly
-        console.log('All tasks have same date - linking directly');
-        console.log('Linked tasks:', linkedTasks.map(t => ({ name: t.name, date: t.taskDate })));
-        const firstLinkedTask = linkedTasks[0];
-        
-        // Check if any selected tasks already have a linked group, or create new one
-        const existingGroup = data.linkedTaskIds.map((id: string) => {
-          const task = (existingTasks as any[]).find((t: any) => (t.taskId || t.id).toString() === id);
-          return task?.linkedTaskGroup;
-        }).find(group => group);
-        
-        linkedTaskGroup = existingGroup || generateLinkedTaskGroupId();
-        taskDate = firstLinkedTask.taskDate;
-        
-        // Update all selected linked tasks to have the same group ID
-        data.linkedTaskIds.forEach((taskId: string) => {
-          const taskIndex = updatedTasks.findIndex(t => 
-            (t.taskId || t.id).toString() === taskId
-          );
-          if (taskIndex >= 0) {
-            updatedTasks[taskIndex] = { 
-              ...updatedTasks[taskIndex], 
-              linkedTaskGroup,
-              dependentOnPrevious: false // Initially set to false - sequential logic will be applied later
-            };
-          }
+        // Always show position dialog for linked tasks - let user choose where to place them
+        console.log('Linking tasks - showing position choice dialog');
+        setLinkingOptions({
+          currentTask: { name: data.name, taskDate: data.taskDate },
+          targetTasks: linkedTasks,
+          availableDates: [] // No longer used, but keeping for compatibility
         });
-        
-        // Find position to insert (after the last linked task)
-        const linkedTaskIndices = data.linkedTaskIds.map((id: string) => 
-          sortedTasks.findIndex(t => (t.taskId || t.id).toString() === id)
-        ).filter(index => index >= 0);
-        insertIndex = Math.max(...linkedTaskIndices) + 1;
+        setShowLinkDateDialog(true);
+        setPendingFormData(data);
+        return;
       } else {
         taskDate = new Date().toISOString().split('T')[0]; // Fallback
       }
@@ -1281,7 +1306,7 @@ export default function CreateTaskModal({
       <AlertDialog open={showLinkDateDialog} onOpenChange={setShowLinkDateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Choose Date for Linked Tasks</AlertDialogTitle>
+            <AlertDialogTitle>Choose Position for Linked Tasks</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-600 space-y-2">
               <div>
                 <div>You're linking "{pendingFormData?.name}" to {linkingOptions?.targetTasks?.length || 0} task(s):</div>
@@ -1292,28 +1317,46 @@ export default function CreateTaskModal({
                     ))}
                   </ul>
                 )}
-                <div className="mt-2">All tasks must have the same date. Which date should all tasks use?</div>
+                <div className="mt-2">Choose the position in the task list where linked tasks should be placed:</div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
-            {linkingOptions?.availableDates?.map((dateOption, idx) => (
-              <Button 
-                key={idx}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleDateChoice(dateOption.date);
-                }}
-                variant="outline"
-                className="w-full text-center px-4 py-3"
-              >
-                <div>
-                  <div className="font-medium">Use "{dateOption.taskName}" Date</div>
-                  <div className="text-sm text-gray-500">{dateOption.date}</div>
-                </div>
-              </Button>
-            ))}
+            {(() => {
+              if (!linkingOptions?.targetTasks) return null;
+              const positionOptions = createPositionOptions(linkingOptions.targetTasks);
+              return positionOptions.map((option, idx) => (
+                <Button 
+                  key={idx}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePositionChoice(option);
+                  }}
+                  variant="outline"
+                  className="w-full text-left px-4 py-3"
+                >
+                  <div>
+                    {option.type === 'sequential-group' ? (
+                      <div>
+                        <div className="font-medium">{option.names.join(", ")}</div>
+                        <div className="text-sm text-gray-500">Sequential tasks (will make first linked task sequential)</div>
+                      </div>
+                    ) : option.type === 'sequential-single' ? (
+                      <div>
+                        <div className="font-medium">{option.name}</div>
+                        <div className="text-sm text-gray-500">Sequential task (will make first linked task sequential)</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="font-medium">{option.name}</div>
+                        <div className="text-sm text-gray-500">{option.date} (will make all linked tasks unsequential)</div>
+                      </div>
+                    )}
+                  </div>
+                </Button>
+              ));
+            })()}
             <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
