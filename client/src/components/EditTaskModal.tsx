@@ -2263,13 +2263,55 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   // Determine if any task in the group is sequential
                   const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious);
                   
-                  // Unlink all tasks in the group and make them sequential if any was sequential
-                  const unlinkPromises = groupTasks.map((groupTask: any) => 
-                    apiRequest(`/api/tasks/${groupTask.id}`, {
+                  // CRITICAL: Calculate proper sequential dates for unlinked tasks
+                  const allTasks = [task, ...groupTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+                  const updatedTasks = [];
+                  
+                  // Calculate new dates for tasks that become sequential
+                  for (let i = 0; i < allTasks.length; i++) {
+                    const currentTask = allTasks[i];
+                    const isFirstTask = i === 0 || currentTask.order === 0;
+                    const shouldBeSequential = anyTaskSequential && !isFirstTask;
+                    
+                    let newDate = currentTask.taskDate;
+                    
+                    if (shouldBeSequential && i > 0) {
+                      // Calculate sequential date based on previous task in order
+                      const prevTask = allTasks[i - 1];
+                      const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+                      const nextDate = new Date(baseDate);
+                      nextDate.setDate(nextDate.getDate() + 1);
+                      // Skip weekends
+                      while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                        nextDate.setDate(nextDate.getDate() + 1);
+                      }
+                      newDate = nextDate.toISOString().split('T')[0];
+                    }
+                    
+                    updatedTasks.push({
+                      task: currentTask,
+                      newDate,
+                      shouldBeSequential
+                    });
+                  }
+                  
+                  console.log('🔗 Calculated unlink updates:', updatedTasks.map(u => ({
+                    name: u.task.name,
+                    oldDate: u.task.taskDate,
+                    newDate: u.newDate,
+                    sequential: u.shouldBeSequential
+                  })));
+                  
+                  // Update all tasks including the current one
+                  const unlinkPromises = updatedTasks.map((updateInfo) => 
+                    apiRequest(`/api/tasks/${updateInfo.task.id}`, {
                       method: 'PUT',
                       body: JSON.stringify({
                         linkedTaskGroup: null,
-                        dependentOnPrevious: anyTaskSequential && groupTask.order > 0 // First task stays unsequential
+                        dependentOnPrevious: updateInfo.shouldBeSequential,
+                        taskDate: updateInfo.newDate,
+                        startDate: updateInfo.newDate,
+                        finishDate: updateInfo.newDate
                       }),
                       headers: {
                         'Content-Type': 'application/json'
