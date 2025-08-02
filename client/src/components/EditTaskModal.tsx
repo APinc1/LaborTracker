@@ -2276,23 +2276,54 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     const currentTask = allTasks[i];
                     const isFirstTask = i === 0;
                     
-                    // UNIVERSAL RULE: After unlinking, ALL tasks except first become sequential
-                    // This maintains natural task progression regardless of original linking state
-                    const shouldBeSequential = !isFirstTask;
+                    // CORRECTED RULE:
+                    // - If ANY linked task was sequential → ALL unlinked tasks become sequential (including first)
+                    // - If ALL linked tasks were unsequential → ALL unlinked tasks become sequential (except first)
+                    const shouldBeSequential = anyTaskSequential ? true : !isFirstTask;
                     
                     let newDate = currentTask.taskDate;
                     
-                    if (shouldBeSequential && i > 0) {
-                      // Calculate sequential date based on the UPDATED previous task
-                      const prevTaskUpdate = updatedTasks[i - 1];
-                      const baseDate = new Date(prevTaskUpdate.newDate + 'T00:00:00');
-                      const nextDate = new Date(baseDate);
-                      nextDate.setDate(nextDate.getDate() + 1);
-                      // Skip weekends
-                      while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                    if (shouldBeSequential) {
+                      if (i > 0) {
+                        // Calculate sequential date based on the UPDATED previous task in the unlinked group
+                        const prevTaskUpdate = updatedTasks[i - 1];
+                        const baseDate = new Date(prevTaskUpdate.newDate + 'T00:00:00');
+                        const nextDate = new Date(baseDate);
                         nextDate.setDate(nextDate.getDate() + 1);
+                        // Skip weekends
+                        while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                          nextDate.setDate(nextDate.getDate() + 1);
+                        }
+                        newDate = nextDate.toISOString().split('T')[0];
+                      } else if (isFirstTask && anyTaskSequential) {
+                        // First task becomes sequential - calculate based on previous task in overall task order
+                        const firstTaskOrder = currentTask.order || 0;
+                        if (firstTaskOrder > 0) {
+                          // Find the chronologically previous task (not from same linked group)
+                          const allLocationTasks = (existingTasks as any[]).sort((a, b) => (a.order || 0) - (b.order || 0));
+                          let previousTaskDate = null;
+                          
+                          for (let j = 0; j < allLocationTasks.length; j++) {
+                            const prevTask = allLocationTasks[j];
+                            if ((prevTask.order || 0) < firstTaskOrder && prevTask.linkedTaskGroup !== task.linkedTaskGroup) {
+                              previousTaskDate = prevTask.taskDate;
+                              // Keep looking for the task just before this one
+                            }
+                          }
+                          
+                          if (previousTaskDate) {
+                            const baseDate = new Date(previousTaskDate + 'T00:00:00');
+                            const nextDate = new Date(baseDate);
+                            nextDate.setDate(nextDate.getDate() + 1);
+                            // Skip weekends
+                            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                              nextDate.setDate(nextDate.getDate() + 1);
+                            }
+                            newDate = nextDate.toISOString().split('T')[0];
+                            console.log('🔗 First task becoming sequential, calculated date:', newDate, 'based on previous task:', previousTaskDate);
+                          }
+                        }
                       }
-                      newDate = nextDate.toISOString().split('T')[0];
                     }
                     
                     updatedTasks.push({
