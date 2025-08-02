@@ -1130,45 +1130,76 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           processedData.linkedTaskGroup = null;
           processedData.dependentOnPrevious = currentTaskNaturalSequential;
           
+          // CRITICAL: If current task becomes sequential after unlinking, calculate its new date
+          if (currentTaskNaturalSequential && task.order > 0) {
+            // Find the previous task by order to calculate sequential date
+            const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const currentOrderIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === currentTaskId);
+            
+            if (currentOrderIndex > 0) {
+              const prevTask = allTasksSortedByOrder[currentOrderIndex - 1];
+              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update current task's date
+              processedData.taskDate = newDate;
+              console.log('🔗 Updated current task date to sequential:', newDate, 'based on previous task:', prevTask.name);
+            }
+          }
+          
           console.log('Unlinked all tasks from group:', task.linkedTaskGroup, 'restored natural sequential dependencies');
           
-          // If any partner task becomes sequential, recalculate their dates based on their order position
-          partnerTasks.forEach(partnerTask => {
-            if (partnerTask) {
-              const partnerIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (partnerTask.taskId || partnerTask.id));
-              if (partnerIndex >= 0) {
-                const updatedPartnerTask = allUpdatedTasks[partnerIndex];
-                
-                // Only recalculate date if task becomes sequential after unlinking
-                if (updatedPartnerTask.dependentOnPrevious) {
-                  // Sort all tasks by order to find the previous task by order (not by date)
-                  const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-                  const partnerOrderIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === (partnerTask.taskId || partnerTask.id));
-                  
-                  if (partnerOrderIndex > 0) {
-                    const prevTask = allTasksSortedByOrder[partnerOrderIndex - 1];
-                    // Calculate next working day from previous task by order
-                    const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-                    const nextDate = new Date(baseDate);
-                    nextDate.setDate(nextDate.getDate() + 1);
-                    // Skip weekends
-                    while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                      nextDate.setDate(nextDate.getDate() + 1);
-                    }
-                    const newDate = nextDate.toISOString().split('T')[0];
-                    
-                    // Update partner task with sequential date
-                    allUpdatedTasks[partnerIndex] = {
-                      ...allUpdatedTasks[partnerIndex],
-                      taskDate: newDate
-                    };
-                    
-                    console.log('Updated unlinked partner task sequential date to:', newDate, 'based on previous task:', prevTask.name);
-                  }
-                }
-              }
+          // CRITICAL: Recalculate ALL sequential task dates in order after unlinking
+          // This ensures that if task B becomes sequential to A, and C is sequential to B, 
+          // then C gets updated with B's new date + 1 day
+          const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+          
+          for (let i = 0; i < allTasksSortedByOrder.length; i++) {
+            const currentTask = allTasksSortedByOrder[i];
+            const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
+            
+            // Skip if task doesn't exist in allUpdatedTasks or isn't sequential
+            if (currentTaskIndex < 0 || !allUpdatedTasks[currentTaskIndex].dependentOnPrevious) {
+              continue;
             }
-          });
+            
+            // Find the previous task by order
+            if (i > 0) {
+              const prevTask = allTasksSortedByOrder[i - 1];
+              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update task with sequential date
+              allUpdatedTasks[currentTaskIndex] = {
+                ...allUpdatedTasks[currentTaskIndex],
+                taskDate: newDate
+              };
+              
+              // Also update the sorted array reference for chain effect
+              allTasksSortedByOrder[i].taskDate = newDate;
+              
+              console.log('🔗 Updated sequential task date:', currentTask.name, 'to:', newDate, 'based on previous task:', prevTask.name);
+            }
+          }
+          
+          // Update current task if it was processed in the loop above
+          const updatedCurrentTask = allUpdatedTasks.find(t => (t.taskId || t.id) === currentTaskId);
+          if (updatedCurrentTask && processedData.dependentOnPrevious) {
+            processedData.taskDate = updatedCurrentTask.taskDate;
+            console.log('🔗 Synced current task date with batch update:', processedData.taskDate);
+          }
         }
       }
 
