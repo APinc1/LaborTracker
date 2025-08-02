@@ -2261,24 +2261,29 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   );
                   
                   // Determine if any task in the group is sequential
-                  const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious);
+                  const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious) || task.dependentOnPrevious;
                   
                   // CRITICAL: Calculate proper sequential dates for unlinked tasks
                   const allTasks = [task, ...groupTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
                   const updatedTasks = [];
                   
+                  console.log('🔗 UNLINK LOGIC: anyTaskSequential =', anyTaskSequential);
+                  console.log('🔗 All tasks sorted by order:', allTasks.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious })));
+                  
                   // Calculate new dates for tasks that become sequential
                   for (let i = 0; i < allTasks.length; i++) {
                     const currentTask = allTasks[i];
-                    const isFirstTask = i === 0 || currentTask.order === 0;
+                    const isFirstTask = i === 0;
+                    
+                    // CORRECTED LOGIC: If ANY task was sequential, ALL tasks after first become sequential
                     const shouldBeSequential = anyTaskSequential && !isFirstTask;
                     
                     let newDate = currentTask.taskDate;
                     
                     if (shouldBeSequential && i > 0) {
-                      // Calculate sequential date based on previous task in order
-                      const prevTask = allTasks[i - 1];
-                      const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+                      // Calculate sequential date based on the UPDATED previous task
+                      const prevTaskUpdate = updatedTasks[i - 1];
+                      const baseDate = new Date(prevTaskUpdate.newDate + 'T00:00:00');
                       const nextDate = new Date(baseDate);
                       nextDate.setDate(nextDate.getDate() + 1);
                       // Skip weekends
@@ -2293,6 +2298,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       newDate,
                       shouldBeSequential
                     });
+                    
+                    console.log('🔗 Task', i + 1, ':', currentTask.name, '-> sequential:', shouldBeSequential, 'date:', newDate);
                   }
                   
                   console.log('🔗 Calculated unlink updates:', updatedTasks.map(u => ({
