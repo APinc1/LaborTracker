@@ -2264,7 +2264,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious) || task.dependentOnPrevious;
                   
                   // CRITICAL: Calculate proper sequential dates for unlinked tasks
-                  const allTasks = [task, ...groupTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+                  // Remove duplicates by task ID before processing
+                  const uniqueTasks = [task, ...groupTasks].filter((t, index, array) => 
+                    array.findIndex(item => (item.taskId || item.id) === (t.taskId || t.id)) === index
+                  );
+                  const allTasks = uniqueTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
                   const updatedTasks = [];
                   
                   console.log('🔗 UNLINK LOGIC:');
