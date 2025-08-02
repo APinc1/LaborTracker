@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Construction Management System - Site Overview</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            color: #333;
+        }
+        h1 {
+            color: #2563eb;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 0.5rem;
+        }
+        h2 {
+            color: #1e40af;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.3rem;
+            margin-top: 2rem;
+        }
+        h3 {
+            color: #1f2937;
+            margin-top: 1.5rem;
+        }
+        h4 {
+            color: #374151;
+            margin-top: 1.2rem;
+        }
+        code {
+            background-color: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Monaco', 'Cascadia Code', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background-color: #1f2937;
+            color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        pre code {
+            background: none;
+            padding: 0;
+            color: #f9fafb;
+        }
+        ul, ol {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.5rem;
+        }
+        .toc {
+            background-color: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin: 1.5rem 0;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 1rem;
+        }
+        .toc a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        .schema-block {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .important {
+            background-color: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        @media print {
+            body {
+                font-size: 12px;
+                line-height: 1.4;
+            }
+            h1 { page-break-before: always; }
+            h2 { page-break-before: always; }
+            pre, .schema-block, .important {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>SITE OVERVIEW</h1>
+
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <ol>
+            <li><a href="#system-architecture">System Architecture</a></li>
+            <li><a href="#projects-page">Projects Page</a></li>
+            <li><a href="#budget-management">Budget Management</a></li>
+            <li><a href="#location-details">Location Details</a></li>
+            <li><a href="#task-management-system">Task Management System</a></li>
+            <li><a href="#data-models">Data Models</a></li>
+            <li><a href="#api-endpoints">API Endpoints</a></li>
+        </ol>
+    </div>
+
+    <h2 id="system-architecture">System Architecture</h2>
+
+    <h3>Technology Stack</h3>
+    <ul>
+        <li><strong>Frontend</strong>: React 18 with TypeScript, Vite build system</li>
+        <li><strong>Backend</strong>: Express.js with TypeScript</li>
+        <li><strong>Database</strong>: PostgreSQL with Drizzle ORM</li>
+        <li><strong>Real-time</strong>: WebSocket server for live updates</li>
+        <li><strong>Styling</strong>: Tailwind CSS with shadcn/ui components</li>
+        <li><strong>State Management</strong>: TanStack React Query</li>
+        <li><strong>Routing</strong>: Wouter</li>
+        <li><strong>Form Handling</strong>: React Hook Form with Zod validation</li>
+    </ul>
+
+    <h3>Core Design Principles</h3>
+    <ul>
+        <li><strong>Type Safety</strong>: Full TypeScript coverage with shared schemas</li>
+        <li><strong>Real-time Updates</strong>: WebSocket broadcasting for multi-user collaboration</li>
+        <li><strong>Modular Architecture</strong>: Clear separation between frontend and backend</li>
+        <li><strong>Responsive Design</strong>: Mobile-first approach</li>
+        <li><strong>Data Integrity</strong>: Comprehensive validation at multiple layers</li>
+    </ul>
+
+    <h2 id="projects-page">Projects Page</h2>
+
+    <h3>Overview</h3>
+    <p>The Projects page serves as the main dashboard and entry point for construction project management. It provides high-level project overviews, navigation to detailed views, and project creation capabilities.</p>
+
+    <h3>Key Features</h3>
+    <ul>
+        <li><strong>Project List View</strong>: Display all active projects with key metrics</li>
+        <li><strong>Project Creation</strong>: Form-based project setup with validation</li>
+        <li><strong>Budget Overview</strong>: High-level budget summaries across projects</li>
+        <li><strong>Location Access</strong>: Quick navigation to project locations</li>
+        <li><strong>User Management</strong>: Role-based access control</li>
+    </ul>
+
+    <h3>Data Flow</h3>
+    <ol>
+        <li><strong>Project Retrieval</strong>: <code>GET /api/projects</code> fetches all projects</li>
+        <li><strong>Project Creation</strong>: <code>POST /api/projects</code> with validation via <code>insertProjectSchema</code></li>
+        <li><strong>Location Association</strong>: Projects link to multiple locations via foreign keys</li>
+        <li><strong>User Assignment</strong>: Default superintendent and project manager assignment</li>
+    </ol>
+
+    <div class="schema-block">
+        <h3>Project Schema</h3>
+        <pre><code>projects = {
+  id: serial("id").primaryKey(),
+  projectId: text("project_id").notNull().unique(),
+  name: text("name").notNull(),
+  startDate: date("start_date"),
+  endDate: date("end_date"),
+  defaultSuperintendent: integer("default_superintendent").references(() => users.id),
+  defaultProjectManager: integer("default_project_manager").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}</code></pre>
+    </div>
+
+    <h2 id="budget-management">Budget Management</h2>
+
+    <h3>Overview</h3>
+    <p>The Budget Management system provides comprehensive financial tracking with real-time updates, Excel import capabilities, and detailed cost breakdowns by category and location.</p>
+
+    <h3>Key Components</h3>
+
+    <h4>BudgetManagement.tsx</h4>
+    <p>Main component handling all budget operations with sophisticated state management and real-time editing capabilities.</p>
+
+    <div class="schema-block">
+        <h4>Budget Line Item Schema</h4>
+        <pre><code>budgetLineItems = {
+  id: serial("id").primaryKey(),
+  locationId: integer("location_id").references(() => locations.id).notNull(),
+  lineItemNumber: text("line_item_number").notNull(),
+  lineItemName: text("line_item_name").notNull(),
+  unconvertedUnitOfMeasure: text("unconverted_unit_of_measure").notNull(),
+  unconvertedQty: decimal("unconverted_qty", { precision: 10, scale: 2 }).notNull(),
+  actualQty: decimal("actual_qty", { precision: 10, scale: 2 }).default("0"),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).notNull(),
+  unitTotal: decimal("unit_total", { precision: 10, scale: 2 }).notNull(),
+  convertedQty: decimal("converted_qty", { precision: 10, scale: 2 }),
+  convertedUnitOfMeasure: text("converted_unit_of_measure"),
+  conversionFactor: decimal("conversion_factor", { precision: 10, scale: 6 }).default("1"),
+  costCode: text("cost_code").notNull(),
+  productionRate: decimal("production_rate", { precision: 10, scale: 2 }),
+  hours: decimal("hours", { precision: 10, scale: 2 }),
+  budgetTotal: decimal("budget_total", { precision: 10, scale: 2 }).notNull(),
+  billing: decimal("billing", { precision: 10, scale: 2 }),
+  laborCost: decimal("labor_cost", { precision: 10, scale: 2 }),
+  equipmentCost: decimal("equipment_cost", { precision: 10, scale: 2 }),
+  truckingCost: decimal("trucking_cost", { precision: 10, scale: 2 }),
+  dumpFeesCost: decimal("dump_fees_cost", { precision: 10, scale: 2 }),
+  materialCost: decimal("material_cost", { precision: 10, scale: 2 }),
+  subcontractorCost: decimal("subcontractor_cost", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+}</code></pre>
+    </div>
+
+    <h3>Budget Update Logic</h3>
+
+    <div class="important">
+        <h4>Real-time Editing System</h4>
+        <p>The budget system implements a sophisticated inline editing mechanism with the following features:</p>
+        
+        <h5>1. Edit Mode Toggle</h5>
+        <pre><code>const [isEditMode, setIsEditMode] = useState(false);
+const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+const [originalValues, setOriginalValues] = useState&lt;Map&lt;string, any&gt;&gt;(new Map());</code></pre>
+
+        <h5>2. Input Change Tracking</h5>
+        <ul>
+            <li>Each input field tracks changes via <code>inputValues</code> state map</li>
+            <li>Changes are debounced using <code>updateTimeoutRef</code> to prevent excessive API calls</li>
+            <li>Original values are preserved for cancellation functionality</li>
+        </ul>
+
+        <h5>3. Validation Layer</h5>
+        <pre><code>const budgetLineItemSchema = z.object({
+  lineItemNumber: z.string().min(1),
+  lineItemName: z.string().min(1),
+  unconvertedUnitOfMeasure: z.string().min(1),
+  unconvertedQty: z.string().min(1),
+  unitCost: z.string().min(1),
+  // ... additional validation rules
+});</code></pre>
+
+        <h5>4. Bulk Save Mechanism</h5>
+        <pre><code>const saveAllChanges = async () => {
+  const updates = Array.from(inputValues.entries()).map(([key, value]) => {
+    const [itemId, field] = key.split('.');
+    return { itemId: parseInt(itemId), field, value };
+  });
+  
+  // Process updates in batches
+  const promises = updates.map(update => 
+    apiRequest(`/api/budget-items/${update.itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ [update.field]: update.value })
+    })
+  );
+  
+  await Promise.all(promises);
+};</code></pre>
+    </div>
+
+    <h4>API Endpoints for Budget Operations</h4>
+
+    <ol>
+        <li><strong>GET /api/locations/:locationId/budget</strong>
+            <ul>
+                <li>Handles both database ID and locationId string formats</li>
+                <li>Returns complete budget line items with calculations</li>
+                <li>Includes error handling for invalid location references</li>
+            </ul>
+        </li>
+        <li><strong>POST /api/budget-items</strong>
+            <ul>
+                <li>Creates new budget line items with full validation</li>
+                <li>Auto-calculates derived fields (unitTotal, budgetTotal)</li>
+                <li>Links to location via foreign key relationship</li>
+            </ul>
+        </li>
+        <li><strong>PUT /api/budget-items/:id</strong>
+            <ul>
+                <li>Updates individual budget line items</li>
+                <li>Supports partial updates for inline editing</li>
+                <li>Recalculates dependent fields automatically</li>
+            </ul>
+        </li>
+        <li><strong>DELETE /api/budget-items/:id</strong>
+            <ul>
+                <li>Removes budget line items with cascade handling</li>
+                <li>Updates location budget totals</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h4>Advanced Budget Features</h4>
+
+    <ol>
+        <li><strong>Cost Code Filtering</strong>
+            <pre><code>const getUniqueCostCodes = () => {
+  const codes = new Set((budgetItems as any[]).map(item => item.costCode));
+  return Array.from(codes).sort();
+};</code></pre>
+        </li>
+        <li><strong>Expandable Detail View</strong>
+            <ul>
+                <li>Each budget item can expand to show detailed cost breakdowns</li>
+                <li>Labor, equipment, trucking, materials, and subcontractor costs</li>
+                <li>Notes and production rate tracking</li>
+            </ul>
+        </li>
+        <li><strong>Currency Formatting</strong>
+            <pre><code>const formatCurrency = (amount: string | number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(Number(amount) || 0);
+};</code></pre>
+        </li>
+        <li><strong>Excel Import Integration</strong>
+            <ul>
+                <li>Formula preservation during import</li>
+                <li>Automatic unit conversion calculations</li>
+                <li>Data validation and error reporting</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h2 id="location-details">Location Details</h2>
+
+    <h3>Overview</h3>
+    <p>The Location Details page provides comprehensive project location management with integrated task scheduling, budget summaries, and progress tracking.</p>
+
+    <h3>Key Features</h3>
+
+    <h4>LocationDetails.tsx Components</h4>
+    <ol>
+        <li><strong>Location Information Display</strong>
+            <ul>
+                <li>Project metadata and location details</li>
+                <li>Progress indicators and completion status</li>
+                <li>Budget summary integration</li>
+            </ul>
+        </li>
+        <li><strong>Task Management Integration</strong>
+            <ul>
+                <li>Embedded DraggableTaskList component</li>
+                <li>Task creation and editing modals</li>
+                <li>Real-time task updates via WebSocket</li>
+            </ul>
+        </li>
+        <li><strong>Budget Summary Section</strong>
+            <ul>
+                <li>Cost code breakdown by category</li>
+                <li>Progress indicators for budget utilization</li>
+                <li>Direct links to budget management</li>
+            </ul>
+        </li>
+    </ol>
+
+    <div class="schema-block">
+        <h3>Location Schema</h3>
+        <pre><code>locations = {
+  id: serial("id").primaryKey(),
+  locationId: text("location_id").notNull().unique(),
+  projectId: integer("project_id").references(() => projects.id).notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date"),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
+  actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
+  isComplete: boolean("is_complete").default(false),
+}</code></pre>
+    </div>
+
+    <h3>Task Integration Logic</h3>
+
+    <h4>Task Creation Flow</h4>
+    <ol>
+        <li><strong>Modal Opening</strong>: CreateTaskModal opens with location context</li>
+        <li><strong>Form Validation</strong>: Uses <code>createTaskFormSchema</code> with conditional validation</li>
+        <li><strong>Position Calculation</strong>: Determines task insertion position in sequence</li>
+        <li><strong>Date Assignment</strong>: Calculates dates based on dependencies and weekday logic</li>
+        <li><strong>API Creation</strong>: Creates task via POST with full validation</li>
+    </ol>
+
+    <h4>Task Editing Flow</h4>
+    <ol>
+        <li><strong>Modal Opening</strong>: EditTaskModal opens with pre-populated task data</li>
+        <li><strong>Advanced Linking Logic</strong>: Sophisticated task linking and unlinking</li>
+        <li><strong>Date Recalculation</strong>: Complex date shifting for dependent tasks</li>
+        <li><strong>Validation</strong>: Multi-layer validation before submission</li>
+    </ol>
+
+    <h2 id="task-management-system">Task Management System</h2>
+
+    <h3>Overview</h3>
+    <p>The task management system is the most sophisticated component, handling complex scheduling logic, task dependencies, and real-time collaboration features.</p>
+
+    <h3>Core Components</h3>
+
+    <div class="schema-block">
+        <h4>Task Schema</h4>
+        <pre><code>tasks = {
+  id: serial("id").primaryKey(),
+  taskId: text("task_id").notNull().unique(),
+  locationId: text("location_id").notNull(),
+  taskType: text("task_type").notNull(),
+  name: text("name").notNull(),
+  taskDate: date("task_date").notNull(),
+  startDate: date("start_date").notNull(),
+  finishDate: date("finish_date").notNull(),
+  costCode: text("cost_code").notNull(),
+  superintendentId: integer("superintendent_id").references(() => users.id),
+  foremanId: integer("foreman_id").references(() => employees.id),
+  scheduledHours: decimal("scheduled_hours", { precision: 10, scale: 2 }),
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  startTime: text("start_time"),
+  finishTime: text("finish_time"),
+  workDescription: text("work_description"),
+  notes: text("notes"),
+  order: integer("order").notNull().default(0),
+  dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
+  linkedTaskGroup: text("linked_task_group"),
+}</code></pre>
+    </div>
+
+    <h3>Task Creation Logic</h3>
+
+    <div class="important">
+        <h4>CreateTaskModal.tsx</h4>
+        <p>The task creation system implements sophisticated logic for task positioning and linking:</p>
+
+        <h5>1. Task Type to Cost Code Mapping</h5>
+        <pre><code>const TASK_TYPE_TO_COST_CODE = {
+  "Traffic Control": "TRAFFIC",
+  "Demo/Ex": "Demo/Ex + Base/Grading",
+  "Base/Grading": "Demo/Ex + Base/Grading", 
+  "Demo/Ex + Base/Grading": "Demo/Ex + Base/Grading",
+  "Form": "CONCRETE",
+  "Pour": "CONCRETE",
+  "Form + Pour": "CONCRETE",
+  "Asphalt": "AC",
+  "General Labor": "GENERAL",
+  // ... additional mappings
+};</code></pre>
+
+        <h5>2. Position-Based Insertion</h5>
+        <ul>
+            <li>Users select positions in task list rather than dates</li>
+            <li>System calculates appropriate dates based on dependencies</li>
+            <li>Handles weekend skipping and working day calculations</li>
+        </ul>
+
+        <h5>3. Advanced Linking System</h5>
+        <ul>
+            <li>Tasks can be linked to occur on the same date</li>
+            <li>Linked task groups maintain synchronized dates</li>
+            <li>Complex unlinking logic with date recalculation</li>
+        </ul>
+
+        <h5>4. Conditional Validation Schema</h5>
+        <pre><code>const createTaskFormSchema = z.object({
+  insertPosition: z.string().optional(),
+  taskDate: z.string().optional(),
+  name: z.string().min(1, "Task name is required"),
+  taskType: z.string().min(1, "Task type is required"),
+  dependentOnPrevious: z.boolean().default(true),
+  linkToExistingTask: z.boolean().default(false),
+  linkedTaskIds: z.array(z.string()).default([])
+}).refine((data) => {
+  // Complex validation logic for different scenarios
+  if (!data.linkToExistingTask && !data.insertPosition) {
+    return false;
+  }
+  if (!data.dependentOnPrevious && !data.linkToExistingTask && !data.taskDate) {
+    return false;
+  }
+  if (data.linkToExistingTask && data.linkedTaskIds.length === 0) {
+    return false;
+  }
+  return true;
+});</code></pre>
+    </div>
+
+    <h3>Task Update Logic</h3>
+
+    <div class="important">
+        <h4>EditTaskModal.tsx</h4>
+        <p>The task editing system handles complex scenarios including:</p>
+
+        <h5>1. Task Linking and Unlinking</h5>
+        <ul>
+            <li>Advanced position dialog for selecting link targets</li>
+            <li>Sophisticated date synchronization for linked tasks</li>
+            <li>Complex unlinking logic with different rules based on sequential status</li>
+        </ul>
+
+        <h5>2. Unlinking Rules</h5>
+        <pre><code>// CORRECTED RULE:
+// - If ANY linked task was sequential → ALL unlinked tasks become sequential (including first)
+// - If ALL linked tasks were unsequential → ALL unlinked tasks become sequential (except first)
+const shouldBeSequential = anyTaskSequential ? true : !isFirstTask;</code></pre>
+
+        <h5>3. Date Recalculation Logic</h5>
+        <ul>
+            <li>Working day calculations (skipping weekends)</li>
+            <li>Chain effect updates for dependent tasks</li>
+            <li>Proper handling of task order changes</li>
+        </ul>
+
+        <h5>4. Advanced Position Detection</h5>
+        <pre><code>// Position dialog filtering to show only relevant tasks
+const availablePositions = existingTasks
+  .filter(t => !linkedTaskIds.includes(t.taskId || t.id.toString()))
+  .sort((a, b) => (a.order || 0) - (b.order || 0))
+  .map((task, index) => ({
+    value: `after-${task.taskId || task.id}`,
+    label: `After "${task.name}" (Position ${index + 1})`,
+    order: task.order || 0
+  }));</code></pre>
+    </div>
+
+    <h3>DraggableTaskList.tsx</h3>
+    <p>Implements sophisticated drag-and-drop task reordering with:</p>
+
+    <ol>
+        <li><strong>Real-time Updates</strong>
+            <ul>
+                <li>WebSocket integration for multi-user collaboration</li>
+                <li>Optimistic updates with rollback on failure</li>
+            </ul>
+        </li>
+        <li><strong>Dependency Management</strong>
+            <ul>
+                <li>Automatic date recalculation on reorder</li>
+                <li>Linked task group handling</li>
+                <li>Sequential task chain updates</li>
+            </ul>
+        </li>
+        <li><strong>Visual Indicators</strong>
+            <ul>
+                <li>Status badges (Upcoming, In Progress, Complete)</li>
+                <li>Sequential indicators</li>
+                <li>Linked task group highlighting</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h3>Task Utilities (taskUtils.ts)</h3>
+
+    <h4>Advanced Date Calculations</h4>
+    <pre><code>export function isWeekday(date: Date): boolean {
+  const day = date.getDay();
+  return day >= 1 && day <= 5; // Monday-Friday
+}
+
+export function getNextWeekday(date: Date): Date {
+  const nextDay = new Date(date);
+  do {
+    nextDay.setDate(nextDay.getDate() + 1);
+  } while (!isWeekday(nextDay));
+  return nextDay;
+}
+
+export function addWeekdays(date: Date, days: number): Date {
+  let result = new Date(date);
+  let addedDays = 0;
+  
+  while (addedDays < days) {
+    result = getNextWeekday(result);
+    addedDays++;
+  }
+  
+  return result;
+}</code></pre>
+
+    <h4>Linked Task Group Management</h4>
+    <pre><code>export function findLinkedTaskGroups(tasks: any[]): Map&lt;string, any[]&gt; {
+  const linkedGroups = new Map&lt;string, any[]&gt;();
+  const linkedTasks = tasks.filter((task: any) => task.linked || task.linkedTaskGroup);
+  
+  linkedTasks.forEach((task: any) => {
+    const groupKey = task.linkedTaskGroup || (task.taskDate || task.date);
+    if (!linkedGroups.has(groupKey)) {
+      linkedGroups.set(groupKey, []);
+    }
+    linkedGroups.get(groupKey)!.push(task);
+  });
+  
+  // Only return groups with more than 1 task
+  const filteredGroups = new Map&lt;string, any[]&gt;();
+  for (const [groupKey, group] of linkedGroups) {
+    if (group.length > 1) {
+      filteredGroups.set(groupKey, group);
+    }
+  }
+  
+  return filteredGroups;
+}</code></pre>
+
+    <h2 id="data-models">Data Models</h2>
+
+    <h3>Core Entities</h3>
+
+    <div class="schema-block">
+        <h4>Users</h4>
+        <pre><code>users = {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  phone: text("phone"),
+  role: text("role").notNull(), // Admin, Superintendent, Project Manager, Foreman
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  isPasswordSet: boolean("is_password_set").default(false),
+}</code></pre>
+    </div>
+
+    <div class="schema-block">
+        <h4>Employees</h4>
+        <pre><code>employees = {
+  id: serial("id").primaryKey(),
+  teamMemberId: text("team_member_id").notNull().unique(),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  crewId: integer("crew_id").references(() => crews.id),
+  employeeType: text("employee_type").notNull(), // Core, Freelancer, Apprentice
+  apprenticeLevel: integer("apprentice_level"), // 1, 2, or 3
+  isForeman: boolean("is_foreman").default(false),
+  isUnion: boolean("is_union").default(false),
+  primaryTrade: text("primary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
+  secondaryTrade: text("secondary_trade"),
+  tertiaryTrade: text("tertiary_trade"),
+  userId: integer("user_id").references(() => users.id),
+}</code></pre>
+    </div>
+
+    <div class="schema-block">
+        <h4>Employee Assignments</h4>
+        <pre><code>employeeAssignments = {
+  id: serial("id").primaryKey(),
+  assignmentId: text("assignment_id").notNull().unique(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  employeeId: integer("employee_id").references(() => employees.id).notNull(),
+  assignedHours: decimal("assigned_hours", { precision: 10, scale: 2 }),
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  notes: text("notes"),
+}</code></pre>
+    </div>
+
+    <h3>Relationships</h3>
+    <ul>
+        <li><strong>Projects</strong> have many <strong>Locations</strong></li>
+        <li><strong>Locations</strong> have many <strong>Tasks</strong> and <strong>Budget Line Items</strong></li>
+        <li><strong>Tasks</strong> can be assigned to <strong>Employees</strong> via <strong>Employee Assignments</strong></li>
+        <li><strong>Users</strong> can be <strong>Superintendents</strong> or <strong>Project Managers</strong> on <strong>Projects</strong></li>
+        <li><strong>Employees</strong> can have linked <strong>User</strong> accounts</li>
+    </ul>
+
+    <h2 id="api-endpoints">API Endpoints</h2>
+
+    <h3>Project Management</h3>
+    <ul>
+        <li><code>GET /api/projects</code> - List all projects</li>
+        <li><code>GET /api/projects/:id</code> - Get project details with resolved user names</li>
+        <li><code>POST /api/projects</code> - Create new project</li>
+        <li><code>PUT /api/projects/:id</code> - Update project</li>
+        <li><code>DELETE /api/projects/:id</code> - Delete project</li>
+    </ul>
+
+    <h3>Location Management</h3>
+    <ul>
+        <li><code>GET /api/projects/:id/locations</code> - Get locations for project</li>
+        <li><code>GET /api/locations/:locationId</code> - Get location details</li>
+        <li><code>POST /api/locations</code> - Create new location</li>
+        <li><code>PUT /api/locations/:id</code> - Update location</li>
+        <li><code>DELETE /api/locations/:id</code> - Delete location</li>
+    </ul>
+
+    <h3>Budget Management</h3>
+    <ul>
+        <li><code>GET /api/locations/:locationId/budget</code> - Get budget items for location</li>
+        <li><code>POST /api/budget-items</code> - Create budget line item</li>
+        <li><code>PUT /api/budget-items/:id</code> - Update budget line item</li>
+        <li><code>DELETE /api/budget-items/:id</code> - Delete budget line item</li>
+    </ul>
+
+    <h3>Task Management</h3>
+    <ul>
+        <li><code>GET /api/locations/:locationId/tasks</code> - Get tasks for location</li>
+        <li><code>POST /api/locations/:locationId/tasks</code> - Create new task</li>
+        <li><code>PUT /api/tasks/:id</code> - Update task</li>
+        <li><code>DELETE /api/tasks/:id</code> - Delete task with dependency handling</li>
+        <li><code>GET /api/tasks/date-range/:start/:end</code> - Get tasks in date range</li>
+    </ul>
+
+    <h3>Employee Management</h3>
+    <ul>
+        <li><code>GET /api/employees</code> - List all employees</li>
+        <li><code>POST /api/employees</code> - Create employee</li>
+        <li><code>PUT /api/employees/:id</code> - Update employee</li>
+        <li><code>DELETE /api/employees/:id</code> - Delete employee</li>
+    </ul>
+
+    <h3>Assignment Management</h3>
+    <ul>
+        <li><code>GET /api/assignments</code> - Get all assignments</li>
+        <li><code>POST /api/assignments</code> - Create assignment</li>
+        <li><code>PUT /api/assignments/:id</code> - Update assignment</li>
+        <li><code>DELETE /api/assignments/:id</code> - Delete assignment</li>
+    </ul>
+
+    <h3>Real-time Updates</h3>
+    <ul>
+        <li>WebSocket endpoint at <code>/ws</code> for real-time collaboration</li>
+        <li>Broadcasts changes to all connected clients</li>
+        <li>Supports task updates, budget changes, and assignment modifications</li>
+    </ul>
+
+    <h2>Advanced Features</h2>
+
+    <h3>Real-time Collaboration</h3>
+    <ul>
+        <li>WebSocket server handles multiple concurrent users</li>
+        <li>Changes broadcast immediately to all connected clients</li>
+        <li>Optimistic updates with conflict resolution</li>
+    </ul>
+
+    <h3>Data Validation</h3>
+    <ul>
+        <li>Multi-layer validation (client-side Zod schemas, server-side validation)</li>
+        <li>Type safety throughout the application</li>
+        <li>Comprehensive error handling and user feedback</li>
+    </ul>
+
+    <h3>Excel Integration</h3>
+    <ul>
+        <li>Import budget data from Excel files</li>
+        <li>Formula preservation and calculation</li>
+        <li>Data mapping and validation</li>
+    </ul>
+
+    <h3>Mobile Responsiveness</h3>
+    <ul>
+        <li>Mobile-first design approach</li>
+        <li>Touch-friendly interfaces</li>
+        <li>Responsive layouts for all screen sizes</li>
+    </ul>
+
+    <h3>Performance Optimization</h3>
+    <ul>
+        <li>Efficient data fetching with React Query</li>
+        <li>Debounced input handling</li>
+        <li>Optimized re-rendering with proper key management</li>
+    </ul>
+
+    <p><em>This comprehensive overview covers all major aspects of the construction management system, focusing on the intricate budget and task management logic that drives the application's core functionality.</em></p>
+</body>
+</html>
