@@ -2260,14 +2260,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     t.linkedTaskGroup === task.linkedTaskGroup
                   );
                   
-                  // Determine if any task in the group is sequential
+                  // Check if any task in the group (including current task) is sequential
                   const anyTaskSequential = groupTasks.some((t: any) => t.dependentOnPrevious) || task.dependentOnPrevious;
                   
                   // CRITICAL: Calculate proper sequential dates for unlinked tasks
                   const allTasks = [task, ...groupTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
                   const updatedTasks = [];
                   
-                  console.log('🔗 UNLINK LOGIC: anyTaskSequential =', anyTaskSequential);
+                  console.log('🔗 UNLINK LOGIC:');
+                  console.log('🔗 anyTaskSequential =', anyTaskSequential);
                   console.log('🔗 All tasks sorted by order:', allTasks.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious })));
                   
                   // Calculate new dates for tasks that become sequential
@@ -2275,8 +2276,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     const currentTask = allTasks[i];
                     const isFirstTask = i === 0;
                     
-                    // CORRECTED LOGIC: If ANY task was sequential, ALL tasks after first become sequential
-                    const shouldBeSequential = anyTaskSequential && !isFirstTask;
+                    // UNIVERSAL RULE: After unlinking, ALL tasks except first become sequential
+                    // This maintains natural task progression regardless of original linking state
+                    const shouldBeSequential = !isFirstTask;
                     
                     let newDate = currentTask.taskDate;
                     
