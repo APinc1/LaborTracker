@@ -2299,20 +2299,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         // First task becomes sequential - calculate based on previous task in overall task order
                         const firstTaskOrder = currentTask.order || 0;
                         if (firstTaskOrder > 0) {
-                          // Find the chronologically previous task (not from same linked group)
+                          // Find the task immediately before this one (not from same linked group)
                           const allLocationTasks = (existingTasks as any[]).sort((a, b) => (a.order || 0) - (b.order || 0));
-                          let previousTaskDate = null;
+                          let immediatelyPreviousTask = null;
                           
                           for (let j = 0; j < allLocationTasks.length; j++) {
                             const prevTask = allLocationTasks[j];
-                            if ((prevTask.order || 0) < firstTaskOrder && prevTask.linkedTaskGroup !== task.linkedTaskGroup) {
-                              previousTaskDate = prevTask.taskDate;
-                              // Keep looking for the task just before this one
+                            if ((prevTask.order || 0) === firstTaskOrder - 1 && prevTask.linkedTaskGroup !== task.linkedTaskGroup) {
+                              immediatelyPreviousTask = prevTask;
+                              break;
                             }
                           }
                           
-                          if (previousTaskDate) {
-                            const baseDate = new Date(previousTaskDate + 'T00:00:00');
+                          if (immediatelyPreviousTask) {
+                            const baseDate = new Date(immediatelyPreviousTask.taskDate + 'T00:00:00');
                             const nextDate = new Date(baseDate);
                             nextDate.setDate(nextDate.getDate() + 1);
                             // Skip weekends
@@ -2320,7 +2320,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               nextDate.setDate(nextDate.getDate() + 1);
                             }
                             newDate = nextDate.toISOString().split('T')[0];
-                            console.log('🔗 First task becoming sequential, calculated date:', newDate, 'based on previous task:', previousTaskDate);
+                            console.log('🔗 First task becoming sequential, calculated date:', newDate, 'based on immediately previous task:', immediatelyPreviousTask.taskDate, 'order:', immediatelyPreviousTask.order);
                           }
                         }
                       }
