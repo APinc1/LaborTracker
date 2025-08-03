@@ -353,6 +353,7 @@ export class MemStorage implements IStorage {
       finishTime: "16:00",
       workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
       notes: "Coordinate with utilities for underground clearance",
+      status: "in_progress",
       order: 0,
       dependentOnPrevious: false  // CRITICAL: First task must always be unsequential
     });
@@ -815,8 +816,10 @@ export class MemStorage implements IStorage {
       finishTime: insertTask.finishTime ?? null,
       workDescription: insertTask.workDescription ?? null,
       notes: insertTask.notes ?? null,
+      status: insertTask.status ?? "upcoming",
       order: insertTask.order ?? 0,
-      dependentOnPrevious: insertTask.dependentOnPrevious ?? true
+      dependentOnPrevious: insertTask.dependentOnPrevious ?? true,
+      linkedTaskGroup: insertTask.linkedTaskGroup ?? null
     };
     this.tasks.set(id, task);
     return task;
