@@ -1343,13 +1343,46 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         if (dateChangeAction === 'unsequential_shift_others') {
           console.log('Handling unsequential_shift_others action - task is now non-sequential but should shift following sequential tasks');
           
-          // Find all tasks that come after this task in the original order (not by date, but by actual position/order)
+          // CRITICAL: If this task is in a linked group, update ALL tasks in the linked group to the new date first
+          if (processedData.linkedTaskGroup) {
+            console.log('Task is in linked group - updating all linked tasks to new date:', processedData.taskDate);
+            
+            const linkedTasks = allUpdatedTasks.filter(t => 
+              t.linkedTaskGroup === processedData.linkedTaskGroup
+            );
+            
+            linkedTasks.forEach(linkedTask => {
+              const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
+              if (linkedTaskIndex >= 0) {
+                console.log('Updating linked task:', linkedTask.name, 'from:', linkedTask.taskDate, 'to:', processedData.taskDate);
+                allUpdatedTasks[linkedTaskIndex] = {
+                  ...allUpdatedTasks[linkedTaskIndex],
+                  taskDate: processedData.taskDate // All linked tasks must have same date
+                };
+              }
+            });
+          }
+          
+          // Find all tasks that come after this task (or the linked group) in the original order
           const originalTaskOrder = task.order || 0;
           
-          // Get all tasks after this one, sorted by order
+          // If in a linked group, find the maximum order among all linked tasks
+          let maxOrderInGroup = originalTaskOrder;
+          if (processedData.linkedTaskGroup) {
+            const linkedTasks = allUpdatedTasks.filter(t => 
+              t.linkedTaskGroup === processedData.linkedTaskGroup
+            );
+            maxOrderInGroup = Math.max(...linkedTasks.map(t => t.order || 0));
+            console.log('Linked group max order:', maxOrderInGroup);
+          }
+          
+          // Get all tasks after this task/group, sorted by order
           const allSubsequentTasks = allUpdatedTasks.filter(t => {
             const taskOrder = t.order || 0;
-            return taskOrder > originalTaskOrder && (t.taskId || t.id) !== (task.taskId || task.id);
+            // Filter tasks that come after the entire linked group (or just the task if not linked)
+            // AND exclude tasks that are in the same linked group
+            return taskOrder > maxOrderInGroup && 
+                   (!processedData.linkedTaskGroup || t.linkedTaskGroup !== processedData.linkedTaskGroup);
           }).sort((a, b) => (a.order || 0) - (b.order || 0));
           
           // Collect ALL sequential tasks, regardless of linked groups in between
