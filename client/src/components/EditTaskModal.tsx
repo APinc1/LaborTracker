@@ -2336,42 +2336,84 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     // CRITICAL: After unlinking, realign ALL tasks to fix subsequent sequential dates
                     console.log('🔗 Unlinking complete, now realigning ALL tasks in location');
                     
-                    // Get fresh task data and realign all tasks
-                    const response = await apiRequest(`/api/locations/${task.locationId}/tasks`);
-                    if (response) {
-                      const allLocationTasks = response as any[];
-                      console.log('🔗 Got', allLocationTasks.length, 'tasks, running realignDependentTasks');
+                    try {
+                      // Get fresh task data and realign all tasks
+                      console.log('🔗 Fetching tasks from:', `/api/locations/${task.locationId}/tasks`);
+                      const response = await apiRequest(`/api/locations/${task.locationId}/tasks`);
+                      console.log('🔗 API response:', response);
                       
-                      // Realign all tasks to fix sequential dates
-                      const realignedTasks = realignDependentTasks(allLocationTasks);
-                      
-                      // Find tasks that need updating (dates changed)
-                      const tasksToUpdate = realignedTasks.filter(realignedTask => {
-                        const originalTask = allLocationTasks.find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
-                        return originalTask && originalTask.taskDate !== realignedTask.taskDate;
-                      });
-                      
-                      console.log('🔗 Found', tasksToUpdate.length, 'tasks that need date updates after realignment');
-                      
-                      // Update tasks with new dates
-                      if (tasksToUpdate.length > 0) {
-                        const updatePromises = tasksToUpdate.map(taskToUpdate => 
-                          apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
-                            method: 'PUT',
-                            body: JSON.stringify({
-                              taskDate: taskToUpdate.taskDate,
-                              startDate: taskToUpdate.taskDate,
-                              finishDate: taskToUpdate.taskDate
-                            }),
-                            headers: {
-                              'Content-Type': 'application/json'
-                            }
-                          })
-                        );
+                      if (response && Array.isArray(response)) {
+                        const allLocationTasks = response as any[];
+                        console.log('🔗 Got', allLocationTasks.length, 'tasks, running realignDependentTasks');
                         
-                        await Promise.all(updatePromises);
-                        console.log('🔗 Realignment complete - updated', tasksToUpdate.length, 'subsequent task dates');
+                        // Realign all tasks to fix sequential dates
+                        const realignedTasks = realignDependentTasks(allLocationTasks);
+                        
+                        // Find tasks that need updating (dates changed)
+                        const tasksToUpdate = realignedTasks.filter(realignedTask => {
+                          const originalTask = allLocationTasks.find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
+                          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+                        });
+                        
+                        console.log('🔗 Found', tasksToUpdate.length, 'tasks that need date updates after realignment');
+                        
+                        // Update tasks with new dates
+                        if (tasksToUpdate.length > 0) {
+                          const updatePromises = tasksToUpdate.map(taskToUpdate => 
+                            apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
+                              method: 'PUT',
+                              body: JSON.stringify({
+                                taskDate: taskToUpdate.taskDate,
+                                startDate: taskToUpdate.taskDate,
+                                finishDate: taskToUpdate.taskDate
+                              }),
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            })
+                          );
+                          
+                          await Promise.all(updatePromises);
+                          console.log('🔗 Realignment complete - updated', tasksToUpdate.length, 'subsequent task dates');
+                        }
+                      } else {
+                        console.error('🔗 Failed to get valid task array from API, response:', response);
+                        // Fall back to using existing task data for realignment
+                        if (existingTasks && existingTasks.length > 0) {
+                          console.log('🔗 Falling back to existing task data for realignment');
+                          const realignedTasks = realignDependentTasks(existingTasks as any[]);
+                          
+                          // Find tasks that need updating (dates changed) 
+                          const tasksToUpdate = realignedTasks.filter(realignedTask => {
+                            const originalTask = (existingTasks as any[]).find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
+                            return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+                          });
+                          
+                          console.log('🔗 Fallback: Found', tasksToUpdate.length, 'tasks that need date updates');
+                          
+                          if (tasksToUpdate.length > 0) {
+                            const updatePromises = tasksToUpdate.map(taskToUpdate => 
+                              apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
+                                method: 'PUT',
+                                body: JSON.stringify({
+                                  taskDate: taskToUpdate.taskDate,
+                                  startDate: taskToUpdate.taskDate,
+                                  finishDate: taskToUpdate.taskDate
+                                }),
+                                headers: {
+                                  'Content-Type': 'application/json'
+                                }
+                              })
+                            );
+                            
+                            await Promise.all(updatePromises);
+                            console.log('🔗 Fallback realignment complete - updated', tasksToUpdate.length, 'task dates');
+                          }
+                        }
                       }
+                    } catch (realignError) {
+                      console.error('🔗 Realignment failed:', realignError);
+                      // Continue with the unlinking success, don't fail the entire operation
                     }
                     
                     // Update form and close modal
