@@ -2404,13 +2404,100 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   try {
                     await Promise.all(unlinkPromises);
                     
+                    // CRITICAL: After unlinking tasks, recalculate downstream sequential task dates
+                    // Get all tasks after the unlinked group to see if any need date updates
+                    const maxOrderInGroup = Math.max(...allTasks.map(t => t.order || 0));
+                    const subsequentTasks = (existingTasks as any[])
+                      .filter(t => (t.order || 0) > maxOrderInGroup && t.dependentOnPrevious)
+                      .sort((a, b) => (a.order || 0) - (b.order || 0));
+                    
+                    console.log('🔗 Found', subsequentTasks.length, 'subsequent sequential tasks to potentially update:', 
+                      subsequentTasks.map(t => ({ name: t.name, order: t.order, currentDate: t.taskDate })));
+                    
+                    if (subsequentTasks.length > 0) {
+                      // Get the last date from the unlinked group
+                      const lastUnlinkedDate = Math.max(...updatedTasks.map(u => new Date(u.newDate).getTime()));
+                      const lastUnlinkedDateString = new Date(lastUnlinkedDate).toISOString().split('T')[0];
+                      
+                      console.log('🔗 Last unlinked task date:', lastUnlinkedDateString);
+                      
+                      // Recalculate dates for subsequent sequential tasks
+                      let currentDate = lastUnlinkedDateString;
+                      const subsequentUpdates = [];
+                      
+                      for (const subsequentTask of subsequentTasks) {
+                        // Calculate next working day
+                        const baseDate = new Date(currentDate + 'T00:00:00');
+                        const nextDate = new Date(baseDate);
+                        nextDate.setDate(nextDate.getDate() + 1);
+                        // Skip weekends
+                        while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                          nextDate.setDate(nextDate.getDate() + 1);
+                        }
+                        const newSequentialDate = nextDate.toISOString().split('T')[0];
+                        
+                        // Only update if date actually changed
+                        if (newSequentialDate !== subsequentTask.taskDate) {
+                          console.log('🔗 Updating subsequent sequential task:', subsequentTask.name, 
+                            'from:', subsequentTask.taskDate, 'to:', newSequentialDate);
+                          
+                          subsequentUpdates.push(
+                            apiRequest(`/api/tasks/${subsequentTask.id}`, {
+                              method: 'PUT',
+                              body: JSON.stringify({
+                                taskDate: newSequentialDate,
+                                startDate: newSequentialDate,
+                                finishDate: newSequentialDate
+                              }),
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            })
+                          );
+                        }
+                        
+                        // If this task is in a linked group, all tasks in the group get the same date
+                        if (subsequentTask.linkedTaskGroup) {
+                          const linkedTasks = (existingTasks as any[])
+                            .filter(t => t.linkedTaskGroup === subsequentTask.linkedTaskGroup && t.id !== subsequentTask.id);
+                          
+                          for (const linkedTask of linkedTasks) {
+                            if (newSequentialDate !== linkedTask.taskDate) {
+                              console.log('🔗 Updating linked task in subsequent group:', linkedTask.name, 'to:', newSequentialDate);
+                              subsequentUpdates.push(
+                                apiRequest(`/api/tasks/${linkedTask.id}`, {
+                                  method: 'PUT',
+                                  body: JSON.stringify({
+                                    taskDate: newSequentialDate,
+                                    startDate: newSequentialDate,
+                                    finishDate: newSequentialDate
+                                  }),
+                                  headers: {
+                                    'Content-Type': 'application/json'
+                                  }
+                                })
+                              );
+                            }
+                          }
+                        }
+                        
+                        currentDate = newSequentialDate;
+                      }
+                      
+                      // Execute subsequent updates if any
+                      if (subsequentUpdates.length > 0) {
+                        console.log('🔗 Executing', subsequentUpdates.length, 'subsequent task updates');
+                        await Promise.all(subsequentUpdates);
+                      }
+                    }
+                    
                     // Update form and close modal
                     form.setValue('linkToExistingTask', false);
                     form.setValue('linkedTaskIds', []);
                     
                     toast({
                       title: "Success",
-                      description: `Unlinked all ${unlinkingGroupSize} tasks from the group`,
+                      description: `Unlinked all ${unlinkingGroupSize} tasks from the group and updated downstream tasks`,
                     });
                     
                     queryClient.invalidateQueries({ queryKey: ["/api/locations", task.locationId, "tasks"] });
