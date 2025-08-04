@@ -328,6 +328,21 @@ export default function CreateTaskModal({
     
     const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
     
+    // CRITICAL: When linking to existing tasks, the new task should match the sequential status of linked tasks
+    // If linking to unsequential tasks, the new task should be unsequential 
+    // If linking to sequential tasks, the new task should be sequential
+    const linkedTasksSequentialStatus = linkedTasks.some(t => t.dependentOnPrevious);
+    const shouldNewTaskBeSequential = data.linkedTaskIds && data.linkedTaskIds.length > 0 
+      ? linkedTasksSequentialStatus  // Match linked tasks' sequential status
+      : selectedOption.type.includes('sequential'); // Use position choice for non-linked tasks
+    
+    console.log('🔗 New task sequential logic:', {
+      hasLinkedTasks: data.linkedTaskIds && data.linkedTaskIds.length > 0,
+      linkedTasksSequential: linkedTasksSequentialStatus,
+      positionBasedSequential: selectedOption.type.includes('sequential'),
+      finalSequentialStatus: shouldNewTaskBeSequential
+    });
+
     const newTask = {
       taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocation,
@@ -343,7 +358,7 @@ export default function CreateTaskModal({
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      dependentOnPrevious: selectedOption.type.includes('sequential'), // Set based on position choice
+      dependentOnPrevious: shouldNewTaskBeSequential, // Use calculated sequential status
       linkedTaskGroup,
       superintendentId: null,
       foremanId: null,
