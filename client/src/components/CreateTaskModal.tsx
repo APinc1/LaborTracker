@@ -328,17 +328,23 @@ export default function CreateTaskModal({
     
     const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
     
-    // CRITICAL: When linking to existing tasks, the new task should match the sequential status of linked tasks
-    // If linking to unsequential tasks, the new task should be unsequential 
-    // If linking to sequential tasks, the new task should be sequential
-    const linkedTasksSequentialStatus = linkedTasks.some(t => t.dependentOnPrevious);
-    const shouldNewTaskBeSequential = data.linkedTaskIds && data.linkedTaskIds.length > 0 
-      ? linkedTasksSequentialStatus  // Match linked tasks' sequential status
-      : selectedOption.type.includes('sequential'); // Use position choice for non-linked tasks
+    // CRITICAL: When linking to existing tasks, the new task should be UNSEQUENTIAL if it's not the first linked task
+    // For linked groups: only the first task in the group can be sequential, others are unsequential (linked)
+    const isLinkingToExistingTasks = data.linkedTaskIds && data.linkedTaskIds.length > 0;
+    let shouldNewTaskBeSequential = false;
+    
+    if (isLinkingToExistingTasks) {
+      // When linking: new task is always unsequential (it's not the first in the group)
+      shouldNewTaskBeSequential = false;
+      console.log('🔗 Linking to existing tasks - new task will be unsequential (not first in group)');
+    } else {
+      // Use position choice for non-linked tasks
+      shouldNewTaskBeSequential = selectedOption.type.includes('sequential');
+      console.log('🔗 Not linking - using position-based sequential status:', shouldNewTaskBeSequential);
+    }
     
     console.log('🔗 New task sequential logic:', {
       hasLinkedTasks: data.linkedTaskIds && data.linkedTaskIds.length > 0,
-      linkedTasksSequential: linkedTasksSequentialStatus,
       positionBasedSequential: selectedOption.type.includes('sequential'),
       finalSequentialStatus: shouldNewTaskBeSequential
     });

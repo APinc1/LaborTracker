@@ -473,45 +473,44 @@ export default function DraggableTaskList({
     let reorderedTasks: any[];
     
     if (originalDraggedTask.linkedTaskGroup) {
-      // CRITICAL: For linked tasks, we need to move the entire group together
+      // CRITICAL: For linked tasks, move the entire group as a unit
       console.log('Moving linked task group:', originalDraggedTask.linkedTaskGroup);
       
-      // Find all tasks in the same linked group
-      const linkedTasks = sortedTasks.filter(t => t.linkedTaskGroup === originalDraggedTask.linkedTaskGroup);
-      const nonLinkedTasks = sortedTasks.filter(t => t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup);
-      
-      console.log('Linked tasks in group:', linkedTasks.map(t => t.name));
-      console.log('Non-linked tasks:', nonLinkedTasks.map(t => t.name));
-      
-      // Find where to insert the linked group
       const targetTask = sortedTasks[newIndex];
-      let insertIndex = 0;
       
+      // If dragging within the same linked group, don't reorder
       if (targetTask.linkedTaskGroup === originalDraggedTask.linkedTaskGroup) {
-        // Dragging within the same linked group - no reordering needed
-        reorderedTasks = [...sortedTasks];
-      } else {
-        // Find the position in non-linked tasks where we should insert
-        const targetIndexInNonLinked = nonLinkedTasks.findIndex(t => (t.taskId || t.id) === (targetTask.taskId || targetTask.id));
-        
-        if (targetIndexInNonLinked >= 0) {
-          // Insert the linked group before or after the target task
-          const beforeTarget = nonLinkedTasks.slice(0, targetIndexInNonLinked);
-          const afterTarget = nonLinkedTasks.slice(targetIndexInNonLinked);
-          
-          // Insert linked group at the target position
-          reorderedTasks = [...beforeTarget, ...linkedTasks, ...afterTarget];
-        } else {
-          // Target is another linked task - insert our group before that group
-          const targetGroupTasks = sortedTasks.filter(t => t.linkedTaskGroup === targetTask.linkedTaskGroup);
-          const otherGroups = sortedTasks.filter(t => 
-            t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup && 
-            t.linkedTaskGroup !== targetTask.linkedTaskGroup
-          );
-          
-          reorderedTasks = [...otherGroups, ...linkedTasks, ...targetGroupTasks];
-        }
+        console.log('Dragging within same linked group - no reordering');
+        return; // Don't reorder within the same group
       }
+      
+      // Find all tasks in the dragged group
+      const draggedGroupTasks = sortedTasks.filter(t => 
+        t.linkedTaskGroup === originalDraggedTask.linkedTaskGroup
+      );
+      
+      // Find all other tasks (not in the dragged group)
+      const otherTasks = sortedTasks.filter(t => 
+        t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
+      );
+      
+      // Find where to insert the group in the other tasks list
+      const targetIndexInOthers = otherTasks.findIndex(t => 
+        (t.taskId || t.id) === (targetTask.taskId || targetTask.id)
+      );
+      
+      if (targetIndexInOthers >= 0) {
+        // Insert the group at the target position
+        const beforeTarget = otherTasks.slice(0, targetIndexInOthers);
+        const afterTarget = otherTasks.slice(targetIndexInOthers);
+        
+        reorderedTasks = [...beforeTarget, ...draggedGroupTasks, ...afterTarget];
+      } else {
+        // Fallback: append at the end
+        reorderedTasks = [...otherTasks, ...draggedGroupTasks];
+      }
+      
+      console.log('Reordered task names:', reorderedTasks.map(t => t.name));
     } else {
       // Normal reordering for non-linked tasks
       reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
