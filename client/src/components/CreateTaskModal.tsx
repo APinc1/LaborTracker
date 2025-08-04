@@ -417,19 +417,12 @@ export default function CreateTaskModal({
       task.order = index;
     });
     
-    // Apply sequential logic group by group
+    // Apply sequential logic group by group - PRESERVE EXISTING SEQUENTIAL STATUS FOR LINKED TASKS
     groups.forEach((group: any, groupIndex: number) => {
       if (group.isLinkedGroup) {
-        // For linked groups, only the first task should be sequential (if not overall first)
-        group.tasks.forEach((task: any, taskIndex: number) => {
-          if (taskIndex === 0 && groupIndex > 0) {
-            // First task in linked group with predecessor groups
-            task.dependentOnPrevious = true;
-          } else {
-            // All other tasks in linked group are non-sequential
-            task.dependentOnPrevious = false;
-          }
-        });
+        // For linked groups, PRESERVE the original sequential status of existing tasks
+        // Do NOT modify the sequential status - it was already correctly set above
+        // The sequential status should only be determined when the task was first created or explicitly modified
       } else {
         // For individual tasks, make sequential if not first overall
         if (groupIndex > 0) {
