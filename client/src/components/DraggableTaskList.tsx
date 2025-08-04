@@ -195,6 +195,22 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
 
   const assignedEmployees = getAssignedEmployees(task);
   const assignedEmployeesDisplay = formatAssignedEmployees(assignedEmployees);
+  
+  // Calculate total scheduled hours from assignments
+  const calculateScheduledHours = (task: any) => {
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter(assignment => 
+      assignment.taskId === taskId
+    );
+    
+    const totalHours = taskAssignments.reduce((sum, assignment) => {
+      return sum + parseFloat(assignment.assignedHours || 0);
+    }, 0);
+    
+    return totalHours;
+  };
+
+  const totalScheduledHours = calculateScheduledHours(task);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -226,10 +242,10 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   <span>{formatDate(task.taskDate)}</span>
                 </div>
                 
-                {task.scheduledHours && (
+                {totalScheduledHours > 0 && (
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span>{parseFloat(task.scheduledHours).toFixed(1)}h</span>
+                    <span>{totalScheduledHours.toFixed(1)}h</span>
                   </div>
                 )}
                 
