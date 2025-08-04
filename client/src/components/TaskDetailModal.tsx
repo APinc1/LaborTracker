@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,8 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<any>(null);
 
   const { data: task, isLoading: taskLoading } = useQuery({
     queryKey: ["/api/tasks", taskId],
@@ -525,7 +528,10 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => deleteAssignmentMutation.mutate(assignment.id)}
+                                onClick={() => {
+                                  setAssignmentToDelete(assignment);
+                                  setDeleteConfirmOpen(true);
+                                }}
                                 className="text-red-500 hover:text-red-700"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -542,6 +548,33 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
           </Card>
         </div>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this assignment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (assignmentToDelete) {
+                  deleteAssignmentMutation.mutate(assignmentToDelete.id);
+                }
+                setDeleteConfirmOpen(false);
+                setAssignmentToDelete(null);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

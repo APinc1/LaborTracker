@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -60,12 +61,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [editingTask, setEditingTask] = useState(null);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<any>(null);
   const { toast } = useToast();
 
   // Task edit and delete functions
   const handleEditTask = (task: any) => {
     setEditingTask(task);
     setIsEditTaskModalOpen(true);
+  };
+
+  const handleDeleteTaskClick = (task: any) => {
+    setTaskToDelete(task);
+    setDeleteConfirmOpen(true);
   };
 
   const handleDeleteTask = async (taskToDelete: any) => {
@@ -1206,7 +1214,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
-                onDeleteTask={handleDeleteTask}
+                onDeleteTask={handleDeleteTaskClick}
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
@@ -1473,6 +1481,33 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         selectedProject={location?.projectId}
         selectedLocation={location?.locationId || locationId}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{taskToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (taskToDelete) {
+                  handleDeleteTask(taskToDelete);
+                }
+                setDeleteConfirmOpen(false);
+                setTaskToDelete(null);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
