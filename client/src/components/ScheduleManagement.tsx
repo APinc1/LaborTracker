@@ -12,7 +12,7 @@ import CreateTaskModal from "./CreateTaskModal";
 
 export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
-  const [selectedLocation, setSelectedLocation] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("ALL_LOCATIONS");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
@@ -43,8 +43,8 @@ export default function ScheduleManagement() {
     const dayStr = format(day, 'yyyy-MM-dd');
     let filteredTasks = tasks.filter((task: any) => task.taskDate === dayStr);
     
-    // Filter by location if selected
-    if (selectedLocation) {
+    // Filter by location if a specific location is selected
+    if (selectedLocation && selectedLocation !== "ALL_LOCATIONS") {
       filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocation);
     }
     
@@ -100,7 +100,7 @@ export default function ScheduleManagement() {
               <CardContent>
                 <Select value={selectedProject} onValueChange={(value) => {
                   setSelectedProject(value);
-                  setSelectedLocation(""); // Clear location when project changes
+                  setSelectedLocation("ALL_LOCATIONS"); // Reset to all locations when project changes
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose project" />
@@ -143,7 +143,7 @@ export default function ScheduleManagement() {
                       <SelectValue placeholder="All locations" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All locations</SelectItem>
+                      <SelectItem value="ALL_LOCATIONS">All locations</SelectItem>
                       {locations.map((location: any) => (
                         <SelectItem key={location.id} value={location.locationId}>
                           {location.name}
@@ -153,7 +153,7 @@ export default function ScheduleManagement() {
                   </Select>
                   
                   {/* Show selected location info */}
-                  {selectedLocation && (
+                  {selectedLocation && selectedLocation !== "ALL_LOCATIONS" && (
                     <div className="mt-3 p-2 bg-blue-50 rounded-md">
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -182,7 +182,7 @@ export default function ScheduleManagement() {
                         {projects.find((p: any) => p.id.toString() === selectedProject)?.name}
                       </Badge>
                     )}
-                    {selectedLocation && (
+                    {selectedLocation && selectedLocation !== "ALL_LOCATIONS" && (
                       <Badge variant="outline">
                         {locations.find((loc: any) => loc.locationId === selectedLocation)?.name}
                       </Badge>
@@ -275,7 +275,7 @@ export default function ScheduleManagement() {
                   <div className="space-y-4">
                     {getTasksForDay(selectedDate).length === 0 ? (
                       <p className="text-gray-500 text-center py-8">
-                        {selectedLocation ? 
+                        {selectedLocation && selectedLocation !== "ALL_LOCATIONS" ? 
                           `No tasks scheduled for this day at ${locations.find((loc: any) => loc.locationId === selectedLocation)?.name || 'selected location'}` :
                           'No tasks scheduled for this day'
                         }
