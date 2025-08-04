@@ -260,9 +260,6 @@ export default function ScheduleManagement() {
                                       {task.taskType}
                                     </Badge>
                                   </div>
-                                  <span className="text-xs text-gray-500">
-                                    {task.startTime || '8:00 AM'}
-                                  </span>
                                 </div>
                                 <h4 className="font-medium text-sm mb-1">{task.name}</h4>
                                 <div className="space-y-1">
