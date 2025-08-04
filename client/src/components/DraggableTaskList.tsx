@@ -476,40 +476,50 @@ export default function DraggableTaskList({
       // CRITICAL: For linked tasks, move the entire group as a unit
       console.log('Moving linked task group:', originalDraggedTask.linkedTaskGroup);
       
-      const targetTask = sortedTasks[newIndex];
-      
-      // If dragging within the same linked group, don't reorder
-      if (targetTask.linkedTaskGroup === originalDraggedTask.linkedTaskGroup) {
-        console.log('Dragging within same linked group - no reordering');
-        return; // Don't reorder within the same group
-      }
-      
       // Find all tasks in the dragged group
       const draggedGroupTasks = sortedTasks.filter(t => 
         t.linkedTaskGroup === originalDraggedTask.linkedTaskGroup
       );
       
-      // Find all other tasks (not in the dragged group)
+      // Check if we're actually changing the group's position
+      const groupStartIndex = Math.min(...draggedGroupTasks.map(t => sortedTasks.indexOf(t)));
+      const groupEndIndex = Math.max(...draggedGroupTasks.map(t => sortedTasks.indexOf(t)));
+      
+      // If the new position is within the current group bounds, it's not really moving
+      if (newIndex >= groupStartIndex && newIndex <= groupEndIndex) {
+        console.log('Dragging within same linked group bounds - no actual movement');
+        return;
+      }
+      
+      console.log('Moving linked group from positions', groupStartIndex, '-', groupEndIndex, 'to position', newIndex);
+      
+      // Find all other tasks (not in the dragged group)  
       const otherTasks = sortedTasks.filter(t => 
         t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
       );
       
-      // Find where to insert the group in the other tasks list
-      const targetIndexInOthers = otherTasks.findIndex(t => 
-        (t.taskId || t.id) === (targetTask.taskId || targetTask.id)
-      );
+      // Determine where to insert the group
+      let insertPosition = 0;
       
-      if (targetIndexInOthers >= 0) {
-        // Insert the group at the target position
-        const beforeTarget = otherTasks.slice(0, targetIndexInOthers);
-        const afterTarget = otherTasks.slice(targetIndexInOthers);
-        
-        reorderedTasks = [...beforeTarget, ...draggedGroupTasks, ...afterTarget];
+      if (newIndex < groupStartIndex) {
+        // Moving group earlier - find position in other tasks
+        const nonGroupTasksBeforeNewIndex = sortedTasks.slice(0, newIndex).filter(t => 
+          t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
+        );
+        insertPosition = nonGroupTasksBeforeNewIndex.length;
       } else {
-        // Fallback: append at the end
-        reorderedTasks = [...otherTasks, ...draggedGroupTasks];
+        // Moving group later - find position in other tasks
+        const nonGroupTasksBeforeNewIndex = sortedTasks.slice(0, newIndex + 1).filter(t => 
+          t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
+        );
+        insertPosition = nonGroupTasksBeforeNewIndex.length;
       }
       
+      // Insert the group at the calculated position
+      const beforeTarget = otherTasks.slice(0, insertPosition);
+      const afterTarget = otherTasks.slice(insertPosition);
+      
+      reorderedTasks = [...beforeTarget, ...draggedGroupTasks, ...afterTarget];
       console.log('Reordered task names:', reorderedTasks.map(t => t.name));
     } else {
       // Normal reordering for non-linked tasks
