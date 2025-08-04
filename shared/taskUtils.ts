@@ -223,7 +223,11 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  const updatedTasks = [...tasks];
+  // CRITICAL: Sort tasks by order before processing to ensure correct sequence
+  const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+  console.log('🔄 Tasks sorted by order:', sortedTasks.map(t => ({ name: t.name, order: t.order })));
+  
+  const updatedTasks = [...sortedTasks];
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
@@ -270,7 +274,13 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  return updatedTasks;
+  // Return tasks in original order by recreating the original array with updates
+  return tasks.map(originalTask => {
+    const updatedTask = updatedTasks.find(updated => 
+      (updated.taskId || updated.id) === (originalTask.taskId || originalTask.id)
+    );
+    return updatedTask || originalTask;
+  });
 }
 
 /**
