@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -1155,50 +1155,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           
           console.log('Unlinked all tasks from group:', task.linkedTaskGroup, 'restored natural sequential dependencies');
           
-          // CRITICAL: Recalculate ALL sequential task dates in order after unlinking
+          // CRITICAL: Use realignDependentTasks to properly recalculate ALL sequential dates after unlinking
           // This ensures that if task B becomes sequential to A, and C is sequential to B, 
-          // then C gets updated with B's new date + 1 day
-          const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+          // then C gets updated with B's new date + 1 day using proper weekday logic
+          console.log('🔗 Running realignDependentTasks after unlinking to fix all subsequent dates');
+          allUpdatedTasks = realignDependentTasks(allUpdatedTasks);
           
-          for (let i = 0; i < allTasksSortedByOrder.length; i++) {
-            const currentTask = allTasksSortedByOrder[i];
-            const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
-            
-            // Skip if task doesn't exist in allUpdatedTasks or isn't sequential
-            if (currentTaskIndex < 0 || !allUpdatedTasks[currentTaskIndex].dependentOnPrevious) {
-              continue;
-            }
-            
-            // Find the previous task by order
-            if (i > 0) {
-              const prevTask = allTasksSortedByOrder[i - 1];
-              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              // Update task with sequential date
-              allUpdatedTasks[currentTaskIndex] = {
-                ...allUpdatedTasks[currentTaskIndex],
-                taskDate: newDate
-              };
-              
-              // Also update the sorted array reference for chain effect
-              allTasksSortedByOrder[i].taskDate = newDate;
-              
-              console.log('🔗 Updated sequential task date:', currentTask.name, 'to:', newDate, 'based on previous task:', prevTask.name);
-            }
-          }
-          
-          // Update current task if it was processed in the loop above
+          // Update current task (processedData) with the realigned date if it was modified
           const updatedCurrentTask = allUpdatedTasks.find(t => (t.taskId || t.id) === currentTaskId);
-          if (updatedCurrentTask && processedData.dependentOnPrevious) {
+          if (updatedCurrentTask) {
             processedData.taskDate = updatedCurrentTask.taskDate;
-            console.log('🔗 Synced current task date with batch update:', processedData.taskDate);
+            console.log('🔗 Synced current task date after realignment:', processedData.taskDate);
           }
         }
       }
