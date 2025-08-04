@@ -19,6 +19,7 @@ import { queryClient } from "@/lib/queryClient";
 import EditTaskModal from "./EditTaskModal";
 import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
+import TaskDetailModal from "./TaskDetailModal";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -63,6 +64,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<any>(null);
+  const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false);
+  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -74,6 +77,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const handleDeleteTaskClick = (task: any) => {
     setTaskToDelete(task);
     setDeleteConfirmOpen(true);
+  };
+
+  const handleAssignTaskClick = (task: any) => {
+    setSelectedTaskForDetail(task);
+    setTaskDetailModalOpen(true);
   };
 
   const handleDeleteTask = async (taskToDelete: any) => {
@@ -1215,6 +1223,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 locationId={locationId}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTaskClick}
+                onAssignTask={handleAssignTaskClick}
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
@@ -1480,6 +1489,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         onClose={() => setIsCreateTaskModalOpen(false)}
         selectedProject={location?.projectId}
         selectedLocation={location?.locationId || locationId}
+      />
+
+      {/* Task Detail Modal for Assignments */}
+      <TaskDetailModal
+        isOpen={taskDetailModalOpen}
+        onClose={() => {
+          setTaskDetailModalOpen(false);
+          setSelectedTaskForDetail(null);
+        }}
+        taskId={selectedTaskForDetail?.id || selectedTaskForDetail?.taskId}
       />
 
       {/* Delete Confirmation Dialog */}

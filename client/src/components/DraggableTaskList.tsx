@@ -22,7 +22,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2 } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies, realignDependentTasks } from '@shared/taskUtils';
@@ -32,6 +32,7 @@ interface DraggableTaskListProps {
   locationId: string;
   onEditTask: (task: any) => void;
   onDeleteTask: (task: any) => void;
+  onAssignTask?: (task: any) => void;
   onTaskUpdate: () => void;
 }
 
@@ -40,10 +41,11 @@ interface SortableTaskItemProps {
   tasks: any[];
   onEditTask: (task: any) => void;
   onDeleteTask: (task: any) => void;
+  onAssignTask?: (task: any) => void;
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -192,6 +194,16 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
               >
                 <Edit className="w-3 h-3" />
               </Button>
+              {onAssignTask && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onAssignTask(task)}
+                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                >
+                  <User className="w-3 h-3" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -213,6 +225,7 @@ export default function DraggableTaskList({
   locationId, 
   onEditTask, 
   onDeleteTask,
+  onAssignTask,
   onTaskUpdate 
 }: DraggableTaskListProps) {
   const { toast } = useToast();
@@ -720,6 +733,7 @@ export default function DraggableTaskList({
                 tasks={sortedTasks}
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}
+                onAssignTask={onAssignTask}
               />
             ))}
           </div>
