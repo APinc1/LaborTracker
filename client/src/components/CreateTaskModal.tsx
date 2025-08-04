@@ -343,9 +343,7 @@ export default function CreateTaskModal({
       status: data.status,
       workDescription: data.workDescription || '',
       notes: data.notes || '',
-      // CRITICAL: For linked tasks, inherit the sequential status from the linked task
-      // For unlinked tasks, use the position choice
-      dependentOnPrevious: linkedTasks.length > 0 ? linkedTasks[0].dependentOnPrevious : selectedOption.type.includes('sequential'),
+      dependentOnPrevious: selectedOption.type.includes('sequential'), // Set based on position choice
       linkedTaskGroup,
       superintendentId: null,
       foremanId: null,

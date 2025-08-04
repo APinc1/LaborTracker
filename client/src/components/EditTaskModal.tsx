@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -1155,17 +1155,50 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           
           console.log('Unlinked all tasks from group:', task.linkedTaskGroup, 'restored natural sequential dependencies');
           
-          // CRITICAL: Use realignDependentTasks to properly recalculate ALL sequential dates after unlinking
+          // CRITICAL: Recalculate ALL sequential task dates in order after unlinking
           // This ensures that if task B becomes sequential to A, and C is sequential to B, 
-          // then C gets updated with B's new date + 1 day using proper weekday logic
-          console.log('🔗 Running realignDependentTasks after unlinking to fix all subsequent dates');
-          allUpdatedTasks = realignDependentTasks(allUpdatedTasks);
+          // then C gets updated with B's new date + 1 day
+          const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
           
-          // Update current task (processedData) with the realigned date if it was modified
+          for (let i = 0; i < allTasksSortedByOrder.length; i++) {
+            const currentTask = allTasksSortedByOrder[i];
+            const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
+            
+            // Skip if task doesn't exist in allUpdatedTasks or isn't sequential
+            if (currentTaskIndex < 0 || !allUpdatedTasks[currentTaskIndex].dependentOnPrevious) {
+              continue;
+            }
+            
+            // Find the previous task by order
+            if (i > 0) {
+              const prevTask = allTasksSortedByOrder[i - 1];
+              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
+              const nextDate = new Date(baseDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              // Skip weekends
+              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                nextDate.setDate(nextDate.getDate() + 1);
+              }
+              const newDate = nextDate.toISOString().split('T')[0];
+              
+              // Update task with sequential date
+              allUpdatedTasks[currentTaskIndex] = {
+                ...allUpdatedTasks[currentTaskIndex],
+                taskDate: newDate
+              };
+              
+              // Also update the sorted array reference for chain effect
+              allTasksSortedByOrder[i].taskDate = newDate;
+              
+              console.log('🔗 Updated sequential task date:', currentTask.name, 'to:', newDate, 'based on previous task:', prevTask.name);
+            }
+          }
+          
+          // Update current task if it was processed in the loop above
           const updatedCurrentTask = allUpdatedTasks.find(t => (t.taskId || t.id) === currentTaskId);
-          if (updatedCurrentTask) {
+          if (updatedCurrentTask && processedData.dependentOnPrevious) {
             processedData.taskDate = updatedCurrentTask.taskDate;
-            console.log('🔗 Synced current task date after realignment:', processedData.taskDate);
+            console.log('🔗 Synced current task date with batch update:', processedData.taskDate);
           }
         }
       }
@@ -2333,91 +2366,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   try {
                     await Promise.all(unlinkPromises);
                     
-                    // Unlinking complete - now realign any downstream sequential tasks
-                    console.log('🔗 Unlinking complete - now realigning downstream sequential tasks');
-                    
-                    // Get fresh task data and realign tasks that weren't part of the unlinked group
-                    try {
-                      console.log('🔗 Fetching fresh task data from:', `/api/locations/${task.locationId}/tasks`);
-                      
-                      // Use fetch directly to avoid any caching issues with apiRequest
-                      const fetchResponse = await fetch(`/api/locations/${task.locationId}/tasks`);
-                      const response = await fetchResponse.json();
-                      
-                      console.log('🔗 Fresh task data response:', response);
-                      console.log('🔗 Response type:', typeof response);
-                      console.log('🔗 Is array:', Array.isArray(response));
-                      
-                      if (response && Array.isArray(response)) {
-                        const allLocationTasks = response as any[];
-                        console.log('🔗 Got', allLocationTasks.length, 'fresh tasks, running realignDependentTasks for downstream tasks');
-                        console.log('🔗 Fresh task data:', allLocationTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order, sequential: t.dependentOnPrevious })));
-                        
-                        // Realign all tasks to fix any sequential tasks that depend on the moved tasks
-                        const realignedTasks = realignDependentTasks(allLocationTasks);
-                        
-                        // Find tasks that need updating (dates changed)
-                        const tasksToUpdate = realignedTasks.filter(realignedTask => {
-                          const originalTask = allLocationTasks.find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
-                          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
-                        });
-                        
-                        console.log('🔗 Found', tasksToUpdate.length, 'downstream tasks that need date updates');
-                        console.log('🔗 Tasks to update:', tasksToUpdate.map(t => ({ name: t.name, oldDate: allLocationTasks.find(orig => (orig.taskId || orig.id) === (t.taskId || t.id))?.taskDate, newDate: t.taskDate })));
-                        
-                        // Update tasks with new dates
-                        if (tasksToUpdate.length > 0) {
-                          console.log('🔗 Updating tasks with new dates...');
-                          
-                          for (const taskToUpdate of tasksToUpdate) {
-                            const taskId = taskToUpdate.taskId || taskToUpdate.id;
-                            const updateData = {
-                              taskDate: taskToUpdate.taskDate,
-                              startDate: taskToUpdate.taskDate,
-                              finishDate: taskToUpdate.taskDate
-                            };
-                            
-                            console.log(`🔗 Updating task ${taskId} with data:`, updateData);
-                            
-                            try {
-                              const updateResponse = await fetch(`/api/tasks/${taskId}`, {
-                                method: 'PUT',
-                                body: JSON.stringify(updateData),
-                                headers: {
-                                  'Content-Type': 'application/json'
-                                }
-                              });
-                              
-                              if (!updateResponse.ok) {
-                                const errorText = await updateResponse.text();
-                                console.error(`🔗 Failed to update task ${taskId}: ${updateResponse.status} ${updateResponse.statusText}`, errorText);
-                              } else {
-                                console.log(`🔗 Successfully updated task ${taskId} to date ${taskToUpdate.taskDate}`);
-                              }
-                            } catch (updateError) {
-                              console.error(`🔗 Error updating task ${taskId}:`, updateError);
-                            }
-                          }
-                          
-                          console.log('🔗 Realignment complete - processed', tasksToUpdate.length, 'downstream task updates');
-                        } else {
-                          console.log('🔗 No downstream tasks need date updates');
-                        }
-                      } else {
-                        console.error('🔗 Failed to get valid task array from API, response:', response);
-                      }
-                    } catch (realignError) {
-                      console.error('🔗 Downstream realignment failed:', realignError);
-                      // Don't fail the entire operation if realignment fails
-                    }
-                    
                     // Update form and close modal
                     form.setValue('linkToExistingTask', false);
                     form.setValue('linkedTaskIds', []);
                     
                     toast({
                       title: "Success",
-                      description: `Unlinked all ${unlinkingGroupSize} tasks and realigned sequential dates`,
+                      description: `Unlinked all ${unlinkingGroupSize} tasks from the group`,
                     });
                     
                     queryClient.invalidateQueries({ queryKey: ["/api/locations", task.locationId, "tasks"] });

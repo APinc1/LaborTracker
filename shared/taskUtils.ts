@@ -223,32 +223,19 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  // CRITICAL: Sort tasks by order before processing to ensure correct sequence
-  const sortedTasks = [...tasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-  console.log('🔄 Tasks sorted by order:', sortedTasks.map(t => ({ name: t.name, order: t.order })));
-  
-  const updatedTasks = [...sortedTasks];
+  const updatedTasks = [...tasks];
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
-    const previousTask = updatedTasks[i - 1]; // This gets the UPDATED previous task
+    const previousTask = updatedTasks[i - 1];
     
     console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
-    console.log(`🔧 DEBUG: Previous task is "${previousTask.name}" with date: ${previousTask.taskDate}`);
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
       const previousDate = parseDateString(previousTask.taskDate);
-      console.log(`🔧 DEBUG: Previous task "${previousTask.name}" date: ${previousTask.taskDate}`);
-      console.log(`🔧 DEBUG: Parsed previous date:`, previousDate);
-      console.log(`🔧 DEBUG: Previous date day of week: ${previousDate.getDay()} (0=Sun, 1=Mon, etc)`);
-      
       const nextWeekday = getNextWeekday(previousDate);
-      console.log(`🔧 DEBUG: Next weekday calculated:`, nextWeekday);
-      console.log(`🔧 DEBUG: Next weekday day of week: ${nextWeekday.getDay()}`);
-      
       const newDateString = formatDateToString(nextWeekday);
-      console.log(`🔧 DEBUG: Formatted new date string: ${newDateString}`);
       
       console.log(`✅ SEQUENTIAL UPDATE: "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${previousTask.name}" on ${previousTask.taskDate})`);
       
@@ -283,13 +270,7 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  // Return tasks in original order by recreating the original array with updates
-  return tasks.map(originalTask => {
-    const updatedTask = updatedTasks.find(updated => 
-      (updated.taskId || updated.id) === (originalTask.taskId || originalTask.id)
-    );
-    return updatedTask || originalTask;
-  });
+  return updatedTasks;
 }
 
 /**
