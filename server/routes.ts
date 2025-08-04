@@ -753,6 +753,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/assignments/:id', async (req, res) => {
+    try {
+      const assignmentId = parseInt(req.params.id);
+      await storage.deleteEmployeeAssignment(assignmentId);
+      res.status(200).json({ message: 'Assignment deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      res.status(500).json({ error: 'Failed to delete assignment' });
+    }
+  });
+
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
       const validated = insertEmployeeAssignmentSchema.parse({

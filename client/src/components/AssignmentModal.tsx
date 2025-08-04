@@ -51,13 +51,18 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
   const { toast } = useToast();
 
   // Reset state when modal opens/closes or taskId changes
+  const [modalInitialized, setModalInitialized] = React.useState(false);
+  
   React.useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !modalInitialized) {
       setSelectedEmployees(new Set());
       setSelectedCrews(new Set());
       setAssignmentHours({});
+      setModalInitialized(true);
+    } else if (!isOpen) {
+      setModalInitialized(false);
     }
-  }, [isOpen, taskId]);
+  }, [isOpen, taskId, modalInitialized]);
 
   // Fetch employees
   const { data: employees = [] } = useQuery({
@@ -92,7 +97,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
 
   // Initialize selections with existing assignments
   React.useEffect(() => {
-    if (employees.length > 0) {
+    if (modalInitialized && employees.length > 0) {
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -109,14 +114,9 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
 
         setSelectedEmployees(new Set(existingEmployeeIds));
         setAssignmentHours(existingHours);
-      } else {
-        // Clear selections if no existing assignments
-        setSelectedEmployees(new Set());
-        setSelectedCrews(new Set());
-        setAssignmentHours({});
       }
     }
-  }, [existingAssignments, employees]);
+  }, [modalInitialized, existingAssignments.length, employees.length]);
 
   // Clear existing assignments function
   const clearExistingAssignmentsMutation = useMutation({
@@ -137,7 +137,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     }
   });
 
-  // Calculate employee availability for the task date
+  // Calculate employee availability for the task date (excluding current task when editing)
   const calculateEmployeeAvailability = (employeeId: string): EmployeeWithAvailability => {
     const employee = (employees as any[]).find((emp: any) => emp.teamMemberId === employeeId);
     if (!employee) {
@@ -151,10 +151,11 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
       };
     }
 
-    // Find assignments for this employee on the task date
+    // Find assignments for this employee on the task date, excluding current task
     const employeeAssignments = (allAssignments as any[]).filter((assignment: any) => {
       const assignmentTask = (allTasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
       return assignment.employeeId === employee.id && 
+             assignment.taskId !== taskId &&  // Exclude current task assignments when editing
              assignmentTask && 
              assignmentTask.taskDate === taskDate;
     });
