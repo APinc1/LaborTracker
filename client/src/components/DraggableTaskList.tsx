@@ -127,8 +127,9 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
 
   // Get assigned employees for this task
   const getAssignedEmployees = (task: any) => {
+    const taskId = task.id || task.taskId;
     const taskAssignments = assignments.filter(assignment => 
-      assignment.taskId === task.id || assignment.taskId === task.taskId
+      assignment.taskId === taskId
     );
     
     return taskAssignments.map(assignment => {

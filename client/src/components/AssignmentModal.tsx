@@ -74,6 +74,34 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     staleTime: 30000,
   });
 
+  // Fetch existing assignments for this task to show current state
+  const { data: existingAssignments = [] } = useQuery({
+    queryKey: ["/api/tasks", taskId, "assignments"],
+    enabled: !!taskId,
+    staleTime: 30000,
+  });
+
+  // Initialize selections with existing assignments
+  React.useEffect(() => {
+    if (existingAssignments.length > 0 && employees.length > 0) {
+      const existingEmployeeIds = existingAssignments.map((assignment: any) => {
+        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+        return employee?.teamMemberId;
+      }).filter(Boolean);
+      
+      const existingHours: Record<string, number> = {};
+      existingAssignments.forEach((assignment: any) => {
+        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+        if (employee) {
+          existingHours[employee.teamMemberId] = parseFloat(assignment.assignedHours);
+        }
+      });
+
+      setSelectedEmployees(new Set(existingEmployeeIds));
+      setAssignmentHours(existingHours);
+    }
+  }, [existingAssignments, employees]);
+
   // Calculate employee availability for the task date
   const calculateEmployeeAvailability = (employeeId: string): EmployeeWithAvailability => {
     const employee = (employees as any[]).find((emp: any) => emp.teamMemberId === employeeId);
@@ -91,7 +119,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     // Find assignments for this employee on the task date
     const employeeAssignments = (allAssignments as any[]).filter((assignment: any) => {
       const assignmentTask = (allTasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
-      return assignment.employeeId === employeeId && 
+      return assignment.employeeId === employee.id && 
              assignmentTask && 
              assignmentTask.taskDate === taskDate;
     });
@@ -218,14 +246,19 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      const assignments = Array.from(selectedEmployees).map(employeeId => ({
-        assignmentId: `${taskId}_${employeeId}`,
-        taskId: taskId,
-        employeeId: employeeId,
-        assignmentDate: taskDate,
-        assignedHours: (assignmentHours[employeeId] || 8).toString(),
-        actualHours: null
-      }));
+      const assignments = Array.from(selectedEmployees).map(teamMemberId => {
+        const employee = (employees as any[]).find(emp => emp.teamMemberId === teamMemberId);
+        if (!employee) return null;
+        
+        return {
+          assignmentId: `${taskId}_${employee.id}`,
+          taskId: taskId,
+          employeeId: employee.id,
+          assignmentDate: taskDate,
+          assignedHours: (assignmentHours[teamMemberId] || 8).toString(),
+          actualHours: null
+        };
+      }).filter(Boolean);
 
       const promises = assignments.map(assignment =>
         apiRequest('/api/assignments', {
