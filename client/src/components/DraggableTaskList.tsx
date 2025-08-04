@@ -990,7 +990,6 @@ export default function DraggableTaskList({
           Drag tasks to reorder • Dependencies auto-update
         </div>
       </div>
-
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -1016,13 +1015,11 @@ export default function DraggableTaskList({
           </div>
         </SortableContext>
       </DndContext>
-
       {batchUpdateTasksMutation.isPending && (
         <div className="text-center py-2">
           <div className="text-sm text-gray-600">Updating task dependencies...</div>
         </div>
       )}
-
       {/* Link Confirmation Dialog */}
       <AlertDialog open={linkConfirmDialog.show} onOpenChange={(open) => !open && handleRevertPosition()}>
         <AlertDialogContent>
@@ -1037,9 +1034,7 @@ export default function DraggableTaskList({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleRevertPosition}>
-              No, revert position
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={handleRevertPosition}>No</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmLink}>
               Yes, link to group
             </AlertDialogAction>
