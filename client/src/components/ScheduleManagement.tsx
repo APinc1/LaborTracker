@@ -259,12 +259,6 @@ export default function ScheduleManagement() {
                                     >
                                       {task.taskType}
                                     </Badge>
-                                    <Badge
-                                      variant="secondary"
-                                      className={`text-xs ${getTaskStatus(task).color}`}
-                                    >
-                                      {getTaskStatus(task).label}
-                                    </Badge>
                                   </div>
                                   <span className="text-xs text-gray-500">
                                     {task.startTime || '8:00 AM'}
