@@ -740,6 +740,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/assignments', async (req, res) => {
+    try {
+      console.log('Creating assignment:', req.body);
+      const validated = insertEmployeeAssignmentSchema.parse(req.body);
+      const assignment = await storage.createEmployeeAssignment(validated);
+      console.log('Assignment created:', assignment);
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error('Assignment creation error:', error);
+      res.status(400).json({ error: 'Invalid assignment data', details: error.message });
+    }
+  });
+
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
       const validated = insertEmployeeAssignmentSchema.parse({
