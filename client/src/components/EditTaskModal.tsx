@@ -2333,8 +2333,52 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   try {
                     await Promise.all(unlinkPromises);
                     
-                    // Unlinking complete - manual date calculation already handled all dates correctly
-                    console.log('🔗 Unlinking complete - all dates calculated and updated correctly');
+                    // Unlinking complete - now realign any downstream sequential tasks
+                    console.log('🔗 Unlinking complete - now realigning downstream sequential tasks');
+                    
+                    // Get fresh task data and realign tasks that weren't part of the unlinked group
+                    try {
+                      const response = await apiRequest(`/api/locations/${task.locationId}/tasks`);
+                      
+                      if (response && Array.isArray(response)) {
+                        const allLocationTasks = response as any[];
+                        console.log('🔗 Got fresh task data, running realignDependentTasks for downstream tasks');
+                        
+                        // Realign all tasks to fix any sequential tasks that depend on the moved tasks
+                        const realignedTasks = realignDependentTasks(allLocationTasks);
+                        
+                        // Find tasks that need updating (dates changed)
+                        const tasksToUpdate = realignedTasks.filter(realignedTask => {
+                          const originalTask = allLocationTasks.find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
+                          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+                        });
+                        
+                        console.log('🔗 Found', tasksToUpdate.length, 'downstream tasks that need date updates');
+                        
+                        // Update tasks with new dates
+                        if (tasksToUpdate.length > 0) {
+                          const updatePromises = tasksToUpdate.map(taskToUpdate => 
+                            apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
+                              method: 'PUT',
+                              body: JSON.stringify({
+                                taskDate: taskToUpdate.taskDate,
+                                startDate: taskToUpdate.taskDate,
+                                finishDate: taskToUpdate.taskDate
+                              }),
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            })
+                          );
+                          
+                          await Promise.all(updatePromises);
+                          console.log('🔗 Realignment complete - updated', tasksToUpdate.length, 'downstream task dates');
+                        }
+                      }
+                    } catch (realignError) {
+                      console.error('🔗 Downstream realignment failed:', realignError);
+                      // Don't fail the entire operation if realignment fails
+                    }
                     
                     // Update form and close modal
                     form.setValue('linkToExistingTask', false);
