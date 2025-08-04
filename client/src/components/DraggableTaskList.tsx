@@ -43,11 +43,12 @@ interface SortableTaskItemProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   employees: any[];
+  crews: any[];
   assignments: any[];
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, crews, assignments }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -871,6 +872,7 @@ export default function DraggableTaskList({
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
                 employees={employees}
+                crews={crews}
                 assignments={assignments}
               />
             ))}
