@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -755,7 +755,45 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               sequential: t.dependentOnPrevious 
             })));
             
-            batchUpdateTasksMutation.mutate(tasksToUpdate);
+            // CRITICAL: After linking tasks, we need to realign subsequent sequential tasks
+            // Get all tasks, update the linked ones, then recalculate sequential dates
+            const allTasks = [...(existingTasks as any[])];
+            
+            // Update the linked tasks in the full task list
+            tasksToUpdate.forEach(updatedTask => {
+              const existingIndex = allTasks.findIndex(t => 
+                (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+              );
+              if (existingIndex >= 0) {
+                allTasks[existingIndex] = updatedTask;
+              }
+            });
+            
+            // Sort by order and recalculate sequential dates
+            allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            // Use the shared utility to realign dependent tasks
+            const realignedTasks = realignDependentTasks(allTasks);
+            
+            // Find all tasks that changed (either from linking or date realignment)
+            const finalTasksToUpdate = realignedTasks.filter(task => {
+              const originalTask = (existingTasks as any[]).find(t => 
+                (t.taskId || t.id) === (task.taskId || task.id)
+              );
+              return !originalTask || 
+                     originalTask.taskDate !== task.taskDate ||
+                     originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+                     originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+                     originalTask.order !== task.order;
+            });
+            
+            console.log('Final linking updates with realigned dates:', finalTasksToUpdate.map(t => ({ 
+              name: t.name, 
+              date: t.taskDate, 
+              sequential: t.dependentOnPrevious 
+            })));
+            
+            batchUpdateTasksMutation.mutate(finalTasksToUpdate);
             return;
           }
         }
