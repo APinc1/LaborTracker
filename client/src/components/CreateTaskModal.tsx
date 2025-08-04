@@ -338,7 +338,7 @@ export default function CreateTaskModal({
     
     console.log('🔗 New task sequential logic:', {
       hasLinkedTasks: data.linkedTaskIds && data.linkedTaskIds.length > 0,
-      linkedTasksSequential: linkedTasksSequentialStatus,
+      linkedTasksSequential: linkedTasksAreSequential,
       positionBasedSequential: selectedOption.type.includes('sequential'),
       finalSequentialStatus: shouldNewTaskBeSequential
     });
