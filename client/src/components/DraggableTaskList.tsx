@@ -586,6 +586,7 @@ export default function DraggableTaskList({
       
       console.log('🔍 DRAG DETECTION DEBUG:', {
         draggedTask: originalDraggedTask.name,
+        draggedLinked: originalDraggedTask.linkedTaskGroup,
         newIndex,
         taskBefore: taskBefore ? { name: taskBefore.name, linkedGroup: taskBefore.linkedTaskGroup } : null,
         taskAfter: taskAfter ? { name: taskAfter.name, linkedGroup: taskAfter.linkedTaskGroup } : null,
@@ -593,7 +594,10 @@ export default function DraggableTaskList({
         hasTaskAfter: !!taskAfter,
         taskBeforeLinked: !!taskBefore?.linkedTaskGroup,
         taskAfterLinked: !!taskAfter?.linkedTaskGroup,
-        sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup
+        beforeGroup: taskBefore?.linkedTaskGroup || 'none',
+        afterGroup: taskAfter?.linkedTaskGroup || 'none',
+        sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup,
+        shouldDetect: taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup
       });
       
       // Check if inserting between two tasks from the same linked group
