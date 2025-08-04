@@ -556,6 +556,18 @@ export default function DraggableTaskList({
       const taskBefore = newIndex > 0 ? sortedTasks[newIndex - 1] : null;
       const taskAfter = newIndex < sortedTasks.length - 1 ? sortedTasks[newIndex + 1] : null;
       
+      console.log('🔍 DRAG DETECTION DEBUG:', {
+        draggedTask: originalDraggedTask.name,
+        newIndex,
+        taskBefore: taskBefore ? { name: taskBefore.name, linkedGroup: taskBefore.linkedTaskGroup } : null,
+        taskAfter: taskAfter ? { name: taskAfter.name, linkedGroup: taskAfter.linkedTaskGroup } : null,
+        hasTaskBefore: !!taskBefore,
+        hasTaskAfter: !!taskAfter,
+        taskBeforeLinked: !!taskBefore?.linkedTaskGroup,
+        taskAfterLinked: !!taskAfter?.linkedTaskGroup,
+        sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup
+      });
+      
       // Check if inserting between two tasks from the same linked group
       if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup) {
