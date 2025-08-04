@@ -2333,13 +2333,54 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   try {
                     await Promise.all(unlinkPromises);
                     
+                    // CRITICAL: After unlinking, realign ALL tasks to fix subsequent sequential dates
+                    console.log('🔗 Unlinking complete, now realigning ALL tasks in location');
+                    
+                    // Get fresh task data and realign all tasks
+                    const response = await apiRequest(`/api/locations/${task.locationId}/tasks`);
+                    if (response) {
+                      const allLocationTasks = response as any[];
+                      console.log('🔗 Got', allLocationTasks.length, 'tasks, running realignDependentTasks');
+                      
+                      // Realign all tasks to fix sequential dates
+                      const realignedTasks = realignDependentTasks(allLocationTasks);
+                      
+                      // Find tasks that need updating (dates changed)
+                      const tasksToUpdate = realignedTasks.filter(realignedTask => {
+                        const originalTask = allLocationTasks.find(orig => (orig.taskId || orig.id) === (realignedTask.taskId || realignedTask.id));
+                        return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+                      });
+                      
+                      console.log('🔗 Found', tasksToUpdate.length, 'tasks that need date updates after realignment');
+                      
+                      // Update tasks with new dates
+                      if (tasksToUpdate.length > 0) {
+                        const updatePromises = tasksToUpdate.map(taskToUpdate => 
+                          apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                              taskDate: taskToUpdate.taskDate,
+                              startDate: taskToUpdate.taskDate,
+                              finishDate: taskToUpdate.taskDate
+                            }),
+                            headers: {
+                              'Content-Type': 'application/json'
+                            }
+                          })
+                        );
+                        
+                        await Promise.all(updatePromises);
+                        console.log('🔗 Realignment complete - updated', tasksToUpdate.length, 'subsequent task dates');
+                      }
+                    }
+                    
                     // Update form and close modal
                     form.setValue('linkToExistingTask', false);
                     form.setValue('linkedTaskIds', []);
                     
                     toast({
                       title: "Success",
-                      description: `Unlinked all ${unlinkingGroupSize} tasks from the group`,
+                      description: `Unlinked all ${unlinkingGroupSize} tasks and realigned sequential dates`,
                     });
                     
                     queryClient.invalidateQueries({ queryKey: ["/api/locations", task.locationId, "tasks"] });
