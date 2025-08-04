@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { Users, User, Clock, CheckCircle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { X, Users, ChevronDown } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,36 +15,26 @@ interface AssignmentModalProps {
   taskDate: string;
 }
 
-interface EmployeeWithAvailability {
+interface Employee {
+  id: number;
   teamMemberId: string;
   name: string;
   employeeType: string;
+  apprenticeLevel?: number;
   primaryTrade?: string;
-  secondaryTrade?: string;
-  tertiaryTrade?: string;
-  unionStatus?: string;
-  apprenticeLevel?: string;
-  crews?: string[];
-  scheduledHours: number;
-  remainingHours: number;
-  status: 'available' | 'partial' | 'full';
+  crewId?: number;
 }
 
-interface CrewWithAvailability {
-  id: string;
+interface Crew {
+  id: number;
   name: string;
   description?: string;
-  memberIds: string[];
-  members: EmployeeWithAvailability[];
-  status: 'available' | 'partial' | 'full';
-  totalScheduledHours: number;
-  averageRemainingHours: number;
 }
 
 export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: AssignmentModalProps) {
   const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
   const [selectedCrews, setSelectedCrews] = useState<Set<string>>(new Set());
-  const [assignmentHours, setAssignmentHours] = useState<Record<string, number>>({});
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
   const { toast } = useToast();
 
   // Fetch employees
@@ -62,378 +49,252 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     staleTime: 30000,
   });
 
-  // Fetch existing assignments for the task date to calculate availability
-  const { data: allAssignments = [] } = useQuery({
-    queryKey: ["/api/assignments"],
-    staleTime: 30000,
-  });
-
-  // Fetch all tasks for the date to get schedule conflicts
-  const { data: allTasks = [] } = useQuery({
-    queryKey: ["/api/tasks/date-range", taskDate, taskDate],
-    staleTime: 30000,
-  });
-
-  // Calculate employee availability for the task date
-  const calculateEmployeeAvailability = (employeeId: string): EmployeeWithAvailability => {
-    const employee = (employees as any[]).find((emp: any) => emp.teamMemberId === employeeId);
-    if (!employee) {
-      return {
-        teamMemberId: employeeId,
-        name: 'Unknown',
-        employeeType: 'Unknown',
-        scheduledHours: 0,
-        remainingHours: 8,
-        status: 'available'
-      };
-    }
-
-    // Find assignments for this employee on the task date
-    const employeeAssignments = (allAssignments as any[]).filter((assignment: any) => {
-      const assignmentTask = (allTasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
-      return assignment.employeeId === employeeId && 
-             assignmentTask && 
-             assignmentTask.taskDate === taskDate;
-    });
-
-    const scheduledHours = employeeAssignments.reduce((total: number, assignment: any) => {
-      return total + (parseFloat(assignment.assignedHours) || 0);
-    }, 0);
-
-    const remainingHours = Math.max(0, 8 - scheduledHours);
-    let status: 'available' | 'partial' | 'full' = 'available';
-    
-    if (scheduledHours >= 8) {
-      status = 'full';
-    } else if (scheduledHours > 0) {
-      status = 'partial';
-    }
-
-    return {
-      ...employee,
-      scheduledHours,
-      remainingHours,
-      status
-    };
+  // Get crew members count
+  const getCrewMemberCount = (crewId: number): number => {
+    return (employees as Employee[]).filter(emp => emp.crewId === crewId).length;
   };
 
-  // Get crews with their members and availability
-  const getCrewsWithAvailability = (): CrewWithAvailability[] => {
-    return (crews as any[]).map((crew: any) => {
-      // Find all employees in this crew
-      const crewMembers = (employees as any[])
-        .filter((employee: any) => employee.crewId === crew.id)
-        .map((employee: any) => calculateEmployeeAvailability(employee.teamMemberId));
-      
-      const totalScheduledHours = crewMembers.reduce((sum, member) => sum + member.scheduledHours, 0);
-      const averageRemainingHours = crewMembers.length > 0 ? 
-        crewMembers.reduce((sum, member) => sum + member.remainingHours, 0) / crewMembers.length : 8;
-      
-      let status: 'available' | 'partial' | 'full' = 'available';
-      if (crewMembers.length > 0) {
-        if (crewMembers.every(member => member.status === 'full')) {
-          status = 'full';
-        } else if (crewMembers.some(member => member.status !== 'available')) {
-          status = 'partial';
-        }
-      }
+  // Handle crew selection
+  const toggleCrewSelection = (crewId: string) => {
+    const crew = (crews as Crew[]).find(c => c.id.toString() === crewId);
+    if (!crew) return;
 
-      return {
-        id: crew.id.toString(),
-        name: crew.name,
-        description: crew.description,
-        memberIds: crewMembers.map(member => member.teamMemberId),
-        members: crewMembers,
-        status,
-        totalScheduledHours,
-        averageRemainingHours
-      };
-    });
+    const newSelectedCrews = new Set(selectedCrews);
+    if (newSelectedCrews.has(crewId)) {
+      newSelectedCrews.delete(crewId);
+      // Also deselect all crew members
+      const crewMembers = (employees as Employee[])
+        .filter(emp => emp.crewId === crew.id)
+        .map(emp => emp.teamMemberId);
+      const newSelectedEmployees = new Set(selectedEmployees);
+      crewMembers.forEach(memberId => newSelectedEmployees.delete(memberId));
+      setSelectedEmployees(newSelectedEmployees);
+    } else {
+      newSelectedCrews.add(crewId);
+      // Also select all crew members
+      const crewMembers = (employees as Employee[])
+        .filter(emp => emp.crewId === crew.id)
+        .map(emp => emp.teamMemberId);
+      const newSelectedEmployees = new Set(selectedEmployees);
+      crewMembers.forEach(memberId => newSelectedEmployees.add(memberId));
+      setSelectedEmployees(newSelectedEmployees);
+    }
+    setSelectedCrews(newSelectedCrews);
   };
-
-  const employeesWithAvailability = (employees as any[]).map((emp: any) => calculateEmployeeAvailability(emp.teamMemberId));
-  const crewsWithAvailability = getCrewsWithAvailability();
 
   // Handle employee selection
   const toggleEmployeeSelection = (employeeId: string) => {
-    const newSelection = new Set(selectedEmployees);
-    if (newSelection.has(employeeId)) {
-      newSelection.delete(employeeId);
-      const newHours = { ...assignmentHours };
-      delete newHours[employeeId];
-      setAssignmentHours(newHours);
+    const newSelected = new Set(selectedEmployees);
+    if (newSelected.has(employeeId)) {
+      newSelected.delete(employeeId);
     } else {
-      newSelection.add(employeeId);
-      const employee = employeesWithAvailability.find(emp => emp.teamMemberId === employeeId);
-      setAssignmentHours({
-        ...assignmentHours,
-        [employeeId]: Math.min(8, employee?.remainingHours || 8)
-      });
+      newSelected.add(employeeId);
     }
-    setSelectedEmployees(newSelection);
-  };
+    setSelectedEmployees(newSelected);
 
-  // Handle crew selection (selects all crew members)
-  const toggleCrewSelection = (crewId: string) => {
-    const crew = crewsWithAvailability.find(c => c.id === crewId);
-    if (!crew) return;
-
-    const newCrewSelection = new Set(selectedCrews);
-    const newEmployeeSelection = new Set(selectedEmployees);
-    const newHours = { ...assignmentHours };
-
-    if (newCrewSelection.has(crewId)) {
-      // Deselect crew and all its members
-      newCrewSelection.delete(crewId);
-      crew.memberIds.forEach(memberId => {
-        newEmployeeSelection.delete(memberId);
-        delete newHours[memberId];
-      });
-    } else {
-      // Select crew and all its members
-      newCrewSelection.add(crewId);
-      crew.members.forEach(member => {
-        newEmployeeSelection.add(member.teamMemberId);
-        newHours[member.teamMemberId] = Math.min(8, member.remainingHours);
-      });
-    }
-
-    setSelectedCrews(newCrewSelection);
-    setSelectedEmployees(newEmployeeSelection);
-    setAssignmentHours(newHours);
-  };
-
-  // Handle hours change
-  const updateAssignmentHours = (employeeId: string, hours: number) => {
-    const employee = employeesWithAvailability.find(emp => emp.teamMemberId === employeeId);
-    const maxHours = employee?.remainingHours || 8;
-    const validHours = Math.min(Math.max(0, hours), maxHours);
-    
-    setAssignmentHours({
-      ...assignmentHours,
-      [employeeId]: validHours
-    });
-  };
-
-  // Create assignments
-  const createAssignmentsMutation = useMutation({
-    mutationFn: async () => {
-      const assignments = Array.from(selectedEmployees).map(employeeId => ({
-        taskId: taskId,
-        employeeId: employeeId,
-        assignedHours: assignmentHours[employeeId] || 8,
-        actualHours: 0
-      }));
-
-      const promises = assignments.map(assignment =>
-        apiRequest('/api/assignments', {
-          method: 'POST',
-          body: JSON.stringify(assignment),
-          headers: { 'Content-Type': 'application/json' }
-        })
+    // Check if this affects crew selection
+    const employee = (employees as Employee[]).find(emp => emp.teamMemberId === employeeId);
+    if (employee?.crewId) {
+      const crewMembers = (employees as Employee[])
+        .filter(emp => emp.crewId === employee.crewId)
+        .map(emp => emp.teamMemberId);
+      
+      const allMembersSelected = crewMembers.every(memberId => 
+        memberId === employeeId ? newSelected.has(memberId) : selectedEmployees.has(memberId)
       );
+      
+      const newSelectedCrews = new Set(selectedCrews);
+      if (allMembersSelected) {
+        newSelectedCrews.add(employee.crewId.toString());
+      } else {
+        newSelectedCrews.delete(employee.crewId.toString());
+      }
+      setSelectedCrews(newSelectedCrews);
+    }
+  };
 
-      return Promise.all(promises);
+  // Create assignments mutation
+  const createAssignmentsMutation = useMutation({
+    mutationFn: async (assignments: any[]) => {
+      const results = [];
+      for (const assignment of assignments) {
+        const result = await apiRequest(`/api/assignments`, {
+          method: 'POST',
+          body: assignment,
+        });
+        results.push(result);
+      }
+      return results;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/assignments'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/tasks/${taskId}/assignments`] });
       toast({ title: "Success", description: "Assignments created successfully" });
       onClose();
       setSelectedEmployees(new Set());
       setSelectedCrews(new Set());
-      setAssignmentHours({});
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create assignments", variant: "destructive" });
     },
   });
 
-  const getEmployeeCardStyle = (employee: EmployeeWithAvailability): string => {
-    const isSelected = selectedEmployees.has(employee.teamMemberId);
-    let baseStyle = "p-3 border rounded-lg cursor-pointer transition-all ";
-    
-    if (isSelected) {
-      baseStyle += "border-blue-500 bg-blue-50 ";
-    } else {
-      baseStyle += "border-gray-200 hover:border-gray-300 ";
+  // Handle assignment submission
+  const handleSubmit = () => {
+    const assignments = Array.from(selectedEmployees).map(employeeId => {
+      const employee = (employees as Employee[]).find(emp => emp.teamMemberId === employeeId);
+      return {
+        assignmentId: `${taskId}_${employee?.id}`,
+        taskId: Number(taskId),
+        employeeId: employee?.id,
+        assignmentDate: taskDate,
+        assignedHours: "8",
+        actualHours: null
+      };
+    });
+
+    if (assignments.length === 0) {
+      toast({ title: "Warning", description: "Please select at least one employee or crew", variant: "destructive" });
+      return;
     }
 
-    if (employee.status === 'full') {
-      baseStyle += "bg-red-50 border-red-200 ";
-    } else if (employee.status === 'partial') {
-      baseStyle += "bg-yellow-50 border-yellow-200 ";
-    }
-
-    return baseStyle;
+    createAssignmentsMutation.mutate(assignments);
   };
 
-  const getCrewCardStyle = (crew: CrewWithAvailability): string => {
-    const isSelected = selectedCrews.has(crew.id);
-    let baseStyle = "p-3 border rounded-lg cursor-pointer transition-all ";
-    
-    if (isSelected) {
-      baseStyle += "border-blue-500 bg-blue-50 ";
-    } else {
-      baseStyle += "border-gray-200 hover:border-gray-300 ";
+  const getEmployeeDisplayRole = (employee: Employee): string => {
+    if (employee.employeeType === 'Apprentice') {
+      return 'Apprentice';
     }
-
-    if (crew.status === 'full') {
-      baseStyle += "bg-red-50 border-red-200 ";
-    } else if (crew.status === 'partial') {
-      baseStyle += "bg-yellow-50 border-yellow-200 ";
-    }
-
-    return baseStyle;
+    return employee.employeeType;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Assign Crew & Employees</DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <DialogTitle className="text-xl font-semibold">Assign Crew & Employees</DialogTitle>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="w-5 h-5" />
+          </Button>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-6 py-4">
           {/* Crews Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Crews
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {crewsWithAvailability.map((crew) => (
-                  <div
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              <h3 className="text-lg font-semibold">Crews</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(crews as Crew[]).map((crew) => {
+                const memberCount = getCrewMemberCount(crew.id);
+                const isSelected = selectedCrews.has(crew.id.toString());
+                
+                return (
+                  <Card 
                     key={crew.id}
-                    className={getCrewCardStyle(crew)}
-                    onClick={() => toggleCrewSelection(crew.id)}
+                    className={`p-4 cursor-pointer border-2 transition-all ${
+                      isSelected 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => toggleCrewSelection(crew.id.toString())}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className={`font-medium ${crew.status === 'full' ? 'line-through text-red-600' : ''}`}>
-                          {crew.name}
-                        </h4>
-                        <p className="text-sm text-gray-500">{crew.members.length} members</p>
-                        {crew.status === 'partial' && (
-                          <p className="text-sm text-orange-600">
-                            Avg {crew.averageRemainingHours.toFixed(1)}h remaining
-                          </p>
-                        )}
+                        <h4 className="font-medium">{crew.name}</h4>
+                        <p className="text-sm text-gray-500">{memberCount} members</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {crew.status === 'full' && <Badge variant="destructive">Fully Booked</Badge>}
-                        {crew.status === 'partial' && <Badge variant="outline" className="border-yellow-500 text-yellow-700">Partially Booked</Badge>}
-                        {crew.status === 'available' && <Badge variant="outline" className="border-green-500 text-green-700">Available</Badge>}
-                      </div>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                        Available
+                      </Badge>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Separator />
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Individual Employees Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Individual Employees
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {employeesWithAvailability.map((employee) => (
-                  <div key={employee.teamMemberId}>
-                    <div
-                      className={getEmployeeCardStyle(employee)}
-                      onClick={() => toggleEmployeeSelection(employee.teamMemberId)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h4 className={`font-medium text-sm ${employee.status === 'full' ? 'line-through text-red-600' : ''}`}>
-                            {employee.name}
-                          </h4>
-                          <p className="text-xs text-gray-500">{employee.teamMemberId}</p>
-                          <Badge variant="outline" className="text-xs">
-                            {employee.employeeType}
-                          </Badge>
-                        </div>
-                        <div className="text-right">
-                          {employee.status === 'full' && <Badge variant="destructive" className="text-xs">8h Booked</Badge>}
-                          {employee.status === 'partial' && (
-                            <Badge variant="outline" className="border-yellow-500 text-yellow-700 text-xs">
-                              {employee.remainingHours}h Left
-                            </Badge>
-                          )}
-                          {employee.status === 'available' && <Badge variant="outline" className="border-green-500 text-green-700 text-xs">Available</Badge>}
-                        </div>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              <h3 className="text-lg font-semibold">Individual Employees</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {(employees as Employee[]).map((employee) => {
+                const isSelected = selectedEmployees.has(employee.teamMemberId);
+                
+                return (
+                  <Card 
+                    key={employee.teamMemberId}
+                    className={`p-4 cursor-pointer border-2 transition-all ${
+                      isSelected 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => toggleEmployeeSelection(employee.teamMemberId)}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-medium">{employee.name}</h4>
+                        <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">
+                          Available
+                        </Badge>
                       </div>
-
-                      {/* Hours input for selected employees */}
-                      {selectedEmployees.has(employee.teamMemberId) && employee.status !== 'full' && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <Label className="text-xs">Hours to assign:</Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            max={employee.remainingHours}
-                            value={assignmentHours[employee.teamMemberId] || ''}
-                            onChange={(e) => updateAssignmentHours(employee.teamMemberId, parseFloat(e.target.value) || 0)}
-                            className="h-7 text-xs mt-1"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      )}
+                      <p className="text-sm text-gray-500">{employee.teamMemberId}</p>
+                      <p className="text-sm font-medium">{getEmployeeDisplayRole(employee)}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Assignment Summary */}
-          {(selectedEmployees.size > 0 || selectedCrews.size > 0) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Assignment Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm">
-                    <strong>Selected Employees:</strong> {selectedEmployees.size}
-                  </p>
-                  <p className="text-sm">
-                    <strong>Selected Crews:</strong> {selectedCrews.size}
-                  </p>
-                  <p className="text-sm">
-                    <strong>Total Hours:</strong> {
-                      Array.from(selectedEmployees).reduce((total, empId) => {
-                        return total + (assignmentHours[empId] || 0);
-                      }, 0)
-                    }h
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createAssignmentsMutation.mutate()}
-              disabled={selectedEmployees.size === 0 || createAssignmentsMutation.isPending}
+          <div className="border-t pt-4">
+            <div 
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => setSummaryExpanded(!summaryExpanded)}
             >
-              {createAssignmentsMutation.isPending ? 'Creating...' : 'Create Assignments'}
-            </Button>
+              <h3 className="text-lg font-semibold">Assignment Summary</h3>
+              <ChevronDown className={`w-5 h-5 transition-transform ${summaryExpanded ? 'rotate-180' : ''}`} />
+            </div>
+            
+            {summaryExpanded && (
+              <div className="mt-4 space-y-2">
+                <div className="text-sm text-gray-600">
+                  Selected Crews: {selectedCrews.size}
+                </div>
+                <div className="text-sm text-gray-600">
+                  Selected Employees: {selectedEmployees.size}
+                </div>
+                {selectedEmployees.size > 0 && (
+                  <div className="text-sm text-gray-600">
+                    Employees: {Array.from(selectedEmployees).map(id => {
+                      const emp = (employees as Employee[]).find(e => e.teamMemberId === id);
+                      return emp?.name;
+                    }).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="border-t pt-4 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit}
+            disabled={selectedEmployees.size === 0 || createAssignmentsMutation.isPending}
+          >
+            {createAssignmentsMutation.isPending ? 'Assigning...' : 'Assign Selected'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
