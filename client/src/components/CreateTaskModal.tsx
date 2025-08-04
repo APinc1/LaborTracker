@@ -328,17 +328,17 @@ export default function CreateTaskModal({
     
     const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
     
-    // CRITICAL: When linking to existing tasks, the new task should inherit the sequential status from linked tasks
-    // For linked tasks, ALL tasks in the group should have the same sequential status
-    // Since linked tasks work together, they should all be unsequential (independent of each other within the group)
-    const linkedTasksAreSequential = linkedTasks.length > 0 && linkedTasks.every(t => t.dependentOnPrevious);
+    // CRITICAL: When linking to existing tasks, the new task should match the sequential status of linked tasks
+    // If linking to unsequential tasks, the new task should be unsequential 
+    // If linking to sequential tasks, the new task should be sequential
+    const linkedTasksSequentialStatus = linkedTasks.some(t => t.dependentOnPrevious);
     const shouldNewTaskBeSequential = data.linkedTaskIds && data.linkedTaskIds.length > 0 
-      ? false  // ALWAYS make linked tasks unsequential - they work together, not sequentially
+      ? linkedTasksSequentialStatus  // Match linked tasks' sequential status
       : selectedOption.type.includes('sequential'); // Use position choice for non-linked tasks
     
     console.log('🔗 New task sequential logic:', {
       hasLinkedTasks: data.linkedTaskIds && data.linkedTaskIds.length > 0,
-      linkedTasksSequential: linkedTasksAreSequential,
+      linkedTasksSequential: linkedTasksSequentialStatus,
       positionBasedSequential: selectedOption.type.includes('sequential'),
       finalSequentialStatus: shouldNewTaskBeSequential
     });
@@ -367,14 +367,14 @@ export default function CreateTaskModal({
       order: 0 // Will be set correctly below
     };
 
-    // Update all linked tasks to have the same group and chosen date
-    // CRITICAL: When linking tasks, ALL tasks in the group should be unsequential (work together)
+    // Update all linked tasks to have the same group and chosen date, but preserve their original sequential status
+    // CRITICAL: When linking tasks, we MUST preserve the existing sequential status of linked tasks
     const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
       taskDate: selectedOption.date,
-      // MAKE ALL LINKED TASKS UNSEQUENTIAL - they work as a group, not sequentially
-      dependentOnPrevious: false
+      // PRESERVE the original dependentOnPrevious status of existing tasks - don't change it!
+      dependentOnPrevious: task.dependentOnPrevious
     }));
     
     // Create complete task list with ALL tasks (existing + new)
