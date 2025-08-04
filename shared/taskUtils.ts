@@ -238,8 +238,16 @@ export function realignDependentTasks(tasks: any[]): any[] {
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
       const previousDate = parseDateString(previousTask.taskDate);
+      console.log(`🔧 DEBUG: Previous task "${previousTask.name}" date: ${previousTask.taskDate}`);
+      console.log(`🔧 DEBUG: Parsed previous date:`, previousDate);
+      console.log(`🔧 DEBUG: Previous date day of week: ${previousDate.getDay()} (0=Sun, 1=Mon, etc)`);
+      
       const nextWeekday = getNextWeekday(previousDate);
+      console.log(`🔧 DEBUG: Next weekday calculated:`, nextWeekday);
+      console.log(`🔧 DEBUG: Next weekday day of week: ${nextWeekday.getDay()}`);
+      
       const newDateString = formatDateToString(nextWeekday);
+      console.log(`🔧 DEBUG: Formatted new date string: ${newDateString}`);
       
       console.log(`✅ SEQUENTIAL UPDATE: "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${previousTask.name}" on ${previousTask.taskDate})`);
       
