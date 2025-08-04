@@ -31,6 +31,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
+import AssignmentModal from "./AssignmentModal";
 
 interface TaskDetailModalProps {
   taskId: number | null;
@@ -44,6 +45,7 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<any>(null);
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
 
   const { data: task, isLoading: taskLoading } = useQuery({
     queryKey: ["/api/tasks", taskId],
@@ -452,7 +454,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                   <div className="text-sm text-gray-500">
                     Total Actual: {getTotalActualHours()}h
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setAssignmentModalOpen(true)}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Assignment
                   </Button>
@@ -548,6 +554,14 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
           </Card>
         </div>
       </DialogContent>
+
+      {/* Assignment Modal */}
+      <AssignmentModal
+        isOpen={assignmentModalOpen}
+        onClose={() => setAssignmentModalOpen(false)}
+        taskId={taskId || 0}
+        taskDate={task?.taskDate || ''}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
