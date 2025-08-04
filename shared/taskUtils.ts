@@ -223,7 +223,22 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  const updatedTasks = [...tasks];
+  // CRITICAL: Sort tasks by their logical order (order field) for proper sequential processing
+  // NOT by date or display order - sequential dependencies follow logical order
+  const logicallyOrderedTasks = [...tasks].sort((a, b) => {
+    const orderA = a.order ?? 999;
+    const orderB = b.order ?? 999;
+    return orderA - orderB;
+  });
+  
+  console.log('🔧 Processing tasks in logical order:', logicallyOrderedTasks.map(t => ({ 
+    name: t.name, 
+    order: t.order, 
+    date: t.taskDate, 
+    sequential: t.dependentOnPrevious 
+  })));
+  
+  const updatedTasks = [...logicallyOrderedTasks];
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
@@ -276,7 +291,15 @@ export function realignDependentTasks(tasks: any[]): any[] {
     linked: !!t.linkedTaskGroup 
   })));
   
-  return updatedTasks;
+  // Return tasks in their original input order (for display), but with updated dates
+  const resultTasks = tasks.map(originalTask => {
+    const updatedTask = updatedTasks.find(ut => 
+      (ut.taskId || ut.id) === (originalTask.taskId || originalTask.id)
+    );
+    return updatedTask || originalTask;
+  });
+  
+  return resultTasks;
 }
 
 /**
