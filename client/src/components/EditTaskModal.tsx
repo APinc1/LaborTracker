@@ -702,8 +702,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
-    if (data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0) {
-      // LINKING TO MULTIPLE TASKS
+    // CRITICAL: If task is already linked, and user just changed the date (not the linking), 
+    // we should NOT show position dialog - just update all linked tasks to the new date
+    const isAlreadyLinked = task.linkedTaskGroup && data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0;
+    const isNewLinking = !task.linkedTaskGroup && data.linkToExistingTask && data.linkedTaskIds && data.linkedTaskIds.length > 0;
+    
+    console.log('🔗 Linking status analysis:', {
+      wasLinked: !!task.linkedTaskGroup,
+      wantsToLink: data.linkToExistingTask,
+      hasLinkedTaskIds: data.linkedTaskIds && data.linkedTaskIds.length > 0,
+      isAlreadyLinked,
+      isNewLinking,
+      linkingChanged,
+      dateChanged
+    });
+    
+    if (isNewLinking) {
+      // LINKING TO MULTIPLE TASKS (NEW LINKING)
       const linkedTasks = (existingTasks as any[]).filter((t: any) => 
         data.linkedTaskIds!.includes((t.taskId || t.id).toString())
       );
@@ -817,6 +832,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('🔗 Dialog should now be visible');
         return;
       }
+    } else if (isAlreadyLinked && dateChanged) {
+      // EXISTING LINKED TASK - DATE CHANGE ONLY
+      console.log('🔗 Task is already linked, just updating date for all linked tasks');
+      
+      // Don't show position dialog - just update all linked tasks to the new date
+      // This will be handled in the cascading updates section below
+      linkingChanged = false; // Don't treat this as a linking change
+      
     } else if (!data.linkToExistingTask && task.linkedTaskGroup) {
       // UNLINKING FROM GROUP
       console.log('🔗 ENTERING UNLINKING LOGIC');
