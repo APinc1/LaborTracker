@@ -97,7 +97,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
 
   // Initialize selections with existing assignments
   React.useEffect(() => {
-    if (modalInitialized && employees.length > 0) {
+    if (modalInitialized && employees.length > 0 && crews.length > 0) {
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -112,11 +112,26 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
           }
         });
 
+        // Check if any crews are fully assigned
+        const assignedCrews = new Set<string>();
+        (crews as any[]).forEach(crew => {
+          const crewMembers = (employees as any[]).filter(emp => emp.crewId === crew.id);
+          const assignedMembers = crewMembers.filter(member => 
+            existingEmployeeIds.includes(member.teamMemberId)
+          );
+          
+          // If all crew members are assigned, mark crew as selected
+          if (crewMembers.length > 0 && assignedMembers.length === crewMembers.length) {
+            assignedCrews.add(crew.id.toString());
+          }
+        });
+
         setSelectedEmployees(new Set(existingEmployeeIds));
+        setSelectedCrews(assignedCrews);
         setAssignmentHours(existingHours);
       }
     }
-  }, [modalInitialized, existingAssignments.length, employees.length]);
+  }, [modalInitialized, existingAssignments.length, employees.length, crews.length]);
 
   // Clear existing assignments function
   const clearExistingAssignmentsMutation = useMutation({
