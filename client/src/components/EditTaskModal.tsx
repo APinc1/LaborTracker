@@ -2367,22 +2367,39 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         
                         // Update tasks with new dates
                         if (tasksToUpdate.length > 0) {
-                          const updatePromises = tasksToUpdate.map(taskToUpdate => 
-                            apiRequest(`/api/tasks/${taskToUpdate.taskId || taskToUpdate.id}`, {
-                              method: 'PUT',
-                              body: JSON.stringify({
-                                taskDate: taskToUpdate.taskDate,
-                                startDate: taskToUpdate.taskDate,
-                                finishDate: taskToUpdate.taskDate
-                              }),
-                              headers: {
-                                'Content-Type': 'application/json'
-                              }
-                            })
-                          );
+                          console.log('🔗 Updating tasks with new dates...');
                           
-                          await Promise.all(updatePromises);
-                          console.log('🔗 Realignment complete - updated', tasksToUpdate.length, 'downstream task dates');
+                          for (const taskToUpdate of tasksToUpdate) {
+                            const taskId = taskToUpdate.taskId || taskToUpdate.id;
+                            const updateData = {
+                              taskDate: taskToUpdate.taskDate,
+                              startDate: taskToUpdate.taskDate,
+                              finishDate: taskToUpdate.taskDate
+                            };
+                            
+                            console.log(`🔗 Updating task ${taskId} with data:`, updateData);
+                            
+                            try {
+                              const updateResponse = await fetch(`/api/tasks/${taskId}`, {
+                                method: 'PUT',
+                                body: JSON.stringify(updateData),
+                                headers: {
+                                  'Content-Type': 'application/json'
+                                }
+                              });
+                              
+                              if (!updateResponse.ok) {
+                                const errorText = await updateResponse.text();
+                                console.error(`🔗 Failed to update task ${taskId}: ${updateResponse.status} ${updateResponse.statusText}`, errorText);
+                              } else {
+                                console.log(`🔗 Successfully updated task ${taskId} to date ${taskToUpdate.taskDate}`);
+                              }
+                            } catch (updateError) {
+                              console.error(`🔗 Error updating task ${taskId}:`, updateError);
+                            }
+                          }
+                          
+                          console.log('🔗 Realignment complete - processed', tasksToUpdate.length, 'downstream task updates');
                         } else {
                           console.log('🔗 No downstream tasks need date updates');
                         }
