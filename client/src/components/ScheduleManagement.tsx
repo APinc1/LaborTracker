@@ -12,6 +12,7 @@ import CreateTaskModal from "./CreateTaskModal";
 
 export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
 
@@ -40,7 +41,14 @@ export default function ScheduleManagement() {
 
   const getTasksForDay = (day: Date) => {
     const dayStr = format(day, 'yyyy-MM-dd');
-    return tasks.filter((task: any) => task.taskDate === dayStr);
+    let filteredTasks = tasks.filter((task: any) => task.taskDate === dayStr);
+    
+    // Filter by location if selected
+    if (selectedLocation) {
+      filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocation);
+    }
+    
+    return filteredTasks;
   };
 
   const getTaskTypeColor = (taskType: string) => {
@@ -90,7 +98,10 @@ export default function ScheduleManagement() {
                 <CardTitle>Project</CardTitle>
               </CardHeader>
               <CardContent>
-                <Select value={selectedProject} onValueChange={setSelectedProject}>
+                <Select value={selectedProject} onValueChange={(value) => {
+                  setSelectedProject(value);
+                  setSelectedLocation(""); // Clear location when project changes
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose project" />
                   </SelectTrigger>
@@ -124,17 +135,34 @@ export default function ScheduleManagement() {
             {selectedProject && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Locations</CardTitle>
+                  <CardTitle>Location Filter</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {locations.map((location: any) => (
-                      <div key={location.id} className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm">{location.name}</span>
+                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All locations" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All locations</SelectItem>
+                      {locations.map((location: any) => (
+                        <SelectItem key={location.id} value={location.locationId}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {/* Show selected location info */}
+                  {selectedLocation && (
+                    <div className="mt-3 p-2 bg-blue-50 rounded-md">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm font-medium">
+                          {locations.find((loc: any) => loc.locationId === selectedLocation)?.name}
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -144,9 +172,23 @@ export default function ScheduleManagement() {
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  Week of {format(startOfWeek(selectedDate), 'MMMM d, yyyy')}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>
+                    Week of {format(startOfWeek(selectedDate), 'MMMM d, yyyy')}
+                  </CardTitle>
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    {selectedProject && (
+                      <Badge variant="secondary">
+                        {projects.find((p: any) => p.id.toString() === selectedProject)?.name}
+                      </Badge>
+                    )}
+                    {selectedLocation && (
+                      <Badge variant="outline">
+                        {locations.find((loc: any) => loc.locationId === selectedLocation)?.name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 {tasksLoading ? (
@@ -233,7 +275,10 @@ export default function ScheduleManagement() {
                   <div className="space-y-4">
                     {getTasksForDay(selectedDate).length === 0 ? (
                       <p className="text-gray-500 text-center py-8">
-                        No tasks scheduled for this day
+                        {selectedLocation ? 
+                          `No tasks scheduled for this day at ${locations.find((loc: any) => loc.locationId === selectedLocation)?.name || 'selected location'}` :
+                          'No tasks scheduled for this day'
+                        }
                       </p>
                     ) : (
                       getTasksForDay(selectedDate).map((task: any) => (
