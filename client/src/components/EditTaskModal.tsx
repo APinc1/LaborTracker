@@ -602,37 +602,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Sort by order to process sequential dependencies
       sortedAllTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      // Recalculate dates for sequential tasks
-      for (let i = 1; i < sortedAllTasks.length; i++) {
-        const currentTask = sortedAllTasks[i];
-        const prevTask = sortedAllTasks[i - 1];
-        
-        // If this task is sequential and not in a linked group that overrides dates
-        if (currentTask.dependentOnPrevious) {
-          const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-          const nextDate = new Date(baseDate);
-          nextDate.setDate(nextDate.getDate() + 1);
-          
-          // Skip weekends
-          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-            nextDate.setDate(nextDate.getDate() + 1);
-          }
-          
-          const newSequentialDate = nextDate.toISOString().split('T')[0];
-          
-          // Update the task date
-          currentTask.taskDate = newSequentialDate;
-          
-          // If this task is part of a linked group, update all linked tasks to the same date
-          if (currentTask.linkedTaskGroup) {
-            sortedAllTasks.forEach(task => {
-              if (task.linkedTaskGroup === currentTask.linkedTaskGroup) {
-                task.taskDate = newSequentialDate;
-              }
-            });
-          }
+      // CRITICAL: Use proper realignDependentTasks function for weekday-aware sequential calculations
+      console.log('🔄 REALIGNING: Sequential tasks after linking in EditTaskModal');
+      const realignedTasks = realignDependentTasks(sortedAllTasks);
+      
+      // Update the sorted tasks with realigned dates
+      realignedTasks.forEach((realignedTask, index) => {
+        if (index < sortedAllTasks.length) {
+          sortedAllTasks[index] = realignedTask;
         }
-      }
+      });
       
       // Find all tasks that were modified (either directly updated or had dates recalculated)
       const finalTasksToUpdate = sortedAllTasks.filter(task => {
