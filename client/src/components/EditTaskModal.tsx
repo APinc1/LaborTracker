@@ -478,8 +478,42 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('Submitting updates:', { mainTask, updatedTasks });
       
+      // CRITICAL: Apply sequential realignment after linking to update downstream tasks
+      const allTasksWithUpdates = [...(locationTasks || [])];
+      
+      // Update the tasks with linking changes
+      [mainTask, ...updatedTasks].forEach(updatedTask => {
+        const existingIndex = allTasksWithUpdates.findIndex(t => 
+          (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+        );
+        if (existingIndex >= 0) {
+          allTasksWithUpdates[existingIndex] = updatedTask;
+        }
+      });
+      
+      // Sort by order and apply realignment
+      allTasksWithUpdates.sort((a, b) => (a.order || 0) - (b.order || 0));
+      console.log('🔄 REALIGNING: Sequential tasks after simple linking');
+      const realignedTasks = realignDependentTasks(allTasksWithUpdates);
+      
+      // Find all tasks that changed (linking + realignment)
+      const finalTasksToUpdate = realignedTasks.filter(task => {
+        const originalTask = (locationTasks || []).find(orig => 
+          (orig.taskId || orig.id) === (task.taskId || task.id)
+        );
+        return !originalTask || 
+               originalTask.taskDate !== task.taskDate ||
+               originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+               originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+               originalTask.order !== task.order;
+      });
+      
+      console.log('Simple linking - final updates with realignment:', finalTasksToUpdate.map(t => ({ 
+        name: t.name, date: t.taskDate, sequential: t.dependentOnPrevious 
+      })));
+      
       // Submit the updates using batch mutation
-      batchUpdateTasksMutation.mutate([mainTask, ...updatedTasks]);
+      batchUpdateTasksMutation.mutate(finalTasksToUpdate);
     } else {
       console.log('No linked tasks found to process');
     }
