@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -22,10 +22,20 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies, realignDependentTasks } from '@shared/taskUtils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface DraggableTaskListProps {
   tasks: any[];
@@ -303,6 +313,21 @@ export default function DraggableTaskList({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // State for link confirmation dialog
+  const [linkConfirmDialog, setLinkConfirmDialog] = useState<{
+    show: boolean;
+    draggedTask: any;
+    linkedGroup: string;
+    originalPosition: number;
+    newPosition: number;
+  }>({
+    show: false,
+    draggedTask: null,
+    linkedGroup: '',
+    originalPosition: -1,
+    newPosition: -1
+  });
+
   // Fetch employees and assignments for task display
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -446,6 +471,62 @@ export default function DraggableTaskList({
     },
   });
 
+  // Handle linking the dragged task to the linked group
+  const handleConfirmLink = async () => {
+    const { draggedTask, linkedGroup, newPosition } = linkConfirmDialog;
+    
+    try {
+      console.log('🔗 LINKING: Adding task to linked group', {
+        task: draggedTask.name,
+        linkedGroup: linkedGroup
+      });
+      
+      // Update the task to be part of the linked group
+      const updatedTask = {
+        ...draggedTask,
+        linkedTaskGroup: linkedGroup,
+        dependentOnPrevious: false // Linked tasks are unsequential
+      };
+      
+      // Update the task via API
+      await apiRequest(`/api/tasks/${draggedTask.taskId || draggedTask.id}`, {
+        method: 'PUT',
+        body: updatedTask
+      });
+      
+      // Refresh task list
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+      onTaskUpdate();
+      
+      toast({
+        title: "Task Linked",
+        description: `${draggedTask.name} has been linked to the group.`
+      });
+      
+    } catch (error: any) {
+      console.error('Failed to link task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to link the task. Please try again.",
+        variant: "destructive"
+      });
+    }
+    
+    // Close dialog
+    setLinkConfirmDialog({ show: false, draggedTask: null, linkedGroup: '', originalPosition: -1, newPosition: -1 });
+  };
+
+  // Handle reverting the dragged task to original position
+  const handleRevertPosition = () => {
+    console.log('🔄 REVERTING: Task position restored');
+    
+    // Simply close the dialog - the task will stay in its original position
+    setLinkConfirmDialog({ show: false, draggedTask: null, linkedGroup: '', originalPosition: -1, newPosition: -1 });
+    
+    // Force refresh to ensure UI is in sync
+    queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -468,8 +549,38 @@ export default function DraggableTaskList({
       targetDate: sortedTasks[newIndex].taskDate
     });
 
-    // Handle reordering - linked tasks move as groups
     const originalDraggedTask = sortedTasks[oldIndex];
+    
+    // CRITICAL: Check if dragging between two linked tasks
+    if (!originalDraggedTask.linkedTaskGroup) {
+      const taskBefore = newIndex > 0 ? sortedTasks[newIndex - 1] : null;
+      const taskAfter = newIndex < sortedTasks.length - 1 ? sortedTasks[newIndex + 1] : null;
+      
+      // Check if inserting between two tasks from the same linked group
+      if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
+          taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup) {
+        
+        console.log('🔗 DETECTED: Dragging between linked tasks!', {
+          draggedTask: originalDraggedTask.name,
+          linkedGroup: taskBefore.linkedTaskGroup,
+          taskBefore: taskBefore.name,
+          taskAfter: taskAfter.name
+        });
+        
+        // Show confirmation dialog
+        setLinkConfirmDialog({
+          show: true,
+          draggedTask: originalDraggedTask,
+          linkedGroup: taskBefore.linkedTaskGroup,
+          originalPosition: oldIndex,
+          newPosition: newIndex
+        });
+        
+        return; // Stop processing until user decides
+      }
+    }
+
+    // Handle reordering - linked tasks move as groups
     let reorderedTasks: any[];
     
     if (originalDraggedTask.linkedTaskGroup) {
@@ -859,6 +970,30 @@ export default function DraggableTaskList({
           <div className="text-sm text-gray-600">Updating task dependencies...</div>
         </div>
       )}
+
+      {/* Link Confirmation Dialog */}
+      <AlertDialog open={linkConfirmDialog.show} onOpenChange={(open) => !open && handleRevertPosition()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Link className="w-5 h-5 text-blue-600" />
+              Link Task to Group?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You've placed "{linkConfirmDialog.draggedTask?.name}" between linked tasks. 
+              Would you like to link this task to the group so they all have the same date and move together?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleRevertPosition}>
+              No, revert position
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmLink}>
+              Yes, link to group
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
