@@ -2339,8 +2339,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     // Get fresh task data and realign tasks that weren't part of the unlinked group
                     try {
                       console.log('🔗 Fetching fresh task data from:', `/api/locations/${task.locationId}/tasks`);
-                      const response = await apiRequest(`/api/locations/${task.locationId}/tasks`);
+                      
+                      // Use fetch directly to avoid any caching issues with apiRequest
+                      const fetchResponse = await fetch(`/api/locations/${task.locationId}/tasks`);
+                      const response = await fetchResponse.json();
+                      
                       console.log('🔗 Fresh task data response:', response);
+                      console.log('🔗 Response type:', typeof response);
+                      console.log('🔗 Is array:', Array.isArray(response));
                       
                       if (response && Array.isArray(response)) {
                         const allLocationTasks = response as any[];
