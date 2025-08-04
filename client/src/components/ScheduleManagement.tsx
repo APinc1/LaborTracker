@@ -175,30 +175,7 @@ export default function ScheduleManagement() {
               </CardContent>
             </Card>
 
-            {/* All Projects View */}
-            {selectedProject === "ALL_PROJECTS" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>All Projects</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 mb-3">Showing tasks from all projects</p>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {projects.map((project: any) => (
-                      <div key={project.id} className="border-l-2 border-blue-200 pl-3">
-                        <h4 className="font-medium text-sm text-gray-800">{project.name}</h4>
-                        <div className="mt-1 space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                            <span className="text-xs text-gray-600">Multiple locations</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            
           </div>
 
           {/* Main Schedule View */}
