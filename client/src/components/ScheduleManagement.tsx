@@ -11,7 +11,7 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "da
 import CreateTaskModal from "./CreateTaskModal";
 
 export default function ScheduleManagement() {
-  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedProject, setSelectedProject] = useState<string>("ALL_PROJECTS");
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL_LOCATIONS");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
@@ -23,7 +23,7 @@ export default function ScheduleManagement() {
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/projects", selectedProject, "locations"],
-    enabled: !!selectedProject,
+    enabled: !!selectedProject && selectedProject !== "ALL_PROJECTS",
     staleTime: 30000,
   });
 
@@ -43,10 +43,17 @@ export default function ScheduleManagement() {
     const dayStr = format(day, 'yyyy-MM-dd');
     let filteredTasks = tasks.filter((task: any) => task.taskDate === dayStr);
     
-    // Filter by location if a specific location is selected
-    if (selectedLocation && selectedLocation !== "ALL_LOCATIONS") {
-      filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocation);
+    // Filter by project if a specific project is selected
+    if (selectedProject && selectedProject !== "ALL_PROJECTS") {
+      const projectLocations = locations.map((loc: any) => loc.locationId);
+      filteredTasks = filteredTasks.filter((task: any) => projectLocations.includes(task.locationId));
+      
+      // Filter by location if a specific location is selected within the project
+      if (selectedLocation && selectedLocation !== "ALL_LOCATIONS") {
+        filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocation);
+      }
     }
+    // If "ALL_PROJECTS" is selected, show all tasks without filtering
     
     return filteredTasks;
   };
@@ -80,7 +87,7 @@ export default function ScheduleManagement() {
           <Button 
             className="bg-primary hover:bg-primary/90"
             onClick={() => setIsCreateTaskModalOpen(true)}
-            disabled={!selectedProject}
+            disabled={selectedProject === "ALL_PROJECTS"}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Task
@@ -106,6 +113,7 @@ export default function ScheduleManagement() {
                     <SelectValue placeholder="Choose project" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="ALL_PROJECTS">All projects</SelectItem>
                     {projects.map((project: any) => (
                       <SelectItem key={project.id} value={project.id.toString()}>
                         {project.name}
@@ -116,23 +124,8 @@ export default function ScheduleManagement() {
               </CardContent>
             </Card>
 
-            {/* Calendar */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Calendar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => date && setSelectedDate(date)}
-                  className="rounded-md border"
-                />
-              </CardContent>
-            </Card>
-
             {/* Location Filter */}
-            {selectedProject && (
+            {selectedProject && selectedProject !== "ALL_PROJECTS" && (
               <Card>
                 <CardHeader>
                   <CardTitle>Location Filter</CardTitle>
@@ -166,6 +159,46 @@ export default function ScheduleManagement() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Calendar */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Calendar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  className="rounded-md border"
+                />
+              </CardContent>
+            </Card>
+
+            {/* All Projects View */}
+            {selectedProject === "ALL_PROJECTS" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>All Projects</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 mb-3">Showing tasks from all projects</p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {projects.map((project: any) => (
+                      <div key={project.id} className="border-l-2 border-blue-200 pl-3">
+                        <h4 className="font-medium text-sm text-gray-800">{project.name}</h4>
+                        <div className="mt-1 space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                            <span className="text-xs text-gray-600">Multiple locations</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Main Schedule View */}
@@ -177,10 +210,13 @@ export default function ScheduleManagement() {
                     Week of {format(startOfWeek(selectedDate), 'MMMM d, yyyy')}
                   </CardTitle>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    {selectedProject && (
+                    {selectedProject && selectedProject !== "ALL_PROJECTS" && (
                       <Badge variant="secondary">
                         {projects.find((p: any) => p.id.toString() === selectedProject)?.name}
                       </Badge>
+                    )}
+                    {selectedProject === "ALL_PROJECTS" && (
+                      <Badge variant="secondary">All Projects</Badge>
                     )}
                     {selectedLocation && selectedLocation !== "ALL_LOCATIONS" && (
                       <Badge variant="outline">
@@ -332,7 +368,7 @@ export default function ScheduleManagement() {
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
         selectedDate={format(selectedDate, 'yyyy-MM-dd')}
-        selectedProject={selectedProject ? parseInt(selectedProject) : undefined}
+        selectedProject={selectedProject && selectedProject !== "ALL_PROJECTS" ? parseInt(selectedProject) : undefined}
       />
     </div>
   );
