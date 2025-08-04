@@ -219,10 +219,12 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
       const assignments = Array.from(selectedEmployees).map(employeeId => ({
+        assignmentId: `${taskId}_${employeeId}`,
         taskId: taskId,
         employeeId: employeeId,
-        assignedHours: assignmentHours[employeeId] || 8,
-        actualHours: 0
+        assignmentDate: taskDate,
+        assignedHours: (assignmentHours[employeeId] || 8).toString(),
+        actualHours: null
       }));
 
       const promises = assignments.map(assignment =>

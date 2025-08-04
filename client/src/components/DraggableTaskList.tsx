@@ -18,7 +18,7 @@ import {
 import {
   CSS
 } from '@dnd-kit/utilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,10 +42,12 @@ interface SortableTaskItemProps {
   onEditTask: (task: any) => void;
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
+  employees: any[];
+  assignments: any[];
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -123,6 +125,66 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask 
     }
   };
 
+  // Get assigned employees for this task
+  const getAssignedEmployees = (task: any) => {
+    const taskAssignments = assignments.filter(assignment => 
+      assignment.taskId === task.id || assignment.taskId === task.taskId
+    );
+    
+    return taskAssignments.map(assignment => {
+      const employee = employees.find(emp => emp.id === assignment.employeeId);
+      if (!employee) return null;
+      
+      return {
+        ...employee,
+        assignedHours: assignment.assignedHours
+      };
+    }).filter(Boolean);
+  };
+
+  // Format assigned employees display
+  const formatAssignedEmployees = (assignedEmployees: any[]) => {
+    if (assignedEmployees.length === 0) return null;
+    
+    // Sort employees: foremen first, drivers last, others in between
+    const sortedEmployees = [...assignedEmployees].sort((a, b) => {
+      if (a.isForeman && !b.isForeman) return -1;
+      if (!a.isForeman && b.isForeman) return 1;
+      if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
+      if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
+      return 0;
+    });
+
+    return sortedEmployees.map((employee, index) => {
+      const hours = parseFloat(employee.assignedHours);
+      const isDriver = employee.primaryTrade === 'Driver';
+      const isForeman = employee.isForeman;
+      const showHours = hours !== 8;
+      
+      let displayText = employee.name;
+      if (isDriver) {
+        displayText += ' (Driver)';
+      }
+      if (showHours) {
+        displayText += ` (${hours}h)`;
+      }
+      
+      return (
+        <div 
+          key={employee.id} 
+          className={`text-xs ${isForeman ? 'font-bold' : ''} ${
+            index === 0 ? '' : 'mt-1'
+          }`}
+        >
+          {displayText}
+        </div>
+      );
+    });
+  };
+
+  const assignedEmployees = getAssignedEmployees(task);
+  const assignedEmployeesDisplay = formatAssignedEmployees(assignedEmployees);
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <Card className={`mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${
@@ -176,6 +238,15 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask 
                   </Badge>
                 )}
               </div>
+
+              {/* Assigned employees */}
+              {assignedEmployeesDisplay && assignedEmployeesDisplay.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <div className="text-gray-700">
+                    {assignedEmployeesDisplay}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status badge */}
@@ -230,6 +301,17 @@ export default function DraggableTaskList({
 }: DraggableTaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch employees and assignments for task display
+  const { data: employees = [] } = useQuery({
+    queryKey: ["/api/employees"],
+    staleTime: 30000,
+  });
+
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    staleTime: 30000,
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -734,6 +816,8 @@ export default function DraggableTaskList({
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
+                employees={employees}
+                assignments={assignments}
               />
             ))}
           </div>
