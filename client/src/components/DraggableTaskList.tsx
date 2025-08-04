@@ -554,7 +554,8 @@ export default function DraggableTaskList({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    console.log('🚀 DRAG END EVENT TRIGGERED:', { activeId: event.active.id, overId: event.over?.id });
+    console.log('🚀🚀🚀 DRAG END EVENT TRIGGERED 🚀🚀🚀:', { activeId: event.active.id, overId: event.over?.id });
+    alert('DRAG HANDLER CALLED!'); // TEMPORARY DEBUG
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
