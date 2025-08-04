@@ -43,12 +43,11 @@ interface SortableTaskItemProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   employees: any[];
-  crews: any[];
   assignments: any[];
 }
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, crews, assignments }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
   const {
     attributes,
     listeners,
@@ -144,55 +143,12 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     }).filter(Boolean);
   };
 
-  // Get crews that have all members assigned to this task
-  const getAssignedCrews = (task: any) => {
-    const taskId = task.id || task.taskId;
-    const taskAssignments = assignments.filter(assignment => 
-      assignment.taskId === taskId
-    );
-    const assignedEmployeeIds = new Set(taskAssignments.map(a => a.employeeId));
-
-    return crews.filter(crew => {
-      const crewMembers = employees.filter(emp => emp.crewId === crew.id);
-      // A crew is considered "assigned" if all its members are assigned to this task
-      return crewMembers.length > 0 && crewMembers.every(member => assignedEmployeeIds.has(member.id));
-    });
-  };
-
   // Format assigned employees display
-  const formatAssignedEmployees = (assignedEmployees: any[], assignedCrews: any[]) => {
-    const elements = [];
-
-    // Add crew information first
-    if (assignedCrews.length > 0) {
-      assignedCrews.forEach((crew, index) => {
-        const crewMembers = employees.filter(emp => emp.crewId === crew.id);
-        const totalHours = assignedEmployees
-          .filter(emp => emp.crewId === crew.id)
-          .reduce((sum, emp) => sum + parseFloat(emp.assignedHours), 0);
-
-        elements.push(
-          <div key={`crew-${crew.id}`} className={`text-xs font-medium text-blue-700 ${index === 0 ? '' : 'mt-1'}`}>
-            🔧 {crew.name} ({crewMembers.length} members, {totalHours}h total)
-          </div>
-        );
-      });
-    }
-
-    // Then add individual employees that aren't part of assigned crews
-    const crewMemberIds = new Set();
-    assignedCrews.forEach(crew => {
-      employees.filter(emp => emp.crewId === crew.id).forEach(emp => {
-        crewMemberIds.add(emp.id);
-      });
-    });
-
-    const individualEmployees = assignedEmployees.filter(emp => !crewMemberIds.has(emp.id));
+  const formatAssignedEmployees = (assignedEmployees: any[]) => {
+    if (assignedEmployees.length === 0) return null;
     
-    if (individualEmployees.length === 0 && assignedCrews.length === 0) return null;
-    
-    // Sort individual employees: foremen first, drivers last, others in between
-    const sortedEmployees = [...individualEmployees].sort((a, b) => {
+    // Sort employees: foremen first, drivers last, others in between
+    const sortedEmployees = [...assignedEmployees].sort((a, b) => {
       if (a.isForeman && !b.isForeman) return -1;
       if (!a.isForeman && b.isForeman) return 1;
       if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
@@ -200,8 +156,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       return 0;
     });
 
-    // Add individual employees
-    sortedEmployees.forEach((employee, index) => {
+    return sortedEmployees.map((employee, index) => {
       const hours = parseFloat(employee.assignedHours);
       const isDriver = employee.primaryTrade === 'Driver';
       const isForeman = employee.isForeman;
@@ -215,25 +170,21 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         displayText += ` (${hours}h)`;
       }
       
-      const startIndex = elements.length === 0 ? 0 : elements.length;
-      elements.push(
+      return (
         <div 
           key={employee.id} 
           className={`text-xs ${isForeman ? 'font-bold' : ''} ${
-            startIndex === 0 && index === 0 ? '' : 'mt-1'
+            index === 0 ? '' : 'mt-1'
           }`}
         >
           {displayText}
         </div>
       );
     });
-
-    return elements.length > 0 ? elements : null;
   };
 
   const assignedEmployees = getAssignedEmployees(task);
-  const assignedCrews = getAssignedCrews(task);
-  const assignedEmployeesDisplay = formatAssignedEmployees(assignedEmployees, assignedCrews);
+  const assignedEmployeesDisplay = formatAssignedEmployees(assignedEmployees);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -352,14 +303,9 @@ export default function DraggableTaskList({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch employees, crews, and assignments for task display
+  // Fetch employees and assignments for task display
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
-    staleTime: 30000,
-  });
-
-  const { data: crews = [] } = useQuery({
-    queryKey: ["/api/crews"],
     staleTime: 30000,
   });
 
@@ -872,7 +818,6 @@ export default function DraggableTaskList({
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
                 employees={employees}
-                crews={crews}
                 assignments={assignments}
               />
             ))}
