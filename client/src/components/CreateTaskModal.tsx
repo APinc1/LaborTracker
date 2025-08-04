@@ -352,13 +352,14 @@ export default function CreateTaskModal({
       order: 0 // Will be set correctly below
     };
 
-    // Update all linked tasks to have the same group, chosen date, and proper sequential status
-    // Update all tasks to have the same group and chosen date
+    // Update all linked tasks to have the same group and chosen date, but preserve their original sequential status
+    // CRITICAL: When linking tasks, we MUST preserve the existing sequential status of linked tasks
     const tasksToUpdate = linkedTasks.map((task) => ({
       ...task,
       linkedTaskGroup,
       taskDate: selectedOption.date,
-      dependentOnPrevious: selectedOption.type === 'unsequential' ? false : true // Set based on position choice
+      // PRESERVE the original dependentOnPrevious status of existing tasks - don't change it!
+      dependentOnPrevious: task.dependentOnPrevious
     }));
     
     // Create complete task list with ALL tasks (existing + new)
