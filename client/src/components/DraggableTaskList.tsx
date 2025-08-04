@@ -481,26 +481,52 @@ export default function DraggableTaskList({
         linkedGroup: linkedGroup
       });
       
+      // Find the target date for the linked group
+      const linkedGroupTasks = sortedTasks.filter(t => t.linkedTaskGroup === linkedGroup);
+      const targetDate = linkedGroupTasks.length > 0 ? linkedGroupTasks[0].taskDate : draggedTask.taskDate;
+      
       // Update the task to be part of the linked group
       const updatedTask = {
         ...draggedTask,
         linkedTaskGroup: linkedGroup,
+        taskDate: targetDate, // Set to same date as linked group
         dependentOnPrevious: false // Linked tasks are unsequential
       };
       
-      // Update the task via API
-      await apiRequest(`/api/tasks/${draggedTask.taskId || draggedTask.id}`, {
-        method: 'PUT',
-        body: updatedTask
+      // Create updated task list with the newly linked task
+      const allTasks = sortedTasks.map(task => {
+        if ((task.taskId || task.id) === (draggedTask.taskId || draggedTask.id)) {
+          return updatedTask;
+        }
+        return task;
       });
       
-      // Refresh task list
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
-      onTaskUpdate();
+      // CRITICAL: Apply sequential realignment to update downstream tasks
+      console.log('🔄 REALIGNING: Sequential tasks after linking');
+      const realignedTasks = realignDependentTasks(allTasks);
+      
+      // Find tasks that actually changed
+      const tasksToUpdate = realignedTasks.filter(task => {
+        const originalTask = sortedTasks.find(orig => 
+          (orig.taskId || orig.id) === (task.taskId || task.id)
+        );
+        return !originalTask || 
+               originalTask.taskDate !== task.taskDate || 
+               originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+               originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+      });
+      
+      console.log('🔄 BATCH UPDATE: Tasks to update after linking:', 
+                  tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, linked: !!t.linkedTaskGroup })));
+      
+      // Batch update all affected tasks
+      if (tasksToUpdate.length > 0) {
+        await batchUpdateTasksMutation.mutateAsync(tasksToUpdate);
+      }
       
       toast({
         title: "Task Linked",
-        description: `${draggedTask.name} has been linked to the group.`
+        description: `${draggedTask.name} has been linked to the group. Sequential tasks updated.`
       });
       
     } catch (error: any) {
