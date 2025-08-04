@@ -108,6 +108,19 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
     return totalDays > 1 ? `Day ${dayNumber} of ${totalDays}` : null;
   };
 
+  // Helper function to determine task status
+  const getTaskStatus = (task: any) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    if (task.actualHours && parseFloat(task.actualHours) > 0) {
+      return 'complete';
+    } else if (task.taskDate === currentDate) {
+      return 'in_progress';
+    } else {
+      return 'upcoming';
+    }
+  };
+
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <Card className={`mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${
@@ -123,7 +136,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
             {/* Task info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
-                {getStatusIcon(task.status || 'upcoming')}
+                {getStatusIcon(getTaskStatus(task))}
                 <h4 className="font-medium text-sm truncate">{task.name}</h4>
                 {getTaskDayInfo(task, tasks) && (
                   <Badge variant="secondary" className="text-xs">
@@ -164,9 +177,9 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask }: SortableTas
             </div>
 
             {/* Status badge */}
-            <Badge className={`text-xs ${getStatusColor(task.status || 'upcoming')}`}>
-              {task.status === 'in_progress' ? 'In Progress' : 
-               task.status === 'complete' ? 'Complete' : 'Upcoming'}
+            <Badge className={`text-xs ${getStatusColor(getTaskStatus(task))}`}>
+              {getTaskStatus(task) === 'in_progress' ? 'In Progress' : 
+               getTaskStatus(task) === 'complete' ? 'Complete' : 'Upcoming'}
             </Badge>
 
             {/* Action buttons */}

@@ -68,6 +68,18 @@ export default function ScheduleManagement() {
     }
   };
 
+  const getTaskStatus = (task: any) => {
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    if (task.actualHours && parseFloat(task.actualHours) > 0) {
+      return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+    } else if (task.taskDate === currentDate) {
+      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+    } else {
+      return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
   if (projectsLoading) {
     return (
       <div className="flex-1 overflow-y-auto p-6">
@@ -240,12 +252,20 @@ export default function ScheduleManagement() {
                                 className="border border-gray-200 rounded p-2 hover:shadow-sm transition-shadow cursor-pointer"
                               >
                                 <div className="flex items-center justify-between mb-1">
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-xs ${getTaskTypeColor(task.taskType)}`}
-                                  >
-                                    {task.taskType}
-                                  </Badge>
+                                  <div className="flex items-center space-x-1">
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${getTaskTypeColor(task.taskType)}`}
+                                    >
+                                      {task.taskType}
+                                    </Badge>
+                                    <Badge
+                                      variant="secondary"
+                                      className={`text-xs ${getTaskStatus(task).color}`}
+                                    >
+                                      {getTaskStatus(task).label}
+                                    </Badge>
+                                  </div>
                                   <span className="text-xs text-gray-500">
                                     {task.startTime || '8:00 AM'}
                                   </span>
@@ -301,6 +321,9 @@ export default function ScheduleManagement() {
                             <div className="flex items-center space-x-2">
                               <Badge className={getTaskTypeColor(task.taskType)}>
                                 {task.taskType}
+                              </Badge>
+                              <Badge className={getTaskStatus(task).color}>
+                                {getTaskStatus(task).label}
                               </Badge>
                               <span className="text-sm text-gray-500">
                                 {task.startTime || '8:00 AM'}
