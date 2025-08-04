@@ -581,8 +581,16 @@ export default function DraggableTaskList({
     
     // CRITICAL: Check if dragging between two linked tasks
     if (!originalDraggedTask.linkedTaskGroup) {
-      const taskBefore = newIndex > 0 ? sortedTasks[newIndex - 1] : null;
-      const taskAfter = newIndex < sortedTasks.length - 1 ? sortedTasks[newIndex + 1] : null;
+      // IMPORTANT: When inserting at newIndex, taskBefore is at newIndex-1, taskAfter is at newIndex
+      // But we need to account for the fact that the dragged task might shift indices
+      let adjustedIndex = newIndex;
+      if (oldIndex < newIndex) {
+        // Dragging down: the newIndex shifts down by 1 because we're removing from above
+        adjustedIndex = newIndex;
+      }
+      
+      const taskBefore = adjustedIndex > 0 ? sortedTasks[adjustedIndex - 1] : null;
+      const taskAfter = adjustedIndex < sortedTasks.length ? sortedTasks[adjustedIndex] : null;
       
       console.log('🔍 DRAG DETECTION DEBUG:', {
         draggedTask: originalDraggedTask.name,
