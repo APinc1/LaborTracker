@@ -50,6 +50,15 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
   const [assignmentHours, setAssignmentHours] = useState<Record<string, number>>({});
   const { toast } = useToast();
 
+  // Reset state when modal opens/closes or taskId changes
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedEmployees(new Set());
+      setSelectedCrews(new Set());
+      setAssignmentHours({});
+    }
+  }, [isOpen, taskId]);
+
   // Fetch employees
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -83,22 +92,29 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
 
   // Initialize selections with existing assignments
   React.useEffect(() => {
-    if (existingAssignments.length > 0 && employees.length > 0) {
-      const existingEmployeeIds = existingAssignments.map((assignment: any) => {
-        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-        return employee?.teamMemberId;
-      }).filter(Boolean);
-      
-      const existingHours: Record<string, number> = {};
-      existingAssignments.forEach((assignment: any) => {
-        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-        if (employee) {
-          existingHours[employee.teamMemberId] = parseFloat(assignment.assignedHours);
-        }
-      });
+    if (employees.length > 0) {
+      if (existingAssignments.length > 0) {
+        const existingEmployeeIds = existingAssignments.map((assignment: any) => {
+          const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+          return employee?.teamMemberId;
+        }).filter(Boolean);
+        
+        const existingHours: Record<string, number> = {};
+        existingAssignments.forEach((assignment: any) => {
+          const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+          if (employee) {
+            existingHours[employee.teamMemberId] = parseFloat(assignment.assignedHours);
+          }
+        });
 
-      setSelectedEmployees(new Set(existingEmployeeIds));
-      setAssignmentHours(existingHours);
+        setSelectedEmployees(new Set(existingEmployeeIds));
+        setAssignmentHours(existingHours);
+      } else {
+        // Clear selections if no existing assignments
+        setSelectedEmployees(new Set());
+        setSelectedCrews(new Set());
+        setAssignmentHours({});
+      }
     }
   }, [existingAssignments, employees]);
 
