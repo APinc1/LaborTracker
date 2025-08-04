@@ -102,6 +102,25 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     }
   }, [existingAssignments, employees]);
 
+  // Clear existing assignments function
+  const clearExistingAssignmentsMutation = useMutation({
+    mutationFn: async () => {
+      if (existingAssignments.length === 0) return;
+      
+      const deletePromises = existingAssignments.map((assignment: any) =>
+        apiRequest(`/api/assignments/${assignment.id}`, {
+          method: 'DELETE'
+        })
+      );
+      
+      return Promise.all(deletePromises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+    }
+  });
+
   // Calculate employee availability for the task date
   const calculateEmployeeAvailability = (employeeId: string): EmployeeWithAvailability => {
     const employee = (employees as any[]).find((emp: any) => emp.teamMemberId === employeeId);
@@ -246,6 +265,12 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
+      // First, clear existing assignments
+      if (existingAssignments.length > 0) {
+        await clearExistingAssignmentsMutation.mutateAsync();
+      }
+      
+      // Then create new assignments
       const assignments = Array.from(selectedEmployees).map(teamMemberId => {
         const employee = (employees as any[]).find(emp => emp.teamMemberId === teamMemberId);
         if (!employee) return null;
@@ -259,6 +284,8 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
           actualHours: null
         };
       }).filter(Boolean);
+
+      if (assignments.length === 0) return [];
 
       const promises = assignments.map(assignment =>
         apiRequest('/api/assignments', {
@@ -399,11 +426,21 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
                         <div>
                           <h4 className={`font-medium text-sm ${employee.status === 'full' ? 'line-through text-red-600' : ''}`}>
                             {employee.name}
+                            {employee.isForeman && (
+                              <Badge variant="default" className="ml-2 text-xs bg-blue-600">
+                                Foreman
+                              </Badge>
+                            )}
                           </h4>
                           <p className="text-xs text-gray-500">{employee.teamMemberId}</p>
-                          <Badge variant="outline" className="text-xs">
-                            {employee.employeeType}
-                          </Badge>
+                          <div className="flex gap-1 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {employee.employeeType}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {employee.primaryTrade}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="text-right">
                           {employee.status === 'full' && <Badge variant="destructive" className="text-xs">8h Booked</Badge>}
@@ -473,7 +510,8 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
               onClick={() => createAssignmentsMutation.mutate()}
               disabled={selectedEmployees.size === 0 || createAssignmentsMutation.isPending}
             >
-              {createAssignmentsMutation.isPending ? 'Creating...' : 'Create Assignments'}
+              {createAssignmentsMutation.isPending ? 'Saving...' : 
+               existingAssignments.length > 0 ? 'Update Assignments' : 'Create Assignments'}
             </Button>
           </div>
         </div>
