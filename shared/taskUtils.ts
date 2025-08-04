@@ -231,9 +231,10 @@ export function realignDependentTasks(tasks: any[]): any[] {
   
   for (let i = 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
-    const previousTask = updatedTasks[i - 1];
+    const previousTask = updatedTasks[i - 1]; // This gets the UPDATED previous task
     
     console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
+    console.log(`🔧 DEBUG: Previous task is "${previousTask.name}" with date: ${previousTask.taskDate}`);
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
