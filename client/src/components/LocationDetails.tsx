@@ -20,6 +20,7 @@ import EditTaskModal from "./EditTaskModal";
 import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 import TaskDetailModal from "./TaskDetailModal";
+import AssignmentModal from "./AssignmentModal";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -66,6 +67,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [taskToDelete, setTaskToDelete] = useState<any>(null);
   const [taskDetailModalOpen, setTaskDetailModalOpen] = useState(false);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -80,8 +83,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   };
 
   const handleAssignTaskClick = (task: any) => {
-    setSelectedTaskForDetail(task);
-    setTaskDetailModalOpen(true);
+    setSelectedTaskForAssignment(task);
+    setAssignmentModalOpen(true);
   };
 
   const handleDeleteTask = async (taskToDelete: any) => {
@@ -1491,7 +1494,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         selectedLocation={location?.locationId || locationId}
       />
 
-      {/* Task Detail Modal for Assignments */}
+      {/* Task Detail Modal */}
       <TaskDetailModal
         isOpen={taskDetailModalOpen}
         onClose={() => {
@@ -1499,6 +1502,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           setSelectedTaskForDetail(null);
         }}
         taskId={selectedTaskForDetail?.id || selectedTaskForDetail?.taskId}
+      />
+
+      {/* Assignment Modal */}
+      <AssignmentModal
+        isOpen={assignmentModalOpen}
+        onClose={() => {
+          setAssignmentModalOpen(false);
+          setSelectedTaskForAssignment(null);
+        }}
+        taskId={selectedTaskForAssignment?.id || selectedTaskForAssignment?.taskId}
+        taskDate={selectedTaskForAssignment?.taskDate || ''}
       />
 
       {/* Delete Confirmation Dialog */}
