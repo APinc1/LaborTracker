@@ -562,7 +562,6 @@ export default function AssignmentManagement() {
           </Dialog>
         </div>
       </header>
-
       <main className="p-6">
         <div className="space-y-6">
           {/* Filters */}
@@ -881,12 +880,11 @@ export default function AssignmentManagement() {
           </Card>
         </div>
       </main>
-
       {/* Confirmation dialog for empty actual hours */}
       <AlertDialog open={showEmptyHoursDialog} onOpenChange={setShowEmptyHoursDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Empty Actual Hours Found</AlertDialogTitle>
+            <AlertDialogTitle>Empty Hours Field</AlertDialogTitle>
             <AlertDialogDescription>
               Some assignments have empty actual hours fields. Would you like to set them to 0 hours (for employees who didn't work) or skip saving those assignments?
             </AlertDialogDescription>
