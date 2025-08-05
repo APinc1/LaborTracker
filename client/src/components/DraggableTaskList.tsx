@@ -587,10 +587,13 @@ export default function DraggableTaskList({
 
     console.log('Drag operation:', { 
       draggedTask: sortedTasks[oldIndex].name, 
+      targetTask: sortedTasks[newIndex].name,
       oldIndex, 
       newIndex,
       draggedDate: sortedTasks[oldIndex].taskDate,
-      targetDate: sortedTasks[newIndex].taskDate
+      targetDate: sortedTasks[newIndex].taskDate,
+      activeId: active.id,
+      overId: over.id
     });
 
     const originalDraggedTask = sortedTasks[oldIndex];
@@ -600,16 +603,22 @@ export default function DraggableTaskList({
       // Create a temporary array without the dragged task to see the final positions
       const tasksWithoutDragged = sortedTasks.filter((_, index) => index !== oldIndex);
       
-      // Calculate where the task will be inserted in the new array
+      // CRITICAL: In dnd-kit, when you drop on a task, you're inserting BEFORE that task
+      // So if dragging to position of task X, the insertion point is BEFORE task X
       let insertionIndex = newIndex;
       if (oldIndex < newIndex) {
-        // When dragging down, insertion index shifts by -1 because we removed the task from above
-        insertionIndex = newIndex - 1;
+        // When dragging down, the target index doesn't change the insertion logic
+        // We're still inserting BEFORE the target task
+        insertionIndex = newIndex - 1; // Account for removed task shifting indices
       }
       
-      // Now get the tasks that would be before and after the insertion point
+      // Now get the tasks that would be before and after the insertion point  
       const taskBefore = insertionIndex > 0 ? tasksWithoutDragged[insertionIndex - 1] : null;
       const taskAfter = insertionIndex < tasksWithoutDragged.length ? tasksWithoutDragged[insertionIndex] : null;
+      
+      // Log the full task order for debugging
+      console.log('🔍 FULL TASK ORDER:', sortedTasks.map((t, i) => `${i}: ${t.name} (linked: ${!!t.linkedTaskGroup})`));
+      console.log('🔍 TASKS WITHOUT DRAGGED:', tasksWithoutDragged.map((t, i) => `${i}: ${t.name} (linked: ${!!t.linkedTaskGroup})`));
       
       console.log('🔍 DRAG DETECTION DEBUG:', {
         draggedTask: originalDraggedTask.name,
