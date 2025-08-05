@@ -337,19 +337,38 @@ export default function AssignmentManagement() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  {/* Assignment Date - moved to top */}
                   <FormField
                     control={form.control}
-                    name="assignmentId"
+                    name="assignmentDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Assignment ID</FormLabel>
+                        <FormLabel>Assignment Date</FormLabel>
                         <FormControl>
-                          <Input placeholder="AUTO-GENERATED" {...field} />
+                          <Input type="date" {...field} disabled={!!editingAssignment} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  
+                  {/* Assignment ID - only show for create mode */}
+                  {!editingAssignment && (
+                    <FormField
+                      control={form.control}
+                      name="assignmentId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Assignment ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="AUTO-GENERATED" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  
                   <FormField
                     control={form.control}
                     name="taskId"
@@ -363,50 +382,54 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {tasks.map((task: any) => (
-                              <SelectItem key={task.id} value={task.id.toString()}>
-                                {task.name} - {task.costCode}
-                              </SelectItem>
-                            ))}
+                            {tasks
+                              .filter((task: any) => {
+                                if (!editingAssignment) return true;
+                                // Filter tasks to only show tasks for the assignment date
+                                const assignmentDate = form.getValues('assignmentDate');
+                                return task.startDate <= assignmentDate && task.endDate >= assignmentDate;
+                              })
+                              .map((task: any) => (
+                                <SelectItem key={task.id} value={task.id.toString()}>
+                                  {task.name} - {task.costCode}
+                                </SelectItem>
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  
                   <FormField
                     control={form.control}
                     name="employeeId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Employee</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        {editingAssignment ? (
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select employee" />
-                            </SelectTrigger>
+                            <Input 
+                              value={employees.find((emp: any) => emp.id.toString() === field.value)?.name || 'Unknown Employee'} 
+                              disabled 
+                            />
                           </FormControl>
-                          <SelectContent>
-                            {employees.map((employee: any) => (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {employee.name} ({employee.employeeType})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="assignmentDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Assignment Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
+                        ) : (
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select employee" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {employees.map((employee: any) => (
+                                <SelectItem key={employee.id} value={employee.id.toString()}>
+                                  {employee.name} ({employee.employeeType})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
