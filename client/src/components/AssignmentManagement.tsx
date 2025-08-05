@@ -82,6 +82,7 @@ export default function AssignmentManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
       toast({ title: "Success", description: "Assignment updated successfully" });
       setEditingAssignment(null);
       form.reset();
@@ -97,6 +98,7 @@ export default function AssignmentManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
       toast({ title: "Success", description: "Assignment deleted successfully" });
     },
     onError: () => {
@@ -143,6 +145,7 @@ export default function AssignmentManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
       toast({ title: "Success", description: "Actual hours updated successfully" });
       setBulkEditMode(false);
       setEditingActualHours({});
