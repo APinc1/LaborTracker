@@ -640,27 +640,49 @@ export default function DraggableTaskList({
       
       // Check if inserting between two tasks from the same linked group
       // CRITICAL: Both taskBefore AND taskAfter must exist AND be from the same linked group
+      // AND we must be inserting truly BETWEEN them, not at the end of the group
       if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
           taskBefore !== taskAfter) { // Ensure they are different tasks
         
-        console.log('🔗 DETECTED: Dragging between linked tasks!', {
-          draggedTask: originalDraggedTask.name,
-          linkedGroup: taskBefore.linkedTaskGroup,
-          taskBefore: taskBefore.name,
-          taskAfter: taskAfter.name
+        // Additional check: Make sure we're not inserting at the end of a linked group
+        // If the newIndex points to the last task in a linked group, we're inserting AFTER the group
+        const targetTask = sortedTasks[newIndex];
+        const linkedGroupTasks = sortedTasks.filter(t => t.linkedTaskGroup === targetTask.linkedTaskGroup);
+        const groupTaskIndices = linkedGroupTasks.map(t => sortedTasks.indexOf(t)).sort((a, b) => a - b);
+        const isLastInGroup = newIndex === Math.max(...groupTaskIndices);
+        
+        console.log('🔍 ADDITIONAL GROUP CHECK:', {
+          targetTask: targetTask.name,
+          linkedGroup: targetTask.linkedTaskGroup,
+          groupTaskIndices,
+          newIndex,
+          isLastInGroup,
+          shouldSkipDetection: isLastInGroup
         });
         
-        // Show confirmation dialog
-        setLinkConfirmDialog({
-          show: true,
-          draggedTask: originalDraggedTask,
-          linkedGroup: taskBefore.linkedTaskGroup,
-          originalPosition: oldIndex,
-          newPosition: newIndex
-        });
-        
-        return; // Stop processing until user decides
+        // If dragging to the last task in a linked group, treat as dragging AFTER the group
+        if (isLastInGroup) {
+          console.log('🚫 SKIPPING DETECTION: Dragging to end of linked group, treating as AFTER group');
+        } else {
+          console.log('🔗 DETECTED: Dragging between linked tasks!', {
+            draggedTask: originalDraggedTask.name,
+            linkedGroup: taskBefore.linkedTaskGroup,
+            taskBefore: taskBefore.name,
+            taskAfter: taskAfter.name
+          });
+          
+          // Show confirmation dialog
+          setLinkConfirmDialog({
+            show: true,
+            draggedTask: originalDraggedTask,
+            linkedGroup: taskBefore.linkedTaskGroup,
+            originalPosition: oldIndex,
+            newPosition: newIndex
+          });
+          
+          return; // Stop processing until user decides
+        }
       }
     }
 
