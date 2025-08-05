@@ -58,6 +58,9 @@ interface SortableTaskItemProps {
 
 // Individual sortable task item component
 function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
+  // Disable drag and drop for completed tasks
+  const isTaskComplete = task.status === 'complete';
+  
   const {
     attributes,
     listeners,
@@ -65,7 +68,10 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     transform,
     transition,
     isDragging
-  } = useSortable({ id: task.taskId || task.id });
+  } = useSortable({ 
+    id: task.taskId || task.id,
+    disabled: isTaskComplete
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -235,14 +241,21 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
-      <Card className={`mb-2 cursor-grab active:cursor-grabbing transition-all duration-200 ${
-        isDragging ? 'shadow-xl border-blue-300 bg-blue-50' : 'hover:shadow-md'
+      <Card className={`mb-2 transition-all duration-200 ${
+        isTaskComplete 
+          ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-75' 
+          : isDragging 
+            ? 'shadow-xl border-blue-300 bg-blue-50 cursor-grabbing' 
+            : 'hover:shadow-md cursor-grab'
       }`}>
         <CardContent className="p-4">
           <div className="flex items-center space-x-3">
             {/* Drag handle */}
-            <div {...listeners} className="cursor-grab active:cursor-grabbing">
-              <GripVertical className="w-4 h-4 text-gray-400" />
+            <div 
+              {...(isTaskComplete ? {} : listeners)} 
+              className={isTaskComplete ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}
+            >
+              <GripVertical className={`w-4 h-4 ${isTaskComplete ? 'text-gray-300' : 'text-gray-400'}`} />
             </div>
 
             {/* Task info */}
@@ -609,6 +622,34 @@ export default function DraggableTaskList({
       return;
     }
 
+    // Prevent dragging tasks before any completed tasks
+    const draggedTask = sortedTasks[oldIndex];
+    const targetTask = sortedTasks[newIndex];
+    
+    // Check if there are any completed tasks before the target position
+    const completedTasksBeforeTarget = sortedTasks.slice(0, newIndex).filter(t => t.status === 'complete');
+    
+    if (completedTasksBeforeTarget.length > 0 && draggedTask.status !== 'complete') {
+      console.log('🚫 DRAG END: Cannot drag task before completed tasks');
+      toast({
+        title: "Invalid Move",
+        description: "Cannot move tasks before completed tasks",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Prevent dragging completed tasks
+    if (draggedTask.status === 'complete') {
+      console.log('🚫 DRAG END: Cannot drag completed tasks');
+      toast({
+        title: "Invalid Move", 
+        description: "Cannot move completed tasks",
+        variant: "destructive"
+      });
+      return;
+    }
+
     console.log('Drag operation:', { 
       draggedTask: sortedTasks[oldIndex].name, 
       targetTask: sortedTasks[newIndex].name,
@@ -814,7 +855,7 @@ export default function DraggableTaskList({
     }));
 
     const draggedTaskNewIndex = tasksWithUpdatedOrder.findIndex(t => (t.taskId || t.id) === active.id);
-    const draggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
+    const reorderedDraggedTask = tasksWithUpdatedOrder[draggedTaskNewIndex];
     
     // Intelligent date assignment based on task movement
     if (draggedTaskNewIndex >= 0) {
@@ -822,13 +863,13 @@ export default function DraggableTaskList({
       const nextTask = draggedTaskNewIndex < tasksWithUpdatedOrder.length - 1 ? tasksWithUpdatedOrder[draggedTaskNewIndex + 1] : null;
       
       console.log('Task positioning:', {
-        draggedTask: draggedTask.name,
+        draggedTask: reorderedDraggedTask.name,
         newIndex: draggedTaskNewIndex,
         previousTask: previousTask?.name,
         previousDate: previousTask?.taskDate,
         nextTask: nextTask?.name,
         nextDate: nextTask?.taskDate,
-        isDraggedDependent: draggedTask.dependentOnPrevious
+        isDraggedDependent: reorderedDraggedTask.dependentOnPrevious
       });
       
       // If moving to first position
@@ -836,7 +877,7 @@ export default function DraggableTaskList({
         // Take the date of the original first task
         const originalFirstTask = tasksWithUpdatedOrder[1]; // Now at position 1
         if (originalFirstTask) {
-          draggedTask.taskDate = originalFirstTask.taskDate;
+          reorderedDraggedTask.taskDate = originalFirstTask.taskDate;
           
           // CRITICAL: When a task moves to first position, the displaced task should become sequential
           // This maintains the dependency chain - the displaced task now depends on the new first task
@@ -856,13 +897,13 @@ export default function DraggableTaskList({
         }
         
         // CRITICAL: First task must always be non-sequential
-        console.log('Making first task unsequential:', draggedTask.name, 'was:', draggedTask.dependentOnPrevious);
-        draggedTask.dependentOnPrevious = false;
+        console.log('Making first task unsequential:', reorderedDraggedTask.name, 'was:', reorderedDraggedTask.dependentOnPrevious);
+        reorderedDraggedTask.dependentOnPrevious = false;
         
         // If dragged task has linked partners, make them all unsequential too
-        if (draggedTask.linkedTaskGroup) {
+        if (reorderedDraggedTask.linkedTaskGroup) {
           tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
-            if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+            if (task.linkedTaskGroup === reorderedDraggedTask.linkedTaskGroup) {
               console.log('Making linked task unsequential:', task.name);
               return { ...task, dependentOnPrevious: false };
             }
@@ -875,15 +916,15 @@ export default function DraggableTaskList({
         // When moving before a sequential task, adopt that task's date
         if (nextTask && nextTask.dependentOnPrevious) {
           console.log('Assigning new date:', {
-            taskName: draggedTask.name,
-            oldDate: draggedTask.taskDate,
+            taskName: reorderedDraggedTask.name,
+            oldDate: reorderedDraggedTask.taskDate,
             newDate: nextTask.taskDate
           });
-          draggedTask.taskDate = nextTask.taskDate;
+          reorderedDraggedTask.taskDate = nextTask.taskDate;
           // If dragged task has linked partners, sync their dates too
-          if (draggedTask.linkedTaskGroup) {
+          if (reorderedDraggedTask.linkedTaskGroup) {
             tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
-              if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+              if (task.linkedTaskGroup === reorderedDraggedTask.linkedTaskGroup) {
                 return { ...task, taskDate: nextTask.taskDate };
               }
               return task;
@@ -894,7 +935,7 @@ export default function DraggableTaskList({
         else {
           let targetDate: string;
           
-          if (draggedTask.dependentOnPrevious) {
+          if (reorderedDraggedTask.dependentOnPrevious) {
             // Dependent tasks follow the previous task (next workday)
             const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
             const nextWorkday = new Date(previousDate);
@@ -908,7 +949,7 @@ export default function DraggableTaskList({
             targetDate = nextWorkday.toISOString().split('T')[0];
           } else {
             // Non-dependent tasks: when moving to earlier dates, adopt the existing date
-            const currentDate = new Date(draggedTask.taskDate + 'T00:00:00');
+            const currentDate = new Date(reorderedDraggedTask.taskDate + 'T00:00:00');
             const previousDate = new Date(previousTask.taskDate + 'T00:00:00');
           
           // If moving to an earlier position (date), adopt the previous task's date to avoid gaps
@@ -933,7 +974,7 @@ export default function DraggableTaskList({
               if (candidateDate < nextDate) {
                 targetDate = candidateDate.toISOString().split('T')[0];
               } else {
-                targetDate = draggedTask.taskDate; // Keep original
+                targetDate = reorderedDraggedTask.taskDate; // Keep original
               }
             } else {
               // No next task, place after previous task
@@ -949,13 +990,13 @@ export default function DraggableTaskList({
             }
           }
           
-          console.log('Assigning new date:', { taskName: draggedTask.name, oldDate: draggedTask.taskDate, newDate: targetDate });
-          draggedTask.taskDate = targetDate;
+          console.log('Assigning new date:', { taskName: reorderedDraggedTask.name, oldDate: reorderedDraggedTask.taskDate, newDate: targetDate });
+          reorderedDraggedTask.taskDate = targetDate;
           
           // If dragged task has linked partners, sync their dates too
-          if (draggedTask.linkedTaskGroup) {
+          if (reorderedDraggedTask.linkedTaskGroup) {
             tasksWithUpdatedOrder = tasksWithUpdatedOrder.map(task => {
-              if (task.linkedTaskGroup === draggedTask.linkedTaskGroup) {
+              if (task.linkedTaskGroup === reorderedDraggedTask.linkedTaskGroup) {
                 return { ...task, taskDate: targetDate };
               }
               return task;

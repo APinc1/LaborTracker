@@ -318,7 +318,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                         <FormItem>
                           <FormLabel>Task Date</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input 
+                              type="date" 
+                              {...field} 
+                              disabled={task?.status === 'complete' || !isEditing}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

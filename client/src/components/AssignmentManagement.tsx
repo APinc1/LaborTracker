@@ -210,24 +210,16 @@ export default function AssignmentManagement() {
   };
 
   const handleBulkSave = () => {
-    console.log('handleBulkSave called');
-    console.log('bulkEditMode:', bulkEditMode);
-    console.log('editingActualHours:', editingActualHours);
-    console.log('filteredAssignments:', filteredAssignments.map(a => ({ id: a.id, actualHours: a.actualHours })));
-    
     // Check all assignments for empty hours - both touched and untouched
     const assignmentsNeedingHours = filteredAssignments.filter(assignment => {
       // If the assignment was touched (in editingActualHours), check that value
       if (editingActualHours.hasOwnProperty(assignment.id)) {
         const editedValue = editingActualHours[assignment.id];
-        const isEmpty = !editedValue || editedValue.trim() === '';
-        console.log(`Assignment ${assignment.id} was edited to: "${editedValue}", isEmpty: ${isEmpty}`);
-        return isEmpty;
+        return !editedValue || editedValue.trim() === '';
       }
       // If assignment wasn't touched, check if it already has actual hours
       // If it doesn't have actual hours, it's effectively "empty" for bulk save
       const hasExistingHours = assignment.actualHours !== null && assignment.actualHours !== undefined;
-      console.log(`Assignment ${assignment.id} not touched, hasExistingHours: ${hasExistingHours}, actualHours: ${assignment.actualHours}`);
       return !hasExistingHours;
     });
     
@@ -240,21 +232,15 @@ export default function AssignmentManagement() {
       }))
       .filter(update => !isNaN(update.actualHours));
     
-    console.log('assignmentsNeedingHours:', assignmentsNeedingHours.map(a => ({ id: a.id, actualHours: a.actualHours })));
-    console.log('validUpdates:', validUpdates);
-    
     if (assignmentsNeedingHours.length > 0) {
       // Show confirmation dialog for empty hours
-      console.log('Showing empty hours dialog');
       setPendingUpdates(validUpdates);
       setShowEmptyHoursDialog(true);
     } else if (validUpdates.length > 0) {
       // No empty hours, proceed with updates
-      console.log('No empty hours, proceeding with updates');
       bulkUpdateActualHoursMutation.mutate(validUpdates);
     } else {
       // No updates to make
-      console.log('No updates to make, exiting bulk edit mode');
       setBulkEditMode(false);
     }
   };
@@ -279,11 +265,8 @@ export default function AssignmentManagement() {
           actualHours: 0
         }));
       
-      console.log('Adding zero hours updates:', emptyHoursUpdates);
       allUpdates = [...pendingUpdates, ...emptyHoursUpdates];
     }
-    
-    console.log('Final updates to process:', allUpdates);
     
     if (allUpdates.length > 0) {
       bulkUpdateActualHoursMutation.mutate(allUpdates);
