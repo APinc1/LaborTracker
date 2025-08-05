@@ -794,11 +794,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignment = await storage.updateEmployeeAssignment(parseInt(req.params.id), validated);
       
       // If actual hours were assigned, check if we should mark the task as complete
-      if (validated.actualHours && parseFloat(validated.actualHours) > 0) {
-        // Get all assignments for this task to check if all have actual hours
+      if (validated.actualHours !== undefined) {
+        // Get all assignments for this task to check if all have actual hours recorded
         const taskAssignments = await storage.getEmployeeAssignments(assignment.taskId);
         const allHaveActualHours = taskAssignments.every(a => 
-          a.actualHours && parseFloat(a.actualHours) > 0
+          a.actualHours !== null && a.actualHours !== undefined
         );
         
         if (allHaveActualHours) {
