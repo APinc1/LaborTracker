@@ -124,6 +124,12 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
 
   // Helper function to determine task status
   const getTaskStatus = (task: any) => {
+    // Use the actual status from the database if available
+    if (task.status) {
+      return task.status;
+    }
+    
+    // Fallback logic for backwards compatibility
     const currentDate = new Date().toISOString().split('T')[0];
     
     if (task.actualHours && parseFloat(task.actualHours) > 0) {
