@@ -614,8 +614,20 @@ export default function AssignmentManagement() {
                         const totalHours = getEmployeeHours(assignment.employeeId);
                         const status = getEmployeeStatus(totalHours);
                         
+                        // Determine row background based on actual hours if they exist
+                        let rowBgClass = status.rowBg;
+                        if (assignment.actualHours) {
+                          const actualHours = parseFloat(assignment.actualHours);
+                          const assignedHours = parseFloat(assignment.assignedHours);
+                          if (actualHours <= assignedHours) {
+                            rowBgClass = "bg-green-50";
+                          } else {
+                            rowBgClass = "bg-red-50";
+                          }
+                        }
+                        
                         return (
-                          <TableRow key={assignment.id} className={`hover:bg-gray-50 ${status.rowBg}`}>
+                          <TableRow key={assignment.id} className={`hover:bg-gray-50 ${rowBgClass}`}>
                             <TableCell>
                               <div className="flex items-center space-x-3">
                                 <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
