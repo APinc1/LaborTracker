@@ -123,6 +123,13 @@ export default function CreateTaskModal({
     staleTime: 5000,
   }) as { data: any[] };
 
+  // Fetch assignments for completion status checking
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    enabled: isOpen,
+    staleTime: 5000,
+  }) as { data: any[] };
+
   const createTaskMutation = useMutation({
     mutationFn: async (data: { newTask: any; updatedTasks: any[] }) => {
       console.log('Creating task with position:', data.newTask.name, 'order:', data.newTask.order);
