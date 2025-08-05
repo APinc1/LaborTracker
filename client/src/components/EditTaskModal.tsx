@@ -271,18 +271,39 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
     
-    // Check if task is completed and prevent submission
+    // Check if task is completed and restrict which fields can be edited
     const taskStatus = getTaskStatus(task, taskAssignments);
     if (taskStatus === 'complete') {
-      toast({
-        title: "Cannot Edit Completed Task",
-        description: "Tasks with recorded actual hours cannot be modified.",
-        variant: "destructive"
-      });
+      // For completed tasks, only allow editing of notes and status
+      const allowedFields = ['notes', 'status'];
+      const changedFields = Object.keys(data).filter(key => 
+        data[key] !== task[key] && !allowedFields.includes(key)
+      );
+      
+      if (changedFields.length > 0) {
+        toast({
+          title: "Limited Editing for Completed Tasks",
+          description: "Only notes and status can be modified for completed tasks.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Only submit the allowed fields for completed tasks
+      const restrictedData = {
+        ...task,
+        notes: data.notes,
+        status: data.status
+      };
+      
+      console.log('Completed task - restricted submission:', restrictedData);
+      
+      // Use direct API call for completed tasks instead of processFormSubmission
+      updateTaskMutation.mutate(restrictedData);
       return;
     }
     
-    // Process the form submission with the current date change action
+    // Process the form submission with the current date change action for non-completed tasks
     processFormSubmission(data);
   };
 
@@ -1616,6 +1637,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           <DialogTitle className="flex items-center gap-3">
             <Edit className="w-5 h-5" />
             Edit Task: {getTaskDisplayName(task.name)}
+            {getTaskStatus(task, taskAssignments) === 'complete' && (
+              <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
+                Limited Editing: Only Notes & Status
+              </Badge>
+            )}
             {/* Day indicator badge */}
             {(() => {
               if (locationTasks) {
@@ -1660,7 +1686,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   <FormItem>
                     <FormLabel>Task Name</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Enter task name" />
+                      <Input 
+                        {...field} 
+                        placeholder="Enter task name"
+                        disabled={getTaskStatus(task, taskAssignments) === 'complete'}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1785,6 +1815,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={(() => {
+                          // Disable for completed tasks
+                          if (getTaskStatus(task, taskAssignments) === 'complete') {
+                            return true;
+                          }
+                          
                           // Disable sequential checkbox for second task in linked group
                           if (task.linkedTaskGroup && locationTasks) {
                             const linkedTasks = locationTasks
@@ -1826,6 +1861,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     <FormControl>
                       <Checkbox
                         checked={field.value}
+                        disabled={getTaskStatus(task, taskAssignments) === 'complete'}
                         onCheckedChange={(checked) => {
                           console.log('🔗 Checkbox changed - checked:', checked, 'linkedTaskGroup:', task.linkedTaskGroup);
                           
@@ -2034,7 +2070,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   <FormItem>
                     <FormLabel>Start Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input 
+                        type="time" 
+                        {...field} 
+                        disabled={getTaskStatus(task, taskAssignments) === 'complete'}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2048,7 +2088,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   <FormItem>
                     <FormLabel>Finish Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input 
+                        type="time" 
+                        {...field} 
+                        disabled={getTaskStatus(task, taskAssignments) === 'complete'}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2092,7 +2136,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 <FormItem>
                   <FormLabel>Work Description</FormLabel>
                   <FormControl>
-                    <Textarea rows={3} placeholder="Describe the work to be performed..." {...field} />
+                    <Textarea 
+                      rows={3} 
+                      placeholder="Describe the work to be performed..." 
+                      {...field} 
+                      disabled={getTaskStatus(task, taskAssignments) === 'complete'}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -160,14 +160,33 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   });
 
   const onSubmit = (data: any) => {
-    // Prevent submission of completed tasks
+    // Check if task is completed and restrict which fields can be edited
     const taskStatus = getTaskStatus(task, assignments);
     if (taskStatus === 'complete') {
-      toast({
-        title: "Cannot Edit Completed Task",
-        description: "Tasks with recorded actual hours cannot be modified.",
-        variant: "destructive"
-      });
+      // For completed tasks, only allow editing of notes and status
+      const allowedFields = ['notes', 'status'];
+      const changedFields = Object.keys(data).filter(key => 
+        data[key] !== task[key] && !allowedFields.includes(key)
+      );
+      
+      if (changedFields.length > 0) {
+        toast({
+          title: "Limited Editing for Completed Tasks",
+          description: "Only notes and status can be modified for completed tasks.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Only submit the allowed fields for completed tasks
+      const restrictedData = {
+        ...task,
+        notes: data.notes,
+        status: data.status
+      };
+      
+      console.log('Completed task - restricted submission:', restrictedData);
+      updateTaskMutation.mutate(restrictedData);
       return;
     }
 
@@ -273,6 +292,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
               <Badge className={getTaskTypeColor(task.taskType)}>
                 {task.taskType}
               </Badge>
+              {getTaskStatus(task, assignments) === 'complete' && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
+                  Limited Editing: Only Notes & Status
+                </Badge>
+              )}
               {!isEditing ? (
                 <Button variant="outline" size="sm" onClick={handleEdit}>
                   <Edit className="w-4 h-4 mr-2" />
@@ -311,7 +335,10 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                         <FormItem>
                           <FormLabel>Task Name</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input 
+                              {...field} 
+                              disabled={getTaskStatus(task, assignments) === 'complete'}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -323,7 +350,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Task Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select 
+                            onValueChange={field.onChange} 
+                            defaultValue={field.value}
+                            disabled={getTaskStatus(task, assignments) === 'complete'}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select task type" />
@@ -347,7 +378,7 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                         <FormItem>
                           <FormLabel>Cost Code</FormLabel>
                           <FormControl>
-                            <Input {...field} />
+                            <Input {...field} disabled={getTaskStatus(task, assignments) === 'complete'} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -360,7 +391,12 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                         <FormItem>
                           <FormLabel>Scheduled Hours</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.1" {...field} />
+                            <Input 
+                              type="number" 
+                              step="0.1" 
+                              {...field} 
+                              disabled={getTaskStatus(task, assignments) === 'complete'}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
