@@ -598,6 +598,13 @@ export default function DraggableTaskList({
 
     const originalDraggedTask = sortedTasks[oldIndex];
     
+    console.log('🔍 DRAG TASK ANALYSIS:', {
+      draggedTask: originalDraggedTask.name,
+      draggedLinkedGroup: originalDraggedTask.linkedTaskGroup,
+      isDraggedTaskLinked: !!originalDraggedTask.linkedTaskGroup,
+      willCheckForLinking: !originalDraggedTask.linkedTaskGroup
+    });
+    
     // CRITICAL: Check if dragging between two linked tasks
     if (!originalDraggedTask.linkedTaskGroup) {
       // Create a temporary array without the dragged task to see the final positions
