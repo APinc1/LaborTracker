@@ -652,26 +652,28 @@ export default function DraggableTaskList({
           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
           taskBefore !== taskAfter) { // Ensure they are different tasks
         
-        // Additional check: Make sure we're not inserting at the end of a linked group
-        // If the newIndex points to the last task in a linked group, we're inserting AFTER the group
-        const targetTask = sortedTasks[newIndex];
-        const linkedGroupTasks = sortedTasks.filter(t => t.linkedTaskGroup === targetTask.linkedTaskGroup);
-        const groupTaskIndices = linkedGroupTasks.map(t => sortedTasks.indexOf(t)).sort((a, b) => a - b);
-        const isLastInGroup = newIndex === Math.max(...groupTaskIndices);
-        
-        console.log('🔍 ADDITIONAL GROUP CHECK:', {
-          targetTask: targetTask.name,
-          linkedGroup: targetTask.linkedTaskGroup,
-          groupTaskIndices,
-          newIndex,
-          isLastInGroup,
-          shouldSkipDetection: isLastInGroup
+        // Additional check: Determine if we're truly BETWEEN linked tasks or just after them
+        // We need to check the actual insertion position, not just the target task
+        console.log('🔍 INSERTION POSITION ANALYSIS:', {
+          insertionIndex,
+          taskBefore: taskBefore ? taskBefore.name : 'none',
+          taskAfter: taskAfter ? taskAfter.name : 'none',
+          beforeLinked: !!taskBefore?.linkedTaskGroup,
+          afterLinked: !!taskAfter?.linkedTaskGroup,
+          bothLinked: !!taskBefore?.linkedTaskGroup && !!taskAfter?.linkedTaskGroup,
+          sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup
         });
         
-        // If dragging to the last task in a linked group, treat as dragging AFTER the group
-        if (isLastInGroup) {
-          console.log('🚫 SKIPPING DETECTION: Dragging to end of linked group, treating as AFTER group');
-        } else {
+        // We're truly BETWEEN linked tasks if:
+        // 1. Both taskBefore and taskAfter exist
+        // 2. Both are from the same linked group  
+        // 3. We're not at the very end of the array
+        const isTrulyBetweenLinkedTasks = taskBefore?.linkedTaskGroup && 
+                                         taskAfter?.linkedTaskGroup && 
+                                         taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
+                                         taskAfter !== null; // Ensure we're not at the end
+        
+        if (isTrulyBetweenLinkedTasks) {
           console.log('🔗 DETECTED: Dragging between linked tasks!', {
             draggedTask: originalDraggedTask.name,
             linkedGroup: taskBefore.linkedTaskGroup,
@@ -689,6 +691,8 @@ export default function DraggableTaskList({
           });
           
           return; // Stop processing until user decides
+        } else {
+          console.log('🚫 NOT BETWEEN LINKED TASKS: Proceeding with normal reorder');
         }
       }
     }
