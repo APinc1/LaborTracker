@@ -210,18 +210,17 @@ export default function AssignmentManagement() {
   };
 
   const handleBulkSave = () => {
-    // Get all assignments currently in bulk edit mode
-    const assignmentsInEdit = filteredAssignments.filter(assignment => 
-      editingActualHours.hasOwnProperty(assignment.id)
-    );
+    console.log('handleBulkSave called');
+    console.log('bulkEditMode:', bulkEditMode);
+    console.log('editingActualHours:', editingActualHours);
     
-    // Check for empty actual hours fields
-    const emptyHoursAssignments = assignmentsInEdit.filter(assignment => {
-      const hours = editingActualHours[assignment.id];
-      return !hours || hours.trim() === '';
-    });
+    // Only check assignments that have been touched (in editingActualHours)
+    // Find assignments where user explicitly cleared the field or left it empty
+    const emptyHoursAssignments = Object.entries(editingActualHours)
+      .filter(([_, hours]) => !hours || hours.trim() === '')
+      .map(([id, _]) => parseInt(id));
     
-    // Prepare updates for assignments with actual hours entered
+    // Prepare updates for assignments with actual hours entered  
     const validUpdates = Object.entries(editingActualHours)
       .filter(([_, hours]) => hours && hours.trim() !== '')
       .map(([id, hours]) => ({
@@ -230,15 +229,21 @@ export default function AssignmentManagement() {
       }))
       .filter(update => !isNaN(update.actualHours));
     
+    console.log('emptyHoursAssignments:', emptyHoursAssignments);
+    console.log('validUpdates:', validUpdates);
+    
     if (emptyHoursAssignments.length > 0) {
       // Show confirmation dialog for empty hours
+      console.log('Showing empty hours dialog');
       setPendingUpdates(validUpdates);
       setShowEmptyHoursDialog(true);
     } else if (validUpdates.length > 0) {
       // No empty hours, proceed with updates
+      console.log('No empty hours, proceeding with updates');
       bulkUpdateActualHoursMutation.mutate(validUpdates);
     } else {
       // No updates to make
+      console.log('No updates to make, exiting bulk edit mode');
       setBulkEditMode(false);
     }
   };
