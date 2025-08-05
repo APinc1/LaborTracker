@@ -593,16 +593,18 @@ export default function AssignmentManagement() {
                       <TableHead>Location</TableHead>
                       <TableHead>Task</TableHead>
                       <TableHead>Assigned Hours</TableHead>
+                      <TableHead>Daily Total Assigned</TableHead>
+                      <TableHead>Schedule Status</TableHead>
                       <TableHead>Actual Hours</TableHead>
-                      <TableHead>Daily Total</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Under/Over</TableHead>
+                      <TableHead>Actual Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredAssignments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={11} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={13} className="text-center py-8 text-gray-500">
                           No assignments found for the selected date and filters
                         </TableCell>
                       </TableRow>
@@ -614,11 +616,25 @@ export default function AssignmentManagement() {
                         const totalHours = getEmployeeHours(assignment.employeeId);
                         const status = getEmployeeStatus(totalHours);
                         
+                        // Calculate actual status and under/over values
+                        const actualHours = assignment.actualHours ? parseFloat(assignment.actualHours) : null;
+                        const assignedHours = parseFloat(assignment.assignedHours);
+                        const underOver = actualHours !== null ? actualHours - assignedHours : null;
+                        
+                        let actualStatus = "";
+                        if (actualHours !== null) {
+                          if (actualHours === assignedHours) {
+                            actualStatus = "On schedule";
+                          } else if (actualHours > assignedHours) {
+                            actualStatus = "Over schedule";
+                          } else {
+                            actualStatus = "Under schedule";
+                          }
+                        }
+
                         // Determine row background based on actual hours if they exist
                         let rowBgClass = status.rowBg;
                         if (assignment.actualHours) {
-                          const actualHours = parseFloat(assignment.actualHours);
-                          const assignedHours = parseFloat(assignment.assignedHours);
                           if (actualHours <= assignedHours) {
                             rowBgClass = "bg-green-50";
                           } else {
@@ -666,6 +682,19 @@ export default function AssignmentManagement() {
                               </div>
                             </TableCell>
                             <TableCell>
+                              <span className={`font-medium ${status.textColor}`}>
+                                {totalHours.toFixed(1)}h
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <div className={`w-3 h-3 ${status.color} rounded-full`}></div>
+                                <span className={`text-sm ${status.textColor} font-medium`}>
+                                  {status.text}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               {bulkEditMode ? (
                                 <Input
                                   type="number"
@@ -691,17 +720,31 @@ export default function AssignmentManagement() {
                               )}
                             </TableCell>
                             <TableCell>
-                              <span className={`font-medium ${status.textColor}`}>
-                                {totalHours.toFixed(1)}h
-                              </span>
+                              {underOver !== null ? (
+                                <span className={`font-medium ${underOver > 0 ? 'text-red-600' : underOver < 0 ? 'text-green-600' : 'text-gray-600'}`}>
+                                  {underOver > 0 ? '+' : ''}{underOver.toFixed(1)}h
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-3 h-3 ${status.color} rounded-full`}></div>
-                                <span className={`text-sm ${status.textColor} font-medium`}>
-                                  {status.text}
-                                </span>
-                              </div>
+                              {actualStatus ? (
+                                <div className="flex items-center space-x-2">
+                                  {actualStatus === "On schedule" && <CheckCircle className="w-4 h-4 text-green-500" />}
+                                  {actualStatus === "Over schedule" && <X className="w-4 h-4 text-red-500" />}
+                                  {actualStatus === "Under schedule" && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                                  <span className={`text-sm font-medium ${
+                                    actualStatus === "On schedule" ? 'text-green-600' :
+                                    actualStatus === "Over schedule" ? 'text-red-600' :
+                                    'text-yellow-600'
+                                  }`}>
+                                    {actualStatus}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <div className="flex space-x-1">
