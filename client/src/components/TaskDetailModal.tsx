@@ -356,7 +356,25 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                             <Input 
                               type="date" 
                               {...field} 
-                              disabled={getTaskStatus(task, assignments) === 'complete' || !isEditing}
+                              disabled={(() => {
+                                const taskStatus = getTaskStatus(task, assignments);
+                                const isComplete = taskStatus === 'complete';
+                                console.log('🔍 DATE INPUT DISABLED CHECK:', {
+                                  taskName: task?.name,
+                                  taskStatus,
+                                  isComplete,
+                                  isEditing,
+                                  taskId: task?.id,
+                                  assignmentsCount: assignments.length,
+                                  assignments: assignments.map(a => ({ 
+                                    id: a.id, 
+                                    taskId: a.taskId, 
+                                    actualHours: a.actualHours 
+                                  })),
+                                  finalDisabled: isComplete || !isEditing
+                                });
+                                return isComplete || !isEditing;
+                              })()}
                             />
                           </FormControl>
                           <FormMessage />
