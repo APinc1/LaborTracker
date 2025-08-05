@@ -334,28 +334,19 @@ export default function AssignmentManagement() {
                 <DialogTitle>
                   {editingAssignment ? 'Edit Assignment' : 'Create New Assignment'}
                 </DialogTitle>
+                {editingAssignment && (
+                  <div className="mt-2 pb-4 border-b border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.name || 'Unknown Employee'}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.teamMemberId || 'N/A'}
+                    </p>
+                  </div>
+                )}
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Employee - at top for edit mode */}
-                  {editingAssignment && (
-                    <FormField
-                      control={form.control}
-                      name="employeeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee</FormLabel>
-                          <FormControl>
-                            <Input 
-                              value={employees.find((emp: any) => emp.id.toString() === field.value)?.name || 'Unknown Employee'} 
-                              disabled 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
                   
                   {/* Assignment Date */}
                   <FormField
