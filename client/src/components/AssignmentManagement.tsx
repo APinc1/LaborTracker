@@ -387,7 +387,7 @@ export default function AssignmentManagement() {
                                 if (!editingAssignment) return true;
                                 // Filter tasks to only show tasks for the assignment date
                                 const assignmentDate = form.getValues('assignmentDate');
-                                return task.startDate <= assignmentDate && task.endDate >= assignmentDate;
+                                return task.startDate <= assignmentDate && task.finishDate >= assignmentDate;
                               })
                               .map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
