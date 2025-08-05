@@ -216,7 +216,22 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     return totalHours;
   };
 
+  // Calculate total actual hours from assignments
+  const calculateActualHours = (task: any) => {
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter(assignment => 
+      assignment.taskId === taskId
+    );
+    
+    const totalHours = taskAssignments.reduce((sum, assignment) => {
+      return sum + parseFloat(assignment.actualHours || 0);
+    }, 0);
+    
+    return totalHours;
+  };
+
   const totalScheduledHours = calculateScheduledHours(task);
+  const totalActualHours = calculateActualHours(task);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -251,7 +266,10 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                 {totalScheduledHours > 0 && (
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span>{totalScheduledHours.toFixed(1)}h</span>
+                    <span>{totalScheduledHours.toFixed(1)}h scheduled</span>
+                    {totalActualHours > 0 && (
+                      <span className="text-green-600">/ {totalActualHours.toFixed(1)}h actual</span>
+                    )}
                   </div>
                 )}
                 

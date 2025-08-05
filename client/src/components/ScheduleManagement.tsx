@@ -193,6 +193,20 @@ export default function ScheduleManagement() {
     return totalHours;
   };
 
+  // Calculate total actual hours from assignments
+  const calculateActualHours = (task: any) => {
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter((assignment: any) => 
+      assignment.taskId === taskId
+    );
+    
+    const totalHours = taskAssignments.reduce((sum: number, assignment: any) => {
+      return sum + parseFloat(assignment.actualHours || 0);
+    }, 0);
+    
+    return totalHours;
+  };
+
   // Get assigned employees for a task
   const getAssignedEmployees = (task: any) => {
     const taskId = task.id || task.taskId;
@@ -519,7 +533,10 @@ export default function ScheduleManagement() {
                                   </div>
                                   <div className="flex items-center space-x-1 text-xs text-gray-600">
                                     <Clock className="w-3 h-3" />
-                                    <span>{calculateScheduledHours(task).toFixed(1)}h</span>
+                                    <span>{calculateScheduledHours(task).toFixed(1)}h scheduled</span>
+                                    {calculateActualHours(task) > 0 && (
+                                      <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
+                                    )}
                                   </div>
                                   <div className="mt-1">
                                     <Badge variant="outline" className="text-xs">
