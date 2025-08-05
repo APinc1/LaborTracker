@@ -751,6 +751,13 @@ export default function AssignmentManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  onClick={() => handleEdit(assignment)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => handleDelete(assignment.id)}
                                   className="text-red-500 hover:text-red-700"
                                 >
