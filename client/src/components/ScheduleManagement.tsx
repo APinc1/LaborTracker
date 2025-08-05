@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
+import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2, CalendarDays } from "lucide-react";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import CreateTaskModal from "./CreateTaskModal";
@@ -19,6 +19,7 @@ export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("ALL_PROJECTS");
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL_LOCATIONS");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -85,8 +86,25 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
+  // Dynamic date range based on view mode
+  const getDateRange = () => {
+    if (viewMode === 'week') {
+      return {
+        start: startOfWeek(selectedDate),
+        end: endOfWeek(selectedDate)
+      };
+    } else {
+      return {
+        start: startOfMonth(selectedDate),
+        end: endOfMonth(selectedDate)
+      };
+    }
+  };
+
+  const dateRange = getDateRange();
+
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/tasks/date-range", format(startOfWeek(selectedDate), 'yyyy-MM-dd'), format(endOfWeek(selectedDate), 'yyyy-MM-dd')],
+    queryKey: ["/api/tasks/date-range", format(dateRange.start, 'yyyy-MM-dd'), format(dateRange.end, 'yyyy-MM-dd')],
     staleTime: 30000,
   });
 
@@ -100,10 +118,10 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
-  const getWeekDays = () => {
+  const getViewDays = () => {
     return eachDayOfInterval({
-      start: startOfWeek(selectedDate),
-      end: endOfWeek(selectedDate),
+      start: dateRange.start,
+      end: dateRange.end,
     });
   };
 
@@ -382,23 +400,49 @@ export default function ScheduleManagement() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>
-                    Week of {format(startOfWeek(selectedDate), 'MMMM d, yyyy')}
+                  <CardTitle className="flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5" />
+                    {viewMode === 'week' 
+                      ? `Week of ${format(dateRange.start, 'MMMM d, yyyy')}`
+                      : `${format(dateRange.start, 'MMMM yyyy')}`
+                    }
                   </CardTitle>
-                  <div className="flex items-center space-x-2 text-sm text-gray-600">
-                    {selectedProject && selectedProject !== "ALL_PROJECTS" && (
-                      <Badge variant="secondary">
-                        {projects.find((p: any) => p.id.toString() === selectedProject)?.name}
-                      </Badge>
-                    )}
-                    {selectedProject === "ALL_PROJECTS" && (
-                      <Badge variant="secondary">All Projects</Badge>
-                    )}
-                    {selectedLocation && selectedLocation !== "ALL_LOCATIONS" && (
-                      <Badge variant="outline">
-                        {locations.find((loc: any) => loc.locationId === selectedLocation)?.name}
-                      </Badge>
-                    )}
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant={viewMode === 'week' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('week')}
+                        className="flex items-center gap-1"
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                        Week
+                      </Button>
+                      <Button
+                        variant={viewMode === 'month' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('month')}
+                        className="flex items-center gap-1"
+                      >
+                        <CalendarIcon className="w-4 h-4" />
+                        Month
+                      </Button>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      {selectedProject && selectedProject !== "ALL_PROJECTS" && (
+                        <Badge variant="secondary">
+                          {projects.find((p: any) => p.id.toString() === selectedProject)?.name}
+                        </Badge>
+                      )}
+                      {selectedProject === "ALL_PROJECTS" && (
+                        <Badge variant="secondary">All Projects</Badge>
+                      )}
+                      {selectedLocation && selectedLocation !== "ALL_LOCATIONS" && (
+                        <Badge variant="outline">
+                          {locations.find((loc: any) => loc.locationId === selectedLocation)?.name}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -406,8 +450,8 @@ export default function ScheduleManagement() {
                 {tasksLoading ? (
                   <Skeleton className="h-96" />
                 ) : (
-                  <div className="grid grid-cols-7 gap-1">
-                    {getWeekDays().map((day) => {
+                  <div className={`grid gap-1 ${viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-7'}`}>
+                    {getViewDays().map((day) => {
                       const dayTasks = getTasksForDay(day);
                       const isToday = isSameDay(day, new Date());
                       const isSelected = isSameDay(day, selectedDate);
@@ -415,11 +459,14 @@ export default function ScheduleManagement() {
                       return (
                         <div
                           key={day.toISOString()}
-                          className={`border rounded-lg p-2 min-h-[180px] ${
+                          className={`border rounded-lg p-2 cursor-pointer ${
+                            viewMode === 'week' ? 'min-h-[180px]' : 'min-h-[120px]'
+                          } ${
                             isToday ? 'bg-blue-50 border-blue-200' : 
                             isSelected ? 'bg-gray-50 border-gray-300' : 
                             'bg-white border-gray-200'
                           }`}
+                          onClick={() => setSelectedDate(day)}
                         >
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-medium text-sm">
