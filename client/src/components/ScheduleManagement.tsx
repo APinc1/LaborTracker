@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import CreateTaskModal from "./CreateTaskModal";
 import EditTaskModal from "./EditTaskModal";
 import AssignmentModal from "./AssignmentModal";
@@ -23,6 +24,8 @@ export default function ScheduleManagement() {
   const [editingTask, setEditingTask] = useState(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -38,6 +41,11 @@ export default function ScheduleManagement() {
     setAssignmentModalOpen(true);
   };
 
+  const handleDeleteTaskClick = (task: any) => {
+    setTaskToDelete(task);
+    setDeleteConfirmOpen(true);
+  };
+
   const handleDeleteTask = useMutation({
     mutationFn: (taskId: string) => apiRequest(`/api/tasks/${taskId}`, { method: 'DELETE' }),
     onSuccess: () => {
@@ -48,6 +56,8 @@ export default function ScheduleManagement() {
       queryClient.invalidateQueries({ 
         queryKey: ["/api/tasks/date-range"] 
       });
+      setDeleteConfirmOpen(false);
+      setTaskToDelete(null);
     },
     onError: (error: any) => {
       toast({
@@ -57,6 +67,12 @@ export default function ScheduleManagement() {
       });
     }
   });
+
+  const confirmDeleteTask = () => {
+    if (taskToDelete) {
+      handleDeleteTask.mutate(taskToDelete.id.toString());
+    }
+  };
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
@@ -514,7 +530,7 @@ export default function ScheduleManagement() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleDeleteTask.mutate(task.id.toString())}
+                                  onClick={() => handleDeleteTaskClick(task)}
                                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -604,6 +620,32 @@ export default function ScheduleManagement() {
           taskDate={selectedTaskForAssignment.taskDate}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the task "{taskToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteConfirmOpen(false);
+              setTaskToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTask}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
