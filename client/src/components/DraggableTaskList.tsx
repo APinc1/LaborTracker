@@ -610,18 +610,29 @@ export default function DraggableTaskList({
       // Create a temporary array without the dragged task to see the final positions
       const tasksWithoutDragged = sortedTasks.filter((_, index) => index !== oldIndex);
       
-      // CRITICAL: In dnd-kit, when you drop on a task, you're inserting BEFORE that task
-      // So if dragging to position of task X, the insertion point is BEFORE task X
-      let insertionIndex = newIndex;
+      // CRITICAL: We need to determine the final positions after the drag operation
+      // In drag operations, the newIndex represents where we're dropping relative to the target task
+      
+      // When dragging from oldIndex to newIndex, we need to figure out what tasks will be 
+      // immediately before and after the insertion point in the final array
+      
+      let finalInsertionIndex;
       if (oldIndex < newIndex) {
-        // When dragging down, the target index doesn't change the insertion logic
-        // We're still inserting BEFORE the target task
-        insertionIndex = newIndex - 1; // Account for removed task shifting indices
+        // Dragging forward: the insertion point is AFTER the target task
+        finalInsertionIndex = newIndex; // Insert after the target task
+      } else {
+        // Dragging backward: the insertion point is BEFORE the target task  
+        finalInsertionIndex = newIndex; // Insert before the target task
       }
       
-      // Now get the tasks that would be before and after the insertion point  
-      const taskBefore = insertionIndex > 0 ? tasksWithoutDragged[insertionIndex - 1] : null;
-      const taskAfter = insertionIndex < tasksWithoutDragged.length ? tasksWithoutDragged[insertionIndex] : null;
+      // Adjust for the removed task when calculating final positions
+      const finalArray = [...tasksWithoutDragged];
+      finalArray.splice(finalInsertionIndex, 0, originalDraggedTask);
+      
+      // Now find what tasks are actually before and after in the final position
+      const finalDraggedIndex = finalArray.findIndex(t => t === originalDraggedTask);
+      const taskBefore = finalDraggedIndex > 0 ? finalArray[finalDraggedIndex - 1] : null;
+      const taskAfter = finalDraggedIndex < finalArray.length - 1 ? finalArray[finalDraggedIndex + 1] : null;
       
       // Log the full task order for debugging
       console.log('🔍 FULL TASK ORDER:', sortedTasks.map((t, i) => `${i}: ${t.name} (linked: ${!!t.linkedTaskGroup})`));
