@@ -597,21 +597,26 @@ export default function DraggableTaskList({
     
     // CRITICAL: Check if dragging between two linked tasks
     if (!originalDraggedTask.linkedTaskGroup) {
-      // IMPORTANT: When inserting at newIndex, taskBefore is at newIndex-1, taskAfter is at newIndex
-      // But we need to account for the fact that the dragged task might shift indices
-      let adjustedIndex = newIndex;
+      // Create a temporary array without the dragged task to see the final positions
+      const tasksWithoutDragged = sortedTasks.filter((_, index) => index !== oldIndex);
+      
+      // Calculate where the task will be inserted in the new array
+      let insertionIndex = newIndex;
       if (oldIndex < newIndex) {
-        // Dragging down: the newIndex shifts down by 1 because we're removing from above
-        adjustedIndex = newIndex;
+        // When dragging down, insertion index shifts by -1 because we removed the task from above
+        insertionIndex = newIndex - 1;
       }
       
-      const taskBefore = adjustedIndex > 0 ? sortedTasks[adjustedIndex - 1] : null;
-      const taskAfter = adjustedIndex < sortedTasks.length ? sortedTasks[adjustedIndex] : null;
+      // Now get the tasks that would be before and after the insertion point
+      const taskBefore = insertionIndex > 0 ? tasksWithoutDragged[insertionIndex - 1] : null;
+      const taskAfter = insertionIndex < tasksWithoutDragged.length ? tasksWithoutDragged[insertionIndex] : null;
       
       console.log('🔍 DRAG DETECTION DEBUG:', {
         draggedTask: originalDraggedTask.name,
         draggedLinked: originalDraggedTask.linkedTaskGroup,
+        oldIndex,
         newIndex,
+        insertionIndex,
         taskBefore: taskBefore ? { name: taskBefore.name, linkedGroup: taskBefore.linkedTaskGroup } : null,
         taskAfter: taskAfter ? { name: taskAfter.name, linkedGroup: taskAfter.linkedTaskGroup } : null,
         hasTaskBefore: !!taskBefore,
@@ -625,8 +630,10 @@ export default function DraggableTaskList({
       });
       
       // Check if inserting between two tasks from the same linked group
+      // CRITICAL: Both taskBefore AND taskAfter must exist AND be from the same linked group
       if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
-          taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup) {
+          taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
+          taskBefore !== taskAfter) { // Ensure they are different tasks
         
         console.log('🔗 DETECTED: Dragging between linked tasks!', {
           draggedTask: originalDraggedTask.name,
