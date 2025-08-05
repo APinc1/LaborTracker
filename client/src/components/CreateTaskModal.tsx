@@ -934,13 +934,12 @@ export default function CreateTaskModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="start">At the beginning</SelectItem>
                         {(() => {
                           // Get all assignments to determine completion status
                           const taskAssignments = assignments || [];
                           
-                          // Filter tasks to only show valid insertion points (after completed tasks)
-                          const validInsertionTasks = (existingTasks as any[])
+                          // Sort tasks by order/date to find completion sequence
+                          const sortedTasks = (existingTasks as any[])
                             .sort((a: any, b: any) => {
                               // Use same ORDER-first sorting as display and logic
                               if (a.order !== undefined && b.order !== undefined) {
@@ -956,45 +955,68 @@ export default function CreateTaskModal({
                               const dateB = new Date(b.taskDate).getTime();
                               if (dateA !== dateB) return dateA - dateB;
                               return (a.taskId || a.id).localeCompare(b.taskId || b.id);
-                            })
-                            .filter((task: any, index: number, sortedTasks: any[]) => {
-                              // Use getTaskStatus from shared utilities
-                              
-                              // Get task assignments
-                              const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
-                                assignment.taskId === (task.id || task.taskId)
-                              );
-                              
-                              const taskStatus = getTaskStatus(task, taskTaskAssignments);
-                              
-                              // Allow insertion after completed tasks
-                              if (taskStatus === 'complete') {
-                                return true;
-                              }
-                              
-                              // Allow insertion after tasks where all previous tasks are completed
-                              const previousTasks = sortedTasks.slice(0, index);
-                              const allPreviousCompleted = previousTasks.every((prevTask: any) => {
-                                const prevTaskAssignments = taskAssignments.filter((assignment: any) => 
-                                  assignment.taskId === (prevTask.id || prevTask.taskId)
-                                );
-                                const prevTaskStatus = getTaskStatus(prevTask, prevTaskAssignments);
-                                return prevTaskStatus === 'complete';
-                              });
-                              
-                              return allPreviousCompleted;
                             });
+
+                          // Find the last completed task in sequence
+                          let lastCompletedIndex = -1;
+                          for (let i = 0; i < sortedTasks.length; i++) {
+                            const task = sortedTasks[i];
+                            const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
+                              assignment.taskId === (task.id || task.taskId)
+                            );
+                            const taskStatus = getTaskStatus(task, taskTaskAssignments);
                             
-                          return validInsertionTasks.map((task: any) => (
+                            if (taskStatus === 'complete') {
+                              lastCompletedIndex = i;
+                            } else {
+                              // Stop at first non-completed task
+                              break;
+                            }
+                          }
+                          
+                          // Only show insertion options after completed tasks
+                          const validInsertionTasks = sortedTasks.filter((task: any, index: number) => {
+                            // Only allow insertion after the last completed task or later in sequence
+                            if (lastCompletedIndex === -1) {
+                              // If no tasks are completed, allow insertion at beginning
+                              return index === 0;
+                            }
+                            
+                            // Allow insertion after any completed task
+                            const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
+                              assignment.taskId === (task.id || task.taskId)
+                            );
+                            const taskStatus = getTaskStatus(task, taskTaskAssignments);
+                            
+                            return taskStatus === 'complete';
+                          });
+
+                          // Add "At the beginning" option only if no tasks are completed
+                          const insertionOptions = [];
+                          if (lastCompletedIndex === -1) {
+                            insertionOptions.push(
+                              <SelectItem key="start" value="start">At the beginning</SelectItem>
+                            );
+                          }
+                          
+                          // Add valid insertion positions
+                          insertionOptions.push(...validInsertionTasks.map((task: any) => (
                             <SelectItem 
                               key={task.id || task.taskId} 
                               value={`after-${(task.taskId || task.id).toString()}`}
                             >
                               After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
                             </SelectItem>
-                          ));
+                          )));
+                          
+                          // Always allow insertion at the end
+                          insertionOptions.push(
+                            <SelectItem key="end" value="end">At the end</SelectItem>
+                          );
+                          
+                          return insertionOptions;
                         })()}
-                        <SelectItem value="end">At the end</SelectItem>
+
                       </SelectContent>
                     </Select>
                     <FormMessage />
