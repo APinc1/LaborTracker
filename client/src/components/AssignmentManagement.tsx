@@ -111,13 +111,30 @@ export default function AssignmentManagement() {
         updates.map(async update => {
           console.log(`Updating assignment ${update.id} with actualHours:`, update.actualHours);
           try {
-            const response = await apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours.toString() });
+            console.log(`Making API request to PUT /api/assignments/${update.id} with data:`, { actualHours: update.actualHours.toString() });
+            const response = await fetch(`/api/assignments/${update.id}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ actualHours: update.actualHours.toString() })
+            });
+            
+            console.log(`Response status: ${response.status}, ok: ${response.ok}`);
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`HTTP ${response.status}: ${errorText}`);
+              throw new Error(`Failed to update assignment: ${response.status} ${errorText}`);
+            }
+            
             const result = await response.json();
             console.log(`Assignment ${update.id} updated successfully:`, result);
             return result;
-          } catch (error) {
+          } catch (error: any) {
             console.error(`Error updating assignment ${update.id}:`, error);
-            console.error('Full error object:', JSON.stringify(error, null, 2));
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
             throw error;
           }
         })
@@ -616,16 +633,10 @@ export default function AssignmentManagement() {
                               <span className="text-gray-600">{crew?.name || 'Unassigned'}</span>
                             </TableCell>
                             <TableCell>
-                              <div>
-                                <p className="font-medium text-gray-800">{getProject(task)?.name || 'Unknown Project'}</p>
-                                <p className="text-sm text-gray-500">{getProject(task)?.projectId || 'N/A'}</p>
-                              </div>
+                              <p className="font-medium text-gray-800">{getProject(task)?.name || 'Unknown Project'}</p>
                             </TableCell>
                             <TableCell>
-                              <div>
-                                <p className="font-medium text-gray-800">{getLocation(task?.locationId)?.name || 'Unknown Location'}</p>
-                                <p className="text-sm text-gray-500">{task?.locationId || 'N/A'}</p>
-                              </div>
+                              <p className="font-medium text-gray-800">{getLocation(task?.locationId)?.name || 'Unknown Location'}</p>
                             </TableCell>
                             <TableCell>
                               <div>
