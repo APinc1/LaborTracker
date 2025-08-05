@@ -271,6 +271,45 @@ export default function AssignmentManagement() {
     };
   };
 
+  const getAssignmentStatus = (assignment: any) => {
+    const actualHours = parseFloat(assignment.actualHours || '0');
+    const assignedHours = parseFloat(assignment.assignedHours || '0');
+    
+    if (actualHours === 0) {
+      return {
+        text: 'Underbooked',
+        color: 'bg-yellow-500',
+        textColor: 'text-yellow-700',
+        rowBg: 'bg-yellow-50'
+      };
+    }
+    
+    if (actualHours === assignedHours) {
+      return {
+        text: 'Optimal',
+        color: 'bg-green-500',
+        textColor: 'text-green-700',
+        rowBg: 'bg-green-50'
+      };
+    }
+    
+    if (actualHours > 8) {
+      return {
+        text: 'Overtime',
+        color: 'bg-red-500',
+        textColor: 'text-red-700',
+        rowBg: 'bg-red-50'
+      };
+    }
+    
+    return {
+      text: 'Undertime',
+      color: 'bg-yellow-500',
+      textColor: 'text-yellow-700',
+      rowBg: 'bg-yellow-50'
+    };
+  };
+
   const getEmployeeTypeVariant = (type: string) => {
     switch (type) {
       case "Core": return "default";
@@ -612,7 +651,7 @@ export default function AssignmentManagement() {
                         const crew = getCrew(employee?.crewId);
                         const task = getTask(assignment.taskId);
                         const totalHours = getEmployeeHours(assignment.employeeId);
-                        const status = getEmployeeStatus(totalHours);
+                        const status = getAssignmentStatus(assignment);
                         
                         return (
                           <TableRow key={assignment.id} className={`hover:bg-gray-50 ${status.rowBg}`}>
