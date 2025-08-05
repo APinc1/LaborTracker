@@ -106,11 +106,15 @@ export default function AssignmentManagement() {
 
   const bulkUpdateActualHoursMutation = useMutation({
     mutationFn: async (updates: { id: number; actualHours: number }[]) => {
-      await Promise.all(
-        updates.map(update => 
-          apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours })
-        )
+      console.log('Bulk updating assignments:', updates);
+      const results = await Promise.all(
+        updates.map(async update => {
+          console.log(`Updating assignment ${update.id} with actualHours:`, update.actualHours);
+          const response = await apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours });
+          return response.json();
+        })
       );
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
