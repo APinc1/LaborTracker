@@ -88,11 +88,16 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
     staleTime: 30000,
   });
 
-  const { data: assignments = [] } = useQuery({
-    queryKey: ["/api/tasks", taskId, "assignments"],
-    enabled: !!taskId,
+  // Fetch all assignments and filter for this task on the client side
+  const { data: allAssignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
     staleTime: 30000,
   });
+
+  // Filter assignments for this specific task
+  const assignments = allAssignments.filter(assignment => 
+    assignment.taskId === taskId || assignment.taskId === task?.id
+  );
 
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
