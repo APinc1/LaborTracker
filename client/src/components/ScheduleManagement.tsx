@@ -431,32 +431,6 @@ export default function ScheduleManagement() {
                                       {task.taskType}
                                     </Badge>
                                   </div>
-                                  <div className="flex items-center space-x-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleEditTask(task)}
-                                      className="h-6 w-6 p-0 hover:bg-gray-100"
-                                    >
-                                      <Edit className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleAssignTaskClick(task)}
-                                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                    >
-                                      <User className="w-3 h-3" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteTask.mutate(task.id.toString())}
-                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </div>
                                 </div>
                                 <h4 className="font-medium text-sm mb-1">{task.name}</h4>
                                 <div className="space-y-1">
@@ -520,6 +494,32 @@ export default function ScheduleManagement() {
                               <span className="text-sm text-gray-500">
                                 {task.startTime || '8:00 AM'}
                               </span>
+                              <div className="flex items-center space-x-1 ml-4">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditTask(task)}
+                                  className="h-8 w-8 p-0 hover:bg-gray-100"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleAssignTaskClick(task)}
+                                  className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  <User className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteTask.mutate(task.id.toString())}
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
