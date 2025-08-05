@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +29,8 @@ export default function AssignmentManagement() {
   const [filterEmployeeType, setFilterEmployeeType] = useState<string>("all");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [editingActualHours, setEditingActualHours] = useState<Record<number, string>>({});
+  const [showEmptyHoursDialog, setShowEmptyHoursDialog] = useState(false);
+  const [pendingUpdates, setPendingUpdates] = useState<{ id: number; actualHours: number }[]>([]);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -207,19 +210,65 @@ export default function AssignmentManagement() {
   };
 
   const handleBulkSave = () => {
-    const updates = Object.entries(editingActualHours)
-      .filter(([_, hours]) => hours.trim() !== '')
+    // Get all assignments currently in bulk edit mode
+    const assignmentsInEdit = filteredAssignments.filter(assignment => 
+      editingActualHours.hasOwnProperty(assignment.id)
+    );
+    
+    // Check for empty actual hours fields
+    const emptyHoursAssignments = assignmentsInEdit.filter(assignment => {
+      const hours = editingActualHours[assignment.id];
+      return !hours || hours.trim() === '';
+    });
+    
+    // Prepare updates for assignments with actual hours entered
+    const validUpdates = Object.entries(editingActualHours)
+      .filter(([_, hours]) => hours && hours.trim() !== '')
       .map(([id, hours]) => ({
         id: parseInt(id),
         actualHours: parseFloat(hours)
       }))
       .filter(update => !isNaN(update.actualHours));
+    
+    if (emptyHoursAssignments.length > 0) {
+      // Show confirmation dialog for empty hours
+      setPendingUpdates(validUpdates);
+      setShowEmptyHoursDialog(true);
+    } else if (validUpdates.length > 0) {
+      // No empty hours, proceed with updates
+      bulkUpdateActualHoursMutation.mutate(validUpdates);
+    } else {
+      // No updates to make
+      setBulkEditMode(false);
+    }
+  };
 
-    if (updates.length > 0) {
-      bulkUpdateActualHoursMutation.mutate(updates);
+  const handleConfirmEmptyHours = (setToZero: boolean) => {
+    let allUpdates = [...pendingUpdates];
+    
+    if (setToZero) {
+      // Add updates for empty hours assignments, setting them to 0
+      const emptyHoursUpdates = filteredAssignments
+        .filter(assignment => {
+          const hours = editingActualHours[assignment.id];
+          return editingActualHours.hasOwnProperty(assignment.id) && (!hours || hours.trim() === '');
+        })
+        .map(assignment => ({
+          id: assignment.id,
+          actualHours: 0
+        }));
+      
+      allUpdates = [...pendingUpdates, ...emptyHoursUpdates];
+    }
+    
+    if (allUpdates.length > 0) {
+      bulkUpdateActualHoursMutation.mutate(allUpdates);
     } else {
       setBulkEditMode(false);
     }
+    
+    setShowEmptyHoursDialog(false);
+    setPendingUpdates([]);
   };
 
   const updateActualHours = (assignmentId: number, hours: string) => {
@@ -808,6 +857,26 @@ export default function AssignmentManagement() {
           </Card>
         </div>
       </main>
+
+      {/* Confirmation dialog for empty actual hours */}
+      <AlertDialog open={showEmptyHoursDialog} onOpenChange={setShowEmptyHoursDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Empty Actual Hours Found</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some assignments have empty actual hours fields. Would you like to set them to 0 hours (for employees who didn't work) or skip saving those assignments?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleConfirmEmptyHours(false)}>
+              Skip Empty Fields
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleConfirmEmptyHours(true)}>
+              Set to 0 Hours
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
