@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter, Save } from "lucide-react";
+import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter, Save, X } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -667,7 +667,11 @@ export default function AssignmentManagement() {
                                 />
                               ) : assignment.actualHours ? (
                                 <div className="flex items-center space-x-2">
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  {parseFloat(assignment.actualHours) <= parseFloat(assignment.assignedHours) ? (
+                                    <CheckCircle className="w-4 h-4 text-green-500" />
+                                  ) : (
+                                    <X className="w-4 h-4 text-red-500" />
+                                  )}
                                   <span className="font-medium">{assignment.actualHours}</span>
                                 </div>
                               ) : (
