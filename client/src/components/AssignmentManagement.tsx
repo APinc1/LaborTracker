@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter } from "lucide-react";
+import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter, Save } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,8 @@ export default function AssignmentManagement() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [filterCrew, setFilterCrew] = useState<string>("all");
   const [filterEmployeeType, setFilterEmployeeType] = useState<string>("all");
+  const [bulkEditMode, setBulkEditMode] = useState(false);
+  const [editingActualHours, setEditingActualHours] = useState<Record<number, string>>({});
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -44,6 +46,16 @@ export default function AssignmentManagement() {
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["/api/tasks/date-range", selectedDate, selectedDate],
+    staleTime: 30000,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["/api/projects"],
+    staleTime: 30000,
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ["/api/locations"],
     staleTime: 30000,
   });
 
@@ -89,6 +101,25 @@ export default function AssignmentManagement() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to delete assignment", variant: "destructive" });
+    },
+  });
+
+  const bulkUpdateActualHoursMutation = useMutation({
+    mutationFn: async (updates: { id: number; actualHours: number }[]) => {
+      await Promise.all(
+        updates.map(update => 
+          apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours })
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      toast({ title: "Success", description: "Actual hours updated successfully" });
+      setBulkEditMode(false);
+      setEditingActualHours({});
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update actual hours", variant: "destructive" });
     },
   });
 
@@ -138,6 +169,29 @@ export default function AssignmentManagement() {
     }
   };
 
+  const handleBulkSave = () => {
+    const updates = Object.entries(editingActualHours)
+      .filter(([_, hours]) => hours.trim() !== '')
+      .map(([id, hours]) => ({
+        id: parseInt(id),
+        actualHours: parseFloat(hours)
+      }))
+      .filter(update => !isNaN(update.actualHours));
+
+    if (updates.length > 0) {
+      bulkUpdateActualHoursMutation.mutate(updates);
+    } else {
+      setBulkEditMode(false);
+    }
+  };
+
+  const updateActualHours = (assignmentId: number, hours: string) => {
+    setEditingActualHours(prev => ({
+      ...prev,
+      [assignmentId]: hours
+    }));
+  };
+
   const getEmployee = (employeeId: number) => {
     return employees.find((emp: any) => emp.id === employeeId);
   };
@@ -151,6 +205,14 @@ export default function AssignmentManagement() {
     return tasks.find((task: any) => task.id === taskId);
   };
 
+  const getProject = (projectId: string) => {
+    return projects.find((project: any) => project.projectId === projectId);
+  };
+
+  const getLocation = (locationId: string) => {
+    return locations.find((location: any) => location.locationId === locationId);
+  };
+
   const getEmployeeStatus = (hours: number) => {
     if (hours > 8) return { 
       color: "bg-red-500", 
@@ -160,7 +222,7 @@ export default function AssignmentManagement() {
     };
     if (hours < 8) return { 
       color: "bg-yellow-500", 
-      text: "Under 8hrs", 
+      text: "Underbooked", 
       textColor: "text-yellow-600",
       rowBg: "bg-yellow-50"
     };
@@ -431,7 +493,7 @@ export default function AssignmentManagement() {
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-              <span className="text-gray-600">&lt;8 Hours</span>
+              <span className="text-gray-600">Underbooked (&lt;8 Hours)</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
@@ -442,9 +504,45 @@ export default function AssignmentManagement() {
           {/* Assignments Table */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                Assignments for {format(new Date(selectedDate), 'MMMM d, yyyy')} ({filteredAssignments.length})
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>
+                  Assignments for {format(new Date(selectedDate), 'MMMM d, yyyy')} ({filteredAssignments.length})
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {bulkEditMode ? (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setBulkEditMode(false);
+                          setEditingActualHours({});
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        size="sm"
+                        onClick={handleBulkSave}
+                        disabled={bulkUpdateActualHoursMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Save className="w-4 h-4 mr-1" />
+                        {bulkUpdateActualHoursMutation.isPending ? 'Saving...' : 'Save All'}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setBulkEditMode(true)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Bulk Edit Hours
+                    </Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -454,6 +552,8 @@ export default function AssignmentManagement() {
                       <TableHead>Employee</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Crew</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Task</TableHead>
                       <TableHead>Assigned Hours</TableHead>
                       <TableHead>Actual Hours</TableHead>
@@ -465,7 +565,7 @@ export default function AssignmentManagement() {
                   <TableBody>
                     {filteredAssignments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={11} className="text-center py-8 text-gray-500">
                           No assignments found for the selected date and filters
                         </TableCell>
                       </TableRow>
@@ -500,6 +600,18 @@ export default function AssignmentManagement() {
                             </TableCell>
                             <TableCell>
                               <div>
+                                <p className="font-medium text-gray-800">{getProject(task?.projectId)?.name || 'Unknown Project'}</p>
+                                <p className="text-sm text-gray-500">{task?.projectId || 'N/A'}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium text-gray-800">{getLocation(task?.locationId)?.name || 'Unknown Location'}</p>
+                                <p className="text-sm text-gray-500">{task?.locationId || 'N/A'}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
                                 <p className="font-medium text-gray-800">{task?.name || 'Unknown Task'}</p>
                                 <p className="text-sm text-gray-500">{task?.costCode || 'N/A'}</p>
                               </div>
@@ -511,7 +623,18 @@ export default function AssignmentManagement() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {assignment.actualHours ? (
+                              {bulkEditMode ? (
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  min="0"
+                                  max="24"
+                                  placeholder={assignment.actualHours?.toString() || "0"}
+                                  value={editingActualHours[assignment.id] || assignment.actualHours?.toString() || ''}
+                                  onChange={(e) => updateActualHours(assignment.id, e.target.value)}
+                                  className="w-20 h-8"
+                                />
+                              ) : assignment.actualHours ? (
                                 <div className="flex items-center space-x-2">
                                   <CheckCircle className="w-4 h-4 text-green-500" />
                                   <span className="font-medium">{assignment.actualHours}</span>
