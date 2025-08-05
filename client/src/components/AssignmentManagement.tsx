@@ -110,8 +110,15 @@ export default function AssignmentManagement() {
       const results = await Promise.all(
         updates.map(async update => {
           console.log(`Updating assignment ${update.id} with actualHours:`, update.actualHours);
-          const response = await apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours });
-          return response.json();
+          try {
+            const response = await apiRequest('PUT', `/api/assignments/${update.id}`, { actualHours: update.actualHours.toString() });
+            const result = await response.json();
+            console.log(`Assignment ${update.id} updated successfully:`, result);
+            return result;
+          } catch (error) {
+            console.error(`Error updating assignment ${update.id}:`, error);
+            throw error;
+          }
         })
       );
       return results;
@@ -122,8 +129,9 @@ export default function AssignmentManagement() {
       setBulkEditMode(false);
       setEditingActualHours({});
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update actual hours", variant: "destructive" });
+    onError: (error: any) => {
+      console.error('Bulk update error:', error);
+      toast({ title: "Error", description: `Failed to update actual hours: ${error.message || 'Unknown error'}`, variant: "destructive" });
     },
   });
 
