@@ -56,11 +56,27 @@ interface SortableTaskItemProps {
   assignments: any[];
 }
 
-// Helper function to determine task status
-const getTaskStatus = (task: any) => {
+// Helper function to determine task status - checks if all assignments have actual hours recorded
+const getTaskStatus = (task: any, assignments: any[] = []) => {
   // Use the actual status from the database if available
   if (task.status) {
     return task.status;
+  }
+  
+  // Get all assignments for this task
+  const taskAssignments = assignments.filter(assignment => 
+    assignment.taskId === task.id || assignment.taskId === task.taskId
+  );
+  
+  // Task is complete if ALL assignments have actual hours recorded (including 0)
+  if (taskAssignments.length > 0) {
+    const allAssignmentsHaveActualHours = taskAssignments.every(assignment => 
+      assignment.actualHours !== null && assignment.actualHours !== undefined
+    );
+    
+    if (allAssignmentsHaveActualHours) {
+      return 'complete';
+    }
   }
   
   // Fallback logic for backwards compatibility
@@ -78,7 +94,7 @@ const getTaskStatus = (task: any) => {
 // Individual sortable task item component
 function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
-  const isTaskComplete = getTaskStatus(task) === 'complete';
+  const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
   const {
     attributes,
@@ -263,7 +279,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
             {/* Task info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
-                {getStatusIcon(getTaskStatus(task))}
+                {getStatusIcon(getTaskStatus(task, assignments))}
                 <h4 className="font-medium text-sm truncate">{task.name}</h4>
                 {getTaskDayInfo(task, tasks) && (
                   <Badge variant="secondary" className="text-xs">
@@ -638,14 +654,14 @@ export default function DraggableTaskList({
     });
     
     // Check if there are any completed tasks before or at the target position
-    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t) === 'complete');
+    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t, assignments) === 'complete');
     
     console.log('🔍 COMPLETED TASKS CHECK:', {
-      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t) })),
+      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t, assignments) })),
       count: completedTasksAtOrBeforeTarget.length
     });
     
-    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask) !== 'complete') {
+    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask, assignments) !== 'complete') {
       console.log('🚫 DRAG END: Cannot drag task before completed tasks');
       toast({
         title: "Invalid Move",
@@ -656,7 +672,7 @@ export default function DraggableTaskList({
     }
 
     // Prevent dragging completed tasks
-    if (getTaskStatus(draggedTask) === 'complete') {
+    if (getTaskStatus(draggedTask, assignments) === 'complete') {
       console.log('🚫 DRAG END: Cannot drag completed tasks');
       toast({
         title: "Invalid Move", 

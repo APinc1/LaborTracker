@@ -39,6 +39,41 @@ interface TaskDetailModalProps {
   onClose: () => void;
 }
 
+// Helper function to determine task status - checks if all assignments have actual hours recorded
+const getTaskStatus = (task: any, assignments: any[] = []) => {
+  // Use the actual status from the database if available
+  if (task.status) {
+    return task.status;
+  }
+  
+  // Get all assignments for this task
+  const taskAssignments = assignments.filter(assignment => 
+    assignment.taskId === task.id || assignment.taskId === task.taskId
+  );
+  
+  // Task is complete if ALL assignments have actual hours recorded (including 0)
+  if (taskAssignments.length > 0) {
+    const allAssignmentsHaveActualHours = taskAssignments.every(assignment => 
+      assignment.actualHours !== null && assignment.actualHours !== undefined
+    );
+    
+    if (allAssignmentsHaveActualHours) {
+      return 'complete';
+    }
+  }
+  
+  // Fallback logic for backwards compatibility
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  if (task.actualHours && parseFloat(task.actualHours) > 0) {
+    return 'complete';
+  } else if (task.taskDate === currentDate) {
+    return 'in_progress';
+  } else {
+    return 'upcoming';
+  }
+};
+
 export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -321,7 +356,7 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                             <Input 
                               type="date" 
                               {...field} 
-                              disabled={task?.status === 'complete' || !isEditing}
+                              disabled={getTaskStatus(task, assignments) === 'complete' || !isEditing}
                             />
                           </FormControl>
                           <FormMessage />
