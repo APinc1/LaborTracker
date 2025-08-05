@@ -643,7 +643,8 @@ export default function DraggableTaskList({
         draggedLinked: originalDraggedTask.linkedTaskGroup,
         oldIndex,
         newIndex,
-        insertionIndex,
+        finalInsertionIndex,
+        finalDraggedIndex,
         taskBefore: taskBefore ? { name: taskBefore.name, linkedGroup: taskBefore.linkedTaskGroup } : null,
         taskAfter: taskAfter ? { name: taskAfter.name, linkedGroup: taskAfter.linkedTaskGroup } : null,
         hasTaskBefore: !!taskBefore,
@@ -682,7 +683,8 @@ export default function DraggableTaskList({
         // Additional check: Determine if we're truly BETWEEN linked tasks or just after them
         // We need to check the actual insertion position, not just the target task
         console.log('🔍 INSERTION POSITION ANALYSIS:', {
-          insertionIndex,
+          finalInsertionIndex,
+          finalDraggedIndex,
           taskBefore: taskBefore ? taskBefore.name : 'none',
           taskAfter: taskAfter ? taskAfter.name : 'none',
           beforeLinked: !!taskBefore?.linkedTaskGroup,
