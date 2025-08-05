@@ -56,10 +56,29 @@ interface SortableTaskItemProps {
   assignments: any[];
 }
 
+// Helper function to determine task status
+const getTaskStatus = (task: any) => {
+  // Use the actual status from the database if available
+  if (task.status) {
+    return task.status;
+  }
+  
+  // Fallback logic for backwards compatibility
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  if (task.actualHours && parseFloat(task.actualHours) > 0) {
+    return 'complete';
+  } else if (task.taskDate === currentDate) {
+    return 'in_progress';
+  } else {
+    return 'upcoming';
+  }
+};
+
 // Individual sortable task item component
 function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
-  const isTaskComplete = task.status === 'complete';
+  const isTaskComplete = getTaskStatus(task) === 'complete';
   
   const {
     attributes,
@@ -128,24 +147,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     return totalDays > 1 ? `Day ${dayNumber} of ${totalDays}` : null;
   };
 
-  // Helper function to determine task status
-  const getTaskStatus = (task: any) => {
-    // Use the actual status from the database if available
-    if (task.status) {
-      return task.status;
-    }
-    
-    // Fallback logic for backwards compatibility
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    if (task.actualHours && parseFloat(task.actualHours) > 0) {
-      return 'complete';
-    } else if (task.taskDate === currentDate) {
-      return 'in_progress';
-    } else {
-      return 'upcoming';
-    }
-  };
+
 
   // Get assigned employees for this task
   const getAssignedEmployees = (task: any) => {
@@ -626,10 +628,24 @@ export default function DraggableTaskList({
     const draggedTask = sortedTasks[oldIndex];
     const targetTask = sortedTasks[newIndex];
     
-    // Check if there are any completed tasks before the target position
-    const completedTasksBeforeTarget = sortedTasks.slice(0, newIndex).filter(t => t.status === 'complete');
+    console.log('🔍 DRAG VALIDATION:', {
+      draggedTask: draggedTask.name,
+      draggedStatus: draggedTask.status,
+      targetTask: targetTask.name,
+      targetStatus: targetTask.status,
+      oldIndex,
+      newIndex
+    });
     
-    if (completedTasksBeforeTarget.length > 0 && draggedTask.status !== 'complete') {
+    // Check if there are any completed tasks before or at the target position
+    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t) === 'complete');
+    
+    console.log('🔍 COMPLETED TASKS CHECK:', {
+      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t) })),
+      count: completedTasksAtOrBeforeTarget.length
+    });
+    
+    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask) !== 'complete') {
       console.log('🚫 DRAG END: Cannot drag task before completed tasks');
       toast({
         title: "Invalid Move",
@@ -640,7 +656,7 @@ export default function DraggableTaskList({
     }
 
     // Prevent dragging completed tasks
-    if (draggedTask.status === 'complete') {
+    if (getTaskStatus(draggedTask) === 'complete') {
       console.log('🚫 DRAG END: Cannot drag completed tasks');
       toast({
         title: "Invalid Move", 
