@@ -32,6 +32,16 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    staleTime: 30000,
+  });
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["/api/employees"],
+    staleTime: 30000,
+  });
+
   const getWeekDays = () => {
     return eachDayOfInterval({
       start: startOfWeek(selectedDate),
@@ -78,6 +88,55 @@ export default function ScheduleManagement() {
     } else {
       return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
     }
+  };
+
+  // Calculate total scheduled hours from assignments
+  const calculateScheduledHours = (task: any) => {
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter((assignment: any) => 
+      assignment.taskId === taskId
+    );
+    
+    const totalHours = taskAssignments.reduce((sum: number, assignment: any) => {
+      return sum + parseFloat(assignment.assignedHours || 0);
+    }, 0);
+    
+    return totalHours;
+  };
+
+  // Get assigned employees for a task
+  const getAssignedEmployees = (task: any) => {
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter((assignment: any) => 
+      assignment.taskId === taskId
+    );
+    
+    return taskAssignments.map((assignment: any) => {
+      const employee = employees.find((emp: any) => emp.id === assignment.employeeId);
+      if (!employee) return null;
+      
+      return {
+        ...employee,
+        assignedHours: assignment.assignedHours
+      };
+    }).filter(Boolean);
+  };
+
+  // Format assignment display
+  const formatAssignmentDisplay = (task: any) => {
+    const assignedEmployees = getAssignedEmployees(task);
+    if (assignedEmployees.length === 0) return 'Unassigned';
+    
+    // Sort employees: foremen first, drivers last, others in between
+    const sortedEmployees = [...assignedEmployees].sort((a: any, b: any) => {
+      if (a.isForeman && !b.isForeman) return -1;
+      if (!a.isForeman && b.isForeman) return 1;
+      if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
+      if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
+      return 0;
+    });
+
+    return sortedEmployees.map((employee: any) => employee.name).join(', ');
   };
 
   if (projectsLoading) {
@@ -332,11 +391,11 @@ export default function ScheduleManagement() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <Clock className="w-4 h-4 text-gray-500" />
-                              <span>{task.scheduledHours || 0} hours</span>
+                              <span>{calculateScheduledHours(task).toFixed(1)} hours</span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <User className="w-4 h-4 text-gray-500" />
-                              <span>{task.foremanId || 'Unassigned'}</span>
+                              <span>{formatAssignmentDisplay(task)}</span>
                             </div>
                           </div>
                           {task.workDescription && (
