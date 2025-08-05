@@ -626,7 +626,10 @@ export default function ScheduleManagement() {
                             <div>
                               <div className="flex items-center space-x-2">
                                 <Clock className="w-4 h-4 text-gray-500" />
-                                <span>{calculateScheduledHours(task).toFixed(1)} hours</span>
+                                <span>{calculateScheduledHours(task).toFixed(1)} hours scheduled</span>
+                                {calculateActualHours(task) > 0 && (
+                                  <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)} actual</span>
+                                )}
                               </div>
                               <div className="mt-1">
                                 <Badge variant="outline" className="text-xs">
