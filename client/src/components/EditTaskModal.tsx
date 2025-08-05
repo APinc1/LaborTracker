@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, getTaskStatus } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -104,6 +104,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     enabled: !!task?.locationId && isOpen,
     staleTime: 5000,
   });
+
+  // Fetch assignments to check task completion status
+  const { data: allAssignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    enabled: isOpen,
+    staleTime: 30000,
+  });
+
+  // Filter assignments for the current task
+  const taskAssignments = allAssignments.filter((assignment: any) => 
+    assignment.taskId === task?.id || assignment.taskId === task?.taskId
+  );
 
   // Helper function to safely format dates  
   const safeFormatDate = (date: Date): string => {
@@ -258,6 +270,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const onSubmit = (data: any) => {
     console.log('Form submitted with data:', data);
     console.log('Form errors:', form.formState.errors);
+    
+    // Check if task is completed and prevent submission
+    const taskStatus = getTaskStatus(task, taskAssignments);
+    if (taskStatus === 'complete') {
+      toast({
+        title: "Cannot Edit Completed Task",
+        description: "Tasks with recorded actual hours cannot be modified.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Process the form submission with the current date change action
     processFormSubmission(data);
@@ -1665,6 +1688,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       <Input 
                         type="date" 
                         {...field} 
+                        disabled={(() => {
+                          // Disable date input for completed tasks
+                          const taskStatus = getTaskStatus(task, taskAssignments);
+                          const isComplete = taskStatus === 'complete';
+                          
+                          console.log('🔍 EDIT MODAL DATE INPUT DISABLED CHECK:', {
+                            taskName: task?.name,
+                            taskStatus,
+                            isComplete,
+                            taskId: task?.id || task?.taskId,
+                            assignmentsCount: taskAssignments.length,
+                            assignments: taskAssignments.map((a: any) => ({ 
+                              id: a.id, 
+                              taskId: a.taskId, 
+                              actualHours: a.actualHours 
+                            })),
+                            shouldDisable: isComplete
+                          });
+                          
+                          return isComplete;
+                        })()}
                         onChange={(e) => {
                           const newDate = e.target.value;
                           const oldDate = field.value;

@@ -528,3 +528,40 @@ export function updateTaskDependenciesEnhanced(
   
   return updatedTasks;
 }
+
+/**
+ * Get task completion status based on assignments
+ */
+export function getTaskStatus(task: any, assignments: any[] = []): string {
+  // Use the actual status from the database if available
+  if (task?.status) {
+    return task.status;
+  }
+  
+  // Get all assignments for this task
+  const taskAssignments = assignments.filter((assignment: any) => 
+    assignment.taskId === task?.id || assignment.taskId === task?.taskId
+  );
+  
+  // Task is complete if ALL assignments have actual hours recorded (including 0)
+  if (taskAssignments.length > 0) {
+    const allAssignmentsHaveActualHours = taskAssignments.every((assignment: any) => 
+      assignment.actualHours !== null && assignment.actualHours !== undefined
+    );
+    
+    if (allAssignmentsHaveActualHours) {
+      return 'complete';
+    }
+  }
+  
+  // Fallback logic for backwards compatibility
+  const currentDate = new Date().toISOString().split('T')[0];
+  
+  if (task?.actualHours && parseFloat(task.actualHours) > 0) {
+    return 'complete';
+  } else if (task?.taskDate === currentDate) {
+    return 'in_progress';
+  } else {
+    return 'upcoming';
+  }
+}
