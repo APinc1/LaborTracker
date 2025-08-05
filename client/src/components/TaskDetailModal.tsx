@@ -305,7 +305,7 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                         <FormItem>
                           <FormLabel>Scheduled Hours</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.5" {...field} />
+                            <Input type="number" step="0.1" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
