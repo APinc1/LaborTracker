@@ -570,7 +570,6 @@ export default function ScheduleManagement() {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
-        selectedDate={format(selectedDate, 'yyyy-MM-dd')}
         selectedProject={selectedProject && selectedProject !== "ALL_PROJECTS" ? parseInt(selectedProject) : undefined}
       />
       
@@ -582,7 +581,7 @@ export default function ScheduleManagement() {
             setEditingTask(null);
           }}
           task={editingTask}
-          onSave={() => {
+          onTaskUpdate={() => {
             queryClient.invalidateQueries({ 
               queryKey: ["/api/tasks/date-range"] 
             });
@@ -596,13 +595,13 @@ export default function ScheduleManagement() {
           onClose={() => {
             setAssignmentModalOpen(false);
             setSelectedTaskForAssignment(null);
-          }}
-          task={selectedTaskForAssignment}
-          onAssignmentUpdate={() => {
+            // Refresh assignments data
             queryClient.invalidateQueries({ 
               queryKey: ["/api/assignments"] 
             });
           }}
+          taskId={selectedTaskForAssignment.id}
+          taskDate={selectedTaskForAssignment.taskDate}
         />
       )}
     </div>
