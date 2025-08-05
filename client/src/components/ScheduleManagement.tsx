@@ -122,7 +122,28 @@ export default function ScheduleManagement() {
     }).filter(Boolean);
   };
 
-  // Format assignment display
+  // Get project name from task
+  const getProjectName = (task: any) => {
+    // Extract project ID from locationId (format: PRJ-YYYY-###_LocationName)
+    const projectIdMatch = task.locationId?.match(/^(PRJ-\d{4}-\d{3})/);
+    if (!projectIdMatch) return 'Unknown Project';
+    
+    const projectId = projectIdMatch[1];
+    const project = projects.find((p: any) => p.projectId === projectId);
+    return project?.name || 'Unknown Project';
+  };
+
+  // Get location name from task
+  const getLocationName = (task: any) => {
+    // Extract location name from locationId (format: PRJ-YYYY-###_LocationName)
+    const locationMatch = task.locationId?.match(/^PRJ-\d{4}-\d{3}_(.+)$/);
+    if (!locationMatch) return 'Unknown Location';
+    
+    // Convert underscores to spaces and handle common abbreviations
+    return locationMatch[1].replace(/_/g, ' ');
+  };
+
+  // Format assignment display with proper formatting
   const formatAssignmentDisplay = (task: any) => {
     const assignedEmployees = getAssignedEmployees(task);
     if (assignedEmployees.length === 0) return 'Unassigned';
@@ -136,7 +157,56 @@ export default function ScheduleManagement() {
       return 0;
     });
 
-    return sortedEmployees.map((employee: any) => employee.name).join(', ');
+    return sortedEmployees.map((employee: any) => {
+      let displayName = employee.name;
+      if (employee.primaryTrade === 'Driver') {
+        displayName += ' (Driver)';
+      }
+      return displayName;
+    }).join(', ');
+  };
+
+  // Format detailed assignment display for task cards
+  const formatDetailedAssignmentDisplay = (task: any) => {
+    const assignedEmployees = getAssignedEmployees(task);
+    if (assignedEmployees.length === 0) return <span className="text-gray-500">Unassigned</span>;
+    
+    // Sort employees: foremen first, drivers last, others in between
+    const sortedEmployees = [...assignedEmployees].sort((a: any, b: any) => {
+      if (a.isForeman && !b.isForeman) return -1;
+      if (!a.isForeman && b.isForeman) return 1;
+      if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
+      if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
+      return 0;
+    });
+
+    return (
+      <div className="space-y-1">
+        {sortedEmployees.map((employee: any, index: number) => {
+          const isDriver = employee.primaryTrade === 'Driver';
+          const isForeman = employee.isForeman;
+          const hours = parseFloat(employee.assignedHours);
+          const showHours = hours !== 8;
+          
+          let displayText = employee.name;
+          if (isDriver) {
+            displayText += ' (Driver)';
+          }
+          if (showHours) {
+            displayText += ` (${hours}h)`;
+          }
+          
+          return (
+            <div 
+              key={employee.id} 
+              className={`text-sm ${isForeman ? 'font-bold' : ''}`}
+            >
+              {displayText}
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (projectsLoading) {
@@ -324,15 +394,19 @@ export default function ScheduleManagement() {
                                 <div className="space-y-1">
                                   <div className="flex items-center space-x-1 text-xs text-gray-600">
                                     <MapPin className="w-3 h-3" />
-                                    <span>{task.locationId}</span>
+                                    <span>{getProjectName(task)}</span>
                                   </div>
-                                  <div className="flex items-center space-x-1 text-xs text-gray-600">
-                                    <Tag className="w-3 h-3" />
-                                    <span>{task.costCode}</span>
+                                  <div className="text-xs text-gray-500 ml-4">
+                                    {getLocationName(task)}
                                   </div>
-                                  <div className="flex items-center space-x-1 text-xs text-gray-600">
-                                    <Clock className="w-3 h-3" />
-                                    <span>{task.scheduledHours || 0}h</span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-1 text-xs text-gray-600">
+                                      <Clock className="w-3 h-3" />
+                                      <span>{calculateScheduledHours(task).toFixed(1)}h</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-xs">
+                                      {task.costCode}
+                                    </Badge>
                                   </div>
                                 </div>
                               </div>
@@ -380,22 +454,29 @@ export default function ScheduleManagement() {
                               </span>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                            <div className="flex items-center space-x-2">
-                              <MapPin className="w-4 h-4 text-gray-500" />
-                              <span>{task.locationId}</span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Tag className="w-4 h-4 text-gray-500" />
-                              <span>{task.costCode}</span>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <div className="flex items-center space-x-2 mb-1">
+                                <MapPin className="w-4 h-4 text-gray-500" />
+                                <span className="font-medium">{getProjectName(task)}</span>
+                              </div>
+                              <div className="text-gray-500 ml-6">{getLocationName(task)}</div>
                             </div>
                             <div className="flex items-center space-x-2">
                               <Clock className="w-4 h-4 text-gray-500" />
                               <span>{calculateScheduledHours(task).toFixed(1)} hours</span>
+                              <Badge variant="outline" className="text-xs ml-2">
+                                {task.costCode}
+                              </Badge>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <User className="w-4 h-4 text-gray-500" />
-                              <span>{formatAssignmentDisplay(task)}</span>
+                            <div>
+                              <div className="flex items-center space-x-2 mb-1">
+                                <User className="w-4 h-4 text-gray-500" />
+                                <span className="text-sm font-medium">Assigned:</span>
+                              </div>
+                              <div className="ml-6">
+                                {formatDetailedAssignmentDisplay(task)}
+                              </div>
                             </div>
                           </div>
                           {task.workDescription && (
