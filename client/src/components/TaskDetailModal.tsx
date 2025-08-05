@@ -160,6 +160,17 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   });
 
   const onSubmit = (data: any) => {
+    // Prevent submission of completed tasks
+    const taskStatus = getTaskStatus(task, assignments);
+    if (taskStatus === 'complete') {
+      toast({
+        title: "Cannot Edit Completed Task",
+        description: "Tasks with recorded actual hours cannot be modified.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const processedData = {
       ...data,
       scheduledHours: data.scheduledHours ? parseFloat(data.scheduledHours) : null,
@@ -368,6 +379,12 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                               disabled={(() => {
                                 const taskStatus = getTaskStatus(task, assignments);
                                 const isComplete = taskStatus === 'complete';
+                                
+                                // Task date should be disabled if:
+                                // 1. Task is complete (regardless of editing mode)
+                                // 2. Not in editing mode
+                                const shouldDisable = isComplete || !isEditing;
+                                
                                 console.log('🔍 DATE INPUT DISABLED CHECK:', {
                                   taskName: (task as any)?.name,
                                   taskStatus,
@@ -382,9 +399,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                                     taskId: a.taskId, 
                                     actualHours: a.actualHours 
                                   })),
-                                  finalDisabled: isComplete || !isEditing
+                                  shouldDisable,
+                                  reason: isComplete ? 'Task is complete' : !isEditing ? 'Not in editing mode' : 'Should be enabled'
                                 });
-                                return isComplete || !isEditing;
+                                
+                                return shouldDisable;
                               })()}
                             />
                           </FormControl>
