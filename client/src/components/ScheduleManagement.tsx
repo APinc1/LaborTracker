@@ -155,6 +155,19 @@ export default function ScheduleManagement() {
   };
 
   const getTaskStatus = (task: any) => {
+    // Use the actual status from the database if available
+    if (task.status) {
+      switch (task.status) {
+        case 'complete':
+          return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+        case 'in_progress':
+          return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+        default:
+          return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
+      }
+    }
+    
+    // Fallback logic for backwards compatibility
     const currentDate = new Date().toISOString().split('T')[0];
     
     if (task.actualHours && parseFloat(task.actualHours) > 0) {
