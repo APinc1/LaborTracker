@@ -14,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
 import { z } from "zod";
-import { generateLinkedTaskGroupId, getLinkedTasks, realignDependentTasks, findLinkedTaskGroups, getLinkedGroupTaskIds } from "@shared/taskUtils";
+import { generateLinkedTaskGroupId, getLinkedTasks, realignDependentTasks, findLinkedTaskGroups, getLinkedGroupTaskIds, getTaskStatus } from "@shared/taskUtils";
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -928,31 +928,65 @@ export default function CreateTaskModal({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="start">At the beginning</SelectItem>
-                        {(existingTasks as any[])
-                          .sort((a: any, b: any) => {
-                            // Use same ORDER-first sorting as display and logic
-                            if (a.order !== undefined && b.order !== undefined) {
-                              return a.order - b.order;
-                            }
-                            if (a.order !== undefined && b.order === undefined) {
-                              return -1;
-                            }
-                            if (a.order === undefined && b.order !== undefined) {
-                              return 1;
-                            }
-                            const dateA = new Date(a.taskDate).getTime();
-                            const dateB = new Date(b.taskDate).getTime();
-                            if (dateA !== dateB) return dateA - dateB;
-                            return (a.taskId || a.id).localeCompare(b.taskId || b.id);
-                          })
-                          .map((task: any) => (
-                          <SelectItem 
-                            key={task.id || task.taskId} 
-                            value={`after-${(task.taskId || task.id).toString()}`}
-                          >
-                            After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
-                          </SelectItem>
-                        ))}
+                        {(() => {
+                          // Get all assignments to determine completion status
+                          const taskAssignments = assignments || [];
+                          
+                          // Filter tasks to only show valid insertion points (after completed tasks)
+                          const validInsertionTasks = (existingTasks as any[])
+                            .sort((a: any, b: any) => {
+                              // Use same ORDER-first sorting as display and logic
+                              if (a.order !== undefined && b.order !== undefined) {
+                                return a.order - b.order;
+                              }
+                              if (a.order !== undefined && b.order === undefined) {
+                                return -1;
+                              }
+                              if (a.order === undefined && b.order !== undefined) {
+                                return 1;
+                              }
+                              const dateA = new Date(a.taskDate).getTime();
+                              const dateB = new Date(b.taskDate).getTime();
+                              if (dateA !== dateB) return dateA - dateB;
+                              return (a.taskId || a.id).localeCompare(b.taskId || b.id);
+                            })
+                            .filter((task: any, index: number, sortedTasks: any[]) => {
+                              // Use getTaskStatus from shared utilities
+                              
+                              // Get task assignments
+                              const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
+                                assignment.taskId === (task.id || task.taskId)
+                              );
+                              
+                              const taskStatus = getTaskStatus(task, taskTaskAssignments);
+                              
+                              // Allow insertion after completed tasks
+                              if (taskStatus === 'complete') {
+                                return true;
+                              }
+                              
+                              // Allow insertion after tasks where all previous tasks are completed
+                              const previousTasks = sortedTasks.slice(0, index);
+                              const allPreviousCompleted = previousTasks.every((prevTask: any) => {
+                                const prevTaskAssignments = taskAssignments.filter((assignment: any) => 
+                                  assignment.taskId === (prevTask.id || prevTask.taskId)
+                                );
+                                const prevTaskStatus = getTaskStatus(prevTask, prevTaskAssignments);
+                                return prevTaskStatus === 'complete';
+                              });
+                              
+                              return allPreviousCompleted;
+                            });
+                            
+                          return validInsertionTasks.map((task: any) => (
+                            <SelectItem 
+                              key={task.id || task.taskId} 
+                              value={`after-${(task.taskId || task.id).toString()}`}
+                            >
+                              After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
+                            </SelectItem>
+                          ));
+                        })()}
                         <SelectItem value="end">At the end</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1123,9 +1157,20 @@ export default function CreateTaskModal({
                           
                           {/* Dropdown - only show if there are available tasks to select */}
                           {(existingTasks as any[])
-                            .filter((t: any) => 
-                              !(field.value || []).includes((t.taskId || t.id).toString())
-                            ).length > 0 && (
+                            .filter((t: any) => {
+                              // Exclude already selected tasks
+                              if ((field.value || []).includes((t.taskId || t.id).toString())) {
+                                return false;
+                              }
+                              
+                              // Exclude completed tasks from linking options
+                              const taskTaskAssignments = assignments.filter((assignment: any) => 
+                                assignment.taskId === (t.id || t.taskId)
+                              );
+                              const taskStatus = getTaskStatus(t, taskTaskAssignments);
+                              
+                              return taskStatus !== 'complete';
+                            }).length > 0 && (
                             <Select 
                               key={`select-${(field.value || []).join('-')}`}
                               onValueChange={(value) => {
@@ -1150,9 +1195,20 @@ export default function CreateTaskModal({
                               </SelectTrigger>
                               <SelectContent>
                                 {(existingTasks as any[])
-                                  .filter((t: any) => 
-                                    !(field.value || []).includes((t.taskId || t.id).toString())
-                                  )
+                                  .filter((t: any) => {
+                                    // Exclude already selected tasks
+                                    if ((field.value || []).includes((t.taskId || t.id).toString())) {
+                                      return false;
+                                    }
+                                    
+                                    // Exclude completed tasks from linking options
+                                    const taskTaskAssignments = assignments.filter((assignment: any) => 
+                                      assignment.taskId === (t.id || t.taskId)
+                                    );
+                                    const taskStatus = getTaskStatus(t, taskTaskAssignments);
+                                    
+                                    return taskStatus !== 'complete';
+                                  })
                                   .sort((a: any, b: any) => {
                                     const dateA = new Date(a.taskDate).getTime();
                                     const dateB = new Date(b.taskDate).getTime();

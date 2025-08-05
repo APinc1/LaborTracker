@@ -1978,10 +1978,25 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               </SelectTrigger>
                               <SelectContent>
                                 {(Array.isArray(existingTasks) ? existingTasks : [])
-                                  .filter((t: any) => 
-                                    (t.taskId || t.id) !== (task.taskId || task.id) && // Exclude current task
-                                    !(field.value || []).includes((t.taskId || t.id).toString())
-                                  )
+                                  .filter((t: any) => {
+                                    // Exclude current task
+                                    if ((t.taskId || t.id) === (task.taskId || task.id)) {
+                                      return false;
+                                    }
+                                    
+                                    // Exclude already selected tasks
+                                    if ((field.value || []).includes((t.taskId || t.id).toString())) {
+                                      return false;
+                                    }
+                                    
+                                    // Exclude completed tasks from linking options
+                                    const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
+                                      assignment.taskId === (t.id || t.taskId)
+                                    );
+                                    const taskStatus = getTaskStatus(t, taskTaskAssignments);
+                                    
+                                    return taskStatus !== 'complete';
+                                  })
                                   .sort((a: any, b: any) => {
                                     const dateA = new Date(a.taskDate).getTime();
                                     const dateB = new Date(b.taskDate).getTime();
