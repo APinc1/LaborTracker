@@ -1,20 +1,62 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import CreateTaskModal from "./CreateTaskModal";
+import EditTaskModal from "./EditTaskModal";
+import AssignmentModal from "./AssignmentModal";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("ALL_PROJECTS");
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL_LOCATIONS");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
+  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState(null);
+  
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Task action handlers
+  const handleEditTask = (task: any) => {
+    setEditingTask(task);
+    setIsEditTaskModalOpen(true);
+  };
+
+  const handleAssignTaskClick = (task: any) => {
+    setSelectedTaskForAssignment(task);
+    setAssignmentModalOpen(true);
+  };
+
+  const handleDeleteTask = useMutation({
+    mutationFn: (taskId: string) => apiRequest(`/api/tasks/${taskId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Task deleted successfully"
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/tasks/date-range"] 
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete task",
+        variant: "destructive"
+      });
+    }
+  });
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery({
     queryKey: ["/api/projects"],
@@ -378,7 +420,7 @@ export default function ScheduleManagement() {
                             {dayTasks.map((task: any) => (
                               <div
                                 key={task.id}
-                                className="border border-gray-200 rounded p-2 hover:shadow-sm transition-shadow cursor-pointer"
+                                className="border border-gray-200 rounded p-2 hover:shadow-sm transition-shadow"
                               >
                                 <div className="flex items-center justify-between mb-1">
                                   <div className="flex items-center space-x-1">
@@ -388,6 +430,32 @@ export default function ScheduleManagement() {
                                     >
                                       {task.taskType}
                                     </Badge>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleEditTask(task)}
+                                      className="h-6 w-6 p-0 hover:bg-gray-100"
+                                    >
+                                      <Edit className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleAssignTaskClick(task)}
+                                      className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    >
+                                      <User className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteTask.mutate(task.id.toString())}
+                                      className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
                                   </div>
                                 </div>
                                 <h4 className="font-medium text-sm mb-1">{task.name}</h4>
@@ -399,11 +467,11 @@ export default function ScheduleManagement() {
                                   <div className="text-xs text-gray-500 ml-4">
                                     {getLocationName(task)}
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center space-x-1 text-xs text-gray-600">
-                                      <Clock className="w-3 h-3" />
-                                      <span>{calculateScheduledHours(task).toFixed(1)}h</span>
-                                    </div>
+                                  <div className="flex items-center space-x-1 text-xs text-gray-600">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{calculateScheduledHours(task).toFixed(1)}h</span>
+                                  </div>
+                                  <div className="mt-1">
                                     <Badge variant="outline" className="text-xs">
                                       {task.costCode}
                                     </Badge>
@@ -462,12 +530,16 @@ export default function ScheduleManagement() {
                               </div>
                               <div className="text-gray-500 ml-6">{getLocationName(task)}</div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <Clock className="w-4 h-4 text-gray-500" />
-                              <span>{calculateScheduledHours(task).toFixed(1)} hours</span>
-                              <Badge variant="outline" className="text-xs ml-2">
-                                {task.costCode}
-                              </Badge>
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <Clock className="w-4 h-4 text-gray-500" />
+                                <span>{calculateScheduledHours(task).toFixed(1)} hours</span>
+                              </div>
+                              <div className="mt-1">
+                                <Badge variant="outline" className="text-xs">
+                                  {task.costCode}
+                                </Badge>
+                              </div>
                             </div>
                             <div>
                               <div className="flex items-center space-x-2 mb-1">
@@ -501,6 +573,38 @@ export default function ScheduleManagement() {
         selectedDate={format(selectedDate, 'yyyy-MM-dd')}
         selectedProject={selectedProject && selectedProject !== "ALL_PROJECTS" ? parseInt(selectedProject) : undefined}
       />
+      
+      {editingTask && (
+        <EditTaskModal
+          isOpen={isEditTaskModalOpen}
+          onClose={() => {
+            setIsEditTaskModalOpen(false);
+            setEditingTask(null);
+          }}
+          task={editingTask}
+          onSave={() => {
+            queryClient.invalidateQueries({ 
+              queryKey: ["/api/tasks/date-range"] 
+            });
+          }}
+        />
+      )}
+      
+      {selectedTaskForAssignment && (
+        <AssignmentModal
+          isOpen={assignmentModalOpen}
+          onClose={() => {
+            setAssignmentModalOpen(false);
+            setSelectedTaskForAssignment(null);
+          }}
+          task={selectedTaskForAssignment}
+          onAssignmentUpdate={() => {
+            queryClient.invalidateQueries({ 
+              queryKey: ["/api/assignments"] 
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
