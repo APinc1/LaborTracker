@@ -648,6 +648,21 @@ export default function DraggableTaskList({
       // Check if inserting between two tasks from the same linked group
       // CRITICAL: Both taskBefore AND taskAfter must exist AND be from the same linked group
       // AND we must be inserting truly BETWEEN them, not at the end of the group
+      
+      console.log('🔍 CONDITION CHECK:', {
+        hasTaskBefore: !!taskBefore,
+        hasTaskAfter: !!taskAfter,
+        taskBeforeLinked: !!taskBefore?.linkedTaskGroup,
+        taskAfterLinked: !!taskAfter?.linkedTaskGroup,
+        beforeGroup: taskBefore?.linkedTaskGroup || 'none',
+        afterGroup: taskAfter?.linkedTaskGroup || 'none',
+        sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup,
+        differentTasks: taskBefore !== taskAfter,
+        willEnterDetection: taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
+                           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
+                           taskBefore !== taskAfter
+      });
+      
       if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
           taskBefore !== taskAfter) { // Ensure they are different tasks
