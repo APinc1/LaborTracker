@@ -95,8 +95,8 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   });
 
   // Filter assignments for this specific task
-  const assignments = allAssignments.filter(assignment => 
-    assignment.taskId === taskId || assignment.taskId === task?.id
+  const assignments = (allAssignments as any[]).filter((assignment: any) => 
+    assignment.taskId === taskId || assignment.taskId === (task as any)?.id
   );
 
   const { data: employees = [] } = useQuery({
@@ -105,14 +105,18 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   });
 
   const { data: locations = [] } = useQuery({
-    queryKey: ["/api/projects", task?.projectId || 0, "locations"],
-    enabled: !!task?.projectId,
+    queryKey: ["/api/projects", (task as any)?.projectId || 0, "locations"],
+    enabled: !!(task as any)?.projectId,
     staleTime: 30000,
   });
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('PUT', `/api/tasks/${taskId}`, data);
+      const response = await apiRequest(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -166,17 +170,17 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   const handleEdit = () => {
     if (task) {
       form.reset({
-        name: task.name,
-        taskType: task.taskType,
-        taskDate: task.taskDate,
-        startDate: task.startDate,
-        finishDate: task.finishDate,
-        costCode: task.costCode,
-        scheduledHours: task.scheduledHours?.toString() || '',
-        startTime: task.startTime || '',
-        finishTime: task.finishTime || '',
-        workDescription: task.workDescription || '',
-        notes: task.notes || '',
+        name: (task as any).name,
+        taskType: (task as any).taskType,
+        taskDate: (task as any).taskDate,
+        startDate: (task as any).startDate,
+        finishDate: (task as any).finishDate,
+        costCode: (task as any).costCode,
+        scheduledHours: (task as any).scheduledHours?.toString() || '',
+        startTime: (task as any).startTime || '',
+        finishTime: (task as any).finishTime || '',
+        workDescription: (task as any).workDescription || '',
+        notes: (task as any).notes || '',
       });
       setIsEditing(true);
     }
@@ -188,11 +192,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
   };
 
   const getEmployee = (employeeId: number) => {
-    return employees.find((emp: any) => emp.id === employeeId);
+    return (employees as any[]).find((emp: any) => emp.id === employeeId);
   };
 
   const getLocation = (locationId: number) => {
-    return locations.find((loc: any) => loc.id === locationId);
+    return (locations as any[]).find((loc: any) => loc.id === locationId);
   };
 
   const getTaskTypeColor = (taskType: string) => {
@@ -365,13 +369,15 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
                                 const taskStatus = getTaskStatus(task, assignments);
                                 const isComplete = taskStatus === 'complete';
                                 console.log('🔍 DATE INPUT DISABLED CHECK:', {
-                                  taskName: task?.name,
+                                  taskName: (task as any)?.name,
                                   taskStatus,
                                   isComplete,
                                   isEditing,
-                                  taskId: task?.id,
+                                  taskId: (task as any)?.id,
+                                  taskIdParam: taskId,
+                                  taskFromDb: task,
                                   assignmentsCount: assignments.length,
-                                  assignments: assignments.map(a => ({ 
+                                  assignments: assignments.map((a: any) => ({ 
                                     id: a.id, 
                                     taskId: a.taskId, 
                                     actualHours: a.actualHours 
