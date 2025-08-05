@@ -337,7 +337,27 @@ export default function AssignmentManagement() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  {/* Assignment Date - moved to top */}
+                  {/* Employee - at top for edit mode */}
+                  {editingAssignment && (
+                    <FormField
+                      control={form.control}
+                      name="employeeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Employee</FormLabel>
+                          <FormControl>
+                            <Input 
+                              value={employees.find((emp: any) => emp.id.toString() === field.value)?.name || 'Unknown Employee'} 
+                              disabled 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                  
+                  {/* Assignment Date */}
                   <FormField
                     control={form.control}
                     name="assignmentDate"
@@ -401,20 +421,14 @@ export default function AssignmentManagement() {
                     )}
                   />
                   
-                  <FormField
-                    control={form.control}
-                    name="employeeId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Employee</FormLabel>
-                        {editingAssignment ? (
-                          <FormControl>
-                            <Input 
-                              value={employees.find((emp: any) => emp.id.toString() === field.value)?.name || 'Unknown Employee'} 
-                              disabled 
-                            />
-                          </FormControl>
-                        ) : (
+                  {/* Employee - only show for create mode (edit mode shows at top) */}
+                  {!editingAssignment && (
+                    <FormField
+                      control={form.control}
+                      name="employeeId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Employee</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -429,11 +443,11 @@ export default function AssignmentManagement() {
                               ))}
                             </SelectContent>
                           </Select>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
