@@ -700,14 +700,6 @@ export default function AssignmentManagement() {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(assignment.id)}
-                                  className="text-red-500 hover:text-red-700"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
