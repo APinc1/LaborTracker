@@ -35,6 +35,7 @@ export interface IStorage {
   
   // Location methods
   getLocations(projectId: number): Promise<Location[]>;
+  getAllLocations(): Promise<Location[]>;
   getLocation(id: number): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location>;
@@ -582,6 +583,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.locations.values()).filter(location => location.projectId === projectId);
   }
 
+  async getAllLocations(): Promise<Location[]> {
+    return Array.from(this.locations.values());
+  }
+
   async getLocation(id: string | number): Promise<Location | undefined> {
     // For string IDs, find by locationId field; for number IDs, find by id field
     if (typeof id === 'string') {
@@ -1037,6 +1042,10 @@ class DatabaseStorage implements IStorage {
   // Location methods
   async getLocations(projectId: number): Promise<Location[]> {
     return await this.db.select().from(locations).where(eq(locations.projectId, projectId));
+  }
+
+  async getAllLocations(): Promise<Location[]> {
+    return await this.db.select().from(locations);
   }
 
   async getLocation(id: number): Promise<Location | undefined> {

@@ -290,6 +290,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add general locations route
+  app.get('/api/locations', async (req, res) => {
+    try {
+      const locations = await storage.getAllLocations();
+      res.json(locations);
+    } catch (error: any) {
+      console.error('Error fetching all locations:', error);
+      res.status(500).json({ error: 'Failed to fetch locations' });
+    }
+  });
+
   app.get('/api/locations/:id', async (req, res) => {
     try {
       const location = await storage.getLocation(req.params.id);

@@ -117,6 +117,7 @@ export default function AssignmentManagement() {
             return result;
           } catch (error) {
             console.error(`Error updating assignment ${update.id}:`, error);
+            console.error('Full error object:', JSON.stringify(error, null, 2));
             throw error;
           }
         })
@@ -217,8 +218,12 @@ export default function AssignmentManagement() {
     return tasks.find((task: any) => task.id === taskId);
   };
 
-  const getProject = (projectId: string) => {
-    return projects.find((project: any) => project.projectId === projectId);
+  const getProject = (task: any) => {
+    if (!task?.locationId) return null;
+    // Find location first, then get project from location
+    const location = locations.find((loc: any) => loc.locationId === task.locationId);
+    if (!location?.projectId) return null;
+    return projects.find((project: any) => project.id === location.projectId);
   };
 
   const getLocation = (locationId: string) => {
@@ -612,8 +617,8 @@ export default function AssignmentManagement() {
                             </TableCell>
                             <TableCell>
                               <div>
-                                <p className="font-medium text-gray-800">{getProject(task?.projectId)?.name || 'Unknown Project'}</p>
-                                <p className="text-sm text-gray-500">{task?.projectId || 'N/A'}</p>
+                                <p className="font-medium text-gray-800">{getProject(task)?.name || 'Unknown Project'}</p>
+                                <p className="text-sm text-gray-500">{getProject(task)?.projectId || 'N/A'}</p>
                               </div>
                             </TableCell>
                             <TableCell>
