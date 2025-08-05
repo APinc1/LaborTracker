@@ -213,12 +213,23 @@ export default function AssignmentManagement() {
     console.log('handleBulkSave called');
     console.log('bulkEditMode:', bulkEditMode);
     console.log('editingActualHours:', editingActualHours);
+    console.log('filteredAssignments:', filteredAssignments.map(a => ({ id: a.id, actualHours: a.actualHours })));
     
-    // Only check assignments that have been touched (in editingActualHours)
-    // Find assignments where user explicitly cleared the field or left it empty
-    const emptyHoursAssignments = Object.entries(editingActualHours)
-      .filter(([_, hours]) => !hours || hours.trim() === '')
-      .map(([id, _]) => parseInt(id));
+    // Check all assignments for empty hours - both touched and untouched
+    const assignmentsNeedingHours = filteredAssignments.filter(assignment => {
+      // If the assignment was touched (in editingActualHours), check that value
+      if (editingActualHours.hasOwnProperty(assignment.id)) {
+        const editedValue = editingActualHours[assignment.id];
+        const isEmpty = !editedValue || editedValue.trim() === '';
+        console.log(`Assignment ${assignment.id} was edited to: "${editedValue}", isEmpty: ${isEmpty}`);
+        return isEmpty;
+      }
+      // If assignment wasn't touched, check if it already has actual hours
+      // If it doesn't have actual hours, it's effectively "empty" for bulk save
+      const hasExistingHours = assignment.actualHours !== null && assignment.actualHours !== undefined;
+      console.log(`Assignment ${assignment.id} not touched, hasExistingHours: ${hasExistingHours}, actualHours: ${assignment.actualHours}`);
+      return !hasExistingHours;
+    });
     
     // Prepare updates for assignments with actual hours entered  
     const validUpdates = Object.entries(editingActualHours)
@@ -229,10 +240,10 @@ export default function AssignmentManagement() {
       }))
       .filter(update => !isNaN(update.actualHours));
     
-    console.log('emptyHoursAssignments:', emptyHoursAssignments);
+    console.log('assignmentsNeedingHours:', assignmentsNeedingHours.map(a => ({ id: a.id, actualHours: a.actualHours })));
     console.log('validUpdates:', validUpdates);
     
-    if (emptyHoursAssignments.length > 0) {
+    if (assignmentsNeedingHours.length > 0) {
       // Show confirmation dialog for empty hours
       console.log('Showing empty hours dialog');
       setPendingUpdates(validUpdates);
@@ -252,19 +263,27 @@ export default function AssignmentManagement() {
     let allUpdates = [...pendingUpdates];
     
     if (setToZero) {
-      // Add updates for empty hours assignments, setting them to 0
+      // Add updates for assignments that need hours set to 0
       const emptyHoursUpdates = filteredAssignments
         .filter(assignment => {
-          const hours = editingActualHours[assignment.id];
-          return editingActualHours.hasOwnProperty(assignment.id) && (!hours || hours.trim() === '');
+          // If the assignment was touched (in editingActualHours), check that value
+          if (editingActualHours.hasOwnProperty(assignment.id)) {
+            const editedValue = editingActualHours[assignment.id];
+            return !editedValue || editedValue.trim() === '';
+          }
+          // If assignment wasn't touched, check if it already has actual hours
+          return assignment.actualHours === null || assignment.actualHours === undefined;
         })
         .map(assignment => ({
           id: assignment.id,
           actualHours: 0
         }));
       
+      console.log('Adding zero hours updates:', emptyHoursUpdates);
       allUpdates = [...pendingUpdates, ...emptyHoursUpdates];
     }
+    
+    console.log('Final updates to process:', allUpdates);
     
     if (allUpdates.length > 0) {
       bulkUpdateActualHoursMutation.mutate(allUpdates);
