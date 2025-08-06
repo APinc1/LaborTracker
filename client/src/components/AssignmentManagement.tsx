@@ -558,9 +558,9 @@ export default function AssignmentManagement() {
   };
 
   // Calculate crew availability status for a specific date
-  const getCrewAvailability = (crewName: string, forDate?: string) => {
+  const getCrewAvailability = (crewId: number, forDate?: string) => {
     const targetDate = forDate || selectedDate;
-    const crewMembers = (employees as any[]).filter((emp: any) => emp.crewName === crewName);
+    const crewMembers = (employees as any[]).filter((emp: any) => emp.crewId === crewId);
     if (crewMembers.length === 0) return { status: 'Available', remainingHours: 0, memberCount: 0 };
 
     const totalRemainingHours = crewMembers.reduce((total, member) => {
@@ -739,7 +739,7 @@ export default function AssignmentManagement() {
                               {selectedCrews.map((crewId) => {
                                 const crew = (crews as any[]).find(c => c.id.toString() === crewId);
                                 const formDate = form.getValues('assignmentDate') || selectedDate;
-                                const availability = getCrewAvailability(crew?.name || '', formDate);
+                                const availability = getCrewAvailability(crew?.id || 0, formDate);
                                 return (
                                   <div key={crewId} className={`text-xs px-2 py-1 rounded-lg border ${
                                     availability.status === 'Available' ? 'bg-blue-50 border-blue-200 text-blue-800' :
@@ -800,7 +800,7 @@ export default function AssignmentManagement() {
                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
                               {(crews as any[]).map((crew: any) => {
                                 const formDate = form.getValues('assignmentDate') || selectedDate;
-                                const availability = getCrewAvailability(crew.name, formDate);
+                                const availability = getCrewAvailability(crew.id, formDate);
                                 const isSelected = selectedCrews.includes(crew.id.toString());
                                 
                                 const getCrewCardStyle = () => {
@@ -864,11 +864,13 @@ export default function AssignmentManagement() {
                                       // Auto-select/deselect all crew members
                                       const allSelectedCrewMembers = (employees as any[])
                                         .filter(emp => newSelectedCrews.some(selectedCrewId => 
-                                          emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
+                                          emp.crewId === parseInt(selectedCrewId)
                                         ))
                                         .map(emp => emp.id.toString());
                                       
-                                      setSelectedEmployeeIds(allSelectedCrewMembers);
+                                      // Also need to update the form state
+                                      form.setValue('employeeIds', allSelectedCrewMembers);
+                                      setSelectedEmployees(allSelectedCrewMembers);
                                     }}
                                   >
                                     <div className="flex items-center justify-between">
