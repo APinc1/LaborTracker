@@ -552,8 +552,6 @@ export default function AssignmentManagement() {
           }}>
             <DialogTrigger asChild>
               <Button onClick={() => {
-                console.log('Opening dialog with selectedDate:', selectedDate);
-                console.log('Current tasks:', tasks);
                 setIsCreateDialogOpen(true);
                 setSelectedEmployeeIds([]);
                 setEmployeeSearchTerm('');
@@ -622,15 +620,11 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(() => {
-                              console.log('Task dropdown - Assignment date:', assignmentDate);
-                              console.log('Task dropdown - Assignment tasks:', assignmentTasks);
-                              return (assignmentTasks as any[]).map((task: any) => (
-                                <SelectItem key={task.id} value={task.id.toString()}>
-                                  {task.name} - {task.costCode}
-                                </SelectItem>
-                              ));
-                            })()}
+                            {(assignmentTasks as any[]).map((task: any) => (
+                              <SelectItem key={task.id} value={task.id.toString()}>
+                                {task.name} - {task.costCode}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -865,21 +859,6 @@ export default function AssignmentManagement() {
                                             {getAvailabilityBadge(employee)}
                                           </div>
                                         </div>
-                                        
-                                        {/* Hours input for selected employees */}
-                                        {isSelected && employee.status !== 'full' && (
-                                          <div className="mt-3 pt-2 border-t border-gray-200">
-                                            <Label className="text-xs text-gray-600">Hours to assign:</Label>
-                                            <Input
-                                              type="number"
-                                              min="0"
-                                              max={employee.remainingHours}
-                                              defaultValue={Math.min(8, employee.remainingHours)}
-                                              className="h-7 text-xs mt-1"
-                                              onClick={(e) => e.stopPropagation()}
-                                            />
-                                          </div>
-                                        )}
                                       </div>
                                     );
                                   })
