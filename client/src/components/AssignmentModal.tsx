@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Users, User, Clock, CheckCircle } from 'lucide-react';
+import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,24 +45,49 @@ interface CrewWithAvailability {
 }
 
 export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: AssignmentModalProps) {
-  const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
-  const [selectedCrews, setSelectedCrews] = useState<Set<string>>(new Set());
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [assignmentHours, setAssignmentHours] = useState<Record<string, number>>({});
+  const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const [crewSearchTerm, setCrewSearchTerm] = useState('');
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const { toast } = useToast();
+
+  // Refs for handling dropdown focus
+  const employeeDropdownRef = useRef<HTMLDivElement>(null);
+  const crewDropdownRef = useRef<HTMLDivElement>(null);
 
   // Reset state when modal opens/closes or taskId changes
   const [modalInitialized, setModalInitialized] = React.useState(false);
   
   React.useEffect(() => {
     if (isOpen && !modalInitialized) {
-      setSelectedEmployees(new Set());
-      setSelectedCrews(new Set());
+      setSelectedEmployeeIds([]);
+      setSelectedCrews([]);
       setAssignmentHours({});
+      setEmployeeSearchTerm('');
+      setCrewSearchTerm('');
       setModalInitialized(true);
     } else if (!isOpen) {
       setModalInitialized(false);
     }
   }, [isOpen, taskId, modalInitialized]);
+
+  // Handle outside clicks for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+      if (crewDropdownRef.current && !crewDropdownRef.current.contains(event.target as Node)) {
+        setShowCrewDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch employees
   const { data: employees = [] } = useQuery({
@@ -101,32 +126,32 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-          return employee?.teamMemberId;
+          return employee?.id.toString();
         }).filter(Boolean);
         
         const existingHours: Record<string, number> = {};
         existingAssignments.forEach((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
           if (employee) {
-            existingHours[employee.teamMemberId] = parseFloat(assignment.assignedHours);
+            existingHours[employee.id.toString()] = parseFloat(assignment.assignedHours);
           }
         });
 
         // Check if any crews are fully assigned
-        const assignedCrews = new Set<string>();
+        const assignedCrews: string[] = [];
         (crews as any[]).forEach(crew => {
           const crewMembers = (employees as any[]).filter(emp => emp.crewId === crew.id);
           const assignedMembers = crewMembers.filter(member => 
-            existingEmployeeIds.includes(member.teamMemberId)
+            existingEmployeeIds.includes(member.id.toString())
           );
           
           // If all crew members are assigned, mark crew as selected
           if (crewMembers.length > 0 && assignedMembers.length === crewMembers.length) {
-            assignedCrews.add(crew.id.toString());
+            assignedCrews.push(crew.id.toString());
           }
         });
 
-        setSelectedEmployees(new Set(existingEmployeeIds));
+        setSelectedEmployeeIds(existingEmployeeIds);
         setSelectedCrews(assignedCrews);
         setAssignmentHours(existingHours);
       }

@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import CreateTaskModal from "./CreateTaskModal";
 import EditTaskModal from "./EditTaskModal";
-import AssignmentModal from "./AssignmentModal";
+import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ScheduleManagement() {
@@ -686,7 +686,7 @@ export default function ScheduleManagement() {
       )}
       
       {selectedTaskForAssignment && (
-        <AssignmentModal
+        <EnhancedAssignmentModal
           isOpen={assignmentModalOpen}
           onClose={() => {
             setAssignmentModalOpen(false);
@@ -698,6 +698,7 @@ export default function ScheduleManagement() {
           }}
           taskId={selectedTaskForAssignment.id}
           taskDate={selectedTaskForAssignment.taskDate}
+          taskName={selectedTaskForAssignment.name}
         />
       )}
 
