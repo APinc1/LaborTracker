@@ -31,6 +31,7 @@ export default function EnhancedAssignmentModal({
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [defaultHours, setDefaultHours] = useState<string>('8');
   const [employeeHours, setEmployeeHours] = useState<Record<string, string>>({});
+  const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
@@ -48,6 +49,7 @@ export default function EnhancedAssignmentModal({
       setSelectedCrews([]);
       setDefaultHours('8');
       setEmployeeHours({});
+      setEditingEmployeeId(null);
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
     }
@@ -572,6 +574,7 @@ export default function EnhancedAssignmentModal({
                         setSelectedEmployeeIds([]);
                         setSelectedCrews([]);
                         setEmployeeHours({});
+                        setEditingEmployeeId(null);
                       }}
                     >
                       Clear All
@@ -589,37 +592,58 @@ export default function EnhancedAssignmentModal({
                         }
                       };
                       
+                      const employeeId = emp.id.toString();
+                      const isEditing = editingEmployeeId === employeeId;
+                      
                       return (
                         <div 
                           key={emp.id} 
-                          className={`text-xs px-2 py-1 rounded-lg border cursor-pointer transition-colors ${getSelectedEmployeeBadgeStyle()}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const employeeId = emp.id.toString();
-                            const currentHours = employeeHours[employeeId] || defaultHours;
-                            const newHours = prompt(`Set hours for ${emp.name}:`, currentHours);
-                            if (newHours !== null && !isNaN(Number(newHours)) && Number(newHours) >= 0 && Number(newHours) <= 24) {
-                              setEmployeeHours(prev => ({ ...prev, [employeeId]: newHours }));
-                            }
-                          }}
+                          className={`text-xs px-2 py-1 rounded-lg border transition-colors ${getSelectedEmployeeBadgeStyle()}`}
                         >
                           <div className="flex items-center gap-1">
                             <span className="font-medium">{emp.name}</span>
-                            <span className="text-xs opacity-75">
-                              ({employeeHours[emp.id.toString()] || defaultHours}h assigned)
-                            </span>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="24"
+                                step="0.5"
+                                value={employeeHours[employeeId] || defaultHours}
+                                onChange={(e) => {
+                                  setEmployeeHours(prev => ({ ...prev, [employeeId]: e.target.value }));
+                                }}
+                                onBlur={() => setEditingEmployeeId(null)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === 'Escape') {
+                                    setEditingEmployeeId(null);
+                                  }
+                                }}
+                                className="w-12 px-1 py-0 text-xs border rounded ml-1 bg-white"
+                                autoFocus
+                              />
+                            ) : (
+                              <span 
+                                className="text-xs opacity-75 cursor-pointer hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingEmployeeId(employeeId);
+                                }}
+                              >
+                                ({employeeHours[employeeId] || defaultHours}h assigned)
+                              </span>
+                            )}
                             <button
                               type="button"
                               className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const employeeId = emp.id.toString();
                                 const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
                                 setSelectedEmployeeIds(newIds);
                                 
                                 // Remove individual hours
                                 const { [employeeId]: removed, ...remainingHours } = employeeHours;
                                 setEmployeeHours(remainingHours);
+                                setEditingEmployeeId(null);
                                 
                                 // Remove from crew selection if this was the last member
                                 const employeeCrewId = emp.crewId?.toString();
