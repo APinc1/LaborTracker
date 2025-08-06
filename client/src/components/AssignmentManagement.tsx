@@ -257,10 +257,12 @@ export default function AssignmentManagement() {
     }
   }, [selectedEmployeeIds, isCreateDialogOpen]);
 
-  // Update form assignment date when selectedDate changes
+  // Update form assignment date when selectedDate changes and dialog opens
   useEffect(() => {
-    form.setValue('assignmentDate', selectedDate);
-  }, [selectedDate, form.setValue]);
+    if (isCreateDialogOpen && !editingAssignment) {
+      form.setValue('assignmentDate', selectedDate);
+    }
+  }, [selectedDate, isCreateDialogOpen, editingAssignment, form]);
 
   // Handle clicks outside dropdown
   useEffect(() => {
@@ -546,6 +548,8 @@ export default function AssignmentManagement() {
                 setSelectedEmployeeIds([]);
                 setEmployeeSearchTerm('');
                 setHasUnsavedChanges(false);
+                // Set the assignment date to the current selected date
+                form.setValue('assignmentDate', selectedDate);
               }} className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Assignment
@@ -608,17 +612,22 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(tasks as any[])
-                              .filter((task: any) => {
-                                // Filter tasks to only show tasks for the assignment date
-                                const assignmentDate = form.getValues('assignmentDate');
-                                return task.taskDate === assignmentDate;
-                              })
-                              .map((task: any) => (
+                            {(() => {
+                              const assignmentDate = form.getValues('assignmentDate');
+                              console.log('Task dropdown - Assignment date from form:', assignmentDate);
+                              console.log('Task dropdown - Available tasks:', tasks);
+                              const filteredTasks = (tasks as any[]).filter((task: any) => {
+                                const matches = task.taskDate === assignmentDate;
+                                console.log(`Task ${task.name}: taskDate=${task.taskDate}, assignmentDate=${assignmentDate}, matches=${matches}`);
+                                return matches;
+                              });
+                              console.log('Task dropdown - Filtered tasks:', filteredTasks);
+                              return filteredTasks.map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
                                   {task.name} - {task.costCode}
                                 </SelectItem>
-                              ))}
+                              ));
+                            })()}
                           </SelectContent>
                         </Select>
                         <FormMessage />
