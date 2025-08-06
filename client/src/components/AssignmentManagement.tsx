@@ -912,7 +912,7 @@ export default function AssignmentManagement() {
                       );
                     }}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className={`grid gap-4 ${editingAssignment ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <FormField
                       control={form.control}
                       name="assignedHours"
@@ -926,19 +926,21 @@ export default function AssignmentManagement() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="actualHours"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Actual Hours</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.5" min="0" max="24" {...field} value={field.value || ''} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {editingAssignment && (
+                      <FormField
+                        control={form.control}
+                        name="actualHours"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Actual Hours</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.5" min="0" max="24" {...field} value={field.value || ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={handleDialogClose}>
