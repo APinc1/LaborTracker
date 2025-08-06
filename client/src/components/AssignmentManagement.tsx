@@ -65,6 +65,16 @@ export default function AssignmentManagement() {
     refetchTasks();
   }, [selectedDate, refetchTasks]);
 
+  // Watch assignment date field for changes and refetch tasks accordingly
+  const assignmentDate = form.watch('assignmentDate');
+
+  // Fetch tasks for the assignment date (used by the task dropdown)
+  const { data: assignmentTasks = [] } = useQuery({
+    queryKey: ["/api/tasks/date-range", assignmentDate, assignmentDate],
+    enabled: !!assignmentDate,
+    staleTime: 0,
+  });
+
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
     staleTime: 30000,
@@ -613,16 +623,9 @@ export default function AssignmentManagement() {
                           </FormControl>
                           <SelectContent>
                             {(() => {
-                              const assignmentDate = form.getValues('assignmentDate');
-                              console.log('Task dropdown - Assignment date from form:', assignmentDate);
-                              console.log('Task dropdown - Available tasks:', tasks);
-                              const filteredTasks = (tasks as any[]).filter((task: any) => {
-                                const matches = task.taskDate === assignmentDate;
-                                console.log(`Task ${task.name}: taskDate=${task.taskDate}, assignmentDate=${assignmentDate}, matches=${matches}`);
-                                return matches;
-                              });
-                              console.log('Task dropdown - Filtered tasks:', filteredTasks);
-                              return filteredTasks.map((task: any) => (
+                              console.log('Task dropdown - Assignment date:', assignmentDate);
+                              console.log('Task dropdown - Assignment tasks:', assignmentTasks);
+                              return (assignmentTasks as any[]).map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
                                   {task.name} - {task.costCode}
                                 </SelectItem>
