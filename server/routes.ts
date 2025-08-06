@@ -839,9 +839,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
-      console.log('Creating task assignment with data:', req.body);
-      console.log('TaskId from params:', req.params.taskId);
-      
       // Transform data for validation
       const dataToValidate = {
         ...req.body,
@@ -851,7 +848,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const validated = insertEmployeeAssignmentSchema.parse(dataToValidate);
-      console.log('Validated data:', validated);
       const assignment = await storage.createEmployeeAssignment(validated);
       res.status(201).json(assignment);
     } catch (error: any) {
