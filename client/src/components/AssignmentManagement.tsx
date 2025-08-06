@@ -501,10 +501,10 @@ export default function AssignmentManagement() {
                               onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
                               disabled={!!editingAssignment}
                             />
-                            {showEmployeeDropdown && employeeSearchTerm && (
+                            {showEmployeeDropdown && (
                               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                                {filteredEmployees.length > 0 ? (
-                                  filteredEmployees.map((employee: any) => (
+                                {(employeeSearchTerm ? filteredEmployees : employees as any[]).length > 0 ? (
+                                  (employeeSearchTerm ? filteredEmployees : employees as any[]).map((employee: any) => (
                                     <div
                                       key={employee.id}
                                       className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
