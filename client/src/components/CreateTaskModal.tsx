@@ -380,7 +380,7 @@ export default function CreateTaskModal({
     const newTask = {
       taskId: `${selectedLocationData?.locationId || selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocationData?.locationId || selectedLocation,
-      projectId: selectedProject,
+      projectId: selectedLocationData?.projectId || selectedProject,
       name: data.name,
       taskType: data.taskType,
       costCode,
@@ -774,6 +774,7 @@ export default function CreateTaskModal({
     const newTask = {
       taskId: `${selectedLocationData?.locationId || selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: selectedLocationData?.locationId || selectedLocation,
+      projectId: selectedLocationData?.projectId || selectedProject,
       name: data.name,
       taskType: data.taskType,
       taskDate: taskDate,
@@ -1011,13 +1012,9 @@ export default function CreateTaskModal({
                       </FormControl>
                       <SelectContent>
                         {(() => {
-                          // Get all assignments to determine completion status
-                          const taskAssignments = assignments || [];
-                          
-                          // Sort tasks by order/date to find completion sequence
+                          // Sort existing tasks by order/date for display
                           const sortedTasks = (existingTasks as any[])
                             .sort((a: any, b: any) => {
-                              // Use same ORDER-first sorting as display and logic
                               if (a.order !== undefined && b.order !== undefined) {
                                 return a.order - b.order;
                               }
@@ -1033,59 +1030,26 @@ export default function CreateTaskModal({
                               return (a.taskId || a.id).localeCompare(b.taskId || b.id);
                             });
 
-                          // Find the last completed task in sequence
-                          let lastCompletedIndex = -1;
-                          for (let i = 0; i < sortedTasks.length; i++) {
-                            const task = sortedTasks[i];
-                            const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
-                              assignment.taskId === (task.id || task.taskId)
-                            );
-                            const taskStatus = getTaskStatus(task, taskTaskAssignments);
-                            
-                            if (taskStatus === 'complete') {
-                              lastCompletedIndex = i;
-                            } else {
-                              // Stop at first non-completed task
-                              break;
-                            }
-                          }
-                          
-                          // Only show insertion options after completed tasks
-                          const validInsertionTasks = sortedTasks.filter((task: any, index: number) => {
-                            // Only allow insertion after the last completed task or later in sequence
-                            if (lastCompletedIndex === -1) {
-                              // If no tasks are completed, allow insertion at beginning
-                              return index === 0;
-                            }
-                            
-                            // Allow insertion after any completed task
-                            const taskTaskAssignments = taskAssignments.filter((assignment: any) => 
-                              assignment.taskId === (task.id || task.taskId)
-                            );
-                            const taskStatus = getTaskStatus(task, taskTaskAssignments);
-                            
-                            return taskStatus === 'complete';
-                          });
-
-                          // Add "At the beginning" option only if no tasks are completed
                           const insertionOptions = [];
-                          if (lastCompletedIndex === -1) {
+                          
+                          // Add "At the beginning" option
+                          insertionOptions.push(
+                            <SelectItem key="beginning" value="beginning">At the beginning</SelectItem>
+                          );
+                          
+                          // Add option to insert after each existing task
+                          sortedTasks.forEach((task: any) => {
                             insertionOptions.push(
-                              <SelectItem key="start" value="start">At the beginning</SelectItem>
+                              <SelectItem 
+                                key={task.id || task.taskId} 
+                                value={`after-${(task.taskId || task.id).toString()}`}
+                              >
+                                After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
+                              </SelectItem>
                             );
-                          }
+                          });
                           
-                          // Add valid insertion positions
-                          insertionOptions.push(...validInsertionTasks.map((task: any) => (
-                            <SelectItem 
-                              key={task.id || task.taskId} 
-                              value={`after-${(task.taskId || task.id).toString()}`}
-                            >
-                              After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
-                            </SelectItem>
-                          )));
-                          
-                          // Always allow insertion at the end
+                          // Add "At the end" option
                           insertionOptions.push(
                             <SelectItem key="end" value="end">At the end</SelectItem>
                           );
