@@ -38,6 +38,58 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     staleTime: 30000,
   });
 
+  // Fetch tasks for all locations to calculate accurate date ranges
+  const locationTaskQueries = useQuery({
+    queryKey: ["/api/projects", projectId, "all-location-tasks"],
+    queryFn: async () => {
+      if (!locations.length) return {};
+      
+      const taskPromises = locations.map(async (location: any) => {
+        try {
+          const response = await fetch(`/api/locations/${location.locationId}/tasks`);
+          if (!response.ok) return { locationId: location.locationId, tasks: [] };
+          const tasks = await response.json();
+          return { locationId: location.locationId, tasks };
+        } catch (error) {
+          console.error(`Failed to fetch tasks for location ${location.locationId}:`, error);
+          return { locationId: location.locationId, tasks: [] };
+        }
+      });
+      
+      const results = await Promise.all(taskPromises);
+      return results.reduce((acc: any, result) => {
+        acc[result.locationId] = result.tasks;
+        return acc;
+      }, {});
+    },
+    enabled: locations.length > 0,
+    staleTime: 30000,
+  });
+
+  // Helper function to calculate location duration from tasks (matching LocationDetails logic)
+  const getLocationDuration = (locationId: string) => {
+    const tasks = locationTaskQueries.data?.[locationId] || [];
+    
+    if (!tasks || tasks.length === 0) {
+      // Fallback to stored location dates if no tasks
+      const location = locations.find((loc: any) => loc.locationId === locationId);
+      return {
+        startDate: location?.startDate ? format(new Date(location.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: location?.endDate ? format(new Date(location.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No tasks scheduled'
+      };
+    }
+
+    // Get all task dates and find earliest and latest (same logic as LocationDetails)
+    const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
+    const earliestTaskDate = new Date(Math.min(...taskDates));
+    const latestTaskDate = new Date(Math.max(...taskDates));
+
+    return {
+      startDate: format(earliestTaskDate, 'MMM d, yyyy'),
+      endDate: format(latestTaskDate, 'MMM d, yyyy')
+    };
+  };
+
   // Add location mutation
   const addLocationMutation = useMutation({
     mutationFn: (locationData: any) => 
@@ -258,7 +310,10 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             <div className="flex items-center space-x-2 text-sm text-gray-600">
                               <Calendar className="w-4 h-4" />
                               <span>
-                                {location.startDate ? format(new Date(location.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {location.endDate ? format(new Date(location.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
+                                {(() => {
+                                  const duration = getLocationDuration(location.locationId);
+                                  return `${duration.startDate} - ${duration.endDate}`;
+                                })()}
                               </span>
                             </div>
                             
