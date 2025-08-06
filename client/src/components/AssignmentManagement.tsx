@@ -33,6 +33,7 @@ export default function AssignmentManagement() {
   const [pendingUpdates, setPendingUpdates] = useState<{ id: number; actualHours: number }[]>([]);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -78,9 +79,35 @@ export default function AssignmentManagement() {
       toast({ title: "Success", description: "Assignment created successfully" });
       setIsCreateDialogOpen(false);
       form.reset();
+      setSelectedEmployeeIds([]);
+      setEmployeeSearchTerm('');
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create assignment", variant: "destructive" });
+    },
+  });
+
+  const createMultipleAssignmentsMutation = useMutation({
+    mutationFn: async (assignments: any[]) => {
+      const promises = assignments.map(data => 
+        apiRequest(`/api/tasks/${data.taskId}/assignments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        })
+      );
+      return Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      toast({ title: "Success", description: "Assignments created successfully" });
+      setIsCreateDialogOpen(false);
+      form.reset();
+      setSelectedEmployeeIds([]);
+      setEmployeeSearchTerm('');
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create assignments", variant: "destructive" });
     },
   });
 
@@ -101,6 +128,8 @@ export default function AssignmentManagement() {
       toast({ title: "Success", description: "Assignment updated successfully" });
       setEditingAssignment(null);
       form.reset();
+      setSelectedEmployeeIds([]);
+      setEmployeeSearchTerm('');
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to update assignment", variant: "destructive" });
@@ -185,23 +214,42 @@ export default function AssignmentManagement() {
   });
 
   const onSubmit = (data: any) => {
-    const processedData = {
-      ...data,
-      taskId: parseInt(data.taskId),
-      employeeId: parseInt(data.employeeId),
-      assignedHours: parseFloat(data.assignedHours),
-      actualHours: data.actualHours ? parseFloat(data.actualHours) : null,
-    };
-
     if (editingAssignment) {
+      // For editing, still handle single assignment
+      const processedData = {
+        ...data,
+        taskId: parseInt(data.taskId),
+        employeeId: parseInt(data.employeeId),
+        assignedHours: parseFloat(data.assignedHours),
+        actualHours: data.actualHours ? parseFloat(data.actualHours) : null,
+      };
       updateAssignmentMutation.mutate({ id: editingAssignment.id, data: processedData });
     } else {
-      createAssignmentMutation.mutate(processedData);
+      // For creating, handle multiple employees
+      if (selectedEmployeeIds.length === 0) {
+        toast({ title: "Error", description: "Please select at least one employee", variant: "destructive" });
+        return;
+      }
+      
+      const assignments = selectedEmployeeIds.map(employeeId => ({
+        ...data,
+        taskId: parseInt(data.taskId),
+        employeeId: parseInt(employeeId),
+        assignedHours: parseFloat(data.assignedHours),
+        actualHours: data.actualHours ? parseFloat(data.actualHours) : null,
+      }));
+      
+      if (assignments.length === 1) {
+        createAssignmentMutation.mutate(assignments[0]);
+      } else {
+        createMultipleAssignmentsMutation.mutate(assignments);
+      }
     }
   };
 
   const handleEdit = (assignment: any) => {
     setEditingAssignment(assignment);
+    setSelectedEmployeeIds([assignment.employeeId.toString()]);
     form.reset({
       taskId: assignment.taskId.toString(),
       employeeId: assignment.employeeId.toString(),
@@ -476,26 +524,65 @@ export default function AssignmentManagement() {
                     control={form.control}
                     name="employeeId"
                     render={({ field }) => {
-                      const selectedEmployee = (employees as any[]).find((emp: any) => emp.id.toString() === field.value);
                       const filteredEmployees = (employees as any[]).filter((employee: any) =>
                         employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
                         employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
                       );
                       
+                      const selectedEmployees = (employees as any[]).filter((emp: any) => 
+                        selectedEmployeeIds.includes(emp.id.toString())
+                      );
+                      
                       return (
                         <FormItem>
-                          <FormLabel>Employee *</FormLabel>
+                          <FormLabel>Employees *</FormLabel>
                           <div className="relative">
+                            {/* Selected employees display */}
+                            {selectedEmployees.length > 0 && (
+                              <div className="mb-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm text-gray-600">{selectedEmployees.length} employee(s) selected</span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => {
+                                      setSelectedEmployeeIds([]);
+                                      field.onChange('');
+                                    }}
+                                  >
+                                    Clear All
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedEmployees.map((emp: any) => (
+                                    <Badge key={emp.id} variant="secondary" className="text-xs">
+                                      {emp.name}
+                                      <button
+                                        type="button"
+                                        className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
+                                        onClick={() => {
+                                          const newIds = selectedEmployeeIds.filter(id => id !== emp.id.toString());
+                                          setSelectedEmployeeIds(newIds);
+                                          field.onChange(newIds.length > 0 ? newIds[0] : '');
+                                        }}
+                                      >
+                                        ×
+                                      </button>
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
                             <Input
                               type="text"
-                              placeholder="Search and select employee..."
-                              value={selectedEmployee ? selectedEmployee.name : employeeSearchTerm}
+                              placeholder="Search and select employees..."
+                              value={employeeSearchTerm}
                               onChange={(e) => {
                                 setEmployeeSearchTerm(e.target.value);
                                 setShowEmployeeDropdown(true);
-                                if (selectedEmployee) {
-                                  field.onChange('');
-                                }
                               }}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
@@ -506,9 +593,12 @@ export default function AssignmentManagement() {
                                   
                                   if (currentFilteredEmployees.length > 0) {
                                     const topEmployee = currentFilteredEmployees[0];
-                                    field.onChange(topEmployee.id.toString());
+                                    if (!selectedEmployeeIds.includes(topEmployee.id.toString())) {
+                                      const newIds = [...selectedEmployeeIds, topEmployee.id.toString()];
+                                      setSelectedEmployeeIds(newIds);
+                                      field.onChange(topEmployee.id.toString());
+                                    }
                                     setEmployeeSearchTerm('');
-                                    setShowEmployeeDropdown(false);
                                   }
                                 }
                               }}
@@ -519,25 +609,45 @@ export default function AssignmentManagement() {
                             {showEmployeeDropdown && (
                               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                                 {(employeeSearchTerm ? filteredEmployees : employees as any[]).length > 0 ? (
-                                  (employeeSearchTerm ? filteredEmployees : employees as any[]).map((employee: any) => (
-                                    <div
-                                      key={employee.id}
-                                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-                                      onClick={() => {
-                                        field.onChange(employee.id.toString());
-                                        setEmployeeSearchTerm('');
-                                        setShowEmployeeDropdown(false);
-                                      }}
-                                    >
-                                      <div className="flex flex-col">
-                                        <span className="font-medium text-sm">{employee.name}</span>
-                                        <span className="text-xs text-gray-500">
-                                          {employee.teamMemberId} • {employee.employeeType}
-                                          {employee.primaryTrade && ` • ${employee.primaryTrade}`}
-                                        </span>
+                                  (employeeSearchTerm ? filteredEmployees : employees as any[]).map((employee: any) => {
+                                    const isSelected = selectedEmployeeIds.includes(employee.id.toString());
+                                    return (
+                                      <div
+                                        key={employee.id}
+                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                                          isSelected ? 'bg-blue-50' : ''
+                                        }`}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          if (isSelected) {
+                                            const newIds = selectedEmployeeIds.filter(id => id !== employee.id.toString());
+                                            setSelectedEmployeeIds(newIds);
+                                            field.onChange(newIds.length > 0 ? newIds[0] : '');
+                                          } else {
+                                            const newIds = [...selectedEmployeeIds, employee.id.toString()];
+                                            setSelectedEmployeeIds(newIds);
+                                            field.onChange(employee.id.toString());
+                                          }
+                                        }}
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => {}} // handled by parent onClick
+                                            className="rounded"
+                                          />
+                                          <div className="flex flex-col">
+                                            <span className="font-medium text-sm">{employee.name}</span>
+                                            <span className="text-xs text-gray-500">
+                                              {employee.teamMemberId} • {employee.employeeType}
+                                              {employee.primaryTrade && ` • ${employee.primaryTrade}`}
+                                            </span>
+                                          </div>
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))
+                                    );
+                                  })
                                 ) : (
                                   <div className="px-3 py-2 text-sm text-gray-500">
                                     No employees found
