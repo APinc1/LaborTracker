@@ -132,16 +132,15 @@ export default function CreateTaskModal({
     staleTime: 30000,
   });
 
-  // Fetch existing tasks for linking
-  const { data: existingTasks = [] } = useQuery({
-    queryKey: ["/api/locations", selectedLocation, "tasks"],
-    enabled: !!selectedLocation && isOpen,
-    staleTime: 5000,
-  }) as { data: any[] };
-
-
   // Get selected location details
   const selectedLocationData = selectedLocation ? (locations as any[]).find((loc: any) => loc.id === selectedLocation) : null;
+
+  // Fetch existing tasks for linking - use locationId string format for API
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: ["/api/locations", selectedLocationData?.locationId, "tasks"],
+    enabled: !!selectedLocationData?.locationId && isOpen,
+    staleTime: 5000,
+  }) as { data: any[] };
 
   // Fetch assignments for completion status checking
   const { data: assignments = [] } = useQuery({
