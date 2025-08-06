@@ -35,6 +35,7 @@ export default function AssignmentManagement() {
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [selectedCrew, setSelectedCrew] = useState<string>('');
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
@@ -95,6 +96,7 @@ export default function AssignmentManagement() {
       setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
+      setSelectedCrew('');
       setEmployeeSearchTerm('');
     },
     onError: () => {
@@ -122,6 +124,7 @@ export default function AssignmentManagement() {
       setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
+      setSelectedCrew('');
       setEmployeeSearchTerm('');
     },
     onError: () => {
@@ -335,6 +338,7 @@ export default function AssignmentManagement() {
       setIsCreateDialogOpen(false);
       setEditingAssignment(null);
       setSelectedEmployeeIds([]);
+      setSelectedCrew('');
       setEmployeeSearchTerm('');
       setHasUnsavedChanges(false);
       form.reset();
@@ -345,6 +349,7 @@ export default function AssignmentManagement() {
     setIsCreateDialogOpen(false);
     setEditingAssignment(null);
     setSelectedEmployeeIds([]);
+    setSelectedCrew('');
     setEmployeeSearchTerm('');
     setHasUnsavedChanges(false);
     setPendingDialogClose(false);
@@ -585,6 +590,7 @@ export default function AssignmentManagement() {
               <Button onClick={() => {
                 setIsCreateDialogOpen(true);
                 setSelectedEmployeeIds([]);
+                setSelectedCrew('');
                 setEmployeeSearchTerm('');
                 setHasUnsavedChanges(false);
                 // Reset form to default values
@@ -668,6 +674,38 @@ export default function AssignmentManagement() {
                       </FormItem>
                     )}
                   />
+                  
+                  {!editingAssignment && (
+                    <div className="space-y-2">
+                      <FormLabel>Crew Selection (Optional)</FormLabel>
+                      <Select 
+                        value={selectedCrew} 
+                        onValueChange={(value) => {
+                          setSelectedCrew(value);
+                          if (value) {
+                            // Auto-select all crew members
+                            const crewMembers = (employees as any[]).filter(emp => 
+                              emp.crewName === (crews as any[]).find(c => c.id.toString() === value)?.name
+                            );
+                            const crewMemberIds = crewMembers.map(emp => emp.id.toString());
+                            setSelectedEmployeeIds(crewMemberIds);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select crew to auto-select all members" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">No crew selection</SelectItem>
+                          {(crews as any[]).map((crew: any) => (
+                            <SelectItem key={crew.id} value={crew.id.toString()}>
+                              {crew.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   
                   <FormField
                     control={form.control}
