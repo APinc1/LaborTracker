@@ -839,14 +839,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
+      console.log('Creating task assignment with data:', req.body);
+      console.log('TaskId from params:', req.params.taskId);
       const validated = insertEmployeeAssignmentSchema.parse({
         ...req.body,
         taskId: parseInt(req.params.taskId)
       });
+      console.log('Validated data:', validated);
       const assignment = await storage.createEmployeeAssignment(validated);
       res.status(201).json(assignment);
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid assignment data' });
+    } catch (error: any) {
+      console.error('Task assignment creation error:', error);
+      res.status(400).json({ error: 'Invalid assignment data', details: error.message });
     }
   });
 
