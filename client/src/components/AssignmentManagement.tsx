@@ -57,7 +57,7 @@ export default function AssignmentManagement() {
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["/api/tasks/date-range", selectedDate, selectedDate],
-    staleTime: 30000,
+    staleTime: 0, // Don't cache task data so it updates immediately when date changes
   });
 
   const { data: projects = [] } = useQuery({
@@ -601,21 +601,17 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(() => {
-                              const assignmentDate = form.getValues('assignmentDate');
-                              console.log('Assignment date from form:', assignmentDate);
-                              console.log('Tasks array:', tasks);
-                              const filteredTasks = (tasks as any[]).filter((task: any) => {
-                                console.log(`Task ${task.name}: taskDate=${task.taskDate}, assignmentDate=${assignmentDate}, match=${task.taskDate === assignmentDate}`);
+                            {(tasks as any[])
+                              .filter((task: any) => {
+                                // Filter tasks to only show tasks for the assignment date
+                                const assignmentDate = form.getValues('assignmentDate');
                                 return task.taskDate === assignmentDate;
-                              });
-                              console.log('Filtered tasks:', filteredTasks);
-                              return filteredTasks.map((task: any) => (
+                              })
+                              .map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
                                   {task.name} - {task.costCode}
                                 </SelectItem>
-                              ));
-                            })()}
+                              ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
