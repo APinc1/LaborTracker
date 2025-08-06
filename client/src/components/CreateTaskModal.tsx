@@ -36,9 +36,9 @@ const TASK_TYPE_TO_COST_CODE = {
   "General Labor": "GENERAL",
   "Landscaping": "LANDSCAPE", 
   "Utility Adjustment": "UTILITY ADJ",
-  "Punchlist Demo": "PUNCHLIST",
-  "Punchlist Concrete": "PUNCHLIST",
-  "Punchlist General Labor": "PUNCHLIST"
+  "Punchlist Demo": "PUNCHLIST DEMO",
+  "Punchlist Concrete": "PUNCHLIST CONCRETE",
+  "Punchlist General Labor": "PUNCHLIST GENERAL LABOR"
 };
 
 const TASK_TYPES = [

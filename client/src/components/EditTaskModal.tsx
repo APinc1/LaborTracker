@@ -49,9 +49,9 @@ const costCodes = [
   "Traffic Control",
   "Landscaping",
   "Utility Adjustment",
-  "Punchlist Demo",
-  "Punchlist Concrete",
-  "Punchlist General Labor"
+  "PUNCHLIST DEMO",
+  "PUNCHLIST CONCRETE", 
+  "PUNCHLIST GENERAL LABOR"
 ];
 
 // Simplified schema for editing only the editable fields
@@ -730,9 +730,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       "General Labor": "GENERAL",
       "Landscaping": "LANDSCAPE", 
       "Utility Adjustment": "UTILITY ADJ",
-      "Punchlist Demo": "PUNCHLIST",
-      "Punchlist Concrete": "PUNCHLIST",
-      "Punchlist General Labor": "PUNCHLIST"
+      "Punchlist Demo": "PUNCHLIST DEMO",
+      "Punchlist Concrete": "PUNCHLIST CONCRETE",
+      "Punchlist General Labor": "PUNCHLIST GENERAL LABOR"
     };
     
     let processedData = {
