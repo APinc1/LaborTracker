@@ -612,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const assignment of taskAssignments) {
           await storage.updateEmployeeAssignment(assignment.id, { 
             ...assignment,
-            date: validated.taskDate 
+            assignmentDate: validated.taskDate
           });
           console.log(`📅 Updated assignment ${assignment.id} date to ${validated.taskDate}`);
         }

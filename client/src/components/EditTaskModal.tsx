@@ -255,7 +255,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     },
     onSuccess: () => {
       onTaskUpdate();
-      toast({ title: "Success", description: "Tasks linked successfully" });
+      toast({ title: "Success", description: "Task updated successfully" });
       onClose();
     },
     onError: (error: any) => {
