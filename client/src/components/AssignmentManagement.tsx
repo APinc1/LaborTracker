@@ -436,11 +436,17 @@ export default function AssignmentManagement() {
             if (!open) {
               setIsCreateDialogOpen(false);
               setEditingAssignment(null);
+              setSelectedEmployeeIds([]);
+              setEmployeeSearchTerm('');
               form.reset();
             }
           }}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-primary hover:bg-primary/90">
+              <Button onClick={() => {
+                setIsCreateDialogOpen(true);
+                setSelectedEmployeeIds([]);
+                setEmployeeSearchTerm('');
+              }} className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Assignment
               </Button>
@@ -693,6 +699,8 @@ export default function AssignmentManagement() {
                     <Button type="button" variant="outline" onClick={() => {
                       setIsCreateDialogOpen(false);
                       setEditingAssignment(null);
+                      setSelectedEmployeeIds([]);
+                      setEmployeeSearchTerm('');
                       form.reset();
                     }}>
                       Cancel
