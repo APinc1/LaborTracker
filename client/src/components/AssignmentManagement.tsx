@@ -248,10 +248,16 @@ export default function AssignmentManagement() {
   // Track unsaved changes - only after form is fully initialized
   useEffect(() => {
     let isInitialized = false;
+    let initializationTimer: NodeJS.Timeout;
+    
     const subscription = form.watch((values, { name }) => {
-      // Ignore the first few changes that happen during form initialization
+      // Ignore changes that happen during form initialization
       if (!isInitialized) {
-        setTimeout(() => { isInitialized = true; }, 100);
+        return;
+      }
+      
+      // Don't flag programmatic assignment date updates as user changes
+      if (name === 'assignmentDate') {
         return;
       }
       
@@ -259,20 +265,44 @@ export default function AssignmentManagement() {
         setHasUnsavedChanges(true);
       }
     });
-    return () => subscription.unsubscribe();
+
+    // Only start tracking changes after dialog opens and a delay for initialization
+    if (isCreateDialogOpen || editingAssignment) {
+      initializationTimer = setTimeout(() => {
+        isInitialized = true;
+      }, 300); // Longer delay to ensure form is fully initialized
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      if (initializationTimer) {
+        clearTimeout(initializationTimer);
+      }
+    };
   }, [form.watch, isCreateDialogOpen, editingAssignment]);
 
-  // Track changes to selected employees - only for create mode or when actually changed
+  // Track changes to selected employees - only for create mode when user makes selections
   useEffect(() => {
+    // Use a timer to ensure this isn't triggered immediately on dialog open
+    let timer: NodeJS.Timeout;
     if (isCreateDialogOpen && selectedEmployeeIds.length > 0) {
-      setHasUnsavedChanges(true);
+      timer = setTimeout(() => {
+        setHasUnsavedChanges(true);
+      }, 500); // Only consider it a change after user has had time to interact
     }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [selectedEmployeeIds, isCreateDialogOpen]);
 
   // Update form assignment date when selectedDate changes and dialog opens
   useEffect(() => {
     if (isCreateDialogOpen && !editingAssignment) {
-      form.setValue('assignmentDate', selectedDate);
+      // Use form.reset to avoid triggering change detection
+      form.reset({
+        ...form.getValues(),
+        assignmentDate: selectedDate,
+      });
     }
   }, [selectedDate, isCreateDialogOpen, editingAssignment, form]);
 
@@ -557,8 +587,14 @@ export default function AssignmentManagement() {
                 setSelectedEmployeeIds([]);
                 setEmployeeSearchTerm('');
                 setHasUnsavedChanges(false);
-                // Set the assignment date to the current selected date
-                form.setValue('assignmentDate', selectedDate);
+                // Reset form to default values
+                form.reset({
+                  taskId: '',
+                  employeeId: '',
+                  assignmentDate: selectedDate,
+                  assignedHours: '8',
+                  actualHours: null,
+                });
               }} className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Assignment
