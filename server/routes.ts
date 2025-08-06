@@ -598,7 +598,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Check if the task date is changing
+      const dateChanged = validated.taskDate && currentTask && validated.taskDate !== currentTask.taskDate;
+      
       const task = await storage.updateTask(parseInt(req.params.id), validated);
+      
+      // If task date changed, update all assignments for this task to match the new date
+      if (dateChanged) {
+        console.log(`📅 Task date changed from ${currentTask.taskDate} to ${validated.taskDate}, updating assignments`);
+        const assignments = await storage.getAssignments();
+        const taskAssignments = assignments.filter(assignment => assignment.taskId === parseInt(req.params.id));
+        
+        for (const assignment of taskAssignments) {
+          await storage.updateAssignment(assignment.id, { 
+            ...assignment,
+            date: validated.taskDate 
+          });
+          console.log(`📅 Updated assignment ${assignment.id} date to ${validated.taskDate}`);
+        }
+      }
+      
       res.json(task);
     } catch (error) {
       res.status(400).json({ error: 'Invalid task data' });
@@ -736,7 +755,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/assignments', async (req, res) => {
     try {
       const assignments = await storage.getAllEmployeeAssignments();
-      res.json(assignments);
+      
+      // Enhance assignments with task, location, and project data
+      const enhancedAssignments = await Promise.all(
+        assignments.map(async (assignment) => {
+          try {
+            // Get task details
+            const task = await storage.getTask(assignment.taskId);
+            if (!task) {
+              return {
+                ...assignment,
+                taskName: 'Unknown Task',
+                locationName: 'Unknown Location',
+                projectName: 'Unknown Project'
+              };
+            }
+            
+            // Get location details
+            const location = await storage.getLocation(task.locationId);
+            const locationName = location?.name || 'Unknown Location';
+            
+            // Get project details
+            const project = location ? await storage.getProject(location.projectId) : null;
+            const projectName = project?.name || 'Unknown Project';
+            
+            return {
+              ...assignment,
+              taskName: task.name,
+              locationName,
+              projectName
+            };
+          } catch (error) {
+            console.error(`Error enhancing assignment ${assignment.id}:`, error);
+            return {
+              ...assignment,
+              taskName: 'Unknown Task',
+              locationName: 'Unknown Location', 
+              projectName: 'Unknown Project'
+            };
+          }
+        })
+      );
+      
+      res.json(enhancedAssignments);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch assignments' });
     }
