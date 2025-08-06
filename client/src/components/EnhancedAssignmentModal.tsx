@@ -322,6 +322,24 @@ export default function EnhancedAssignmentModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Assigned Hours Section */}
+          <div>
+            <Label className="text-sm font-medium">Assigned Hours</Label>
+            <div className="text-xs text-gray-600 mb-2">Hours to assign to all selected employees</div>
+            <Input
+              type="number"
+              min="0"
+              max="24"
+              step="0.5"
+              value={defaultHours}
+              onChange={(e) => setDefaultHours(e.target.value)}
+              className="w-24"
+              placeholder="8"
+            />
+          </div>
+
+          <Separator />
+
           {/* Crews Section */}
           <div>
             <Label className="text-base font-medium">Crews</Label>
@@ -781,25 +799,7 @@ export default function EnhancedAssignmentModal({
             </div>
           </div>
 
-          <Separator />
 
-          {/* Hours Input */}
-          <div>
-            <Label className="text-sm font-medium">Assigned Hours</Label>
-            <div className="text-xs text-gray-600 mb-2">Hours to assign to all selected employees</div>
-            <Input
-              type="number"
-              min="0"
-              max="24"
-              step="0.5"
-              value={defaultHours}
-              onChange={(e) => setDefaultHours(e.target.value)}
-              className="w-24"
-              placeholder="8"
-            />
-          </div>
-
-          <Separator />
 
           {/* Action buttons */}
           <div className="flex justify-between">
