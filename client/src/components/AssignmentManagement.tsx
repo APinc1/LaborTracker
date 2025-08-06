@@ -1091,7 +1091,7 @@ export default function AssignmentManagement() {
                       onClick={() => setBulkEditMode(true)}
                     >
                       <Edit className="w-4 h-4 mr-1" />
-                      Edit Hours
+                      Add Actual Hours
                     </Button>
                   )}
                 </div>
