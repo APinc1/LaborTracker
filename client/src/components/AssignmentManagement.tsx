@@ -387,18 +387,6 @@ export default function AssignmentManagement() {
     };
   };
 
-  // Calculate employee hours for the selected date
-  const getEmployeeHoursForDate = (employeeId: number, date: string) => {
-    return assignments.filter((assignment: any) => {
-      const task = getTask(assignment.taskId);
-      return assignment.employeeId === employeeId && 
-             task && 
-             task.taskDate === date;
-    }).reduce((total: number, assignment: any) => {
-      return total + (parseFloat(assignment.assignedHours) || 0);
-    }, 0);
-  };
-
   const getEmployeeTypeVariant = (type: string) => {
     switch (type) {
       case "Core": return "default";
@@ -629,14 +617,11 @@ export default function AssignmentManagement() {
                                 {(employeeSearchTerm ? filteredEmployees : employees as any[]).length > 0 ? (
                                   (employeeSearchTerm ? filteredEmployees : employees as any[]).map((employee: any) => {
                                     const isSelected = selectedEmployeeIds.includes(employee.id.toString());
-                                    const employeeHours = getEmployeeHoursForDate(employee.id, selectedDate);
-                                    const status = getEmployeeStatus(employeeHours);
-                                    
                                     return (
                                       <div
                                         key={employee.id}
-                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-200 border-b border-gray-100 last:border-b-0 ${
-                                          isSelected ? 'bg-blue-50 border-blue-200' : status.rowBg
+                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
+                                          isSelected ? 'bg-blue-50' : ''
                                         }`}
                                         onClick={(e) => {
                                           e.preventDefault();
@@ -651,36 +636,20 @@ export default function AssignmentManagement() {
                                           }
                                         }}
                                       >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center space-x-2">
-                                            <input
-                                              type="checkbox"
-                                              checked={isSelected}
-                                              onChange={() => {}} // handled by parent onClick
-                                              className="rounded"
-                                            />
-                                            <div className="flex flex-col">
-                                              <div className="flex items-center space-x-2">
-                                                <span className="font-medium text-sm">{employee.name}</span>
-                                                {employeeHours > 0 && (
-                                                  <Badge variant="outline" className={`text-xs ${status.textColor} border-current`}>
-                                                    {employeeHours}h
-                                                  </Badge>
-                                                )}
-                                              </div>
-                                              <span className="text-xs text-gray-500">
-                                                {employee.teamMemberId} • {employee.employeeType}
-                                                {employee.primaryTrade && ` • ${employee.primaryTrade}`}
-                                              </span>
-                                            </div>
+                                        <div className="flex items-center space-x-2">
+                                          <input
+                                            type="checkbox"
+                                            checked={isSelected}
+                                            onChange={() => {}} // handled by parent onClick
+                                            className="rounded"
+                                          />
+                                          <div className="flex flex-col">
+                                            <span className="font-medium text-sm">{employee.name}</span>
+                                            <span className="text-xs text-gray-500">
+                                              {employee.teamMemberId} • {employee.employeeType}
+                                              {employee.primaryTrade && ` • ${employee.primaryTrade}`}
+                                            </span>
                                           </div>
-                                          {employeeHours > 0 && (
-                                            <div className="text-right">
-                                              <span className={`text-xs ${status.textColor} font-medium`}>
-                                                {status.text}
-                                              </span>
-                                            </div>
-                                          )}
                                         </div>
                                       </div>
                                     );
