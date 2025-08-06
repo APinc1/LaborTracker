@@ -293,6 +293,10 @@ export default function AssignmentManagement() {
   };
 
   const onSubmit = (data: any) => {
+    console.log('Form submitted with data:', data);
+    console.log('Selected employees:', selectedEmployeeIds);
+    console.log('Form errors:', form.formState.errors);
+    
     if (editingAssignment) {
       // For editing, still handle single assignment
       const processedData = {
