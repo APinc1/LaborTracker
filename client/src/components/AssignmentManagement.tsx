@@ -630,7 +630,7 @@ export default function AssignmentManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>
-                  Assignments for {format(new Date(selectedDate), 'MMMM d, yyyy')} ({filteredAssignments.length})
+                  Assignments for {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')} ({filteredAssignments.length})
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {bulkEditMode ? (
