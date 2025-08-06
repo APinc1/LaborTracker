@@ -55,10 +55,15 @@ export default function AssignmentManagement() {
     staleTime: 30000,
   });
 
-  const { data: tasks = [] } = useQuery({
+  const { data: tasks = [], refetch: refetchTasks } = useQuery({
     queryKey: ["/api/tasks/date-range", selectedDate, selectedDate],
     staleTime: 0, // Don't cache task data so it updates immediately when date changes
   });
+
+  // Force refetch tasks when selectedDate changes
+  useEffect(() => {
+    refetchTasks();
+  }, [selectedDate, refetchTasks]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
@@ -535,6 +540,8 @@ export default function AssignmentManagement() {
           }}>
             <DialogTrigger asChild>
               <Button onClick={() => {
+                console.log('Opening dialog with selectedDate:', selectedDate);
+                console.log('Current tasks:', tasks);
                 setIsCreateDialogOpen(true);
                 setSelectedEmployeeIds([]);
                 setEmployeeSearchTerm('');
