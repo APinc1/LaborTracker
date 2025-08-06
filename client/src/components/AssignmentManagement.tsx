@@ -1052,7 +1052,7 @@ export default function AssignmentManagement() {
                         if (employee.status === 'full') {
                           return (
                             <Badge className="bg-red-500 text-white text-xs">
-                              8h Booked
+                              {employee.scheduledHours}h Booked
                             </Badge>
                           );
                         } else if (employee.status === 'partial') {
@@ -1110,7 +1110,7 @@ export default function AssignmentManagement() {
                                         <div className="flex items-center gap-1">
                                           <span className="font-medium">{emp.name}</span>
                                           <span className="text-xs opacity-75">
-                                            ({emp.status === 'full' ? '8h' : emp.status === 'partial' ? `${emp.remainingHours}h left` : 'Available'})
+                                            ({emp.status === 'full' ? `${emp.scheduledHours}h` : emp.status === 'partial' ? `${emp.remainingHours}h left` : 'Available'})
                                           </span>
                                           <button
                                             type="button"
