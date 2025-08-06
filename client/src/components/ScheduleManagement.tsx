@@ -331,7 +331,6 @@ export default function ScheduleManagement() {
           <Button 
             className="bg-primary hover:bg-primary/90"
             onClick={() => setIsCreateTaskModalOpen(true)}
-            disabled={selectedProject === "ALL_PROJECTS"}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Task
@@ -666,7 +665,6 @@ export default function ScheduleManagement() {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
-        selectedProject={selectedProject && selectedProject !== "ALL_PROJECTS" ? parseInt(selectedProject) : undefined}
       />
       
       {editingTask && (

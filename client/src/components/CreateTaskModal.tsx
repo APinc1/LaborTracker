@@ -100,12 +100,14 @@ const createTaskFormSchema = z.object({
 export default function CreateTaskModal({ 
   isOpen, 
   onClose, 
-  selectedProject, 
-  selectedLocation 
+  selectedProject: initialProject, 
+  selectedLocation: initialLocation 
 }: CreateTaskModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [hasManuallyEditedName, setHasManuallyEditedName] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<number | undefined>(initialProject);
+  const [selectedLocation, setSelectedLocation] = useState<number | undefined>(initialLocation);
   
   // Date selection dialog states
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
@@ -115,6 +117,20 @@ export default function CreateTaskModal({
     availableDates: { date: string; taskName: string }[];
   } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
+
+  // Fetch projects for selection
+  const { data: projects = [] } = useQuery({
+    queryKey: ["/api/projects"],
+    enabled: isOpen,
+    staleTime: 30000,
+  });
+
+  // Fetch locations for selected project
+  const { data: locations = [] } = useQuery({
+    queryKey: ["/api/projects", selectedProject, "locations"],
+    enabled: !!selectedProject && isOpen,
+    staleTime: 30000,
+  });
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -917,7 +933,62 @@ export default function CreateTaskModal({
           <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
+        {/* Project and Location Selection */}
+        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Project *
+            </label>
+            <Select 
+              value={selectedProject?.toString() || ""} 
+              onValueChange={(value) => {
+                const projectId = value ? parseInt(value) : undefined;
+                setSelectedProject(projectId);
+                setSelectedLocation(undefined); // Reset location when project changes
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select project..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(projects as any[]).map((project: any) => (
+                  <SelectItem key={project.id} value={project.id.toString()}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Location *
+            </label>
+            <Select 
+              value={selectedLocation?.toString() || ""} 
+              onValueChange={(value) => {
+                const locationId = value ? parseInt(value) : undefined;
+                setSelectedLocation(locationId);
+              }}
+              disabled={!selectedProject}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedProject ? "Select location..." : "Select project first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {(locations as any[]).map((location: any) => (
+                  <SelectItem key={location.id} value={location.id.toString()}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Only show form if project and location are selected */}
+        {selectedProject && selectedLocation ? (
+          <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Position Selection - Hidden when linking to existing task */}
             {!form.watch("linkToExistingTask") && (
@@ -1436,6 +1507,11 @@ export default function CreateTaskModal({
             </div>
           </form>
         </Form>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>Please select a project and location to create a task.</p>
+          </div>
+        )}
       </DialogContent>
       
       {/* Date Selection Dialog for Linking */}
