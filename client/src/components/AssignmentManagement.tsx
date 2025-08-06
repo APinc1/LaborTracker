@@ -34,6 +34,7 @@ export default function AssignmentManagement() {
   const [pendingUpdates, setPendingUpdates] = useState<{ id: number; actualHours: number }[]>([]);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
@@ -42,6 +43,7 @@ export default function AssignmentManagement() {
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const crewDropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -315,13 +317,16 @@ export default function AssignmentManagement() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowEmployeeDropdown(false);
       }
+      if (crewDropdownRef.current && !crewDropdownRef.current.contains(event.target as Node)) {
+        setShowCrewDropdown(false);
+      }
     }
 
-    if (showEmployeeDropdown) {
+    if (showEmployeeDropdown || showCrewDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showEmployeeDropdown]);
+  }, [showEmployeeDropdown, showCrewDropdown]);
 
   const handleDialogClose = () => {
     // If dropdown is open, close it first instead of the dialog
@@ -552,20 +557,19 @@ export default function AssignmentManagement() {
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
-  // Calculate crew availability status
-  const getCrewAvailability = (crewName: string) => {
+  // Calculate crew availability status for a specific date
+  const getCrewAvailability = (crewName: string, forDate?: string) => {
+    const targetDate = forDate || selectedDate;
     const crewMembers = (employees as any[]).filter((emp: any) => emp.crewName === crewName);
     if (crewMembers.length === 0) return { status: 'Available', remainingHours: 0, memberCount: 0 };
 
     const totalRemainingHours = crewMembers.reduce((total, member) => {
-      const employeeAssignments = (assignments as any[]).filter((assignment: any) => {
-        const assignmentTask = (tasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
-        return assignment.employeeId === member.id && 
-               assignmentTask && 
-               assignmentTask.taskDate === selectedDate;
-      });
+      // Get assignments for this specific date
+      const dateAssignments = (assignments as any[]).filter((assignment: any) => 
+        assignment.employeeId === member.id && assignment.assignmentDate === targetDate
+      );
 
-      const scheduledHours = employeeAssignments.reduce((sum: number, assignment: any) => {
+      const scheduledHours = dateAssignments.reduce((sum: number, assignment: any) => {
         return sum + (parseFloat(assignment.assignedHours) || 0);
       }, 0);
 
@@ -712,72 +716,181 @@ export default function AssignmentManagement() {
                         <User className="w-4 h-4 mr-2" />
                         Crews
                       </FormLabel>
-                      <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                        {(crews as any[]).map((crew: any) => {
-                          const availability = getCrewAvailability(crew.name);
-                          const isSelected = selectedCrews.includes(crew.id.toString());
-                          const statusColors = {
-                            'Available': 'bg-blue-50 border-blue-200 text-blue-800',
-                            'Partially Booked': 'bg-yellow-50 border-yellow-200 text-yellow-800', 
-                            'Fully Booked': 'bg-red-50 border-red-200 text-red-800'
-                          };
-                          const statusBadgeColors = {
-                            'Available': 'bg-blue-100 text-blue-700',
-                            'Partially Booked': 'bg-yellow-100 text-yellow-700',
-                            'Fully Booked': 'bg-red-100 text-red-700'
-                          };
-
-                          return (
-                            <div
-                              key={crew.id}
-                              className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                                isSelected 
-                                  ? 'border-primary bg-primary/5 shadow-sm' 
-                                  : statusColors[availability.status as keyof typeof statusColors]
-                              }`}
-                              onClick={() => {
-                                const crewId = crew.id.toString();
-                                let newSelectedCrews;
-                                
-                                if (isSelected) {
-                                  // Remove crew from selection
-                                  newSelectedCrews = selectedCrews.filter(id => id !== crewId);
-                                } else {
-                                  // Add crew to selection
-                                  newSelectedCrews = [...selectedCrews, crewId];
-                                }
-                                
-                                setSelectedCrews(newSelectedCrews);
-                                
-                                // Auto-select/deselect all crew members
-                                const allSelectedCrewMembers = (employees as any[])
-                                  .filter(emp => newSelectedCrews.some(selectedCrewId => 
-                                    emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
-                                  ))
-                                  .map(emp => emp.id.toString());
-                                
-                                setSelectedEmployeeIds(allSelectedCrewMembers);
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <h4 className="font-medium text-sm">{crew.name}</h4>
-                                  <p className="text-xs text-gray-600 mt-0.5">
-                                    {availability.memberCount} members
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    Avg {availability.remainingHours.toFixed(1)}h remaining
-                                  </p>
-                                </div>
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                  statusBadgeColors[availability.status as keyof typeof statusBadgeColors]
-                                }`}>
-                                  {availability.status}
-                                </span>
-                              </div>
+                      <div className="relative">
+                        {/* Selected crews display */}
+                        {selectedCrews.length > 0 && (
+                          <div className="mb-2">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm text-gray-600">{selectedCrews.length} crew(s) selected</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => {
+                                  setSelectedCrews([]);
+                                  setSelectedEmployeeIds([]);
+                                }}
+                              >
+                                Clear All
+                              </Button>
                             </div>
-                          );
-                        })}
+                            <div className="flex flex-wrap gap-1">
+                              {selectedCrews.map((crewId) => {
+                                const crew = (crews as any[]).find(c => c.id.toString() === crewId);
+                                const formDate = form.getValues('assignmentDate') || selectedDate;
+                                const availability = getCrewAvailability(crew?.name || '', formDate);
+                                return (
+                                  <div key={crewId} className={`text-xs px-2 py-1 rounded-lg border ${
+                                    availability.status === 'Available' ? 'bg-blue-50 border-blue-200 text-blue-800' :
+                                    availability.status === 'Partially Booked' ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                                    'bg-red-50 border-red-200 text-red-800'
+                                  }`}>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium">{crew?.name}</span>
+                                      <span className="text-xs opacity-75">({availability.memberCount})</span>
+                                      <span className={`text-xs px-1 rounded-full ${
+                                        availability.status === 'Available' ? 'bg-blue-100 text-blue-700' :
+                                        availability.status === 'Partially Booked' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-red-100 text-red-700'
+                                      }`}>
+                                        {availability.status}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
+                                        onClick={() => {
+                                          const newSelectedCrews = selectedCrews.filter(id => id !== crewId);
+                                          setSelectedCrews(newSelectedCrews);
+                                          
+                                          // Update selected employees
+                                          const allSelectedCrewMembers = (employees as any[])
+                                            .filter(emp => newSelectedCrews.some(selectedCrewId => 
+                                              emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
+                                            ))
+                                            .map(emp => emp.id.toString());
+                                          
+                                          setSelectedEmployeeIds(allSelectedCrewMembers);
+                                        }}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                    <div className="text-xs opacity-75 mt-0.5">
+                                      Avg {availability.remainingHours.toFixed(1)}h remaining
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="relative" ref={crewDropdownRef}>
+                          <Input
+                            type="text"
+                            placeholder="Search and select crews..."
+                            value=""
+                            onFocus={() => setShowCrewDropdown(true)}
+                            className="cursor-pointer"
+                            readOnly
+                          />
+                          
+                          {showCrewDropdown && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                              {(crews as any[]).map((crew: any) => {
+                                const formDate = form.getValues('assignmentDate') || selectedDate;
+                                const availability = getCrewAvailability(crew.name, formDate);
+                                const isSelected = selectedCrews.includes(crew.id.toString());
+                                
+                                const getCrewCardStyle = () => {
+                                  let baseStyle = "px-3 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ";
+                                  
+                                  if (isSelected) {
+                                    baseStyle += "ring-2 ring-blue-500 ";
+                                  }
+
+                                  if (availability.status === 'Fully Booked') {
+                                    baseStyle += "bg-red-100 hover:bg-red-200 ";
+                                  } else if (availability.status === 'Partially Booked') {
+                                    baseStyle += "bg-yellow-50 hover:bg-yellow-100 ";
+                                  } else {
+                                    baseStyle += "bg-blue-50 hover:bg-blue-100 ";
+                                  }
+
+                                  return baseStyle;
+                                };
+
+                                const getAvailabilityBadge = () => {
+                                  if (availability.status === 'Fully Booked') {
+                                    return (
+                                      <Badge className="bg-red-500 text-white text-xs">
+                                        Fully Booked
+                                      </Badge>
+                                    );
+                                  } else if (availability.status === 'Partially Booked') {
+                                    return (
+                                      <Badge className="bg-yellow-500 text-black text-xs">
+                                        Partially Booked
+                                      </Badge>
+                                    );
+                                  } else {
+                                    return (
+                                      <Badge className="bg-blue-500 text-white text-xs">
+                                        Available
+                                      </Badge>
+                                    );
+                                  }
+                                };
+
+                                return (
+                                  <div
+                                    key={crew.id}
+                                    className={getCrewCardStyle()}
+                                    onClick={() => {
+                                      const crewId = crew.id.toString();
+                                      let newSelectedCrews;
+                                      
+                                      if (isSelected) {
+                                        // Remove crew from selection
+                                        newSelectedCrews = selectedCrews.filter(id => id !== crewId);
+                                      } else {
+                                        // Add crew to selection
+                                        newSelectedCrews = [...selectedCrews, crewId];
+                                      }
+                                      
+                                      setSelectedCrews(newSelectedCrews);
+                                      
+                                      // Auto-select/deselect all crew members
+                                      const allSelectedCrewMembers = (employees as any[])
+                                        .filter(emp => newSelectedCrews.some(selectedCrewId => 
+                                          emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
+                                        ))
+                                        .map(emp => emp.id.toString());
+                                      
+                                      setSelectedEmployeeIds(allSelectedCrewMembers);
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="font-medium text-sm">{crew.name}</span>
+                                          {getAvailabilityBadge()}
+                                        </div>
+                                        <div className="text-xs text-gray-600 mt-1">
+                                          {availability.memberCount} members
+                                        </div>
+                                        <div className="text-xs text-gray-600">
+                                          Avg {availability.remainingHours.toFixed(1)}h remaining
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
