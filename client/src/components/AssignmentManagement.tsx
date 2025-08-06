@@ -497,6 +497,21 @@ export default function AssignmentManagement() {
                                   field.onChange('');
                                 }
                               }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  const currentFilteredEmployees = employeeSearchTerm 
+                                    ? filteredEmployees 
+                                    : employees as any[];
+                                  
+                                  if (currentFilteredEmployees.length > 0) {
+                                    const topEmployee = currentFilteredEmployees[0];
+                                    field.onChange(topEmployee.id.toString());
+                                    setEmployeeSearchTerm('');
+                                    setShowEmployeeDropdown(false);
+                                  }
+                                }
+                              }}
                               onFocus={() => setShowEmployeeDropdown(true)}
                               onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
                               disabled={!!editingAssignment}
