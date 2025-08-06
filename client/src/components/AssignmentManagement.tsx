@@ -656,36 +656,50 @@ export default function AssignmentManagement() {
                               </div>
                             )}
                             
-                            <Input
-                              type="text"
-                              placeholder="Search and select employees..."
-                              value={employeeSearchTerm}
-                              onChange={(e) => {
-                                setEmployeeSearchTerm(e.target.value);
-                                setShowEmployeeDropdown(true);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  const currentFilteredEmployees = employeeSearchTerm 
-                                    ? filteredEmployees 
-                                    : employees as any[];
-                                  
-                                  if (currentFilteredEmployees.length > 0) {
-                                    const topEmployee = currentFilteredEmployees[0];
-                                    if (!selectedEmployeeIds.includes(topEmployee.id.toString())) {
-                                      const newIds = [...selectedEmployeeIds, topEmployee.id.toString()];
-                                      setSelectedEmployeeIds(newIds);
-                                      field.onChange(topEmployee.id.toString());
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                placeholder="Search and select employees..."
+                                value={employeeSearchTerm}
+                                onChange={(e) => {
+                                  setEmployeeSearchTerm(e.target.value);
+                                  setShowEmployeeDropdown(true);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const currentFilteredEmployees = employeeSearchTerm 
+                                      ? filteredEmployees 
+                                      : employees as any[];
+                                    
+                                    if (currentFilteredEmployees.length > 0) {
+                                      const topEmployee = currentFilteredEmployees[0];
+                                      if (!selectedEmployeeIds.includes(topEmployee.id.toString())) {
+                                        const newIds = [...selectedEmployeeIds, topEmployee.id.toString()];
+                                        setSelectedEmployeeIds(newIds);
+                                        field.onChange(topEmployee.id.toString());
+                                      }
+                                      setEmployeeSearchTerm('');
                                     }
-                                    setEmployeeSearchTerm('');
+                                  } else if (e.key === 'Escape') {
+                                    setShowEmployeeDropdown(false);
                                   }
-                                }
-                              }}
-                              onFocus={() => setShowEmployeeDropdown(true)}
-                              onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
-                              disabled={!!editingAssignment}
-                            />
+                                }}
+                                onFocus={() => setShowEmployeeDropdown(true)}
+                                disabled={!!editingAssignment}
+                              />
+                              {showEmployeeDropdown && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-1 top-1 h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                                  onClick={() => setShowEmployeeDropdown(false)}
+                                >
+                                  ×
+                                </Button>
+                              )}
+                            </div>
                             {showEmployeeDropdown && (
                               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                                 {(employeeSearchTerm ? filteredEmployees : employeesWithAvailability).length > 0 ? (
