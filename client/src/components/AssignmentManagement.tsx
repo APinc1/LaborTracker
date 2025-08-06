@@ -37,6 +37,7 @@ export default function AssignmentManagement() {
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
+  const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
@@ -345,6 +346,7 @@ export default function AssignmentManagement() {
       setSelectedEmployeeIds([]);
       setSelectedCrews([]);
       setEmployeeSearchTerm('');
+      setCrewSearchTerm('');
       setHasUnsavedChanges(false);
       form.reset();
     }
@@ -356,6 +358,7 @@ export default function AssignmentManagement() {
     setSelectedEmployeeIds([]);
     setSelectedCrews([]);
     setEmployeeSearchTerm('');
+    setCrewSearchTerm('');
     setHasUnsavedChanges(false);
     setPendingDialogClose(false);
     setShowUnsavedChangesDialog(false);
@@ -790,15 +793,17 @@ export default function AssignmentManagement() {
                           <Input
                             type="text"
                             placeholder="Search and select crews..."
-                            value=""
+                            value={crewSearchTerm}
+                            onChange={(e) => setCrewSearchTerm(e.target.value)}
                             onFocus={() => setShowCrewDropdown(true)}
-                            className="cursor-pointer"
-                            readOnly
+                            className="w-full"
                           />
                           
                           {showCrewDropdown && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                              {(crews as any[]).map((crew: any) => {
+                              {(crews as any[]).filter((crew: any) => 
+                                crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
+                              ).map((crew: any) => {
                                 const formDate = form.getValues('assignmentDate') || selectedDate;
                                 const availability = getCrewAvailability(crew.id, formDate);
                                 const isSelected = selectedCrews.includes(crew.id.toString());
@@ -870,7 +875,7 @@ export default function AssignmentManagement() {
                                       
                                       // Also need to update the form state
                                       form.setValue('employeeIds', allSelectedCrewMembers);
-                                      setSelectedEmployees(allSelectedCrewMembers);
+                                      setSelectedEmployeeIds(allSelectedCrewMembers);
                                     }}
                                   >
                                     <div className="flex items-center justify-between">
