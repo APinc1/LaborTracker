@@ -65,16 +65,6 @@ export default function AssignmentManagement() {
     refetchTasks();
   }, [selectedDate, refetchTasks]);
 
-  // Watch assignment date field for changes and refetch tasks accordingly
-  const assignmentDate = form.watch('assignmentDate');
-
-  // Fetch tasks for the assignment date (used by the task dropdown)
-  const { data: assignmentTasks = [] } = useQuery({
-    queryKey: ["/api/tasks/date-range", assignmentDate, assignmentDate],
-    enabled: !!assignmentDate,
-    staleTime: 0,
-  });
-
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
     staleTime: 30000,
@@ -241,6 +231,16 @@ export default function AssignmentManagement() {
       assignedHours: '8',
       actualHours: null,
     },
+  });
+
+  // Watch assignment date field for changes and refetch tasks accordingly
+  const assignmentDate = form.watch('assignmentDate');
+
+  // Fetch tasks for the assignment date (used by the task dropdown)
+  const { data: assignmentTasks = [] } = useQuery({
+    queryKey: ["/api/tasks/date-range", assignmentDate, assignmentDate],
+    enabled: !!assignmentDate,
+    staleTime: 0,
   });
 
   // Track unsaved changes - only after form is fully initialized
