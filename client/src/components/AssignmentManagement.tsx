@@ -32,6 +32,7 @@ export default function AssignmentManagement() {
   const [showEmptyHoursDialog, setShowEmptyHoursDialog] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<{ id: number; actualHours: number }[]>([]);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -475,6 +476,7 @@ export default function AssignmentManagement() {
                     control={form.control}
                     name="employeeId"
                     render={({ field }) => {
+                      const selectedEmployee = (employees as any[]).find((emp: any) => emp.id.toString() === field.value);
                       const filteredEmployees = (employees as any[]).filter((employee: any) =>
                         employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
                         employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
@@ -483,47 +485,51 @@ export default function AssignmentManagement() {
                       return (
                         <FormItem>
                           <FormLabel>Employee *</FormLabel>
-                          <div className="space-y-2">
+                          <div className="relative">
                             <Input
                               type="text"
-                              placeholder="Search employees by name or ID..."
-                              value={employeeSearchTerm}
-                              onChange={(e) => setEmployeeSearchTerm(e.target.value)}
+                              placeholder="Search and select employee..."
+                              value={selectedEmployee ? selectedEmployee.name : employeeSearchTerm}
+                              onChange={(e) => {
+                                setEmployeeSearchTerm(e.target.value);
+                                setShowEmployeeDropdown(true);
+                                if (selectedEmployee) {
+                                  field.onChange('');
+                                }
+                              }}
+                              onFocus={() => setShowEmployeeDropdown(true)}
+                              onBlur={() => setTimeout(() => setShowEmployeeDropdown(false), 200)}
                               disabled={!!editingAssignment}
                             />
-                            <Select 
-                              onValueChange={(value) => {
-                                field.onChange(value);
-                                setEmployeeSearchTerm('');
-                              }} 
-                              defaultValue={field.value} 
-                              disabled={!!editingAssignment}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select employee from filtered list" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="max-h-60">
+                            {showEmployeeDropdown && employeeSearchTerm && (
+                              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                                 {filteredEmployees.length > 0 ? (
                                   filteredEmployees.map((employee: any) => (
-                                    <SelectItem key={employee.id} value={employee.id.toString()}>
-                                      <div className="flex flex-col items-start">
-                                        <span className="font-medium">{employee.name}</span>
-                                        <span className="text-xs text-muted-foreground">
+                                    <div
+                                      key={employee.id}
+                                      className="px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                                      onClick={() => {
+                                        field.onChange(employee.id.toString());
+                                        setEmployeeSearchTerm('');
+                                        setShowEmployeeDropdown(false);
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium text-sm">{employee.name}</span>
+                                        <span className="text-xs text-gray-500">
                                           {employee.teamMemberId} • {employee.employeeType}
                                           {employee.primaryTrade && ` • ${employee.primaryTrade}`}
                                         </span>
                                       </div>
-                                    </SelectItem>
+                                    </div>
                                   ))
                                 ) : (
-                                  <SelectItem value="" disabled>
-                                    {employeeSearchTerm ? 'No employees found' : 'Type to search employees'}
-                                  </SelectItem>
+                                  <div className="px-3 py-2 text-sm text-gray-500">
+                                    No employees found
+                                  </div>
                                 )}
-                              </SelectContent>
-                            </Select>
+                              </div>
+                            )}
                           </div>
                           <FormMessage />
                         </FormItem>
