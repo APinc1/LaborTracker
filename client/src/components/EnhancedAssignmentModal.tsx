@@ -29,7 +29,7 @@ export default function EnhancedAssignmentModal({
 }: EnhancedAssignmentModalProps) {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
-  const [assignedHours, setAssignedHours] = useState<Record<string, string>>({});
+  const [defaultHours, setDefaultHours] = useState<string>('8');
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
@@ -45,7 +45,7 @@ export default function EnhancedAssignmentModal({
     if (isOpen) {
       setSelectedEmployeeIds([]);
       setSelectedCrews([]);
-      setAssignedHours({});
+      setDefaultHours('8');
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
     }
@@ -102,14 +102,8 @@ export default function EnhancedAssignmentModal({
         return employee?.id.toString();
       }).filter(Boolean);
 
-      // Load existing hours
-      const existingHours: Record<string, string> = {};
-      existingAssignments.forEach((assignment: any) => {
-        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-        if (employee) {
-          existingHours[employee.id.toString()] = assignment.assignedHours?.toString() || '8';
-        }
-      });
+      // Load hours from first assignment (assuming all have same hours)
+      const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
 
       // Check for fully assigned crews
       const assignedCrews: string[] = [];
@@ -126,7 +120,7 @@ export default function EnhancedAssignmentModal({
 
       setSelectedEmployeeIds(existingEmployeeIds);
       setSelectedCrews(assignedCrews);
-      setAssignedHours(existingHours);
+      setDefaultHours(firstAssignmentHours);
     }
   }, [isOpen, existingAssignments, employees, crews]);
 
@@ -243,7 +237,7 @@ export default function EnhancedAssignmentModal({
           taskId: taskId,
           employeeId: employee.id,
           assignmentDate: taskDate,
-          assignedHours: assignedHours[employeeIdStr] || "8",
+          assignedHours: defaultHours,
           actualHours: null
         };
       }).filter(Boolean);
@@ -420,13 +414,6 @@ export default function EnhancedAssignmentModal({
                           );
                           
                           setSelectedEmployeeIds(updatedEmployeeIds);
-                          
-                          // Remove hours for deselected crew members
-                          const updatedHours = { ...assignedHours };
-                          crewMemberIds.forEach(empId => {
-                            delete updatedHours[empId];
-                          });
-                          setAssignedHours(updatedHours);
                         } else {
                           // Add crew members
                           const crewMemberIds = (employees as any[])
@@ -435,15 +422,6 @@ export default function EnhancedAssignmentModal({
                           
                           const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
                           setSelectedEmployeeIds(updatedEmployeeIds);
-                          
-                          // Add default hours for new crew members
-                          const newHours = { ...assignedHours };
-                          crewMemberIds.forEach(empId => {
-                            if (!assignedHours[empId]) {
-                              newHours[empId] = '8';
-                            }
-                          });
-                          setAssignedHours(newHours);
                         }
                         
                         setCrewSearchTerm('');
@@ -500,13 +478,6 @@ export default function EnhancedAssignmentModal({
                               );
                               
                               setSelectedEmployeeIds(updatedEmployeeIds);
-                              
-                              // Remove hours for deselected crew members
-                              const updatedHours = { ...assignedHours };
-                              crewMemberIds.forEach(empId => {
-                                delete updatedHours[empId];
-                              });
-                              setAssignedHours(updatedHours);
                             } else {
                               // Add crew members
                               const crewMemberIds = (employees as any[])
@@ -515,15 +486,6 @@ export default function EnhancedAssignmentModal({
                               
                               const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
                               setSelectedEmployeeIds(updatedEmployeeIds);
-                              
-                              // Add default hours for new crew members
-                              const newHours = { ...assignedHours };
-                              crewMemberIds.forEach(empId => {
-                                if (!assignedHours[empId]) {
-                                  newHours[empId] = '8';
-                                }
-                              });
-                              setAssignedHours(newHours);
                             }
                           }}
                         >
@@ -549,6 +511,24 @@ export default function EnhancedAssignmentModal({
               </div>
             </div>
           </div>
+
+          {/* Hours Input */}
+          <div>
+            <Label className="text-sm font-medium">Assigned Hours</Label>
+            <div className="text-xs text-gray-600 mb-2">Hours to assign to all selected employees</div>
+            <Input
+              type="number"
+              min="0"
+              max="24"
+              step="0.5"
+              value={defaultHours}
+              onChange={(e) => setDefaultHours(e.target.value)}
+              className="w-24"
+              placeholder="8"
+            />
+          </div>
+
+          <Separator />
 
           {/* Employees Section */}
           <div>
@@ -677,29 +657,22 @@ export default function EnhancedAssignmentModal({
                         <div
                           key={employee.id}
                           className={cardStyle}
+                          onClick={() => {
+                            const employeeId = employee.id.toString();
+                            if (isSelected) {
+                              const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
+                              setSelectedEmployeeIds(newIds);
+                            } else {
+                              const newIds = [...selectedEmployeeIds, employeeId];
+                              setSelectedEmployeeIds(newIds);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             <Checkbox
                               checked={isSelected}
-                              onCheckedChange={(checked) => {
-                                const employeeId = employee.id.toString();
-                                if (checked) {
-                                  const newIds = [...selectedEmployeeIds, employeeId];
-                                  setSelectedEmployeeIds(newIds);
-                                  // Set default hours if not already set
-                                  if (!assignedHours[employeeId]) {
-                                    setAssignedHours(prev => ({ ...prev, [employeeId]: '8' }));
-                                  }
-                                } else {
-                                  const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
-                                  setSelectedEmployeeIds(newIds);
-                                  // Remove hours when deselected
-                                  setAssignedHours(prev => {
-                                    const { [employeeId]: removed, ...rest } = prev;
-                                    return rest;
-                                  });
-                                }
-                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              onCheckedChange={() => {}} // Handled by row click
                             />
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
@@ -716,28 +689,6 @@ export default function EnhancedAssignmentModal({
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {getAvailabilityBadge(employee)}
-                                  {isSelected && (
-                                    <div className="flex items-center gap-1">
-                                      <Label className="text-xs">Hours:</Label>
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="24"
-                                        step="0.5"
-                                        value={assignedHours[employee.id.toString()] || '8'}
-                                        onChange={(e) => {
-                                          e.stopPropagation();
-                                          const employeeId = employee.id.toString();
-                                          setAssignedHours(prev => ({
-                                            ...prev,
-                                            [employeeId]: e.target.value
-                                          }));
-                                        }}
-                                        className="w-16 h-6 text-xs"
-                                        onClick={(e) => e.stopPropagation()}
-                                      />
-                                    </div>
-                                  )}
                                 </div>
                               </div>
                             </div>
