@@ -139,6 +139,9 @@ export default function CreateTaskModal({
     staleTime: 5000,
   }) as { data: any[] };
 
+  // Get selected location details
+  const selectedLocationData = selectedLocation ? (locations as any[]).find((loc: any) => loc.id === selectedLocation) : null;
+
   // Fetch assignments for completion status checking
   const { data: assignments = [] } = useQuery({
     queryKey: ["/api/assignments"],
@@ -151,8 +154,9 @@ export default function CreateTaskModal({
       console.log('Creating task with position:', data.newTask.name, 'order:', data.newTask.order);
       console.log('Updating', data.updatedTasks.length, 'existing tasks');
       
-      // First create the new task
-      const createResponse = await apiRequest(`/api/locations/${data.newTask.locationId}/tasks`, {
+      // First create the new task - use database ID for API endpoint
+      const locationDbId = selectedLocation; // This is the database ID
+      const createResponse = await apiRequest(`/api/locations/${locationDbId}/tasks`, {
         method: 'POST',
         body: JSON.stringify(data.newTask),
         headers: { 'Content-Type': 'application/json' }
@@ -183,7 +187,8 @@ export default function CreateTaskModal({
       await queryClient.invalidateQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
       
       // Also refetch the current location tasks immediately
-      await queryClient.refetchQueries({ queryKey: ["/api/locations", variables.newTask.locationId, "tasks"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/locations", selectedLocation, "tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       
       console.log('Cache invalidated and refetched after task creation');
       toast({ title: "Success", description: successMsg });
@@ -373,8 +378,8 @@ export default function CreateTaskModal({
     });
 
     const newTask = {
-      taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
-      locationId: selectedLocation,
+      taskId: `${selectedLocationData?.locationId || selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
+      locationId: selectedLocationData?.locationId || selectedLocation,
       projectId: selectedProject,
       name: data.name,
       taskType: data.taskType,
@@ -767,8 +772,8 @@ export default function CreateTaskModal({
 
     // Create the new task
     const newTask = {
-      taskId: `${selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
-      locationId: selectedLocation,
+      taskId: `${selectedLocationData?.locationId || selectedLocation}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
+      locationId: selectedLocationData?.locationId || selectedLocation,
       name: data.name,
       taskType: data.taskType,
       taskDate: taskDate,
