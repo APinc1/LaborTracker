@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter, Save, X } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -64,7 +64,11 @@ export default function AssignmentManagement() {
 
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/tasks/${data.taskId}/assignments`, data);
+      const response = await apiRequest(`/api/tasks/${data.taskId}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -80,7 +84,11 @@ export default function AssignmentManagement() {
 
   const updateAssignmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await apiRequest('PUT', `/api/assignments/${id}`, data);
+      const response = await apiRequest(`/api/assignments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
       return response.json();
     },
     onSuccess: () => {
@@ -99,7 +107,7 @@ export default function AssignmentManagement() {
 
   const deleteAssignmentMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/assignments/${id}`);
+      await apiRequest(`/api/assignments/${id}`, { method: 'DELETE' });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
@@ -166,7 +174,6 @@ export default function AssignmentManagement() {
   const form = useForm({
     resolver: zodResolver(insertEmployeeAssignmentSchema),
     defaultValues: {
-      assignmentId: '',
       taskId: '',
       employeeId: '',
       assignmentDate: selectedDate,
@@ -194,7 +201,6 @@ export default function AssignmentManagement() {
   const handleEdit = (assignment: any) => {
     setEditingAssignment(assignment);
     form.reset({
-      assignmentId: assignment.assignmentId,
       taskId: assignment.taskId.toString(),
       employeeId: assignment.employeeId.toString(),
       assignmentDate: assignment.assignmentDate,
@@ -286,28 +292,28 @@ export default function AssignmentManagement() {
   };
 
   const getEmployee = (employeeId: number) => {
-    return employees.find((emp: any) => emp.id === employeeId);
+    return (employees as any[]).find((emp: any) => emp.id === employeeId);
   };
 
   const getCrew = (crewId: number | null) => {
     if (!crewId) return null;
-    return crews.find((crew: any) => crew.id === crewId);
+    return (crews as any[]).find((crew: any) => crew.id === crewId);
   };
 
   const getTask = (taskId: number) => {
-    return tasks.find((task: any) => task.id === taskId);
+    return (tasks as any[]).find((task: any) => task.id === taskId);
   };
 
   const getProject = (task: any) => {
     if (!task?.locationId) return null;
     // Find location first, then get project from location
-    const location = locations.find((loc: any) => loc.locationId === task.locationId);
+    const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
     if (!location?.projectId) return null;
-    return projects.find((project: any) => project.id === location.projectId);
+    return (projects as any[]).find((project: any) => project.id === location.projectId);
   };
 
   const getLocation = (locationId: string) => {
-    return locations.find((location: any) => location.locationId === locationId);
+    return (locations as any[]).find((location: any) => location.locationId === locationId);
   };
 
   const getEmployeeStatus = (hours: number) => {
@@ -342,12 +348,12 @@ export default function AssignmentManagement() {
   };
 
   const getEmployeeHours = (employeeId: number) => {
-    return assignments
+    return (assignments as any[])
       .filter((assignment: any) => assignment.employeeId === employeeId)
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
-  const filteredAssignments = assignments.filter((assignment: any) => {
+  const filteredAssignments = (assignments as any[]).filter((assignment: any) => {
     const employee = getEmployee(assignment.employeeId);
     const crew = getCrew(employee?.crewId);
     
@@ -357,8 +363,8 @@ export default function AssignmentManagement() {
     return true;
   });
 
-  const uniqueCrews = [...new Set(crews.map((crew: any) => crew.name))];
-  const uniqueEmployeeTypes = [...new Set(employees.map((emp: any) => emp.employeeType))];
+  const uniqueCrews = [...new Set((crews as any[]).map((crew: any) => crew.name))];
+  const uniqueEmployeeTypes = [...new Set((employees as any[]).map((emp: any) => emp.employeeType))];
 
   if (assignmentsLoading) {
     return (
@@ -414,38 +420,31 @@ export default function AssignmentManagement() {
                     name="assignmentDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Assignment Date</FormLabel>
+                        <FormLabel>Assignment Date *</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} disabled={!!editingAssignment} />
+                          <Input 
+                            type="date" 
+                            {...field} 
+                            disabled={!!editingAssignment}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              // Clear task selection when date changes to force reselection
+                              form.setValue('taskId', '');
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  {/* Assignment ID - only show for create mode */}
-                  {!editingAssignment && (
-                    <FormField
-                      control={form.control}
-                      name="assignmentId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Assignment ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="AUTO-GENERATED" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
                   
                   <FormField
                     control={form.control}
                     name="taskId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Task</FormLabel>
+                        <FormLabel>Task *</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
@@ -453,12 +452,11 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {tasks
+                            {(tasks as any[])
                               .filter((task: any) => {
-                                if (!editingAssignment) return true;
                                 // Filter tasks to only show tasks for the assignment date
                                 const assignmentDate = form.getValues('assignmentDate');
-                                return task.startDate <= assignmentDate && task.finishDate >= assignmentDate;
+                                return task.taskDate === assignmentDate;
                               })
                               .map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
@@ -472,33 +470,30 @@ export default function AssignmentManagement() {
                     )}
                   />
                   
-                  {/* Employee - only show for create mode (edit mode shows at top) */}
-                  {!editingAssignment && (
-                    <FormField
-                      control={form.control}
-                      name="employeeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select employee" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {employees.map((employee: any) => (
-                                <SelectItem key={employee.id} value={employee.id.toString()}>
-                                  {employee.name} ({employee.employeeType})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="employeeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Employee *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingAssignment}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select employee" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {(employees as any[]).map((employee: any) => (
+                              <SelectItem key={employee.id} value={employee.id.toString()}>
+                                {employee.name} ({employee.employeeType})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -630,7 +625,7 @@ export default function AssignmentManagement() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>
-                  Assignments for {format(new Date(selectedDate + 'T00:00:00'), 'MMMM d, yyyy')} ({filteredAssignments.length})
+                  Assignments for {format(parseISO(selectedDate), 'MMMM d, yyyy')} ({filteredAssignments.length})
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {bulkEditMode ? (
