@@ -391,7 +391,7 @@ export default function EnhancedAssignmentModal({
                   placeholder="Search and select crews..."
                   value={crewSearchTerm}
                   onChange={(e) => setCrewSearchTerm(e.target.value)}
-
+                  onClick={() => setShowCrewDropdown(true)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
