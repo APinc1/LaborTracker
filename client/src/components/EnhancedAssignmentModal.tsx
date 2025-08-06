@@ -30,6 +30,7 @@ export default function EnhancedAssignmentModal({
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [defaultHours, setDefaultHours] = useState<string>('8');
+  const [employeeHours, setEmployeeHours] = useState<Record<string, string>>({});
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
@@ -46,6 +47,7 @@ export default function EnhancedAssignmentModal({
       setSelectedEmployeeIds([]);
       setSelectedCrews([]);
       setDefaultHours('8');
+      setEmployeeHours({});
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
     }
@@ -102,8 +104,15 @@ export default function EnhancedAssignmentModal({
         return employee?.id.toString();
       }).filter(Boolean);
 
-      // Load hours from first assignment (assuming all have same hours)
+      // Load hours from first assignment for default, and individual hours for each employee
       const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
+      const individualHours: Record<string, string> = {};
+      existingAssignments.forEach((assignment: any) => {
+        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+        if (employee) {
+          individualHours[employee.id.toString()] = assignment.assignedHours?.toString() || '8';
+        }
+      });
 
       // Check for fully assigned crews
       const assignedCrews: string[] = [];
@@ -121,6 +130,7 @@ export default function EnhancedAssignmentModal({
       setSelectedEmployeeIds(existingEmployeeIds);
       setSelectedCrews(assignedCrews);
       setDefaultHours(firstAssignmentHours);
+      setEmployeeHours(individualHours);
     }
   }, [isOpen, existingAssignments, employees, crews]);
 
@@ -237,7 +247,7 @@ export default function EnhancedAssignmentModal({
           taskId: taskId,
           employeeId: employee.id,
           assignmentDate: taskDate,
-          assignedHours: defaultHours,
+          assignedHours: employeeHours[employeeIdStr] || defaultHours,
           actualHours: null
         };
       }).filter(Boolean);
@@ -414,6 +424,13 @@ export default function EnhancedAssignmentModal({
                           );
                           
                           setSelectedEmployeeIds(updatedEmployeeIds);
+                          
+                          // Remove hours for deselected crew members
+                          const updatedHours = { ...employeeHours };
+                          crewMemberIds.forEach(empId => {
+                            delete updatedHours[empId];
+                          });
+                          setEmployeeHours(updatedHours);
                         } else {
                           // Add crew members
                           const crewMemberIds = (employees as any[])
@@ -422,6 +439,15 @@ export default function EnhancedAssignmentModal({
                           
                           const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
                           setSelectedEmployeeIds(updatedEmployeeIds);
+                          
+                          // Add default hours for new crew members
+                          const updatedHours = { ...employeeHours };
+                          crewMemberIds.forEach(empId => {
+                            if (!employeeHours[empId]) {
+                              updatedHours[empId] = defaultHours;
+                            }
+                          });
+                          setEmployeeHours(updatedHours);
                         }
                         
                         setCrewSearchTerm('');
@@ -478,6 +504,13 @@ export default function EnhancedAssignmentModal({
                               );
                               
                               setSelectedEmployeeIds(updatedEmployeeIds);
+                              
+                              // Remove hours for deselected crew members
+                              const updatedHours = { ...employeeHours };
+                              crewMemberIds.forEach(empId => {
+                                delete updatedHours[empId];
+                              });
+                              setEmployeeHours(updatedHours);
                             } else {
                               // Add crew members
                               const crewMemberIds = (employees as any[])
@@ -486,6 +519,15 @@ export default function EnhancedAssignmentModal({
                               
                               const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
                               setSelectedEmployeeIds(updatedEmployeeIds);
+                              
+                              // Add default hours for new crew members
+                              const updatedHours = { ...employeeHours };
+                              crewMemberIds.forEach(empId => {
+                                if (!employeeHours[empId]) {
+                                  updatedHours[empId] = defaultHours;
+                                }
+                              });
+                              setEmployeeHours(updatedHours);
                             }
                           }}
                         >
@@ -529,6 +571,7 @@ export default function EnhancedAssignmentModal({
                       onClick={() => {
                         setSelectedEmployeeIds([]);
                         setSelectedCrews([]);
+                        setEmployeeHours({});
                       }}
                     >
                       Clear All
@@ -547,18 +590,36 @@ export default function EnhancedAssignmentModal({
                       };
                       
                       return (
-                        <div key={emp.id} className={`text-xs px-2 py-1 rounded-lg border ${getSelectedEmployeeBadgeStyle()}`}>
+                        <div 
+                          key={emp.id} 
+                          className={`text-xs px-2 py-1 rounded-lg border cursor-pointer transition-colors ${getSelectedEmployeeBadgeStyle()}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const employeeId = emp.id.toString();
+                            const currentHours = employeeHours[employeeId] || defaultHours;
+                            const newHours = prompt(`Set hours for ${emp.name}:`, currentHours);
+                            if (newHours !== null && !isNaN(Number(newHours)) && Number(newHours) >= 0 && Number(newHours) <= 24) {
+                              setEmployeeHours(prev => ({ ...prev, [employeeId]: newHours }));
+                            }
+                          }}
+                        >
                           <div className="flex items-center gap-1">
                             <span className="font-medium">{emp.name}</span>
                             <span className="text-xs opacity-75">
-                              ({emp.status === 'full' ? `${emp.scheduledHours}h` : emp.status === 'partial' ? `${emp.remainingHours}h left` : 'Available'})
+                              ({employeeHours[emp.id.toString()] || defaultHours}h assigned)
                             </span>
                             <button
                               type="button"
                               className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
-                              onClick={() => {
-                                const newIds = selectedEmployeeIds.filter(id => id !== emp.id.toString());
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const employeeId = emp.id.toString();
+                                const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
                                 setSelectedEmployeeIds(newIds);
+                                
+                                // Remove individual hours
+                                const { [employeeId]: removed, ...remainingHours } = employeeHours;
+                                setEmployeeHours(remainingHours);
                                 
                                 // Remove from crew selection if this was the last member
                                 const employeeCrewId = emp.crewId?.toString();
@@ -604,7 +665,12 @@ export default function EnhancedAssignmentModal({
                         const topEmployee = currentFilteredEmployees[0];
                         if (!selectedEmployeeIds.includes(topEmployee.id.toString())) {
                           const newIds = [...selectedEmployeeIds, topEmployee.id.toString()];
+                          const employeeId = topEmployee.id.toString();
                           setSelectedEmployeeIds(newIds);
+                          // Add default hours if not set
+                          if (!employeeHours[employeeId]) {
+                            setEmployeeHours(prev => ({ ...prev, [employeeId]: defaultHours }));
+                          }
                         }
                         setEmployeeSearchTerm('');
                         setShowEmployeeDropdown(false);
@@ -644,9 +710,16 @@ export default function EnhancedAssignmentModal({
                             if (isSelected) {
                               const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
                               setSelectedEmployeeIds(newIds);
+                              // Remove individual hours
+                              const { [employeeId]: removed, ...remainingHours } = employeeHours;
+                              setEmployeeHours(remainingHours);
                             } else {
                               const newIds = [...selectedEmployeeIds, employeeId];
                               setSelectedEmployeeIds(newIds);
+                              // Add default hours if not set
+                              if (!employeeHours[employeeId]) {
+                                setEmployeeHours(prev => ({ ...prev, [employeeId]: defaultHours }));
+                              }
                             }
                           }}
                         >
