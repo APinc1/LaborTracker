@@ -896,7 +896,16 @@ export default function AssignmentManagement() {
                     <Button type="button" variant="outline" onClick={handleDialogClose}>
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}>
+                    <Button 
+                      type="submit" 
+                      disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}
+                      onClick={() => {
+                        console.log('Create button clicked');
+                        console.log('Form valid:', form.formState.isValid);
+                        console.log('Form errors:', form.formState.errors);
+                        console.log('Selected employees:', selectedEmployeeIds);
+                      }}
+                    >
                       {editingAssignment ? 'Update' : 'Create'}
                     </Button>
                   </div>
