@@ -228,9 +228,16 @@ export default function AssignmentManagement() {
     },
   });
 
-  // Track unsaved changes
+  // Track unsaved changes - only after form is fully initialized
   useEffect(() => {
+    let isInitialized = false;
     const subscription = form.watch((values, { name }) => {
+      // Ignore the first few changes that happen during form initialization
+      if (!isInitialized) {
+        setTimeout(() => { isInitialized = true; }, 100);
+        return;
+      }
+      
       if (name && (isCreateDialogOpen || editingAssignment)) {
         setHasUnsavedChanges(true);
       }
@@ -238,12 +245,12 @@ export default function AssignmentManagement() {
     return () => subscription.unsubscribe();
   }, [form.watch, isCreateDialogOpen, editingAssignment]);
 
-  // Also track changes to selected employees
+  // Track changes to selected employees - only for create mode or when actually changed
   useEffect(() => {
-    if ((isCreateDialogOpen || editingAssignment) && selectedEmployeeIds.length > 0) {
+    if (isCreateDialogOpen && selectedEmployeeIds.length > 0) {
       setHasUnsavedChanges(true);
     }
-  }, [selectedEmployeeIds, isCreateDialogOpen, editingAssignment]);
+  }, [selectedEmployeeIds, isCreateDialogOpen]);
 
   // Handle clicks outside dropdown
   useEffect(() => {
@@ -333,6 +340,7 @@ export default function AssignmentManagement() {
   const handleEdit = (assignment: any) => {
     setEditingAssignment(assignment);
     setSelectedEmployeeIds([assignment.employeeId.toString()]);
+    setHasUnsavedChanges(false); // Reset unsaved changes flag
     form.reset({
       taskId: assignment.taskId.toString(),
       employeeId: assignment.employeeId.toString(),
