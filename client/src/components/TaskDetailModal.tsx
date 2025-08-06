@@ -31,7 +31,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertTaskSchema } from "@shared/schema";
-import AssignmentModal from "./AssignmentModal";
+import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
 
 interface TaskDetailModalProps {
   taskId: number | null;
@@ -679,11 +679,12 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
       </DialogContent>
 
       {/* Assignment Modal */}
-      <AssignmentModal
+      <EnhancedAssignmentModal
         isOpen={assignmentModalOpen}
         onClose={() => setAssignmentModalOpen(false)}
         taskId={taskId || 0}
         taskDate={task?.taskDate || ''}
+        taskName={task?.name || 'Task'}
       />
 
       {/* Delete Confirmation Dialog */}

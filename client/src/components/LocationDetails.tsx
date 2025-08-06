@@ -20,7 +20,7 @@ import EditTaskModal from "./EditTaskModal";
 import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 import TaskDetailModal from "./TaskDetailModal";
-import AssignmentModal from "./AssignmentModal";
+import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -1505,7 +1505,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       />
 
       {/* Assignment Modal */}
-      <AssignmentModal
+      <EnhancedAssignmentModal
         isOpen={assignmentModalOpen}
         onClose={() => {
           setAssignmentModalOpen(false);
@@ -1513,6 +1513,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         }}
         taskId={selectedTaskForAssignment?.id || selectedTaskForAssignment?.taskId}
         taskDate={selectedTaskForAssignment?.taskDate || ''}
+        taskName={selectedTaskForAssignment?.name || 'Task'}
       />
 
       {/* Delete Confirmation Dialog */}
