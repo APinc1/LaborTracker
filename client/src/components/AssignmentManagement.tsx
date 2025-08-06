@@ -252,6 +252,11 @@ export default function AssignmentManagement() {
     }
   }, [selectedEmployeeIds, isCreateDialogOpen]);
 
+  // Update form assignment date when selectedDate changes
+  useEffect(() => {
+    form.setValue('assignmentDate', selectedDate);
+  }, [selectedDate, form.setValue]);
+
   // Handle clicks outside dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
