@@ -601,17 +601,21 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(tasks as any[])
-                              .filter((task: any) => {
-                                // Filter tasks to only show tasks for the assignment date
-                                const assignmentDate = form.getValues('assignmentDate');
+                            {(() => {
+                              const assignmentDate = form.getValues('assignmentDate');
+                              console.log('Assignment date from form:', assignmentDate);
+                              console.log('Tasks array:', tasks);
+                              const filteredTasks = (tasks as any[]).filter((task: any) => {
+                                console.log(`Task ${task.name}: taskDate=${task.taskDate}, assignmentDate=${assignmentDate}, match=${task.taskDate === assignmentDate}`);
                                 return task.taskDate === assignmentDate;
-                              })
-                              .map((task: any) => (
+                              });
+                              console.log('Filtered tasks:', filteredTasks);
+                              return filteredTasks.map((task: any) => (
                                 <SelectItem key={task.id} value={task.id.toString()}>
                                   {task.name} - {task.costCode}
                                 </SelectItem>
-                              ))}
+                              ));
+                            })()}
                           </SelectContent>
                         </Select>
                         <FormMessage />
