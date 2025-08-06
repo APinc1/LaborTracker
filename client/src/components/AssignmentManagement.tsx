@@ -682,13 +682,16 @@ export default function AssignmentManagement() {
                         value={selectedCrew} 
                         onValueChange={(value) => {
                           setSelectedCrew(value);
-                          if (value) {
+                          if (value && value !== "none") {
                             // Auto-select all crew members
                             const crewMembers = (employees as any[]).filter(emp => 
                               emp.crewName === (crews as any[]).find(c => c.id.toString() === value)?.name
                             );
                             const crewMemberIds = crewMembers.map(emp => emp.id.toString());
                             setSelectedEmployeeIds(crewMemberIds);
+                          } else if (value === "none") {
+                            // Clear employee selection when "none" is selected
+                            setSelectedEmployeeIds([]);
                           }
                         }}
                       >
@@ -696,7 +699,7 @@ export default function AssignmentManagement() {
                           <SelectValue placeholder="Select crew to auto-select all members" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No crew selection</SelectItem>
+                          <SelectItem value="none">No crew selection</SelectItem>
                           {(crews as any[]).map((crew: any) => (
                             <SelectItem key={crew.id} value={crew.id.toString()}>
                               {crew.name}
