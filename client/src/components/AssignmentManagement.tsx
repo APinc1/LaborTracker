@@ -211,7 +211,7 @@ export default function AssignmentManagement() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertEmployeeAssignmentSchema.extend({
+    resolver: zodResolver(insertEmployeeAssignmentSchema.omit({ assignmentId: true }).extend({
       taskId: z.union([z.string(), z.number()]).transform(val => Number(val)),
       employeeId: z.union([z.string(), z.number()]).transform(val => Number(val)),
     })),
@@ -293,10 +293,6 @@ export default function AssignmentManagement() {
   };
 
   const onSubmit = (data: any) => {
-    console.log('Form submitted with data:', data);
-    console.log('Selected employees:', selectedEmployeeIds);
-    console.log('Form errors:', form.formState.errors);
-    
     if (editingAssignment) {
       // For editing, still handle single assignment
       const processedData = {
@@ -896,16 +892,7 @@ export default function AssignmentManagement() {
                     <Button type="button" variant="outline" onClick={handleDialogClose}>
                       Cancel
                     </Button>
-                    <Button 
-                      type="submit" 
-                      disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}
-                      onClick={() => {
-                        console.log('Create button clicked');
-                        console.log('Form valid:', form.formState.isValid);
-                        console.log('Form errors:', form.formState.errors);
-                        console.log('Selected employees:', selectedEmployeeIds);
-                      }}
-                    >
+                    <Button type="submit" disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}>
                       {editingAssignment ? 'Update' : 'Create'}
                     </Button>
                   </div>
