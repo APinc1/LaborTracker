@@ -38,6 +38,8 @@ export default function AssignmentManagement() {
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
+  const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
@@ -373,9 +375,8 @@ export default function AssignmentManagement() {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Are you sure you want to delete this assignment?')) {
-      deleteAssignmentMutation.mutate(id);
-    }
+    setAssignmentToDelete(id);
+    setShowDeleteConfirmDialog(true);
   };
 
   const handleBulkSave = () => {
@@ -1253,6 +1254,38 @@ export default function AssignmentManagement() {
           </Card>
         </div>
       </main>
+      {/* Delete assignment confirmation dialog */}
+      <AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this assignment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteConfirmDialog(false);
+              setAssignmentToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (assignmentToDelete) {
+                  deleteAssignmentMutation.mutate(assignmentToDelete);
+                }
+                setShowDeleteConfirmDialog(false);
+                setAssignmentToDelete(null);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirmation dialog for empty actual hours */}
       <AlertDialog open={showEmptyHoursDialog} onOpenChange={setShowEmptyHoursDialog}>
         <AlertDialogContent>
