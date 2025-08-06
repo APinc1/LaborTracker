@@ -606,11 +606,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If task date changed, update all assignments for this task to match the new date
       if (dateChanged) {
         console.log(`📅 Task date changed from ${currentTask.taskDate} to ${validated.taskDate}, updating assignments`);
-        const assignments = await storage.getAssignments();
-        const taskAssignments = assignments.filter(assignment => assignment.taskId === parseInt(req.params.id));
+        const assignments = await storage.getAllEmployeeAssignments();
+        const taskAssignments = assignments.filter((assignment: any) => assignment.taskId === parseInt(req.params.id));
         
         for (const assignment of taskAssignments) {
-          await storage.updateAssignment(assignment.id, { 
+          await storage.updateEmployeeAssignment(assignment.id, { 
             ...assignment,
             date: validated.taskDate 
           });
@@ -619,8 +619,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(task);
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid task data' });
+    } catch (error: any) {
+      console.error('Task update error:', error);
+      res.status(400).json({ error: 'Invalid task data', details: error.message });
     }
   });
 
