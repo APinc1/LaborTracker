@@ -1093,22 +1093,40 @@ export default function AssignmentManagement() {
                                   </Button>
                                 </div>
                                 <div className="flex flex-wrap gap-1">
-                                  {selectedEmployees.map((emp: any) => (
-                                    <Badge key={emp.id} variant="secondary" className="text-xs">
-                                      {emp.name}
-                                      <button
-                                        type="button"
-                                        className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center"
-                                        onClick={() => {
-                                          const newIds = selectedEmployeeIds.filter(id => id !== emp.id.toString());
-                                          setSelectedEmployeeIds(newIds);
-                                          field.onChange(newIds.length > 0 ? newIds[0] : '');
-                                        }}
-                                      >
-                                        ×
-                                      </button>
-                                    </Badge>
-                                  ))}
+                                  {selectedEmployees.map((emp: any) => {
+                                    // Get availability status colors
+                                    const getSelectedEmployeeBadgeStyle = () => {
+                                      if (emp.status === 'full') {
+                                        return "bg-red-100 border-red-200 text-red-800 hover:bg-red-200";
+                                      } else if (emp.status === 'partial') {
+                                        return "bg-yellow-100 border-yellow-200 text-yellow-800 hover:bg-yellow-200";
+                                      } else {
+                                        return "bg-green-100 border-green-200 text-green-800 hover:bg-green-200";
+                                      }
+                                    };
+                                    
+                                    return (
+                                      <div key={emp.id} className={`text-xs px-2 py-1 rounded-lg border ${getSelectedEmployeeBadgeStyle()}`}>
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-medium">{emp.name}</span>
+                                          <span className="text-xs opacity-75">
+                                            ({emp.status === 'full' ? '8h' : emp.status === 'partial' ? `${emp.remainingHours}h left` : 'Available'})
+                                          </span>
+                                          <button
+                                            type="button"
+                                            className="ml-1 hover:bg-gray-300 rounded-full w-4 h-4 flex items-center justify-center transition-colors"
+                                            onClick={() => {
+                                              const newIds = selectedEmployeeIds.filter(id => id !== emp.id.toString());
+                                              setSelectedEmployeeIds(newIds);
+                                              field.onChange(newIds.length > 0 ? newIds[0] : '');
+                                            }}
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
