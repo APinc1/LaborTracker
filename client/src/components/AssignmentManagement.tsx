@@ -35,7 +35,7 @@ export default function AssignmentManagement() {
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
-  const [selectedCrew, setSelectedCrew] = useState<string>('');
+  const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
@@ -96,7 +96,7 @@ export default function AssignmentManagement() {
       setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
-      setSelectedCrew('');
+      setSelectedCrews([]);
       setEmployeeSearchTerm('');
     },
     onError: () => {
@@ -124,7 +124,7 @@ export default function AssignmentManagement() {
       setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
-      setSelectedCrew('');
+      setSelectedCrews([]);
       setEmployeeSearchTerm('');
     },
     onError: () => {
@@ -338,7 +338,7 @@ export default function AssignmentManagement() {
       setIsCreateDialogOpen(false);
       setEditingAssignment(null);
       setSelectedEmployeeIds([]);
-      setSelectedCrew('');
+      setSelectedCrews([]);
       setEmployeeSearchTerm('');
       setHasUnsavedChanges(false);
       form.reset();
@@ -349,7 +349,7 @@ export default function AssignmentManagement() {
     setIsCreateDialogOpen(false);
     setEditingAssignment(null);
     setSelectedEmployeeIds([]);
-    setSelectedCrew('');
+    setSelectedCrews([]);
     setEmployeeSearchTerm('');
     setHasUnsavedChanges(false);
     setPendingDialogClose(false);
@@ -552,6 +552,37 @@ export default function AssignmentManagement() {
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
+  // Calculate crew availability status
+  const getCrewAvailability = (crewName: string) => {
+    const crewMembers = (employees as any[]).filter((emp: any) => emp.crewName === crewName);
+    if (crewMembers.length === 0) return { status: 'Available', remainingHours: 0, memberCount: 0 };
+
+    const totalRemainingHours = crewMembers.reduce((total, member) => {
+      const employeeAssignments = (assignments as any[]).filter((assignment: any) => {
+        const assignmentTask = (tasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
+        return assignment.employeeId === member.id && 
+               assignmentTask && 
+               assignmentTask.taskDate === selectedDate;
+      });
+
+      const scheduledHours = employeeAssignments.reduce((sum: number, assignment: any) => {
+        return sum + (parseFloat(assignment.assignedHours) || 0);
+      }, 0);
+
+      return total + Math.max(0, 8 - scheduledHours);
+    }, 0);
+
+    const avgRemainingHours = totalRemainingHours / crewMembers.length;
+
+    if (avgRemainingHours === 0) {
+      return { status: 'Fully Booked', remainingHours: avgRemainingHours, memberCount: crewMembers.length };
+    } else if (avgRemainingHours < 8) {
+      return { status: 'Partially Booked', remainingHours: avgRemainingHours, memberCount: crewMembers.length };
+    } else {
+      return { status: 'Available', remainingHours: avgRemainingHours, memberCount: crewMembers.length };
+    }
+  };
+
   const filteredAssignments = (assignments as any[]).filter((assignment: any) => {
     const employee = getEmployee(assignment.employeeId);
     const crew = getCrew(employee?.crewId);
@@ -562,8 +593,8 @@ export default function AssignmentManagement() {
     return true;
   });
 
-  const uniqueCrews = [...new Set((crews as any[]).map((crew: any) => crew.name))];
-  const uniqueEmployeeTypes = [...new Set((employees as any[]).map((emp: any) => emp.employeeType))];
+  const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name)));
+  const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
 
   if (assignmentsLoading) {
     return (
@@ -590,7 +621,7 @@ export default function AssignmentManagement() {
               <Button onClick={() => {
                 setIsCreateDialogOpen(true);
                 setSelectedEmployeeIds([]);
-                setSelectedCrew('');
+                setSelectedCrews([]);
                 setEmployeeSearchTerm('');
                 setHasUnsavedChanges(false);
                 // Reset form to default values
@@ -676,37 +707,78 @@ export default function AssignmentManagement() {
                   />
                   
                   {!editingAssignment && (
-                    <div className="space-y-2">
-                      <FormLabel>Crew Selection (Optional)</FormLabel>
-                      <Select 
-                        value={selectedCrew} 
-                        onValueChange={(value) => {
-                          setSelectedCrew(value);
-                          if (value && value !== "none") {
-                            // Auto-select all crew members
-                            const crewMembers = (employees as any[]).filter(emp => 
-                              emp.crewName === (crews as any[]).find(c => c.id.toString() === value)?.name
-                            );
-                            const crewMemberIds = crewMembers.map(emp => emp.id.toString());
-                            setSelectedEmployeeIds(crewMemberIds);
-                          } else if (value === "none") {
-                            // Clear employee selection when "none" is selected
-                            setSelectedEmployeeIds([]);
-                          }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select crew to auto-select all members" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No crew selection</SelectItem>
-                          {(crews as any[]).map((crew: any) => (
-                            <SelectItem key={crew.id} value={crew.id.toString()}>
-                              {crew.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="space-y-3">
+                      <FormLabel className="text-lg font-medium flex items-center">
+                        <User className="w-4 h-4 mr-2" />
+                        Crews
+                      </FormLabel>
+                      <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
+                        {(crews as any[]).map((crew: any) => {
+                          const availability = getCrewAvailability(crew.name);
+                          const isSelected = selectedCrews.includes(crew.id.toString());
+                          const statusColors = {
+                            'Available': 'bg-blue-50 border-blue-200 text-blue-800',
+                            'Partially Booked': 'bg-yellow-50 border-yellow-200 text-yellow-800', 
+                            'Fully Booked': 'bg-red-50 border-red-200 text-red-800'
+                          };
+                          const statusBadgeColors = {
+                            'Available': 'bg-blue-100 text-blue-700',
+                            'Partially Booked': 'bg-yellow-100 text-yellow-700',
+                            'Fully Booked': 'bg-red-100 text-red-700'
+                          };
+
+                          return (
+                            <div
+                              key={crew.id}
+                              className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                isSelected 
+                                  ? 'border-primary bg-primary/5 shadow-sm' 
+                                  : statusColors[availability.status as keyof typeof statusColors]
+                              }`}
+                              onClick={() => {
+                                const crewId = crew.id.toString();
+                                let newSelectedCrews;
+                                
+                                if (isSelected) {
+                                  // Remove crew from selection
+                                  newSelectedCrews = selectedCrews.filter(id => id !== crewId);
+                                } else {
+                                  // Add crew to selection
+                                  newSelectedCrews = [...selectedCrews, crewId];
+                                }
+                                
+                                setSelectedCrews(newSelectedCrews);
+                                
+                                // Auto-select/deselect all crew members
+                                const allSelectedCrewMembers = (employees as any[])
+                                  .filter(emp => newSelectedCrews.some(selectedCrewId => 
+                                    emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
+                                  ))
+                                  .map(emp => emp.id.toString());
+                                
+                                setSelectedEmployeeIds(allSelectedCrewMembers);
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-sm">{crew.name}</h4>
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    {availability.memberCount} members
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Avg {availability.remainingHours.toFixed(1)}h remaining
+                                  </p>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                  statusBadgeColors[availability.status as keyof typeof statusBadgeColors]
+                                }`}>
+                                  {availability.status}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                   
