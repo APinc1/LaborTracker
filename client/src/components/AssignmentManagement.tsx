@@ -252,6 +252,12 @@ export default function AssignmentManagement() {
   }, [showEmployeeDropdown]);
 
   const handleDialogClose = () => {
+    // If dropdown is open, close it first instead of the dialog
+    if (showEmployeeDropdown) {
+      setShowEmployeeDropdown(false);
+      return;
+    }
+    
     if (hasUnsavedChanges) {
       setPendingDialogClose(true);
       setShowUnsavedChangesDialog(true);
