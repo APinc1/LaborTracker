@@ -812,6 +812,58 @@ export default function AssignmentManagement() {
                             value={crewSearchTerm}
                             onChange={(e) => setCrewSearchTerm(e.target.value)}
                             onFocus={() => setShowCrewDropdown(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const filteredCrews = (crews as any[]).filter((crew: any) => 
+                                  crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
+                                );
+                                if (filteredCrews.length > 0) {
+                                  const firstCrew = filteredCrews[0];
+                                  const crewId = firstCrew.id.toString();
+                                  const isSelected = selectedCrews.includes(crewId);
+                                  
+                                  let newSelectedCrews;
+                                  if (isSelected) {
+                                    // Remove crew from selection
+                                    newSelectedCrews = selectedCrews.filter(id => id !== crewId);
+                                  } else {
+                                    // Add crew to selection
+                                    newSelectedCrews = [...selectedCrews, crewId];
+                                  }
+                                  
+                                  setSelectedCrews(newSelectedCrews);
+                                  
+                                  if (isSelected) {
+                                    // Removing crew - remove only this crew's members
+                                    const crewMemberIds = (employees as any[])
+                                      .filter(emp => emp.crewId === firstCrew.id)
+                                      .map(emp => emp.id.toString());
+                                    
+                                    const updatedEmployeeIds = selectedEmployeeIds.filter(
+                                      empId => !crewMemberIds.includes(empId)
+                                    );
+                                    
+                                    form.setValue('employeeIds', updatedEmployeeIds);
+                                    setSelectedEmployeeIds(updatedEmployeeIds);
+                                  } else {
+                                    // Adding crew - add all crew members to existing selections
+                                    const crewMemberIds = (employees as any[])
+                                      .filter(emp => emp.crewId === firstCrew.id)
+                                      .map(emp => emp.id.toString());
+                                    
+                                    const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
+                                    
+                                    form.setValue('employeeIds', updatedEmployeeIds);
+                                    setSelectedEmployeeIds(updatedEmployeeIds);
+                                  }
+                                  
+                                  // Clear search term and close dropdown
+                                  setCrewSearchTerm('');
+                                  setShowCrewDropdown(false);
+                                }
+                              }
+                            }}
                             className="w-full"
                           />
                           
