@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Edit, Trash2, User, Clock, AlertTriangle, CheckCircle, Calendar, Filter, Save, X } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -31,6 +35,7 @@ export default function AssignmentManagement() {
   const [editingActualHours, setEditingActualHours] = useState<Record<number, string>>({});
   const [showEmptyHoursDialog, setShowEmptyHoursDialog] = useState(false);
   const [pendingUpdates, setPendingUpdates] = useState<{ id: number; actualHours: number }[]>([]);
+  const [employeeSearchOpen, setEmployeeSearchOpen] = useState(false);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -476,20 +481,63 @@ export default function AssignmentManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Employee *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingAssignment}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select employee" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {(employees as any[]).map((employee: any) => (
-                              <SelectItem key={employee.id} value={employee.id.toString()}>
-                                {employee.name} ({employee.employeeType})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={employeeSearchOpen} onOpenChange={setEmployeeSearchOpen}>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={employeeSearchOpen}
+                                className={cn(
+                                  "w-full justify-between",
+                                  !field.value && "text-muted-foreground"
+                                )}
+                                disabled={!!editingAssignment}
+                              >
+                                {field.value
+                                  ? (employees as any[]).find((employee: any) => employee.id.toString() === field.value)?.name
+                                  : "Select employee..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-full p-0">
+                            <Command>
+                              <CommandInput placeholder="Search employees..." />
+                              <CommandList>
+                                <CommandEmpty>No employee found.</CommandEmpty>
+                                <CommandGroup>
+                                  {(employees as any[]).map((employee: any) => (
+                                    <CommandItem
+                                      key={employee.id}
+                                      value={employee.name}
+                                      onSelect={() => {
+                                        field.onChange(employee.id.toString());
+                                        setEmployeeSearchOpen(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value === employee.id.toString()
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{employee.name}</span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {employee.teamMemberId} • {employee.employeeType}
+                                          {employee.primaryTrade && ` • ${employee.primaryTrade}`}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         <FormMessage />
                       </FormItem>
                     )}
