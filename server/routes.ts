@@ -841,10 +841,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Creating task assignment with data:', req.body);
       console.log('TaskId from params:', req.params.taskId);
-      const validated = insertEmployeeAssignmentSchema.parse({
+      
+      // Transform data for validation
+      const dataToValidate = {
         ...req.body,
-        taskId: parseInt(req.params.taskId)
-      });
+        taskId: parseInt(req.params.taskId),
+        assignedHours: String(req.body.assignedHours),
+        actualHours: req.body.actualHours ? String(req.body.actualHours) : null
+      };
+      
+      const validated = insertEmployeeAssignmentSchema.parse(dataToValidate);
       console.log('Validated data:', validated);
       const assignment = await storage.createEmployeeAssignment(validated);
       res.status(201).json(assignment);

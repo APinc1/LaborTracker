@@ -147,7 +147,7 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
   locationId: z.union([z.string(), z.number()]).transform(val => String(val))
 });
-export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true });
+export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true, assignmentId: true });
 
 // Types
 export type User = typeof users.$inferSelect;
