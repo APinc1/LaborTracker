@@ -17,6 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { insertEmployeeAssignmentSchema } from "@shared/schema";
 
 export default function AssignmentManagement() {
@@ -210,7 +211,10 @@ export default function AssignmentManagement() {
   });
 
   const form = useForm({
-    resolver: zodResolver(insertEmployeeAssignmentSchema),
+    resolver: zodResolver(insertEmployeeAssignmentSchema.extend({
+      taskId: z.union([z.string(), z.number()]).transform(val => Number(val)),
+      employeeId: z.union([z.string(), z.number()]).transform(val => Number(val)),
+    })),
     defaultValues: {
       taskId: '',
       employeeId: '',
