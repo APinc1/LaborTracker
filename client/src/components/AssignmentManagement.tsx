@@ -231,10 +231,12 @@ export default function AssignmentManagement() {
     resolver: zodResolver(insertEmployeeAssignmentSchema.omit({ assignmentId: true }).extend({
       taskId: z.union([z.string(), z.number()]).transform(val => Number(val)),
       employeeId: z.union([z.string(), z.number()]).transform(val => Number(val)),
+      employeeIds: z.array(z.string()).optional(),
     })),
     defaultValues: {
       taskId: '',
       employeeId: '',
+      employeeIds: [] as string[],
       assignmentDate: selectedDate,
       assignedHours: '8',
       actualHours: null,
@@ -731,8 +733,19 @@ export default function AssignmentManagement() {
                                 size="sm"
                                 className="h-6 px-2 text-xs"
                                 onClick={() => {
+                                  // Get all employees from selected crews
+                                  const allCrewMemberIds = (employees as any[])
+                                    .filter(emp => selectedCrews.some(crewId => emp.crewId === parseInt(crewId)))
+                                    .map(emp => emp.id.toString());
+                                  
+                                  // Remove crew members from current selection
+                                  const updatedEmployeeIds = selectedEmployeeIds.filter(
+                                    empId => !allCrewMemberIds.includes(empId)
+                                  );
+                                  
+                                  form.setValue('employeeIds', updatedEmployeeIds);
+                                  setSelectedEmployeeIds(updatedEmployeeIds);
                                   setSelectedCrews([]);
-                                  setSelectedEmployeeIds([]);
                                 }}
                               >
                                 Clear All
@@ -766,14 +779,17 @@ export default function AssignmentManagement() {
                                           const newSelectedCrews = selectedCrews.filter(id => id !== crewId);
                                           setSelectedCrews(newSelectedCrews);
                                           
-                                          // Update selected employees
-                                          const allSelectedCrewMembers = (employees as any[])
-                                            .filter(emp => newSelectedCrews.some(selectedCrewId => 
-                                              emp.crewName === (crews as any[]).find(c => c.id.toString() === selectedCrewId)?.name
-                                            ))
+                                          // Remove this crew's members from selected employees
+                                          const crewMemberIds = (employees as any[])
+                                            .filter(emp => emp.crewId === parseInt(crewId))
                                             .map(emp => emp.id.toString());
                                           
-                                          setSelectedEmployeeIds(allSelectedCrewMembers);
+                                          const updatedEmployeeIds = selectedEmployeeIds.filter(
+                                            empId => !crewMemberIds.includes(empId)
+                                          );
+                                          
+                                          form.setValue('employeeIds', updatedEmployeeIds);
+                                          setSelectedEmployeeIds(updatedEmployeeIds);
                                         }}
                                       >
                                         ×
@@ -866,16 +882,29 @@ export default function AssignmentManagement() {
                                       
                                       setSelectedCrews(newSelectedCrews);
                                       
-                                      // Auto-select/deselect all crew members
-                                      const allSelectedCrewMembers = (employees as any[])
-                                        .filter(emp => newSelectedCrews.some(selectedCrewId => 
-                                          emp.crewId === parseInt(selectedCrewId)
-                                        ))
-                                        .map(emp => emp.id.toString());
-                                      
-                                      // Also need to update the form state
-                                      form.setValue('employeeIds', allSelectedCrewMembers);
-                                      setSelectedEmployeeIds(allSelectedCrewMembers);
+                                      if (isSelected) {
+                                        // Removing crew - remove only this crew's members
+                                        const crewMemberIds = (employees as any[])
+                                          .filter(emp => emp.crewId === crew.id)
+                                          .map(emp => emp.id.toString());
+                                        
+                                        const updatedEmployeeIds = selectedEmployeeIds.filter(
+                                          empId => !crewMemberIds.includes(empId)
+                                        );
+                                        
+                                        form.setValue('employeeIds', updatedEmployeeIds);
+                                        setSelectedEmployeeIds(updatedEmployeeIds);
+                                      } else {
+                                        // Adding crew - add all crew members to existing selections
+                                        const crewMemberIds = (employees as any[])
+                                          .filter(emp => emp.crewId === crew.id)
+                                          .map(emp => emp.id.toString());
+                                        
+                                        const updatedEmployeeIds = Array.from(new Set([...selectedEmployeeIds, ...crewMemberIds]));
+                                        
+                                        form.setValue('employeeIds', updatedEmployeeIds);
+                                        setSelectedEmployeeIds(updatedEmployeeIds);
+                                      }
                                     }}
                                   >
                                     <div className="flex items-center justify-between">
@@ -1383,7 +1412,7 @@ export default function AssignmentManagement() {
 
                         // Determine row background based on actual hours if they exist
                         let rowBgClass = status.rowBg;
-                        if (assignment.actualHours) {
+                        if (assignment.actualHours && actualHours !== null) {
                           if (actualHours <= assignedHours) {
                             rowBgClass = "bg-green-50";
                           } else {
