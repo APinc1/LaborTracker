@@ -139,6 +139,11 @@ export default function CreateTaskModal({
     staleTime: 5000,
   }) as { data: any[] };
 
+  // Debug log for troubleshooting
+  console.log('CreateTaskModal - Selected location:', selectedLocation);
+  console.log('CreateTaskModal - Existing tasks:', existingTasks);
+  console.log('CreateTaskModal - Query enabled:', !!selectedLocation && isOpen);
+
   // Get selected location details
   const selectedLocationData = selectedLocation ? (locations as any[]).find((loc: any) => loc.id === selectedLocation) : null;
 
