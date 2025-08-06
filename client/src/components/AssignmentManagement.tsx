@@ -209,6 +209,17 @@ export default function AssignmentManagement() {
     },
   });
 
+  const form = useForm({
+    resolver: zodResolver(insertEmployeeAssignmentSchema),
+    defaultValues: {
+      taskId: '',
+      employeeId: '',
+      assignmentDate: selectedDate,
+      assignedHours: '8',
+      actualHours: null,
+    },
+  });
+
   // Track unsaved changes
   useEffect(() => {
     const subscription = form.watch((values, { name }) => {
@@ -270,17 +281,6 @@ export default function AssignmentManagement() {
     setPendingDialogClose(false);
     setShowUnsavedChangesDialog(false);
   };
-
-  const form = useForm({
-    resolver: zodResolver(insertEmployeeAssignmentSchema),
-    defaultValues: {
-      taskId: '',
-      employeeId: '',
-      assignmentDate: selectedDate,
-      assignedHours: '8',
-      actualHours: null,
-    },
-  });
 
   const onSubmit = (data: any) => {
     if (editingAssignment) {
