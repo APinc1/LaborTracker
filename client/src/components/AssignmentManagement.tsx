@@ -530,14 +530,88 @@ export default function AssignmentManagement() {
                     control={form.control}
                     name="employeeId"
                     render={({ field }) => {
-                      const filteredEmployees = (employees as any[]).filter((employee: any) =>
+                      // Calculate employee availability for the selected date
+                      const calculateEmployeeAvailability = (employee: any) => {
+                        // Find assignments for this employee on the selected date
+                        const employeeAssignments = (assignments as any[]).filter((assignment: any) => {
+                          const assignmentTask = (tasks as any[]).find((task: any) => task.id === assignment.taskId || task.taskId === assignment.taskId);
+                          return assignment.employeeId === employee.id && 
+                                 assignmentTask && 
+                                 assignmentTask.taskDate === selectedDate;
+                        });
+
+                        const scheduledHours = employeeAssignments.reduce((total: number, assignment: any) => {
+                          return total + (parseFloat(assignment.assignedHours) || 0);
+                        }, 0);
+
+                        const remainingHours = Math.max(0, 8 - scheduledHours);
+                        let status: 'available' | 'partial' | 'full' = 'available';
+                        
+                        if (scheduledHours >= 8) {
+                          status = 'full';
+                        } else if (scheduledHours > 0) {
+                          status = 'partial';
+                        }
+
+                        return {
+                          ...employee,
+                          scheduledHours,
+                          remainingHours,
+                          status
+                        };
+                      };
+
+                      const employeesWithAvailability = (employees as any[]).map(calculateEmployeeAvailability);
+                      
+                      const filteredEmployees = employeesWithAvailability.filter((employee: any) =>
                         employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
                         employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
                       );
                       
-                      const selectedEmployees = (employees as any[]).filter((emp: any) => 
+                      const selectedEmployees = employeesWithAvailability.filter((emp: any) => 
                         selectedEmployeeIds.includes(emp.id.toString())
                       );
+
+                      const getEmployeeCardStyle = (employee: any) => {
+                        const isSelected = selectedEmployeeIds.includes(employee.id.toString());
+                        let baseStyle = "px-3 py-3 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors ";
+                        
+                        if (isSelected) {
+                          baseStyle += "ring-2 ring-blue-500 ";
+                        }
+
+                        if (employee.status === 'full') {
+                          baseStyle += "bg-red-100 hover:bg-red-200 ";
+                        } else if (employee.status === 'partial') {
+                          baseStyle += "bg-yellow-50 hover:bg-yellow-100 ";
+                        } else {
+                          baseStyle += "bg-blue-50 hover:bg-blue-100 ";
+                        }
+
+                        return baseStyle;
+                      };
+
+                      const getAvailabilityBadge = (employee: any) => {
+                        if (employee.status === 'full') {
+                          return (
+                            <Badge className="bg-red-500 text-white text-xs">
+                              8h Booked
+                            </Badge>
+                          );
+                        } else if (employee.status === 'partial') {
+                          return (
+                            <Badge className="bg-yellow-500 text-black text-xs">
+                              {employee.remainingHours}h Left
+                            </Badge>
+                          );
+                        } else {
+                          return (
+                            <Badge className="bg-green-500 text-white text-xs">
+                              Available
+                            </Badge>
+                          );
+                        }
+                      };
                       
                       return (
                         <FormItem>
@@ -614,15 +688,13 @@ export default function AssignmentManagement() {
                             />
                             {showEmployeeDropdown && (
                               <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                                {(employeeSearchTerm ? filteredEmployees : employees as any[]).length > 0 ? (
-                                  (employeeSearchTerm ? filteredEmployees : employees as any[]).map((employee: any) => {
+                                {(employeeSearchTerm ? filteredEmployees : employeesWithAvailability).length > 0 ? (
+                                  (employeeSearchTerm ? filteredEmployees : employeesWithAvailability).map((employee: any) => {
                                     const isSelected = selectedEmployeeIds.includes(employee.id.toString());
                                     return (
                                       <div
                                         key={employee.id}
-                                        className={`px-3 py-2 cursor-pointer hover:bg-gray-100 border-b border-gray-100 last:border-b-0 ${
-                                          isSelected ? 'bg-blue-50' : ''
-                                        }`}
+                                        className={getEmployeeCardStyle(employee)}
                                         onClick={(e) => {
                                           e.preventDefault();
                                           if (isSelected) {
@@ -636,21 +708,52 @@ export default function AssignmentManagement() {
                                           }
                                         }}
                                       >
-                                        <div className="flex items-center space-x-2">
-                                          <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => {}} // handled by parent onClick
-                                            className="rounded"
-                                          />
-                                          <div className="flex flex-col">
-                                            <span className="font-medium text-sm">{employee.name}</span>
-                                            <span className="text-xs text-gray-500">
-                                              {employee.teamMemberId} • {employee.employeeType}
-                                              {employee.primaryTrade && ` • ${employee.primaryTrade}`}
-                                            </span>
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-2">
+                                            <input
+                                              type="checkbox"
+                                              checked={isSelected}
+                                              onChange={() => {}} // handled by parent onClick
+                                              className="rounded"
+                                            />
+                                            <div className="flex flex-col">
+                                              <div className="flex items-center space-x-2">
+                                                <span className={`font-medium text-sm ${
+                                                  employee.status === 'full' ? 'line-through text-red-600' : ''
+                                                }`}>
+                                                  {employee.name}
+                                                </span>
+                                                {employee.employeeType === 'Foreman' && (
+                                                  <Badge variant="default" className="text-xs bg-blue-600">
+                                                    Foreman
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              <span className="text-xs text-gray-500">
+                                                {employee.teamMemberId} • {employee.employeeType}
+                                                {employee.primaryTrade && ` • ${employee.primaryTrade}`}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center space-x-2">
+                                            {getAvailabilityBadge(employee)}
                                           </div>
                                         </div>
+                                        
+                                        {/* Hours input for selected employees */}
+                                        {isSelected && employee.status !== 'full' && (
+                                          <div className="mt-3 pt-2 border-t border-gray-200">
+                                            <Label className="text-xs text-gray-600">Hours to assign:</Label>
+                                            <Input
+                                              type="number"
+                                              min="0"
+                                              max={employee.remainingHours}
+                                              defaultValue={Math.min(8, employee.remainingHours)}
+                                              className="h-7 text-xs mt-1"
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })
