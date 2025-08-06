@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,10 @@ export default function AssignmentManagement() {
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingDialogClose, setPendingDialogClose] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -78,6 +82,7 @@ export default function AssignmentManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       toast({ title: "Success", description: "Assignment created successfully" });
       setIsCreateDialogOpen(false);
+      setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
       setEmployeeSearchTerm('');
@@ -102,6 +107,7 @@ export default function AssignmentManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       toast({ title: "Success", description: "Assignments created successfully" });
       setIsCreateDialogOpen(false);
+      setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
       setEmployeeSearchTerm('');
@@ -127,6 +133,7 @@ export default function AssignmentManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       toast({ title: "Success", description: "Assignment updated successfully" });
       setEditingAssignment(null);
+      setHasUnsavedChanges(false);
       form.reset();
       setSelectedEmployeeIds([]);
       setEmployeeSearchTerm('');
@@ -201,6 +208,68 @@ export default function AssignmentManagement() {
       toast({ title: "Error", description: `Failed to update actual hours: ${error.message || 'Unknown error'}`, variant: "destructive" });
     },
   });
+
+  // Track unsaved changes
+  useEffect(() => {
+    const subscription = form.watch((values, { name }) => {
+      if (name && (isCreateDialogOpen || editingAssignment)) {
+        setHasUnsavedChanges(true);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch, isCreateDialogOpen, editingAssignment]);
+
+  // Also track changes to selected employees
+  useEffect(() => {
+    if ((isCreateDialogOpen || editingAssignment) && selectedEmployeeIds.length > 0) {
+      setHasUnsavedChanges(true);
+    }
+  }, [selectedEmployeeIds, isCreateDialogOpen, editingAssignment]);
+
+  // Handle clicks outside dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowEmployeeDropdown(false);
+      }
+    }
+
+    if (showEmployeeDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showEmployeeDropdown]);
+
+  const handleDialogClose = () => {
+    if (hasUnsavedChanges) {
+      setPendingDialogClose(true);
+      setShowUnsavedChangesDialog(true);
+    } else {
+      // Close immediately if no changes
+      setIsCreateDialogOpen(false);
+      setEditingAssignment(null);
+      setSelectedEmployeeIds([]);
+      setEmployeeSearchTerm('');
+      setHasUnsavedChanges(false);
+      form.reset();
+    }
+  };
+
+  const confirmCloseDialog = () => {
+    setIsCreateDialogOpen(false);
+    setEditingAssignment(null);
+    setSelectedEmployeeIds([]);
+    setEmployeeSearchTerm('');
+    setHasUnsavedChanges(false);
+    setPendingDialogClose(false);
+    setShowUnsavedChangesDialog(false);
+    form.reset();
+  };
+
+  const cancelCloseDialog = () => {
+    setPendingDialogClose(false);
+    setShowUnsavedChangesDialog(false);
+  };
 
   const form = useForm({
     resolver: zodResolver(insertEmployeeAssignmentSchema),
@@ -434,11 +503,7 @@ export default function AssignmentManagement() {
           </div>
           <Dialog open={isCreateDialogOpen || !!editingAssignment} onOpenChange={(open) => {
             if (!open) {
-              setIsCreateDialogOpen(false);
-              setEditingAssignment(null);
-              setSelectedEmployeeIds([]);
-              setEmployeeSearchTerm('');
-              form.reset();
+              handleDialogClose();
             }
           }}>
             <DialogTrigger asChild>
@@ -446,6 +511,7 @@ export default function AssignmentManagement() {
                 setIsCreateDialogOpen(true);
                 setSelectedEmployeeIds([]);
                 setEmployeeSearchTerm('');
+                setHasUnsavedChanges(false);
               }} className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Assignment
@@ -701,7 +767,7 @@ export default function AssignmentManagement() {
                               )}
                             </div>
                             {showEmployeeDropdown && (
-                              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                              <div ref={dropdownRef} className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
                                 {(employeeSearchTerm ? filteredEmployees : employeesWithAvailability).length > 0 ? (
                                   (employeeSearchTerm ? filteredEmployees : employeesWithAvailability).map((employee: any) => {
                                     const isSelected = selectedEmployeeIds.includes(employee.id.toString());
@@ -813,13 +879,7 @@ export default function AssignmentManagement() {
                     />
                   </div>
                   <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => {
-                      setIsCreateDialogOpen(false);
-                      setEditingAssignment(null);
-                      setSelectedEmployeeIds([]);
-                      setEmployeeSearchTerm('');
-                      form.reset();
-                    }}>
+                    <Button type="button" variant="outline" onClick={handleDialogClose}>
                       Cancel
                     </Button>
                     <Button type="submit" disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}>
@@ -830,6 +890,24 @@ export default function AssignmentManagement() {
               </Form>
             </DialogContent>
           </Dialog>
+          
+          {/* Unsaved Changes Confirmation Dialog */}
+          <AlertDialog open={showUnsavedChangesDialog} onOpenChange={setShowUnsavedChangesDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You have unsaved changes. Are you sure you want to close this dialog? Your changes will be lost.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={cancelCloseDialog}>Keep Editing</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmCloseDialog} className="bg-red-600 hover:bg-red-700">
+                  Discard Changes
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </header>
       <main className="p-6">
