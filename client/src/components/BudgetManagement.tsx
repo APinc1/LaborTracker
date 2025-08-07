@@ -834,7 +834,11 @@ export default function BudgetManagement() {
       return;
     }
 
+    setIsImporting(true);
+    
     try {
+      // Add a small delay to ensure loading state is visible
+      await new Promise(resolve => setTimeout(resolve, 300));
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       
@@ -912,6 +916,11 @@ export default function BudgetManagement() {
         description: "Failed to import Excel file. Please check the file format.",
         variant: "destructive",
       });
+    } finally {
+      // Ensure loading indicator stays visible for at least 500ms total
+      setTimeout(() => {
+        setIsImporting(false);
+      }, 200);
     }
   };
 
