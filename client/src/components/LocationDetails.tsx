@@ -286,14 +286,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return sum;
   }, 0);
   
-  // totalActualHours will be calculated after actualHoursByCostCode
-  
-  const remainingHours = totalBudgetHours - totalActualHours;
-
-  // Calculate progress
-  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
-  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
-
   // Calculate actual hours from assignments by cost code
   const actualHoursByCostCode = (tasks as any[]).reduce((acc: any, task: any) => {
     let taskCostCode = task.costCode || 'UNCATEGORIZED';
@@ -382,6 +374,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const totalActualHours = Object.values(actualHoursByCostCode).reduce((sum: number, hours: any) => {
     return sum + (parseFloat(hours) || 0);
   }, 0);
+
+  const remainingHours = totalBudgetHours - totalActualHours;
+
+  // Calculate progress
+  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
