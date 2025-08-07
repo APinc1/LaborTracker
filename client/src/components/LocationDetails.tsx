@@ -310,26 +310,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
-  // Debug: Check if we have budget items and what cost codes exist
-  console.log('🔍 BUDGET DEBUG: Processing', (budgetItems as any[]).length, 'budget items');
-  
-  if ((budgetItems as any[]).length === 0) {
-    console.warn('⚠️ No budget items found!');
-    return <div>No budget items to process</div>;
-  }
-  
-  // Find all unique cost codes
-  const budgetItemsArray = budgetItems as any[];
-  const allCostCodes = Array.from(new Set(budgetItemsArray.map((item: any) => item.costCode)));
-  console.log('🏷️ All cost codes found:', allCostCodes);
-  
-  // Specifically look for Traffic Control variations
-  const trafficItems = budgetItemsArray.filter((item: any) => 
-    item.costCode && item.costCode.toUpperCase().includes('TRAFFIC')
-  );
-  console.log('🚦 Traffic Control items found:', trafficItems.length, trafficItems);
-  
-  // Calculate cost code summaries by hours
+  // Calculate cost code summaries by hours - handle empty budget items gracefully
+  const budgetItemsArray = (budgetItems as any[]) || [];
   const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
@@ -419,27 +401,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasksArray.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasksArray.length > 0 ? (completedTasks / tasksArray.length) * 100 : 0;
 
-  // Debug final cost code summaries before filtering
-  console.log('📊 Cost code summaries before filtering:', costCodeSummaries);
-  
   // Filter to show cost codes that have budget hours OR converted quantity
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
-    const shouldShow = summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
-    
-    // Log only traffic-related items for focused debugging
-    if (summary.costCode && summary.costCode.toUpperCase().includes('TRAFFIC')) {
-      console.log('🚦 Traffic Control filter check:', {
-        costCode: summary.costCode,
-        totalConvertedQty: summary.totalConvertedQty,
-        totalBudgetHours: summary.totalBudgetHours,
-        shouldShow
-      });
-    }
-    
-    return shouldShow;
+    return summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
   });
-  
-  console.log('✅ Final cost codes to display:', costCodeArray.map((s: any) => s.costCode));
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
