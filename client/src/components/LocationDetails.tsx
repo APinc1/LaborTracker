@@ -310,47 +310,27 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
-  // Debug: Log all budget items to see what we have
-  console.log('DEBUG: Total budget items:', (budgetItems as any[]).length);
-  console.log('DEBUG: All budget items:', budgetItems);
+  // Debug: Check if we have budget items and what cost codes exist
+  console.log('🔍 BUDGET DEBUG: Processing', (budgetItems as any[]).length, 'budget items');
   
-  // Debug: Log all unique cost codes
+  if ((budgetItems as any[]).length === 0) {
+    console.warn('⚠️ No budget items found!');
+    return <div>No budget items to process</div>;
+  }
+  
+  // Find all unique cost codes
   const allCostCodes = [...new Set((budgetItems as any[]).map((item: any) => item.costCode))];
-  console.log('DEBUG: All unique cost codes:', allCostCodes);
+  console.log('🏷️ All cost codes found:', allCostCodes);
+  
+  // Specifically look for Traffic Control variations
+  const trafficItems = (budgetItems as any[]).filter((item: any) => 
+    item.costCode && item.costCode.toUpperCase().includes('TRAFFIC')
+  );
+  console.log('🚦 Traffic Control items found:', trafficItems.length, trafficItems);
   
   // Calculate cost code summaries by hours
   const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
-    
-    // Debug: Log every item being processed
-    console.log('DEBUG: Processing item:', {
-      lineItemNumber: item.lineItemNumber,
-      lineItemName: item.lineItemName,
-      costCode: item.costCode,
-      hours: item.hours,
-      convertedQty: item.convertedQty
-    });
-    
-    // Debug Traffic Control specifically
-    if (costCode === 'TRAFFIC CONTROL') {
-      console.log('Traffic Control item found:', {
-        lineItemNumber: item.lineItemNumber,
-        costCode: item.costCode,
-        hours: item.hours,
-        convertedQty: item.convertedQty,
-        item
-      });
-    }
-    
-    // Debug: Also check for variations of Traffic Control
-    if (costCode && costCode.toUpperCase().includes('TRAFFIC')) {
-      console.log('TRAFFIC-related item found:', {
-        lineItemNumber: item.lineItemNumber,
-        costCode: item.costCode,
-        hours: item.hours,
-        convertedQty: item.convertedQty
-      });
-    }
     
     // Combine Demo/Ex and Base/grading related cost codes
     if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
@@ -437,18 +417,27 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
+  // Debug final cost code summaries before filtering
+  console.log('📊 Cost code summaries before filtering:', costCodeSummaries);
+  
+  // Filter to show cost codes that have budget hours OR converted quantity
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
     const shouldShow = summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
-    console.log('Cost code filter check:', {
-      costCode: summary.costCode,
-      totalConvertedQty: summary.totalConvertedQty,
-      totalBudgetHours: summary.totalBudgetHours,
-      shouldShow,
-      items: summary.items.length
-    });
+    
+    // Log only traffic-related items for focused debugging
+    if (summary.costCode && summary.costCode.toUpperCase().includes('TRAFFIC')) {
+      console.log('🚦 Traffic Control filter check:', {
+        costCode: summary.costCode,
+        totalConvertedQty: summary.totalConvertedQty,
+        totalBudgetHours: summary.totalBudgetHours,
+        shouldShow
+      });
+    }
+    
     return shouldShow;
   });
+  
+  console.log('✅ Final cost codes to display:', costCodeArray.map((s: any) => s.costCode));
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
