@@ -357,12 +357,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         isParent,
         isChild,
         hasChildren,
-        shouldInclude: isParent || (!isChild && !hasChildren)
+        hours: parseFloat(item.hours) || 0,
+        budgetTotal: parseFloat(item.budgetTotal) || 0,
+        shouldInclude: (isParent || (!isChild && !hasChildren)) || 
+                      (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0)
       });
     }
     
     // Include if it's a parent OR if it's a standalone item (not a child and has no children)
-    if (isParent || (!isChild && !hasChildren)) {
+    // OR if it has budget hours or budget total (to ensure important items like Traffic Control appear)
+    const shouldInclude = (isParent || (!isChild && !hasChildren)) || 
+                         (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0);
+    
+    if (shouldInclude) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
       acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
       // Use the unit of measure from the first item, assuming they're consistent within cost code
