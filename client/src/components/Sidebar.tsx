@@ -123,19 +123,22 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
             Active Projects
           </h3>
           <div className="space-y-2">
-            {projects.slice(0, 3).map((project: any) => (
-              <div
+            {(projects as any[]).slice(0, 3).map((project: any) => (
+              <ProtectedNavLink 
                 key={project.id}
-                className="flex items-center space-x-3 p-2 rounded hover:bg-blue-100 cursor-pointer"
+                href={`/projects/${project.id}`}
+                onNavigate={protectedNavigate}
               >
-                <div className="w-3 h-3 bg-accent rounded-full"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{project.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {project.projectId}
-                  </p>
+                <div className="flex items-center space-x-3 p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                  <div className="w-3 h-3 bg-accent rounded-full"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{project.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {project.projectId}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </ProtectedNavLink>
             ))}
           </div>
         </div>
