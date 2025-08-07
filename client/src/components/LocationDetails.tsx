@@ -312,21 +312,28 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Calculate cost code summaries by hours - handle empty budget items gracefully
   const budgetItemsArray = (budgetItems as any[]) || [];
-  console.log('🔍 Processing', budgetItemsArray.length, 'budget items for cost code calculation');
+  
+  // Find Traffic Control items with robust search
+  const trafficControlItems = budgetItemsArray.filter((item: any) => {
+    const costCodeMatch = item.costCode?.toLowerCase()?.includes('traffic');
+    const nameMatch = item.lineItemName?.toLowerCase()?.includes('traffic');
+    return costCodeMatch || nameMatch;
+  });
+  
+  console.log('🚦 TRAFFIC CONTROL SEARCH RESULTS:', {
+    totalItems: budgetItemsArray.length,
+    trafficControlFound: trafficControlItems.length,
+    trafficControlItems: trafficControlItems.map(item => ({
+      lineItemNumber: item.lineItemNumber,
+      lineItemName: item.lineItemName,
+      costCode: item.costCode,
+      hours: item.hours,
+      budgetTotal: item.budgetTotal
+    }))
+  });
+  
   const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
-    
-    // Debug Traffic Control specifically
-    if (item.costCode === 'TRAFFIC CONTROL' || item.lineItemName?.includes('Traffic Control')) {
-      console.log('🚦 FOUND TRAFFIC CONTROL ITEM:', {
-        lineItemNumber: item.lineItemNumber,
-        lineItemName: item.lineItemName,
-        costCode: item.costCode,
-        hours: item.hours,
-        budgetTotal: item.budgetTotal,
-        convertedQty: item.convertedQty
-      });
-    }
     
     // Combine Demo/Ex and Base/grading related cost codes
     if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
@@ -364,9 +371,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
     
-    // Debug Traffic Control logic
-    if (costCode === 'TRAFFIC CONTROL') {
-      console.log('Traffic Control parent/child logic:', {
+    // Debug Traffic Control logic with robust matching
+    if (costCode?.toLowerCase()?.includes('traffic')) {
+      console.log('🚦 TRAFFIC CONTROL PROCESSING:', {
+        originalCostCode: item.costCode,
+        normalizedCostCode: costCode,
         isParent,
         isChild,
         hasChildren,
@@ -391,8 +400,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
       
       // Debug Traffic Control totals
-      if (costCode === 'TRAFFIC CONTROL') {
-        console.log('Traffic Control totals after adding:', {
+      if (costCode?.toLowerCase()?.includes('traffic')) {
+        console.log('🚦 TRAFFIC CONTROL TOTALS:', {
+          costCode,
           totalBudgetHours: acc[costCode].totalBudgetHours,
           totalConvertedQty: acc[costCode].totalConvertedQty
         });
