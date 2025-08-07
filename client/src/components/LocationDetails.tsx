@@ -381,9 +381,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
+  // Filter to show cost codes that have budget line items (this ensures all cost codes including Traffic Control appear)
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
-    summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0
+    summary.itemCount > 0  // Show any cost code that has at least one budget line item
   );
 
   // Calculate actual location duration based on task dates
