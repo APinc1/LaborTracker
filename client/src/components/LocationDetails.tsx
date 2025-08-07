@@ -310,9 +310,26 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
+  // Debug: Log all budget items to see what we have
+  console.log('DEBUG: Total budget items:', (budgetItems as any[]).length);
+  console.log('DEBUG: All budget items:', budgetItems);
+  
+  // Debug: Log all unique cost codes
+  const allCostCodes = [...new Set((budgetItems as any[]).map((item: any) => item.costCode))];
+  console.log('DEBUG: All unique cost codes:', allCostCodes);
+  
   // Calculate cost code summaries by hours
   const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
+    
+    // Debug: Log every item being processed
+    console.log('DEBUG: Processing item:', {
+      lineItemNumber: item.lineItemNumber,
+      lineItemName: item.lineItemName,
+      costCode: item.costCode,
+      hours: item.hours,
+      convertedQty: item.convertedQty
+    });
     
     // Debug Traffic Control specifically
     if (costCode === 'TRAFFIC CONTROL') {
@@ -322,6 +339,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         hours: item.hours,
         convertedQty: item.convertedQty,
         item
+      });
+    }
+    
+    // Debug: Also check for variations of Traffic Control
+    if (costCode && costCode.toUpperCase().includes('TRAFFIC')) {
+      console.log('TRAFFIC-related item found:', {
+        lineItemNumber: item.lineItemNumber,
+        costCode: item.costCode,
+        hours: item.hours,
+        convertedQty: item.convertedQty
       });
     }
     
