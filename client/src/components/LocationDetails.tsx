@@ -311,7 +311,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Calculate cost code summaries by hours
   const costCodeSummaries = budgetItems.reduce((acc: any, item: any) => {
-    const costCode = item.costCode || 'UNCATEGORIZED';
+    let costCode = item.costCode || 'UNCATEGORIZED';
+    
+    // Combine Demo/Ex and Base/grading related cost codes
+    if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
+        costCode === 'BASE/GRADING' || costCode === 'Base/Grading' || 
+        costCode === 'Demo/Ex + Base/Grading' || costCode === 'DEMO/EX + BASE/GRADING') {
+      costCode = 'Demo/ex + Base/grading';
+    }
+    
     if (!acc[costCode]) {
       acc[costCode] = {
         costCode,
@@ -320,8 +328,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         totalConvertedQty: 0,
         convertedUnitOfMeasure: '',
         items: [],
-        itemCount: 0
+        itemCount: 0,
+        originalCostCodes: new Set() // Track original cost codes for combined entries
       };
+    }
+    
+    // Track original cost codes for combined entries
+    if (costCode === 'Demo/ex + Base/grading') {
+      acc[costCode].originalCostCodes.add(item.costCode || 'UNCATEGORIZED');
     }
     
     // Only include items that are either:
@@ -351,7 +365,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
-  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => summary.totalConvertedQty > 0);
+  // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
+    summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0
+  );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
@@ -1147,10 +1164,44 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Total Qty:</span>
-                                <span className="font-medium">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
-                              </div>
+                              {/* For combined Demo/ex + Base/grading, show separate quantities */}
+                              {summary.costCode === 'Demo/ex + Base/grading' ? (
+                                <div className="space-y-1">
+                                  {summary.originalCostCodes && Array.from(summary.originalCostCodes).map((originalCode: string) => {
+                                    const originalItems = summary.items.filter((item: any) => 
+                                      (item.costCode === originalCode || 
+                                       (originalCode === 'UNCATEGORIZED' && !item.costCode))
+                                    );
+                                    const originalQty = originalItems.reduce((sum: number, item: any) => {
+                                      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+                                      const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+                                      const hasChildren = budgetItems.some((child: any) => 
+                                        child.lineItemNumber && child.lineItemNumber.includes('.') && 
+                                        child.lineItemNumber.split('.')[0] === item.lineItemNumber
+                                      );
+                                      if (isParent || (!isChild && !hasChildren)) {
+                                        return sum + (parseFloat(item.convertedQty) || 0);
+                                      }
+                                      return sum;
+                                    }, 0);
+                                    return (
+                                      <div key={originalCode} className="flex justify-between text-xs">
+                                        <span className="text-gray-500">{originalCode || 'Demo/Ex'}:</span>
+                                        <span className="font-medium">{originalQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                      </div>
+                                    );
+                                  })}
+                                  <div className="flex justify-between text-sm border-t pt-1">
+                                    <span className="text-gray-600 font-medium">Combined Qty:</span>
+                                    <span className="font-semibold">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Total Qty:</span>
+                                  <span className="font-medium">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                </div>
+                              )}
                               <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Budget Hours:</span>
                                 <span className="font-medium">{summary.totalBudgetHours.toLocaleString()} hrs</span>
