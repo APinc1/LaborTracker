@@ -60,7 +60,6 @@ export default function BudgetManagement() {
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
-  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -761,6 +760,28 @@ export default function BudgetManagement() {
   };
 
   const handleExcelImport = () => {
+    if (!selectedLocation) {
+      toast({
+        title: "Error",
+        description: "Please select a location first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if budget items already exist BEFORE opening file dialog
+    const existingItems = budgetItems as any[];
+    
+    if (existingItems.length > 0) {
+      // Show confirmation dialog first
+      setShowImportConfirmDialog(true);
+      return;
+    }
+    // If no existing items, open file picker directly
+    openFilePicker();
+  };
+
+  const openFilePicker = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.xlsx,.xls';
@@ -768,34 +789,7 @@ export default function BudgetManagement() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      if (!selectedLocation) {
-        toast({
-          title: "Error",
-          description: "Please select a location first",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check if budget items already exist
-      const existingItems = budgetItems as any[];
-      console.log('Budget import check:', { 
-        existingItemsLength: existingItems.length, 
-        selectedLocation, 
-        budgetItems: existingItems 
-      });
-      
-      if (existingItems.length > 0) {
-        console.log('Showing confirmation dialog for existing items');
-        // Store the file and show confirmation dialog
-        setPendingImportFile(file);
-        setShowImportConfirmDialog(true);
-        return;
-      }
-
-      console.log('No existing items, processing import directly');
-
-      // If no existing items, process import directly
+      // Process import directly (no existing items to worry about)
       await processExcelImport(file);
     };
     input.click();
@@ -922,18 +916,23 @@ export default function BudgetManagement() {
 
   // Handle the import confirmation and process
   const handleImportConfirm = async () => {
-    if (!pendingImportFile) return;
-    
     setShowImportConfirmDialog(false);
     
     // Clear existing budget first
     await clearExistingBudget();
     
-    // Then process the new import
-    await processExcelImport(pendingImportFile);
-    
-    // Clean up
-    setPendingImportFile(null);
+    // Then open file picker for new import
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      // Process the new import
+      await processExcelImport(file);
+    };
+    input.click();
   };
 
   const onSubmit = (data: z.infer<typeof budgetLineItemSchema>) => {
@@ -2105,10 +2104,7 @@ export default function BudgetManagement() {
           <div className="flex justify-end space-x-2">
             <Button 
               variant="outline" 
-              onClick={() => {
-                setShowImportConfirmDialog(false);
-                setPendingImportFile(null);
-              }}
+              onClick={() => setShowImportConfirmDialog(false)}
             >
               Cancel
             </Button>
