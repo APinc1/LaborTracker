@@ -1336,24 +1336,13 @@ export default function BudgetManagement() {
                       );
                     }
 
-                    console.log('🔍 BUDGET: Processing', items.length, 'budget items for cost code grouping');
-                    
-                    // Find all Traffic Control items first
-                    const trafficItems = items.filter((item: any) => 
-                      item.costCode && item.costCode.toUpperCase().includes('TRAFFIC')
-                    );
-                    console.log('🚦 BUDGET: Traffic Control items found:', trafficItems.length, trafficItems);
-                    
                     const costCodeGroups = items.reduce((groups: any, item: any) => {
                       if (!item) return groups;
-                      
-                      // Debug Traffic Control items specifically
-                      const isTraffic = item.costCode && item.costCode.toUpperCase().includes('TRAFFIC');
                       
                       // Only include items that are either:
                       // 1. Parent items (have children)
                       // 2. Standalone items (no children and not a child)
-                      // Skip child items to avoid double counting
+                      // 3. Items with budget hours > 0 (ensures Traffic Control and other important items appear)
                       const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
                       const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
                       const hasChildren = items.some(child => 
@@ -1361,37 +1350,19 @@ export default function BudgetManagement() {
                         child.lineItemNumber.split('.')[0] === item.lineItemNumber
                       );
                       
-                      if (isTraffic) {
-                        console.log('🚦 BUDGET: Traffic Control item analysis:', {
-                          lineItemNumber: item.lineItemNumber,
-                          costCode: item.costCode,
-                          isParent,
-                          isChild,
-                          hasChildren,
-                          willBeIncluded: isParent || (!isChild && !hasChildren)
-                        });
-                      }
+                      const shouldInclude = (isParent || (!isChild && !hasChildren)) || 
+                                          (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0);
                       
-                      // Include if it's a parent OR if it's a standalone item (not a child and has no children)
-                      if (isParent || (!isChild && !hasChildren)) {
+                      if (shouldInclude) {
                         const costCode = item.costCode || 'No Code';
                         if (!groups[costCode]) {
                           groups[costCode] = [];
                         }
                         groups[costCode].push(item);
-                        
-                        if (isTraffic) {
-                          console.log('✅ BUDGET: Traffic Control item INCLUDED in cost code groups');
-                        }
-                      } else if (isTraffic) {
-                        console.log('❌ BUDGET: Traffic Control item EXCLUDED from cost code groups');
                       }
                       
                       return groups;
                     }, {});
-                    
-                    console.log('📊 BUDGET: Final cost code groups:', Object.keys(costCodeGroups));
-                    console.log('🚦 BUDGET: Traffic Control in final groups?', Object.keys(costCodeGroups).filter(code => code.toUpperCase().includes('TRAFFIC')));
 
                     return Object.entries(costCodeGroups).map(([costCode, items]: [string, any[]]) => {
                       try {
