@@ -316,13 +316,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
-    // Debug all budget items processing
-    console.log('Processing budget item:', {
-      lineItemNumber: item.lineItemNumber,
-      costCode: item.costCode,
-      hours: item.hours,
-      budgetTotal: item.budgetTotal
-    });
+    // Debug Traffic Control specifically
+    if (item.costCode === 'TRAFFIC CONTROL' || item.lineItemName?.includes('Traffic Control')) {
+      console.log('🚦 FOUND TRAFFIC CONTROL ITEM:', {
+        lineItemNumber: item.lineItemNumber,
+        lineItemName: item.lineItemName,
+        costCode: item.costCode,
+        hours: item.hours,
+        budgetTotal: item.budgetTotal,
+        convertedQty: item.convertedQty
+      });
+    }
     
     // Combine Demo/Ex and Base/grading related cost codes
     if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
@@ -423,6 +427,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   });
   
   console.log('📊 Final cost code summaries:', costCodeSummaries);
+  
+  // Check specifically for Traffic Control
+  if (costCodeSummaries['TRAFFIC CONTROL']) {
+    console.log('🚦 TRAFFIC CONTROL FOUND in summaries:', costCodeSummaries['TRAFFIC CONTROL']);
+  } else {
+    console.log('❌ TRAFFIC CONTROL NOT FOUND in summaries');
+    console.log('Available cost codes:', Object.keys(costCodeSummaries));
+  }
+  
   console.log('📋 Cost codes that will be displayed:', costCodeArray.map((summary: any) => ({
     costCode: summary.costCode,
     totalBudgetHours: summary.totalBudgetHours,
