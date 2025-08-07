@@ -118,6 +118,31 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
+  // Fetch all budget items for remaining hours calculation
+  const { data: allBudgetItems = [] } = useQuery({
+    queryKey: ["/api/budget/all"],
+    queryFn: async () => {
+      // We need to get budget items for all locations to calculate remaining hours properly
+      // For now, we'll try to get them based on the selected project/location context
+      const allLocations = selectedProject && selectedProject !== "ALL_PROJECTS" ? locations : [];
+      const budgetPromises = allLocations.map(async (location: any) => {
+        try {
+          const response = await fetch(`/api/locations/${location.locationId}/budget`);
+          if (response.ok) {
+            return await response.json();
+          }
+        } catch (error) {
+          console.error(`Failed to fetch budget for location ${location.locationId}:`, error);
+        }
+        return [];
+      });
+      const budgetArrays = await Promise.all(budgetPromises);
+      return budgetArrays.flat();
+    },
+    enabled: selectedProject !== "ALL_PROJECTS" && locations.length > 0,
+    staleTime: 30000,
+  });
+
   const getViewDays = () => {
     return eachDayOfInterval({
       start: dateRange.start,
@@ -267,6 +292,100 @@ export default function ScheduleManagement() {
       }
       return displayName;
     }).join(', ');
+  };
+
+  // Calculate remaining hours for a cost code up to the current task date
+  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
+    const costCode = task.costCode;
+    if (!costCode) return null;
+
+    // Get total budget hours for this cost code from all budget items
+    const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
+      let itemCostCode = item.costCode || 'UNCATEGORIZED';
+      
+      // Handle combined cost codes (Demo/Ex + Base/Grading)
+      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
+          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
+          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
+        itemCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Handle current task cost code in the same way
+      let taskCostCode = costCode;
+      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+        taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (itemCostCode === taskCostCode) {
+        // Only include parent items or standalone items (avoid double counting)
+        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+        const hasChildren = budgetItems.some((child: any) => 
+          child.lineItemNumber && child.lineItemNumber.includes('.') && 
+          child.lineItemNumber.split('.')[0] === item.lineItemNumber
+        );
+        
+        if (isParent || (!isChild && !hasChildren)) {
+          return total + (parseFloat(item.hours) || 0);
+        }
+      }
+      return total;
+    }, 0);
+
+    if (costCodeBudgetHours === 0) return null;
+
+    // Find all completed tasks for this cost code before the current task date
+    const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
+    const completedTasksBeforeCurrent = allTasks.filter((t: any) => {
+      if (!t.costCode) return false;
+      
+      // Handle cost code matching with combined codes
+      let tCostCode = t.costCode;
+      let taskCostCode = costCode;
+      
+      if (tCostCode === 'DEMO/EX' || tCostCode === 'Demo/Ex' || 
+          tCostCode === 'BASE/GRADING' || tCostCode === 'Base/Grading' || 
+          tCostCode === 'Demo/Ex + Base/Grading' || tCostCode === 'DEMO/EX + BASE/GRADING') {
+        tCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+        taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
+      const isCompleted = getTaskStatus(t).status === 'complete';
+      const isSameCostCode = tCostCode === taskCostCode;
+      const isBeforeCurrent = taskDate < currentTaskDate;
+      
+      return isSameCostCode && isCompleted && isBeforeCurrent;
+    });
+
+    // Sum actual hours from completed tasks before current task
+    const actualHoursFromCompletedTasks = completedTasksBeforeCurrent.reduce((total: number, t: any) => {
+      const taskId = t.id || t.taskId;
+      const taskAssignments = assignments.filter((assignment: any) => 
+        assignment.taskId === taskId
+      );
+      
+      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
+        return sum + (parseFloat(assignment.actualHours) || 0);
+      }, 0);
+      
+      return total + taskActualHours;
+    }, 0);
+
+    // Get scheduled hours for current task
+    const currentTaskScheduledHours = calculateScheduledHours(task);
+
+    // Calculate remaining hours
+    const remainingHours = costCodeBudgetHours - actualHoursFromCompletedTasks - currentTaskScheduledHours;
+    
+    return Math.max(0, remainingHours); // Don't show negative hours
   };
 
   // Format detailed assignment display for task cards
@@ -537,6 +656,15 @@ export default function ScheduleManagement() {
                                       <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
                                     )}
                                   </div>
+                                  {(() => {
+                                    const remainingHours = calculateRemainingHours(task, tasks, allBudgetItems);
+                                    return remainingHours !== null && remainingHours > 0 && (
+                                      <div className="flex items-center space-x-1 text-xs text-gray-600">
+                                        <Clock className="w-3 h-3" />
+                                        <span className="text-orange-600">{remainingHours.toFixed(1)}h remaining</span>
+                                      </div>
+                                    );
+                                  })()}
                                   <div className="mt-1">
                                     <Badge variant="outline" className="text-xs">
                                       {task.costCode}
