@@ -605,13 +605,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     
     setIsGeneratingTasks(true);
     try {
-      // Get cost codes with total qty > 0
-      const validCostCodes = costCodeArray.filter(summary => summary.totalConvertedQty > 0);
+      // Get cost codes with budget hours > 0 (includes Traffic Control and General Labor)
+      const validCostCodes = costCodeArray.filter(summary => summary.totalBudgetHours > 0);
       
       if (validCostCodes.length === 0) {
         toast({
           title: "No valid cost codes",
-          description: "No cost codes found with quantity greater than 0",
+          description: "No cost codes found with budget hours greater than 0",
           variant: "destructive"
         });
         return;
