@@ -319,17 +319,18 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   }
   
   // Find all unique cost codes
-  const allCostCodes = [...new Set((budgetItems as any[]).map((item: any) => item.costCode))];
+  const budgetItemsArray = budgetItems as any[];
+  const allCostCodes = Array.from(new Set(budgetItemsArray.map((item: any) => item.costCode)));
   console.log('🏷️ All cost codes found:', allCostCodes);
   
   // Specifically look for Traffic Control variations
-  const trafficItems = (budgetItems as any[]).filter((item: any) => 
+  const trafficItems = budgetItemsArray.filter((item: any) => 
     item.costCode && item.costCode.toUpperCase().includes('TRAFFIC')
   );
   console.log('🚦 Traffic Control items found:', trafficItems.length, trafficItems);
   
   // Calculate cost code summaries by hours
-  const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
+  const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
     // Combine Demo/Ex and Base/grading related cost codes
@@ -414,8 +415,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const remainingHours = totalBudgetHours - totalActualHours;
 
   // Calculate progress
-  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
-  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+  const tasksArray = tasks as any[];
+  const completedTasks = tasksArray.filter((task: any) => task.actualHours).length;
+  const progressPercentage = tasksArray.length > 0 ? (completedTasks / tasksArray.length) * 100 : 0;
 
   // Debug final cost code summaries before filtering
   console.log('📊 Cost code summaries before filtering:', costCodeSummaries);
@@ -441,15 +443,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
-    if (!tasks || tasks.length === 0) {
+    const tasksData = tasks as any[];
+    if (!tasksData || tasksData.length === 0) {
       return {
-        startDate: location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
-        endDate: location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+        startDate: (location as any)?.startDate ? safeFormatDate((location as any).startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: (location as any)?.endDate ? safeFormatDate((location as any).endDate, 'MMM d, yyyy') : 'No tasks scheduled'
       };
     }
 
     // Get all task dates and find earliest and latest
-    const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
+    const taskDates = tasksData.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
     const earliestTaskDate = new Date(Math.min(...taskDates));
     const latestTaskDate = new Date(Math.max(...taskDates));
 
