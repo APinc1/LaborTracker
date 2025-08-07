@@ -1276,10 +1276,10 @@ export default function BudgetManagement() {
         </div>
       </header>
       <main className="p-6 relative">
-        {/* Loading Overlay */}
+        {/* Loading Overlay - positioned absolutely within the main container */}
         {isImporting && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-            <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4 shadow-xl">
+          <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4 shadow-xl border">
               <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
               <div className="text-center">
                 <h3 className="font-semibold text-lg">Importing Budget</h3>
@@ -1405,8 +1405,8 @@ export default function BudgetManagement() {
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
                         
-                        // Skip cards where total converted quantity is 0
-                        if (totalConvertedQty === 0) {
+                        // Skip cards where total hours is 0 or no budget value
+                        if (totalHours === 0) {
                           return null;
                         }
                         

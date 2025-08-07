@@ -381,26 +381,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  // Debug: Log all cost code summaries to see what we have
-  console.log('All cost code summaries:', Object.keys(costCodeSummaries));
-  console.log('Traffic-related cost codes:', Object.keys(costCodeSummaries).filter(code => 
-    code.toLowerCase().includes('traffic')
-  ));
-  
-  // Filter to show cost codes that have budget line items (this ensures all cost codes including Traffic Control appear)
-  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
-    const shouldInclude = summary.itemCount > 0;
-    if (summary.costCode.toLowerCase().includes('traffic')) {
-      console.log('Traffic cost code details:', {
-        costCode: summary.costCode,
-        itemCount: summary.itemCount,
-        totalBudgetHours: summary.totalBudgetHours,
-        totalConvertedQty: summary.totalConvertedQty,
-        shouldInclude
-      });
-    }
-    return shouldInclude;
-  });
+  // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
+    summary.totalBudgetHours > 0
+  );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
