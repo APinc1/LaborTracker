@@ -1491,7 +1491,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
         selectedProject={location?.projectId}
-        selectedLocation={location?.locationId || locationId}
+        selectedLocation={location?.id}
       />
 
       {/* Task Detail Modal */}

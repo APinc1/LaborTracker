@@ -939,58 +939,60 @@ export default function CreateTaskModal({
           <DialogTitle>Create New Task</DialogTitle>
         </DialogHeader>
 
-        {/* Project and Location Selection */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Project *
-            </label>
-            <Select 
-              value={selectedProject?.toString() || ""} 
-              onValueChange={(value) => {
-                const projectId = value ? parseInt(value) : undefined;
-                setSelectedProject(projectId);
-                setSelectedLocation(undefined); // Reset location when project changes
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select project..." />
-              </SelectTrigger>
-              <SelectContent>
-                {(projects as any[]).map((project: any) => (
-                  <SelectItem key={project.id} value={project.id.toString()}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Project and Location Selection - Only show if not provided as props */}
+        {!initialProject && !initialLocation && (
+          <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Project *
+              </label>
+              <Select 
+                value={selectedProject?.toString() || ""} 
+                onValueChange={(value) => {
+                  const projectId = value ? parseInt(value) : undefined;
+                  setSelectedProject(projectId);
+                  setSelectedLocation(undefined); // Reset location when project changes
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select project..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(projects as any[]).map((project: any) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location *
+              </label>
+              <Select 
+                value={selectedLocation?.toString() || ""} 
+                onValueChange={(value) => {
+                  const locationId = value ? parseInt(value) : undefined;
+                  setSelectedLocation(locationId);
+                }}
+                disabled={!selectedProject}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={selectedProject ? "Select location..." : "Select project first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(locations as any[]).map((location: any) => (
+                    <SelectItem key={location.id} value={location.id.toString()}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location *
-            </label>
-            <Select 
-              value={selectedLocation?.toString() || ""} 
-              onValueChange={(value) => {
-                const locationId = value ? parseInt(value) : undefined;
-                setSelectedLocation(locationId);
-              }}
-              disabled={!selectedProject}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={selectedProject ? "Select location..." : "Select project first"} />
-              </SelectTrigger>
-              <SelectContent>
-                {(locations as any[]).map((location: any) => (
-                  <SelectItem key={location.id} value={location.id.toString()}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        )}
 
         {/* Only show form if project and location are selected */}
         {selectedProject && selectedLocation ? (
