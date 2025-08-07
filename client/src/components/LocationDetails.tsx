@@ -310,29 +310,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return acc;
   }, {});
 
-  // Calculate cost code summaries by hours - handle empty budget items gracefully
-  const budgetItemsArray = (budgetItems as any[]) || [];
-  
-  // Find Traffic Control items with robust search
-  const trafficControlItems = budgetItemsArray.filter((item: any) => {
-    const costCodeMatch = item.costCode?.toLowerCase()?.includes('traffic');
-    const nameMatch = item.lineItemName?.toLowerCase()?.includes('traffic');
-    return costCodeMatch || nameMatch;
-  });
-  
-  console.log('🚦 TRAFFIC CONTROL SEARCH RESULTS:', {
-    totalItems: budgetItemsArray.length,
-    trafficControlFound: trafficControlItems.length,
-    trafficControlItems: trafficControlItems.map(item => ({
-      lineItemNumber: item.lineItemNumber,
-      lineItemName: item.lineItemName,
-      costCode: item.costCode,
-      hours: item.hours,
-      budgetTotal: item.budgetTotal
-    }))
-  });
-  
-  const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
+  // Calculate cost code summaries by hours
+  const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
     // Combine Demo/Ex and Base/grading related cost codes
@@ -371,41 +350,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
     
-    // Debug Traffic Control logic with robust matching
-    if (costCode?.toLowerCase()?.includes('traffic')) {
-      console.log('🚦 TRAFFIC CONTROL PROCESSING:', {
-        originalCostCode: item.costCode,
-        normalizedCostCode: costCode,
-        isParent,
-        isChild,
-        hasChildren,
-        hours: parseFloat(item.hours) || 0,
-        budgetTotal: parseFloat(item.budgetTotal) || 0,
-        shouldInclude: (isParent || (!isChild && !hasChildren)) || 
-                      (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0)
-      });
-    }
-    
     // Include if it's a parent OR if it's a standalone item (not a child and has no children)
-    // OR if it has budget hours or budget total (to ensure important items like Traffic Control appear)
-    const shouldInclude = (isParent || (!isChild && !hasChildren)) || 
-                         (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0);
-    
-    if (shouldInclude) {
+    if (isParent || (!isChild && !hasChildren)) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
       acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
       // Use the unit of measure from the first item, assuming they're consistent within cost code
       if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
         acc[costCode].convertedUnitOfMeasure = item.convertedUnitOfMeasure;
-      }
-      
-      // Debug Traffic Control totals
-      if (costCode?.toLowerCase()?.includes('traffic')) {
-        console.log('🚦 TRAFFIC CONTROL TOTALS:', {
-          costCode,
-          totalBudgetHours: acc[costCode].totalBudgetHours,
-          totalConvertedQty: acc[costCode].totalConvertedQty
-        });
       }
     }
     
@@ -427,44 +378,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const remainingHours = totalBudgetHours - totalActualHours;
 
   // Calculate progress
-  const tasksArray = tasks as any[];
-  const completedTasks = tasksArray.filter((task: any) => task.actualHours).length;
-  const progressPercentage = tasksArray.length > 0 ? (completedTasks / tasksArray.length) * 100 : 0;
+  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
-  // Filter to show cost codes that have budget hours OR converted quantity
-  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
-    return summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
-  });
-  
-  console.log('📊 Final cost code summaries:', costCodeSummaries);
-  
-  // Check specifically for Traffic Control
-  if (costCodeSummaries['TRAFFIC CONTROL']) {
-    console.log('🚦 TRAFFIC CONTROL FOUND in summaries:', costCodeSummaries['TRAFFIC CONTROL']);
-  } else {
-    console.log('❌ TRAFFIC CONTROL NOT FOUND in summaries');
-    console.log('Available cost codes:', Object.keys(costCodeSummaries));
-  }
-  
-  console.log('📋 Cost codes that will be displayed:', costCodeArray.map((summary: any) => ({
-    costCode: summary.costCode,
-    totalBudgetHours: summary.totalBudgetHours,
-    totalConvertedQty: summary.totalConvertedQty,
-    itemCount: summary.itemCount
-  })));
+  // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
+    summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0
+  );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
-    const tasksData = tasks as any[];
-    if (!tasksData || tasksData.length === 0) {
+    if (!tasks || tasks.length === 0) {
       return {
-        startDate: (location as any)?.startDate ? safeFormatDate((location as any).startDate, 'MMM d, yyyy') : 'No tasks scheduled',
-        endDate: (location as any)?.endDate ? safeFormatDate((location as any).endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+        startDate: location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
       };
     }
 
     // Get all task dates and find earliest and latest
-    const taskDates = tasksData.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
+    const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
     const earliestTaskDate = new Date(Math.min(...taskDates));
     const latestTaskDate = new Date(Math.max(...taskDates));
 

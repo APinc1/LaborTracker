@@ -1342,7 +1342,7 @@ export default function BudgetManagement() {
                       // Only include items that are either:
                       // 1. Parent items (have children)
                       // 2. Standalone items (no children and not a child)
-                      // 3. Items with budget hours > 0 (ensures Traffic Control and other important items appear)
+                      // Skip child items to avoid double counting
                       const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
                       const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
                       const hasChildren = items.some(child => 
@@ -1350,10 +1350,8 @@ export default function BudgetManagement() {
                         child.lineItemNumber.split('.')[0] === item.lineItemNumber
                       );
                       
-                      const shouldInclude = (isParent || (!isChild && !hasChildren)) || 
-                                          (parseFloat(item.hours) > 0 || parseFloat(item.budgetTotal) > 0);
-                      
-                      if (shouldInclude) {
+                      // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+                      if (isParent || (!isChild && !hasChildren)) {
                         const costCode = item.costCode || 'No Code';
                         if (!groups[costCode]) {
                           groups[costCode] = [];
