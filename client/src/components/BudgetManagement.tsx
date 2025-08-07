@@ -60,6 +60,7 @@ export default function BudgetManagement() {
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -928,11 +929,19 @@ export default function BudgetManagement() {
         return; // User cancelled file selection, don't clear anything
       }
       
-      // Clear existing budget only after file is selected
-      await clearExistingBudget();
-      
-      // Process the new import
-      await processExcelImport(file);
+      try {
+        setIsImporting(true);
+        
+        // Clear existing budget only after file is selected
+        await clearExistingBudget();
+        
+        // Process the new import
+        await processExcelImport(file);
+      } catch (error) {
+        console.error('Import failed:', error);
+      } finally {
+        setIsImporting(false);
+      }
     };
     input.click();
   };
@@ -1019,10 +1028,19 @@ export default function BudgetManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={handleExcelImport}
-              disabled={!selectedLocation}
+              disabled={!selectedLocation || isImporting}
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>Import Excel</span>
+              {isImporting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                  <span>Importing...</span>
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Import Excel</span>
+                </>
+              )}
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
@@ -1240,7 +1258,20 @@ export default function BudgetManagement() {
           </div>
         </div>
       </header>
-      <main className="p-6">
+      <main className="p-6 relative">
+        {/* Loading Overlay */}
+        {isImporting && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-6 flex flex-col items-center space-y-4 shadow-xl">
+              <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+              <div className="text-center">
+                <h3 className="font-semibold text-lg">Importing Budget</h3>
+                <p className="text-gray-600 text-sm">Please wait while we process your Excel file...</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="space-y-6">
           {/* Project and Location Selection - Only show when not accessing directly from location page */}
           {!isDirectAccess && (
