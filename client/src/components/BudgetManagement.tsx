@@ -917,10 +917,7 @@ export default function BudgetManagement() {
         variant: "destructive",
       });
     } finally {
-      // Ensure loading indicator stays visible for at least 500ms total
-      setTimeout(() => {
-        setIsImporting(false);
-      }, 200);
+      setIsImporting(false);
     }
   };
 
@@ -962,11 +959,8 @@ export default function BudgetManagement() {
           variant: "destructive",
         });
       } finally {
-        // Ensure loading indicator stays visible for at least 500ms total
-        setTimeout(() => {
-          setIsImporting(false);
-          console.log('Import loading state cleared');
-        }, 200);
+        setIsImporting(false);
+        console.log('Import loading state cleared');
       }
     };
     input.click();
