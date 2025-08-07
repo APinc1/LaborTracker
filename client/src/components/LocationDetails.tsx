@@ -314,6 +314,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
+    // Debug Traffic Control specifically
+    if (costCode === 'TRAFFIC CONTROL') {
+      console.log('Traffic Control item found:', {
+        lineItemNumber: item.lineItemNumber,
+        costCode: item.costCode,
+        hours: item.hours,
+        convertedQty: item.convertedQty,
+        item
+      });
+    }
+    
     // Combine Demo/Ex and Base/grading related cost codes
     if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
         costCode === 'BASE/GRADING' || costCode === 'Base/Grading' || 
@@ -350,6 +361,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
     
+    // Debug Traffic Control logic
+    if (costCode === 'TRAFFIC CONTROL') {
+      console.log('Traffic Control parent/child logic:', {
+        isParent,
+        isChild,
+        hasChildren,
+        shouldInclude: isParent || (!isChild && !hasChildren)
+      });
+    }
+    
     // Include if it's a parent OR if it's a standalone item (not a child and has no children)
     if (isParent || (!isChild && !hasChildren)) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
@@ -357,6 +378,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       // Use the unit of measure from the first item, assuming they're consistent within cost code
       if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
         acc[costCode].convertedUnitOfMeasure = item.convertedUnitOfMeasure;
+      }
+      
+      // Debug Traffic Control totals
+      if (costCode === 'TRAFFIC CONTROL') {
+        console.log('Traffic Control totals after adding:', {
+          totalBudgetHours: acc[costCode].totalBudgetHours,
+          totalConvertedQty: acc[costCode].totalConvertedQty
+        });
       }
     }
     
