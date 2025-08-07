@@ -686,6 +686,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await Promise.all(unlinkingPromises);
       }
       
+      // Delete all assignments associated with this task first (cascading delete)
+      console.log('🗑️ DELETION: Getting assignments for task to delete:', taskId);
+      const taskAssignments = await storage.getEmployeeAssignments(taskId);
+      
+      if (taskAssignments.length > 0) {
+        console.log(`🗑️ DELETION: Found ${taskAssignments.length} assignments to delete for task ${taskId}`);
+        const assignmentDeletionPromises = taskAssignments.map(assignment => {
+          console.log(`  └─ Deleting assignment ${assignment.id} for employee ${assignment.employeeId}`);
+          return storage.deleteEmployeeAssignment(assignment.id);
+        });
+        
+        await Promise.all(assignmentDeletionPromises);
+        console.log('✅ All task assignments deleted successfully');
+      } else {
+        console.log('✅ No assignments found for this task');
+      }
+      
       // Delete the task
       await storage.deleteTask(taskId);
       
