@@ -60,7 +60,6 @@ export default function BudgetManagement() {
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -790,14 +789,8 @@ export default function BudgetManagement() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      setIsImporting(true);
-      
-      try {
-        // Process import directly (no existing items to worry about)
-        await processExcelImport(file);
-      } finally {
-        setIsImporting(false);
-      }
+      // Process import directly (no existing items to worry about)
+      await processExcelImport(file);
     };
     input.click();
   };
@@ -925,7 +918,10 @@ export default function BudgetManagement() {
   const handleImportConfirm = async () => {
     setShowImportConfirmDialog(false);
     
-    // Open file picker first, then clear and import
+    // Clear existing budget first
+    await clearExistingBudget();
+    
+    // Then open file picker for new import
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.xlsx,.xls';
@@ -933,17 +929,8 @@ export default function BudgetManagement() {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      setIsImporting(true);
-      
-      try {
-        // Clear existing budget first
-        await clearExistingBudget();
-        
-        // Then process the new import
-        await processExcelImport(file);
-      } finally {
-        setIsImporting(false);
-      }
+      // Process the new import
+      await processExcelImport(file);
     };
     input.click();
   };
@@ -1030,10 +1017,10 @@ export default function BudgetManagement() {
               variant="outline" 
               className="flex items-center space-x-2"
               onClick={handleExcelImport}
-              disabled={!selectedLocation || isImporting}
+              disabled={!selectedLocation}
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>{isImporting ? 'Importing...' : 'Import Excel'}</span>
+              <span>Import Excel</span>
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
