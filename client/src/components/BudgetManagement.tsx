@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
@@ -61,6 +62,8 @@ export default function BudgetManagement() {
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showCostCodeDialog, setShowCostCodeDialog] = useState(false);
+  const [selectedCostCode, setSelectedCostCode] = useState<string>("");
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -345,6 +348,75 @@ export default function BudgetManagement() {
       setSelectedProject(currentLocation.projectId.toString());
     }
   }, [isDirectAccess, currentLocation, selectedProject]);
+
+  // Calculate cost code summaries
+  const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
+    let costCode = item.costCode || 'UNCATEGORIZED';
+    
+    // Combine Demo/Ex and Base/grading related cost codes
+    if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
+        costCode === 'BASE/GRADING' || costCode === 'Base/Grading' || 
+        costCode === 'Demo/Ex + Base/Grading' || costCode === 'DEMO/EX + BASE/GRADING') {
+      costCode = 'Demo/ex + Base/grading';
+    }
+    
+    if (!acc[costCode]) {
+      acc[costCode] = {
+        costCode,
+        totalBudgetHours: 0,
+        totalActualHours: 0,
+        totalConvertedQty: 0,
+        convertedUnitOfMeasure: '',
+        items: [],
+        itemCount: 0,
+        originalCostCodes: new Set() // Track original cost codes for combined entries
+      };
+    }
+    
+    // Track original cost codes for combined entries
+    if (costCode === 'Demo/ex + Base/grading') {
+      acc[costCode].originalCostCodes.add(item.costCode || 'UNCATEGORIZED');
+    }
+    
+    // Only include items that are either:
+    // 1. Parent items (have children)
+    // 2. Standalone items (no children and not a child)
+    // Skip child items to avoid double counting
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    const hasChildren = (budgetItems as any[]).some((child: any) => 
+      child.lineItemNumber && child.lineItemNumber.includes('.') && 
+      child.lineItemNumber.split('.')[0] === item.lineItemNumber
+    );
+    
+    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+    if (isParent || (!isChild && !hasChildren)) {
+      acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
+      acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
+      // Use the unit of measure from the first item, assuming they're consistent within cost code
+      if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
+        acc[costCode].convertedUnitOfMeasure = item.convertedUnitOfMeasure;
+      }
+    }
+    
+    acc[costCode].items.push(item);
+    acc[costCode].itemCount++;
+    return acc;
+  }, {});
+
+  // Filter to show cost codes that have budget line items
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
+    return summary.itemCount > 0;
+  });
+
+  // Handle cost code card click
+  const handleCostCodeClick = (costCode: string) => {
+    setSelectedCostCode(costCode);
+    setShowCostCodeDialog(true);
+  };
+
+  // Get items for selected cost code
+  const selectedCostCodeItems = selectedCostCode ? costCodeSummaries[selectedCostCode]?.items || [] : [];
 
   const formatCurrency = (amount: string | number) => {
     return new Intl.NumberFormat('en-US', {
@@ -1490,6 +1562,109 @@ export default function BudgetManagement() {
                 </div>
               </div>
 
+              {/* Cost Code Summary Cards - Only show when location is selected and has budget items */}
+              {selectedLocation && budgetItems.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Calculator className="w-5 h-5" />
+                        Cost Code Summary
+                        <Badge variant="secondary">{costCodeArray.length}</Badge>
+                      </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {costCodeArray.map((summary: any) => {
+                        const remainingHours = summary.totalBudgetHours - summary.totalActualHours;
+                        const hoursPercentage = summary.totalBudgetHours > 0 ? (summary.totalActualHours / summary.totalBudgetHours) * 100 : 0;
+                        
+                        return (
+                          <Card 
+                            key={summary.costCode} 
+                            className="hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => handleCostCodeClick(summary.costCode)}
+                          >
+                            <CardContent className="p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <Badge variant="outline" className="font-medium">
+                                  {summary.costCode}
+                                </Badge>
+                                <span className="text-sm text-gray-600">
+                                  {summary.itemCount} items
+                                </span>
+                              </div>
+                              <div className="space-y-2">
+                                {/* For combined Demo/ex + Base/grading, show separate quantities */}
+                                {summary.costCode === 'Demo/ex + Base/grading' ? (
+                                  <div className="space-y-1">
+                                    {summary.originalCostCodes && Array.from(summary.originalCostCodes).map((originalCode: string) => {
+                                      const originalItems = summary.items.filter((item: any) => 
+                                        (item.costCode === originalCode || 
+                                         (originalCode === 'UNCATEGORIZED' && !item.costCode))
+                                      );
+                                      const originalQty = originalItems.reduce((sum: number, item: any) => {
+                                        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+                                        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+                                        const hasChildren = (budgetItems as any[]).some((child: any) => 
+                                          child.lineItemNumber && child.lineItemNumber.includes('.') && 
+                                          child.lineItemNumber.split('.')[0] === item.lineItemNumber
+                                        );
+                                        if (isParent || (!isChild && !hasChildren)) {
+                                          return sum + (parseFloat(item.convertedQty) || 0);
+                                        }
+                                        return sum;
+                                      }, 0);
+                                      return (
+                                        <div key={originalCode} className="flex justify-between text-xs">
+                                          <span className="text-gray-500">{originalCode || 'Demo/Ex'}:</span>
+                                          <span className="font-medium">{originalQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                        </div>
+                                      );
+                                    })}
+                                    <div className="flex justify-between text-sm border-t pt-1">
+                                      <span className="text-gray-600 font-medium">Combined Qty:</span>
+                                      <span className="font-semibold">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">Total Qty:</span>
+                                    <span className="font-medium">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Budget Hours:</span>
+                                  <span className="font-medium">{summary.totalBudgetHours.toLocaleString()} hrs</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Actual Hours:</span>
+                                  <span className="font-medium text-red-600">{summary.totalActualHours.toLocaleString()} hrs</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">Remaining:</span>
+                                  <span className={`font-medium ${remainingHours >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {remainingHours.toLocaleString()} hrs
+                                  </span>
+                                </div>
+                                <div className="mt-2">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs text-gray-500">Progress</span>
+                                    <span className="text-xs text-gray-500">{Math.round(hoursPercentage)}%</span>
+                                  </div>
+                                  <Progress value={Math.min(hoursPercentage, 100)} className="h-2" />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Budget Items Table */}
               <Card className="w-full">
                 <CardHeader>
@@ -2165,6 +2340,120 @@ export default function BudgetManagement() {
               Yes, Replace Budget
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cost Code Details Dialog */}
+      <Dialog open={showCostCodeDialog} onOpenChange={setShowCostCodeDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calculator className="w-5 h-5" />
+              {selectedCostCode} - Cost Code Details
+            </DialogTitle>
+            <DialogDescription>
+              Detailed breakdown of all budget line items for this cost code
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCostCode && costCodeSummaries[selectedCostCode] && (
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-600 font-medium">Total Items</p>
+                  <p className="text-2xl font-bold text-blue-800">
+                    {costCodeSummaries[selectedCostCode]?.itemCount}
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600 font-medium">Budget Hours</p>
+                  <p className="text-2xl font-bold text-gray-800">
+                    {costCodeSummaries[selectedCostCode]?.totalBudgetHours.toLocaleString()} hrs
+                  </p>
+                </div>
+                <div className="p-4 bg-red-50 rounded-lg">
+                  <p className="text-sm text-red-600 font-medium">Actual Hours</p>
+                  <p className="text-2xl font-bold text-red-800">
+                    {costCodeSummaries[selectedCostCode]?.totalActualHours.toLocaleString()} hrs
+                  </p>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg">
+                  <p className="text-sm text-green-600 font-medium">Remaining Hours</p>
+                  <p className={`text-2xl font-bold ${
+                    (costCodeSummaries[selectedCostCode]?.totalBudgetHours - costCodeSummaries[selectedCostCode]?.totalActualHours) >= 0 
+                      ? 'text-green-800' 
+                      : 'text-red-800'
+                  }`}>
+                    {(costCodeSummaries[selectedCostCode]?.totalBudgetHours - costCodeSummaries[selectedCostCode]?.totalActualHours).toLocaleString()} hrs
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Progress</span>
+                  <span className="text-sm text-gray-600">
+                    {Math.round((costCodeSummaries[selectedCostCode]?.totalActualHours / costCodeSummaries[selectedCostCode]?.totalBudgetHours) * 100)}%
+                  </span>
+                </div>
+                <Progress 
+                  value={Math.min((costCodeSummaries[selectedCostCode]?.totalActualHours / costCodeSummaries[selectedCostCode]?.totalBudgetHours) * 100, 100)} 
+                  className="h-3" 
+                />
+              </div>
+
+              {/* Budget Line Items Table */}
+              <div>
+                <h4 className="font-medium mb-3">Budget Line Items ({selectedCostCodeItems.length})</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-24">Line #</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="w-32">Quantity</TableHead>
+                        <TableHead className="w-24">Hours</TableHead>
+                        <TableHead className="w-32">Budget Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedCostCodeItems.map((item: any) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-mono text-sm">
+                            {item.lineItemNumber}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.lineItemName}</p>
+                              {item.notes && (
+                                <p className="text-sm text-gray-500 mt-1">{item.notes}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              <p>{formatNumber(item.convertedQty)} {item.convertedUnitOfMeasure}</p>
+                              {item.convertedQty !== item.unconvertedQty && (
+                                <p className="text-gray-500">({formatNumber(item.unconvertedQty)} {item.unconvertedUnitOfMeasure})</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatNumber(item.hours)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(item.budgetTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
