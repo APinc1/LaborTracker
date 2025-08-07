@@ -312,8 +312,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Calculate cost code summaries by hours - handle empty budget items gracefully
   const budgetItemsArray = (budgetItems as any[]) || [];
+  console.log('🔍 Processing', budgetItemsArray.length, 'budget items for cost code calculation');
   const costCodeSummaries = budgetItemsArray.reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
+    
+    // Debug all budget items processing
+    console.log('Processing budget item:', {
+      lineItemNumber: item.lineItemNumber,
+      costCode: item.costCode,
+      hours: item.hours,
+      budgetTotal: item.budgetTotal
+    });
     
     // Combine Demo/Ex and Base/grading related cost codes
     if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
@@ -412,6 +421,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
     return summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
   });
+  
+  console.log('📊 Final cost code summaries:', costCodeSummaries);
+  console.log('📋 Cost codes that will be displayed:', costCodeArray.map((summary: any) => ({
+    costCode: summary.costCode,
+    totalBudgetHours: summary.totalBudgetHours,
+    totalConvertedQty: summary.totalConvertedQty,
+    itemCount: summary.itemCount
+  })));
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
