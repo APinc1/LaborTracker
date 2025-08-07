@@ -382,9 +382,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
-  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
-    summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0
-  );
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => {
+    const shouldShow = summary.totalConvertedQty > 0 || summary.totalBudgetHours > 0;
+    console.log('Cost code filter check:', {
+      costCode: summary.costCode,
+      totalConvertedQty: summary.totalConvertedQty,
+      totalBudgetHours: summary.totalBudgetHours,
+      shouldShow,
+      items: summary.items.length
+    });
+    return shouldShow;
+  });
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
