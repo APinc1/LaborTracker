@@ -779,12 +779,21 @@ export default function BudgetManagement() {
 
       // Check if budget items already exist
       const existingItems = budgetItems as any[];
+      console.log('Budget import check:', { 
+        existingItemsLength: existingItems.length, 
+        selectedLocation, 
+        budgetItems: existingItems 
+      });
+      
       if (existingItems.length > 0) {
+        console.log('Showing confirmation dialog for existing items');
         // Store the file and show confirmation dialog
         setPendingImportFile(file);
         setShowImportConfirmDialog(true);
         return;
       }
+
+      console.log('No existing items, processing import directly');
 
       // If no existing items, process import directly
       await processExcelImport(file);
