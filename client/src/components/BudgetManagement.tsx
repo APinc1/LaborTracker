@@ -930,17 +930,34 @@ export default function BudgetManagement() {
       }
       
       try {
+        console.log('Starting import process...');
         setIsImporting(true);
         
+        // Add a small delay to ensure loading state is visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        console.log('Clearing existing budget...');
         // Clear existing budget only after file is selected
         await clearExistingBudget();
         
+        console.log('Processing Excel import...');
         // Process the new import
         await processExcelImport(file);
+        
+        console.log('Import completed successfully');
       } catch (error) {
         console.error('Import failed:', error);
+        toast({
+          title: "Import Error",
+          description: "Failed to import budget. Please try again.",
+          variant: "destructive",
+        });
       } finally {
-        setIsImporting(false);
+        // Ensure loading indicator stays visible for at least 500ms total
+        setTimeout(() => {
+          setIsImporting(false);
+          console.log('Import loading state cleared');
+        }, 200);
       }
     };
     input.click();
