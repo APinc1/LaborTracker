@@ -59,6 +59,8 @@ export default function BudgetManagement() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
+  const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -775,87 +777,154 @@ export default function BudgetManagement() {
         return;
       }
 
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        
-        // Use the "full location" sheet, "Line Items" sheet, or first sheet
-        let sheetName = workbook.SheetNames[0];
-        if (workbook.SheetNames.includes('full location')) {
-          sheetName = 'full location';
-        } else if (workbook.SheetNames.includes('Line Items')) {
-          sheetName = 'Line Items';
-        }
-        const worksheet = workbook.Sheets[sheetName];
-        
-        // Convert to JSON array
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        
-        // Skip header row and process data
-        const budgetItems = [];
-        for (let i = 1; i < jsonData.length; i++) {
-          const row = jsonData[i] as any[];
-          
-          // Try SW62 format first, then fall back to standard format
-          let budgetItem = parseSW62ExcelRow(row, parseInt(selectedLocation));
-          if (!budgetItem) {
-            budgetItem = parseExcelRowToBudgetItem(row, parseInt(selectedLocation));
-          }
-          
-          if (budgetItem) {
-            budgetItems.push(budgetItem);
-          }
-        }
-        
-        if (budgetItems.length === 0) {
-          toast({
-            title: "Warning",
-            description: "No valid budget items found in the Excel file",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        // Import all budget items
-        let successCount = 0;
-        for (const item of budgetItems) {
-          try {
-            const response = await fetch(`/api/locations/${selectedLocation}/budget`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify(item),
-            });
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            successCount++;
-          } catch (error) {
-            console.error('Error importing budget item:', error);
-          }
-        }
-        
-        // Refresh the budget data
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-        
-        toast({
-          title: "Success",
-          description: `Successfully imported ${successCount} budget items from Excel`,
-        });
-        
-      } catch (error) {
-        console.error('Excel import error:', error);
-        toast({
-          title: "Error",
-          description: "Failed to import Excel file. Please check the file format.",
-          variant: "destructive",
-        });
+      // Check if budget items already exist
+      const existingItems = budgetItems as any[];
+      if (existingItems.length > 0) {
+        // Store the file and show confirmation dialog
+        setPendingImportFile(file);
+        setShowImportConfirmDialog(true);
+        return;
       }
+
+      // If no existing items, process import directly
+      await processExcelImport(file);
     };
     input.click();
+  };
+
+  // Clear all existing budget items for the location
+  const clearExistingBudget = async () => {
+    try {
+      const items = budgetItems as any[];
+      for (const item of items) {
+        await fetch(`/api/budget/${item.id}`, {
+          method: "DELETE",
+        });
+      }
+      
+      // Refresh the budget data to reflect deletion
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Budget Cleared",
+        description: "All existing budget items have been removed",
+      });
+    } catch (error) {
+      console.error('Error clearing budget:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear existing budget items",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Process the Excel import with the given file
+  const processExcelImport = async (file: File) => {
+    if (!selectedLocation) {
+      toast({
+        title: "Error",
+        description: "Please select a location first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      
+      // Use the "full location" sheet, "Line Items" sheet, or first sheet
+      let sheetName = workbook.SheetNames[0];
+      if (workbook.SheetNames.includes('full location')) {
+        sheetName = 'full location';
+      } else if (workbook.SheetNames.includes('Line Items')) {
+        sheetName = 'Line Items';
+      }
+      const worksheet = workbook.Sheets[sheetName];
+      
+      // Convert to JSON array
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Skip header row and process data
+      const budgetItemsToImport = [];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i] as any[];
+        
+        // Try SW62 format first, then fall back to standard format
+        let budgetItem = parseSW62ExcelRow(row, parseInt(selectedLocation));
+        if (!budgetItem) {
+          budgetItem = parseExcelRowToBudgetItem(row, parseInt(selectedLocation));
+        }
+        
+        if (budgetItem) {
+          budgetItemsToImport.push(budgetItem);
+        }
+      }
+      
+      if (budgetItemsToImport.length === 0) {
+        toast({
+          title: "Warning",
+          description: "No valid budget items found in the Excel file",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Import all budget items
+      let successCount = 0;
+      for (const item of budgetItemsToImport) {
+        try {
+          const response = await fetch(`/api/locations/${selectedLocation}/budget`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(item),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          successCount++;
+        } catch (error) {
+          console.error('Error importing budget item:', error);
+        }
+      }
+      
+      // Refresh the budget data
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      toast({
+        title: "Success",
+        description: `Successfully imported ${successCount} budget items from Excel`,
+      });
+      
+    } catch (error) {
+      console.error('Excel import error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to import Excel file. Please check the file format.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle the import confirmation and process
+  const handleImportConfirm = async () => {
+    if (!pendingImportFile) return;
+    
+    setShowImportConfirmDialog(false);
+    
+    // Clear existing budget first
+    await clearExistingBudget();
+    
+    // Then process the new import
+    await processExcelImport(pendingImportFile);
+    
+    // Clean up
+    setPendingImportFile(null);
   };
 
   const onSubmit = (data: z.infer<typeof budgetLineItemSchema>) => {
@@ -2010,6 +2079,37 @@ export default function BudgetManagement() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Excel Import Confirmation Dialog */}
+      <Dialog open={showImportConfirmDialog} onOpenChange={setShowImportConfirmDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replace Existing Budget?</DialogTitle>
+            <DialogDescription>
+              This location already has {(budgetItems as any[]).length} budget items. 
+              Would you like to replace the existing budget with the imported data?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowImportConfirmDialog(false);
+                setPendingImportFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleImportConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Yes, Replace Budget
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
