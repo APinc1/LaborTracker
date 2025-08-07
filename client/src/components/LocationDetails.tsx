@@ -27,6 +27,8 @@ interface LocationDetailsProps {
 }
 
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
+  console.log('🔥 LocationDetails component loaded, locationId:', locationId);
+  
   // Safe date formatting helper
   const safeFormatDate = (date: Date | string | number, formatStr: string = 'yyyy-MM-dd'): string => {
     try {
@@ -217,6 +219,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     enabled: !!locationId,
     staleTime: 30000,
   });
+  
+  console.log('📊 Budget data loaded:', { budgetItems, isLoading: budgetLoading, length: (budgetItems as any[]).length });
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["/api/locations", location?.locationId || locationId, "tasks"],
