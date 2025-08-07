@@ -60,7 +60,6 @@ export default function BudgetManagement() {
   const [originalValues, setOriginalValues] = useState<Map<string, any>>(new Map());
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
-  const [isConfirmedReplace, setIsConfirmedReplace] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -918,7 +917,6 @@ export default function BudgetManagement() {
   // Handle the import confirmation and process
   const handleImportConfirm = async () => {
     setShowImportConfirmDialog(false);
-    setIsConfirmedReplace(true); // Track that user confirmed replacement
     
     // Open file picker for new import
     const input = document.createElement('input');
@@ -927,15 +925,11 @@ export default function BudgetManagement() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
-        setIsConfirmedReplace(false); // Reset if no file selected
-        return;
+        return; // User cancelled file selection, don't clear anything
       }
       
       // Clear existing budget only after file is selected
-      if (isConfirmedReplace) {
-        await clearExistingBudget();
-        setIsConfirmedReplace(false); // Reset the state
-      }
+      await clearExistingBudget();
       
       // Process the new import
       await processExcelImport(file);
