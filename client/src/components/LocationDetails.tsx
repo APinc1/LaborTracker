@@ -381,6 +381,20 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
+  // Helper function to get user-friendly cost code display names
+  const getCostCodeDisplayName = (costCode: string) => {
+    const mappings: { [key: string]: string } = {
+      'AC': 'Asphalt',
+      'GNRL LBR': 'General Labor',
+      'TRAFFIC CONTROL': 'Traffic Control',
+      'CONCRETE': 'Concrete',
+      'SUB': 'Subcontractor',
+      'LANDSCAPING': 'Landscaping',
+      'UTILITY ADJ': 'Utility Adjustment',
+    };
+    return mappings[costCode] || costCode;
+  };
+
   // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
     summary.totalBudgetHours > 0
@@ -1173,7 +1187,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
                               <Badge variant="outline" className="font-medium">
-                                {summary.costCode}
+                                {getCostCodeDisplayName(summary.costCode)}
                               </Badge>
                               <span className="text-sm text-gray-600">
                                 {summary.itemCount} items
