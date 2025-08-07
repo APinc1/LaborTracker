@@ -224,6 +224,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     staleTime: 30000,
   });
 
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    staleTime: 30000,
+  });
+
   if (locationLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -281,27 +286,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return sum;
   }, 0);
   
-  const totalActualHours = budgetItems.reduce((sum: number, item: any) => {
-    if (!item) return sum;
-    
-    // Only include items that are either:
-    // 1. Parent items (have children)
-    // 2. Standalone items (no children and not a child)
-    // Skip child items to avoid double counting
-    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
-    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-    const hasChildren = budgetItems.some((child: any) => 
-      child.lineItemNumber && child.lineItemNumber.includes('.') && 
-      child.lineItemNumber.split('.')[0] === item.lineItemNumber
-    );
-    
-    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
-    if (isParent || (!isChild && !hasChildren)) {
-      return sum + (parseFloat(item.actualHours) || 0);
-    }
-    
-    return sum;
-  }, 0);
+  // totalActualHours will be calculated after actualHoursByCostCode
   
   const remainingHours = totalBudgetHours - totalActualHours;
 
@@ -309,8 +294,32 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const completedTasks = tasks.filter((task: any) => task.actualHours).length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
+  // Calculate actual hours from assignments by cost code
+  const actualHoursByCostCode = (tasks as any[]).reduce((acc: any, task: any) => {
+    let taskCostCode = task.costCode || 'UNCATEGORIZED';
+    
+    // Combine Demo/Ex and Base/grading related cost codes
+    if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+        taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+        taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+      taskCostCode = 'Demo/ex + Base/grading';
+    }
+    
+    // Find assignments for this task and sum actual hours
+    const taskAssignments = (assignments as any[]).filter((assignment: any) => 
+      assignment.taskId === task.id
+    );
+    
+    const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
+      return sum + (parseFloat(assignment.actualHours) || 0);
+    }, 0);
+    
+    acc[taskCostCode] = (acc[taskCostCode] || 0) + taskActualHours;
+    return acc;
+  }, {});
+
   // Calculate cost code summaries by hours
-  const costCodeSummaries = budgetItems.reduce((acc: any, item: any) => {
+  const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
     // Combine Demo/Ex and Base/grading related cost codes
@@ -344,7 +353,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Skip child items to avoid double counting
     const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
     const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-    const hasChildren = budgetItems.some((child: any) => 
+    const hasChildren = (budgetItems as any[]).some((child: any) => 
       child.lineItemNumber && child.lineItemNumber.includes('.') && 
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
@@ -352,7 +361,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Include if it's a parent OR if it's a standalone item (not a child and has no children)
     if (isParent || (!isChild && !hasChildren)) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
-      acc[costCode].totalActualHours += parseFloat(item.actualHours) || 0;
       acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
       // Use the unit of measure from the first item, assuming they're consistent within cost code
       if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
@@ -364,6 +372,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     acc[costCode].itemCount++;
     return acc;
   }, {});
+
+  // Apply actual hours from assignments to cost code summaries
+  Object.keys(costCodeSummaries).forEach(costCode => {
+    costCodeSummaries[costCode].totalActualHours = actualHoursByCostCode[costCode] || 0;
+  });
+
+  // Calculate total actual hours from all assignments
+  const totalActualHours = Object.values(actualHoursByCostCode).reduce((sum: number, hours: any) => {
+    return sum + (parseFloat(hours) || 0);
+  }, 0);
 
   // Filter to show cost codes that have budget hours OR converted quantity (this ensures Traffic Control appears)
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
