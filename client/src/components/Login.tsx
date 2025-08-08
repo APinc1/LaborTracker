@@ -33,8 +33,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
-      const response = await apiRequest('POST', '/api/auth/login', data);
-      return response.json();
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return await response.json();
     },
     onSuccess: (result) => {
       onLoginSuccess(result.user, result.requirePasswordChange);
