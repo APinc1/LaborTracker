@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { format, addDays, subDays, isWeekend } from "date-fns";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -216,7 +217,7 @@ export default function Dashboard() {
     if (!task.locationId) return "Unknown Project";
     const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
     if (!location) return "Unknown Project";
-    const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
+    const project = (projects as any[]).find((proj: any) => proj.projectId === location.projectId);
     return project?.name || "Unknown Project";
   };
 
@@ -779,11 +780,16 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-4">
-              {(locations as any[]).map((location: any) => {
-                const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
-                // Calculate progress based on completed tasks vs total tasks
-                const locationTasks = [...(todayTasks as any[]), ...(previousDayTasks as any[]), ...(nextDayTasks as any[])]
-                  .filter((task: any) => task.locationId === location.locationId);
+              {(locations as any[])
+                .filter((location: any) => {
+                  // Only show locations that have tasks scheduled on the selected day
+                  const selectedTasks = selectedDateData.selectedTasks;
+                  return selectedTasks.some((task: any) => task.locationId === location.locationId);
+                })
+                .map((location: any) => {
+                const project = (projects as any[]).find((proj: any) => proj.projectId === location.projectId);
+                // Calculate progress based on completed tasks vs total tasks for selected day
+                const locationTasks = selectedDateData.selectedTasks.filter((task: any) => task.locationId === location.locationId);
                 const completedTasks = locationTasks.filter((task: any) => task.status === 'Completed').length;
                 const totalTasks = locationTasks.length;
                 const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -794,7 +800,12 @@ export default function Dashboard() {
                 return (
                   <div key={location.locationId} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-gray-800">{project?.name} - {location.name}</h4>
+                      <Link
+                        to={`/projects/${location.projectId}/locations/${location.locationId}`}
+                        className="font-medium text-gray-800 hover:text-primary underline cursor-pointer"
+                      >
+                        {project?.name} - {location.name}
+                      </Link>
                       <span className="text-sm text-gray-600">
                         {progressPercentage}% Complete ({completedTasks}/{totalTasks} tasks)
                       </span>
