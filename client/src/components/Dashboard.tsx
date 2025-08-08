@@ -329,6 +329,192 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Employee Assignments & Conflicts */}
+        <Card>
+          <CardHeader className="border-b">
+            <div className="flex items-center justify-between">
+              <CardTitle>Employee Assignments</CardTitle>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">8+ Hours</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">&lt;8 Hours</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">8 Hours</span>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Employee</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Crew</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Assigned Task</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Hours</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(assignments as any[]).length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8 text-gray-500">
+                        No employee assignments found
+                      </td>
+                    </tr>
+                  ) : (
+                    (assignments as any[]).map((assignment: any) => {
+                      const employee = (employees as any[]).find((e: any) => e.id === assignment.employeeId);
+                      const hours = parseFloat(assignment.assignedHours) || 0;
+                      const status = getEmployeeStatus(hours);
+                      
+                      return (
+                        <tr
+                          key={assignment.id}
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${
+                            hours >= 8 ? "bg-red-50" : hours < 8 ? "bg-yellow-50" : ""
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                                <User className="text-gray-600 text-sm" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-800">{employee?.name || "Unknown"}</p>
+                                <p className="text-sm text-gray-500">{employee?.teamMemberId || "N/A"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant={getEmployeeTypeVariant(employee?.employeeType || "")}>
+                              {employee?.employeeType || "Unknown"}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-gray-600">{employee?.crewId || "Unassigned"}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium text-gray-800">{assignment.taskName || assignment.taskId}</p>
+                              <p className="text-sm text-gray-500">Task Assignment</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`font-medium ${status.textColor}`}>
+                              {hours.toFixed(1)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center space-x-2">
+                              <div className={`w-3 h-3 ${status.color} rounded-full`}></div>
+                              <span className={`text-sm ${status.textColor} font-medium`}>
+                                {status.text}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                              Edit
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Location Progress */}
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Location Progress</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              {(locations as any[]).map((location: any) => {
+                const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
+                // Calculate progress based on completed tasks vs total tasks
+                const locationTasks = [...(todayTasks as any[]), ...(previousDayTasks as any[]), ...(nextDayTasks as any[])]
+                  .filter((task: any) => task.locationId === location.locationId);
+                const completedTasks = locationTasks.filter((task: any) => task.status === 'Completed').length;
+                const totalTasks = locationTasks.length;
+                const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                
+                return (
+                  <div key={location.locationId} className="border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-gray-800">{project?.name} - {location.name}</h4>
+                      <span className="text-sm text-gray-600">
+                        {progressPercentage}% Complete ({completedTasks}/{totalTasks} tasks)
+                      </span>
+                    </div>
+                    <Progress value={progressPercentage} className="mb-2" />
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>Tasks: {totalTasks}</span>
+                      <span>Completed: {completedTasks}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {(locations as any[]).length === 0 && (
+                <p className="text-gray-500 text-center py-8">No locations found</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Button
+                variant="outline"
+                className="p-4 h-auto flex flex-col items-center space-y-2"
+              >
+                <Plus className="text-primary text-2xl" />
+                <span className="font-medium text-gray-800">New Project</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="p-4 h-auto flex flex-col items-center space-y-2"
+              >
+                <Upload className="text-accent text-2xl" />
+                <span className="font-medium text-gray-800">Import Budget</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="p-4 h-auto flex flex-col items-center space-y-2"
+              >
+                <Users className="text-warning text-2xl" />
+                <span className="font-medium text-gray-800">Assign Crew</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="p-4 h-auto flex flex-col items-center space-y-2"
+              >
+                <BarChart3 className="text-gray-600 text-2xl" />
+                <span className="font-medium text-gray-800">View Reports</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
