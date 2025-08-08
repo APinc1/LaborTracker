@@ -892,18 +892,11 @@ class DatabaseStorage implements IStorage {
   private db: any;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is required");
-    }
+    // Use Supabase connection if available, otherwise fall back to default DATABASE_URL
+    const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
     
-    // Handle different database URL formats and encode special characters
-    let connectionString = process.env.DATABASE_URL;
-    
-    // Manually encode password with special characters in the connection string
-    if (connectionString.includes('#')) {
-      console.log("🔧 Encoding special characters in DATABASE_URL password");
-      // Replace special characters in password portion
-      connectionString = connectionString.replace(/#/g, '%23');
+    if (!connectionString) {
+      throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL environment variable is required");
     }
     
     const sql = neon(connectionString);
@@ -1202,21 +1195,24 @@ class DatabaseStorage implements IStorage {
 
 // Initialize storage with fallback to in-memory if database fails
 async function initializeStorage(): Promise<IStorage> {
-  if (!process.env.DATABASE_URL) {
-    console.log("No DATABASE_URL found, using in-memory storage");
+  const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  
+  if (!connectionString) {
+    console.log("No DATABASE_URL or SUPABASE_DATABASE_URL found, using in-memory storage");
     return new MemStorage();
   }
   
   try {
-    console.log("DATABASE_URL found, testing Supabase database connection...");
+    const dbType = process.env.SUPABASE_DATABASE_URL ? "external Supabase" : "Replit PostgreSQL";
+    console.log(`Database connection found, testing ${dbType} connection...`);
     const dbStorage = new DatabaseStorage();
     
-    // Test the connection by trying to fetch projects
-    await dbStorage.getProjects();
-    console.log("✅ Successfully connected to Supabase database");
+    // Test the connection by trying to fetch users (more likely to exist than projects)
+    await dbStorage.getUsers();
+    console.log(`✅ Successfully connected to ${dbType} database`);
     return dbStorage;
   } catch (error) {
-    console.error("❌ Failed to connect to Supabase database, falling back to in-memory storage:");
+    console.error("❌ Failed to connect to database, falling back to in-memory storage:");
     console.error("Error details:", error.message);
     console.log("Using in-memory storage for development (data will not persist between server restarts)");
     return new MemStorage();
