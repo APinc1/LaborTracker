@@ -78,9 +78,24 @@ export default function Dashboard() {
   });
 
   const getEmployeeStatus = (hours: number) => {
-    if (hours >= 8) return { color: "bg-red-500", text: "Overbooked", textColor: "text-red-600" };
-    if (hours < 8) return { color: "bg-yellow-500", text: "Under 8hrs", textColor: "text-yellow-600" };
-    return { color: "bg-green-500", text: "Optimal", textColor: "text-green-600" };
+    if (hours > 8) return { 
+      color: "bg-red-500", 
+      text: "Overbooked", 
+      textColor: "text-red-600",
+      rowBg: "bg-red-50"
+    };
+    if (hours < 8) return { 
+      color: "bg-yellow-500", 
+      text: "Underbooked", 
+      textColor: "text-yellow-600",
+      rowBg: "bg-yellow-50"
+    };
+    return { 
+      color: "bg-green-500", 
+      text: "Optimal", 
+      textColor: "text-green-600",
+      rowBg: "bg-green-50"
+    };
   };
 
   const getEmployeeTypeVariant = (type: string) => {
@@ -91,6 +106,12 @@ export default function Dashboard() {
       case "Apprentice": return "outline";
       default: return "default";
     }
+  };
+
+  const getEmployeeHours = (employeeId: number) => {
+    return (assignments as any[])
+      .filter((assignment: any) => assignment.employeeId === employeeId)
+      .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
   // Helper functions to get enhanced task information
@@ -361,30 +382,29 @@ export default function Dashboard() {
                     <TableHead>Type</TableHead>
                     <TableHead>Crew</TableHead>
                     <TableHead>Assigned Task</TableHead>
-                    <TableHead>Hours</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Assigned Hours</TableHead>
+                    <TableHead>Daily Total Assigned</TableHead>
+                    <TableHead>Schedule Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(assignments as any[]).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         No employee assignments found
                       </TableCell>
                     </TableRow>
                   ) : (
                     (assignments as any[]).map((assignment: any) => {
                       const employee = (employees as any[]).find((e: any) => e.id === assignment.employeeId);
-                      const hours = parseFloat(assignment.assignedHours) || 0;
-                      const status = getEmployeeStatus(hours);
+                      const totalHours = getEmployeeHours(assignment.employeeId);
+                      const status = getEmployeeStatus(totalHours);
                       
                       return (
                         <TableRow
                           key={assignment.id}
-                          className={`hover:bg-gray-50 ${
-                            hours > 8 ? "bg-red-50" : hours < 8 ? "bg-yellow-50" : "bg-green-50"
-                          }`}
+                          className={`hover:bg-gray-50 ${status.rowBg}`}
                         >
                           <TableCell>
                             <div className="flex items-center space-x-3">
@@ -414,10 +434,13 @@ export default function Dashboard() {
                           <TableCell>
                             <div className="flex items-center space-x-2">
                               <Clock className="w-4 h-4 text-gray-500" />
-                              <span className={`font-medium ${status.textColor}`}>
-                                {hours.toFixed(1)}
-                              </span>
+                              <span className="font-medium">{assignment.assignedHours}</span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`font-medium ${status.textColor}`}>
+                              {totalHours.toFixed(1)}h
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-2">
