@@ -19,30 +19,22 @@ import {
 import ExportButtons from "./ExportButtons";
 
 export default function Dashboard() {
-  // Helper function to find the next/previous work day (skip weekends)
-  const findPreviousWorkDay = (date: Date): Date => {
-    let prevDay = subDays(date, 1);
-    while (isWeekend(prevDay)) {
-      prevDay = subDays(prevDay, 1);
-    }
-    return prevDay;
+  // Helper function to find the previous/next day (skip weekends only if no work scheduled)
+  const findPreviousDay = (date: Date): Date => {
+    return subDays(date, 1);
   };
 
-  const findNextWorkDay = (date: Date): Date => {
-    let nextDay = addDays(date, 1);
-    while (isWeekend(nextDay)) {
-      nextDay = addDays(nextDay, 1);
-    }
-    return nextDay;
+  const findNextDay = (date: Date): Date => {
+    return addDays(date, 1);
   };
 
   const today = new Date();
-  const previousWorkDay = findPreviousWorkDay(today);
-  const nextWorkDay = findNextWorkDay(today);
+  const previousDay = findPreviousDay(today);
+  const nextDay = findNextDay(today);
 
   const todayFormatted = format(today, "yyyy-MM-dd");
-  const previousDayFormatted = format(previousWorkDay, "yyyy-MM-dd");
-  const nextDayFormatted = format(nextWorkDay, "yyyy-MM-dd");
+  const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
+  const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
 
   const { data: todayTasks = [], isLoading: todayLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", todayFormatted, todayFormatted],
@@ -169,7 +161,9 @@ export default function Dashboard() {
           {/* Cost Code */}
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <Tag className="w-4 h-4" />
-            <span>{task.costCode}</span>
+            <Badge variant="outline" className="text-xs">
+              {task.costCode}
+            </Badge>
           </div>
 
           {/* Hours Information */}
@@ -197,11 +191,8 @@ export default function Dashboard() {
                   const isDriver = employee.employeeType === 'Driver';
                   
                   return (
-                    <div key={assignment.id} className="flex items-center space-x-2">
-                      <Badge variant={getEmployeeTypeVariant(employee.employeeType)} className="text-xs">
-                        {employee.employeeType}
-                      </Badge>
-                      <span className={`text-xs ${isForeman ? 'font-bold' : ''}`}>
+                    <div key={assignment.id} className="text-xs">
+                      <span className={isForeman ? 'font-bold' : ''}>
                         {employee.name}
                         {isDriver && ' (Driver)'}
                       </span>
@@ -213,23 +204,21 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Task Description */}
-        {task.description && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Description: </span>
-              {task.description}
-            </p>
-          </div>
-        )}
-
-        {/* Task Notes */}
-        {task.notes && (
-          <div className="mt-2">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">Notes: </span>
-              {task.notes}
-            </p>
+        {/* Task Description and Notes */}
+        {(task.description || task.notes) && (
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+            {task.description && (
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Description: </span>
+                {task.description}
+              </p>
+            )}
+            {task.notes && (
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Notes: </span>
+                {task.notes}
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -276,20 +265,20 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>{format(previousWorkDay, "EEEE")}</CardTitle>
+                <CardTitle>Yesterday</CardTitle>
                 <Badge variant="outline">
-                  {previousDayTasks.length} Tasks
+                  {(previousDayTasks as any[]).length} Tasks
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
-                {format(previousWorkDay, "MMMM d, yyyy")}
+                {format(previousDay, "EEEE, MMMM d, yyyy")}
               </p>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {previousDayTasks.length === 0 ? (
+              {(previousDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                previousDayTasks.map((task: any) => renderTaskCard(task, previousDayFormatted))
+                (previousDayTasks as any[]).map((task: any) => renderTaskCard(task, previousDayFormatted))
               )}
             </CardContent>
           </Card>
@@ -300,7 +289,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <CardTitle>Today</CardTitle>
                 <Badge className="bg-primary text-primary-foreground">
-                  {todayTasks.length} Tasks
+                  {(todayTasks as any[]).length} Tasks
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
@@ -308,10 +297,10 @@ export default function Dashboard() {
               </p>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {todayTasks.length === 0 ? (
+              {(todayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled for today</p>
               ) : (
-                todayTasks.map((task: any) => renderTaskCard(task, todayFormatted))
+                (todayTasks as any[]).map((task: any) => renderTaskCard(task, todayFormatted))
               )}
             </CardContent>
           </Card>
@@ -320,20 +309,20 @@ export default function Dashboard() {
           <Card>
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>{format(nextWorkDay, "EEEE")}</CardTitle>
+                <CardTitle>Tomorrow</CardTitle>
                 <Badge variant="secondary">
-                  {nextDayTasks.length} Tasks
+                  {(nextDayTasks as any[]).length} Tasks
                 </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
-                {format(nextWorkDay, "MMMM d, yyyy")}
+                {format(nextDay, "EEEE, MMMM d, yyyy")}
               </p>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {nextDayTasks.length === 0 ? (
+              {(nextDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                nextDayTasks.map((task: any) => renderTaskCard(task, nextDayFormatted))
+                (nextDayTasks as any[]).map((task: any) => renderTaskCard(task, nextDayFormatted))
               )}
             </CardContent>
           </Card>
