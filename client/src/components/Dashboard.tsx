@@ -217,8 +217,18 @@ export default function Dashboard() {
     if (!task.locationId) return "Unknown Project";
     const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
     if (!location) return "Unknown Project";
-    const project = (projects as any[]).find((proj: any) => proj.projectId === location.projectId);
-    return project?.name || "Unknown Project";
+    // Fix: locations have numeric projectId (1, 2) but projects have string projectId ("PRJ-2024-001")
+    // We need to match by the database ID, not the project string ID
+    const project = (projects as any[]).find((proj: any) => {
+      // Try to match by database ID - projects are ordered, so index + 1 should match
+      const projectIndex = (projects as any[]).findIndex(p => p.projectId === proj.projectId);
+      return (projectIndex + 1) === location.projectId;
+    });
+    
+    // If that doesn't work, try a direct lookup by assuming the numeric ID maps to array position
+    const fallbackProject = (projects as any[])[location.projectId - 1];
+    
+    return project?.name || fallbackProject?.name || "Unknown Project";
   };
 
   const getLocationName = (task: any) => {
@@ -787,7 +797,8 @@ export default function Dashboard() {
                   return selectedTasks.some((task: any) => task.locationId === location.locationId);
                 })
                 .map((location: any) => {
-                const project = (projects as any[]).find((proj: any) => proj.projectId === location.projectId);
+                // Fix: use fallback project lookup by array index since projectId types don't match
+                const project = (projects as any[])[location.projectId - 1];
                 // Calculate progress based on completed tasks vs total tasks for selected day
                 const locationTasks = selectedDateData.selectedTasks.filter((task: any) => task.locationId === location.locationId);
                 const completedTasks = locationTasks.filter((task: any) => task.status === 'Completed').length;
@@ -801,7 +812,7 @@ export default function Dashboard() {
                   <div key={location.locationId} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <Link
-                        to={`/projects/${location.projectId}/locations/${location.locationId}`}
+                        to={`/locations/${location.locationId}`}
                         className="font-medium text-gray-800 hover:text-primary underline cursor-pointer"
                       >
                         {project?.name} - {location.name}
