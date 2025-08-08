@@ -896,22 +896,14 @@ class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
     
-    // Handle different database URL formats
+    // Handle different database URL formats and encode special characters
     let connectionString = process.env.DATABASE_URL;
     
-    // If it's a Supabase URL with special characters in password, encode it
+    // Manually encode password with special characters in the connection string
     if (connectionString.includes('#')) {
-      const urlParts = connectionString.split('@');
-      const authPart = urlParts[0];
-      const hostPart = urlParts[1];
-      
-      // Extract password and encode special characters
-      const passwordMatch = authPart.match(/:([^:]+)$/);
-      if (passwordMatch) {
-        const password = passwordMatch[1];
-        const encodedPassword = encodeURIComponent(password);
-        connectionString = authPart.replace(`:${password}`, `:${encodedPassword}`) + '@' + hostPart;
-      }
+      console.log("🔧 Encoding special characters in DATABASE_URL password");
+      // Replace special characters in password portion
+      connectionString = connectionString.replace(/#/g, '%23');
     }
     
     const sql = neon(connectionString);
