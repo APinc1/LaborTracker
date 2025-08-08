@@ -885,9 +885,12 @@ export default function ScheduleManagement() {
           onClose={() => {
             setAssignmentModalOpen(false);
             setSelectedTaskForAssignment(null);
-            // Refresh assignments data
+            // Refresh assignments data and task data to update remaining hours
             queryClient.invalidateQueries({ 
               queryKey: ["/api/assignments"] 
+            });
+            queryClient.invalidateQueries({ 
+              queryKey: ["/api/tasks/date-range"] 
             });
           }}
           taskId={selectedTaskForAssignment.id}
