@@ -406,7 +406,7 @@ export default function ScheduleManagement() {
     const remainingHours = costCodeBudgetHours - usedHours;
     
     return {
-      remainingHours: Math.max(0, remainingHours), // Don't show negative hours
+      remainingHours: remainingHours, // Allow negative hours to show overruns
       totalBudgetHours: costCodeBudgetHours
     };
   };
@@ -684,11 +684,14 @@ export default function ScheduleManagement() {
                                     const remainingHours = result?.remainingHours;
                                     const totalBudgetHours = result?.totalBudgetHours || 0;
                                     
-                                    return remainingHours !== null && remainingHours >= 0 && (
+                                    return remainingHours !== null && (
                                       <div className="flex items-center space-x-1 text-xs text-gray-600">
                                         <Clock className="w-3 h-3" />
                                         <span className={getRemainingHoursColor(remainingHours, totalBudgetHours)}>
-                                          {remainingHours.toFixed(1)}h remaining
+                                          {remainingHours <= 0 
+                                            ? `${Math.abs(remainingHours).toFixed(1)}h over` 
+                                            : `${remainingHours.toFixed(1)}h remaining`
+                                          }
                                         </span>
                                       </div>
                                     );
@@ -786,6 +789,23 @@ export default function ScheduleManagement() {
                                   <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)} actual</span>
                                 )}
                               </div>
+                              {(() => {
+                                const result = calculateRemainingHours(task, tasks, allBudgetItems);
+                                const remainingHours = result?.remainingHours;
+                                const totalBudgetHours = result?.totalBudgetHours || 0;
+                                
+                                return remainingHours !== null && (
+                                  <div className="flex items-center space-x-2 mt-1">
+                                    <Clock className="w-4 h-4 text-gray-500" />
+                                    <span className={getRemainingHoursColor(remainingHours, totalBudgetHours)}>
+                                      {remainingHours <= 0 
+                                        ? `${Math.abs(remainingHours).toFixed(1)}h over` 
+                                        : `${remainingHours.toFixed(1)}h remaining`
+                                      }
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                               <div className="mt-1">
                                 <Badge variant="outline" className="text-xs">
                                   {task.costCode}
