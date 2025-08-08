@@ -189,12 +189,14 @@ export default function Dashboard() {
                   
                   const isForeman = employee.employeeType === 'Foreman';
                   const isDriver = employee.employeeType === 'Driver';
+                  const assignedHours = parseFloat(assignment.assignedHours) || 0;
                   
                   return (
                     <div key={assignment.id} className="text-xs">
-                      <span className={isForeman ? 'font-bold' : ''}>
+                      <span className={isForeman ? 'font-bold text-gray-800' : 'text-gray-600'}>
                         {employee.name}
                         {isDriver && ' (Driver)'}
+                        {assignedHours !== 8 && ` (${assignedHours}h)`}
                       </span>
                     </div>
                   );
@@ -205,12 +207,12 @@ export default function Dashboard() {
         </div>
 
         {/* Task Description and Notes */}
-        {(task.description || task.notes) && (
+        {(task.description || task.workDescription || task.notes) && (
           <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            {task.description && (
+            {(task.description || task.workDescription) && (
               <p className="text-sm text-gray-600">
                 <span className="font-medium">Description: </span>
-                {task.description}
+                {task.description || task.workDescription}
               </p>
             )}
             {task.notes && (
