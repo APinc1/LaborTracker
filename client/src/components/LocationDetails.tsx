@@ -1120,11 +1120,18 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         {/* Budget Summary */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Budget Summary
-              <Badge variant="secondary">{budgetItems.length} items</Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Budget Summary
+                <Badge variant="secondary">{budgetItems.length} items</Badge>
+              </CardTitle>
+              <Link href={`/budgets?locationId=${location.locationId}`}>
+                <Button variant="outline" size="sm">
+                  View Full Budget
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             {budgetLoading ? (
@@ -1168,13 +1175,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
                 {/* Cost Code Summary Cards */}
                 <div>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="mb-4">
                     <h4 className="font-medium">Cost Code Summary</h4>
-                    <Link href={`/budgets?locationId=${location.locationId}`}>
-                      <Button variant="outline" size="sm">
-                        View Full Budget
-                      </Button>
-                    </Link>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {costCodeArray.map((summary: any) => {
