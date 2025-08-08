@@ -273,21 +273,29 @@ export default function Dashboard() {
   const getCostCodeStatus = (locationId: string) => {
     // Get budget data for this location
     const locationBudget = budgetDataByLocation[locationId] || [];
+    console.log('🔍 Budget data for location', locationId, ':', locationBudget);
     
     // Get all tasks for this location across all dates
     const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === locationId);
+    console.log('📋 Tasks for location', locationId, ':', allLocationTasks.map(t => ({ id: t.id, costCode: t.costCode, name: t.name })));
     
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
     
-    // Add budget hours from budget line items
+    // Add budget hours from budget line items - check what field contains the cost code
     locationBudget.forEach((budgetItem: any) => {
-      if (budgetItem.costCode) {
-        costCodeData[budgetItem.costCode] = {
-          budgetHours: parseFloat(budgetItem.totalHours) || 0,
+      console.log('💰 Processing budget item:', budgetItem);
+      // Try different possible field names for cost code
+      const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
+      const totalHours = budgetItem.totalHours || budgetItem.hours || budgetItem.quantity;
+      
+      if (costCode) {
+        costCodeData[costCode] = {
+          budgetHours: parseFloat(totalHours) || 0,
           actualHours: 0,
           scheduledHours: 0
         };
+        console.log('✅ Added budget for cost code', costCode, ':', parseFloat(totalHours) || 0);
       }
     });
     
@@ -311,7 +319,15 @@ export default function Dashboard() {
       });
     });
     
-    return costCodeData;
+    // Filter to only show cost codes that have either budget hours or actual hours
+    const filteredCostCodeData = Object.fromEntries(
+      Object.entries(costCodeData).filter(([costCode, data]) => 
+        data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0
+      )
+    );
+    
+    console.log('📊 Final cost code data for', locationId, ':', filteredCostCodeData);
+    return filteredCostCodeData;
   };
 
   const getRemainingHoursStatus = (actualHours: number, budgetHours: number) => {
