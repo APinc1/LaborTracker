@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { format, addDays, subDays, isWeekend } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,25 +16,52 @@ import {
   FileText, 
   Users, 
   BarChart3, 
-  Upload 
+  Upload,
+  CheckCircle,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import ExportButtons from "./ExportButtons";
 
 export default function Dashboard() {
-  // Helper function to find the previous/next day (skip weekends only if no work scheduled)
-  const findPreviousDay = (date: Date): Date => {
-    return subDays(date, 1);
-  };
-
-  const findNextDay = (date: Date): Date => {
-    return addDays(date, 1);
-  };
-
   const today = new Date();
-  const previousDay = findPreviousDay(today);
-  const nextDay = findNextDay(today);
-
   const todayFormatted = format(today, "yyyy-MM-dd");
+
+  // Get all tasks to find dates with scheduled work
+  const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", format(subDays(today, 7), "yyyy-MM-dd"), format(addDays(today, 14), "yyyy-MM-dd")],
+    staleTime: 30000,
+  });
+
+  // Helper function to find the previous day with scheduled tasks
+  const findPreviousScheduledDay = (): Date => {
+    for (let i = 1; i <= 7; i++) {
+      const checkDate = subDays(today, i);
+      const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
+      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      if (hasTasks) {
+        return checkDate;
+      }
+    }
+    return subDays(today, 1); // fallback to yesterday
+  };
+
+  // Helper function to find the next day with scheduled tasks
+  const findNextScheduledDay = (): Date => {
+    for (let i = 1; i <= 14; i++) {
+      const checkDate = addDays(today, i);
+      const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
+      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      if (hasTasks) {
+        return checkDate;
+      }
+    }
+    return addDays(today, 1); // fallback to tomorrow
+  };
+
+  const previousDay = findPreviousScheduledDay();
+  const nextDay = findNextScheduledDay();
+
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
 
@@ -45,11 +73,13 @@ export default function Dashboard() {
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
     staleTime: 30000,
+    enabled: !!allTasks.length,
   });
 
   const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", nextDayFormatted, nextDayFormatted],
     staleTime: 30000,
+    enabled: !!allTasks.length,
   });
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
@@ -75,6 +105,17 @@ export default function Dashboard() {
   const { data: crews = [] } = useQuery({
     queryKey: ["/api/crews"],
     staleTime: 30000,
+  });
+
+  // State for showing assignments in task cards
+  const [showAssignments, setShowAssignments] = useState<{
+    yesterday: boolean;
+    today: boolean;
+    tomorrow: boolean;
+  }>({
+    yesterday: false,
+    today: false,
+    tomorrow: false,
   });
 
   const getEmployeeStatus = (hours: number) => {
@@ -176,7 +217,7 @@ export default function Dashboard() {
   };
 
   // Enhanced task card component
-  const renderTaskCard = (task: any, date: string) => {
+  const renderTaskCard = (task: any, date: string, showAssignmentToggle: boolean) => {
     const taskAssignments = getTaskAssignments(task.id, date);
     const scheduledHours = getScheduledHours(task, date);
     const actualHours = getActualHours(task, date);
@@ -219,8 +260,8 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Assigned Employees */}
-          {taskAssignments.length > 0 && (
+          {/* Assigned Employees - Only show when toggle is enabled */}
+          {showAssignmentToggle && taskAssignments.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Users className="w-4 h-4" />
@@ -271,7 +312,7 @@ export default function Dashboard() {
     );
   };
 
-  if (todayLoading || previousLoading || nextLoading || assignmentsLoading) {
+  if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading) {
     return (
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -312,9 +353,19 @@ export default function Dashboard() {
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Yesterday</CardTitle>
-                <Badge variant="outline">
-                  {(previousDayTasks as any[]).length} Tasks
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="outline">
+                    {(previousDayTasks as any[]).length} Tasks
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssignments(prev => ({ ...prev, yesterday: !prev.yesterday }))}
+                    className="text-xs"
+                  >
+                    {showAssignments.yesterday ? "Hide" : "Show"} Assignments
+                  </Button>
+                </div>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(previousDay, "EEEE, MMMM d, yyyy")}
@@ -324,7 +375,7 @@ export default function Dashboard() {
               {(previousDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                (previousDayTasks as any[]).map((task: any) => renderTaskCard(task, previousDayFormatted))
+                (previousDayTasks as any[]).map((task: any) => renderTaskCard(task, previousDayFormatted, showAssignments.yesterday))
               )}
             </CardContent>
           </Card>
@@ -334,9 +385,19 @@ export default function Dashboard() {
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Today</CardTitle>
-                <Badge className="bg-primary text-primary-foreground">
-                  {(todayTasks as any[]).length} Tasks
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-primary text-primary-foreground">
+                    {(todayTasks as any[]).length} Tasks
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssignments(prev => ({ ...prev, today: !prev.today }))}
+                    className="text-xs"
+                  >
+                    {showAssignments.today ? "Hide" : "Show"} Assignments
+                  </Button>
+                </div>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(today, "MMMM d, yyyy")}
@@ -346,7 +407,7 @@ export default function Dashboard() {
               {(todayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled for today</p>
               ) : (
-                (todayTasks as any[]).map((task: any) => renderTaskCard(task, todayFormatted))
+                (todayTasks as any[]).map((task: any) => renderTaskCard(task, todayFormatted, showAssignments.today))
               )}
             </CardContent>
           </Card>
@@ -356,9 +417,19 @@ export default function Dashboard() {
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Tomorrow</CardTitle>
-                <Badge variant="secondary">
-                  {(nextDayTasks as any[]).length} Tasks
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary">
+                    {(nextDayTasks as any[]).length} Tasks
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssignments(prev => ({ ...prev, tomorrow: !prev.tomorrow }))}
+                    className="text-xs"
+                  >
+                    {showAssignments.tomorrow ? "Hide" : "Show"} Assignments
+                  </Button>
+                </div>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(nextDay, "EEEE, MMMM d, yyyy")}
@@ -368,7 +439,7 @@ export default function Dashboard() {
               {(nextDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                (nextDayTasks as any[]).map((task: any) => renderTaskCard(task, nextDayFormatted))
+                (nextDayTasks as any[]).map((task: any) => renderTaskCard(task, nextDayFormatted, showAssignments.tomorrow))
               )}
             </CardContent>
           </Card>
@@ -409,13 +480,15 @@ export default function Dashboard() {
                     <TableHead>Assigned Hours</TableHead>
                     <TableHead>Daily Total Assigned</TableHead>
                     <TableHead>Schedule Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>Actual Hours</TableHead>
+                    <TableHead>Under/Over</TableHead>
+                    <TableHead>Actual Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(assignments as any[]).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={12} className="text-center py-8 text-gray-500">
                         No employee assignments found
                       </TableCell>
                     </TableRow>
@@ -485,9 +558,70 @@ export default function Dashboard() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                              Edit
-                            </Button>
+                            {assignment.actualHours ? (
+                              <div className="flex items-center space-x-2">
+                                {parseFloat(assignment.actualHours) <= parseFloat(assignment.assignedHours) ? (
+                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <X className="w-4 h-4 text-red-500" />
+                                )}
+                                <span className="font-medium">{assignment.actualHours}</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {assignment.actualHours ? (
+                              <span className={`font-medium ${
+                                (parseFloat(assignment.actualHours) - parseFloat(assignment.assignedHours)) > 0 ? 'text-red-600' : 
+                                (parseFloat(assignment.actualHours) - parseFloat(assignment.assignedHours)) < 0 ? 'text-green-600' : 
+                                'text-gray-600'
+                              }`}>
+                                {(parseFloat(assignment.actualHours) - parseFloat(assignment.assignedHours)) > 0 ? '+' : ''}
+                                {(parseFloat(assignment.actualHours) - parseFloat(assignment.assignedHours)).toFixed(1)}h
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {assignment.actualHours ? (
+                              <div className="flex items-center space-x-2">
+                                {(() => {
+                                  const actualHours = parseFloat(assignment.actualHours);
+                                  const assignedHours = parseFloat(assignment.assignedHours);
+                                  let actualStatus = "";
+                                  let icon = null;
+                                  let textColor = "";
+                                  
+                                  if (actualHours === assignedHours) {
+                                    actualStatus = "On schedule";
+                                    icon = <CheckCircle className="w-4 h-4 text-green-500" />;
+                                    textColor = "text-green-600";
+                                  } else if (actualHours > assignedHours) {
+                                    actualStatus = "Over schedule";
+                                    icon = <X className="w-4 h-4 text-red-500" />;
+                                    textColor = "text-red-600";
+                                  } else {
+                                    actualStatus = "Under schedule";
+                                    icon = <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+                                    textColor = "text-yellow-600";
+                                  }
+                                  
+                                  return (
+                                    <>
+                                      {icon}
+                                      <span className={`text-sm font-medium ${textColor}`}>
+                                        {actualStatus}
+                                      </span>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
