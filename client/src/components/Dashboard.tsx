@@ -250,6 +250,69 @@ export default function Dashboard() {
     );
   };
 
+  // Calculate cost code hours and status for location progress
+  const getCostCodeStatus = (locationId: string) => {
+    // Get all tasks for this location across all dates
+    const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === locationId);
+    
+    // Group by cost code
+    const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
+    
+    allLocationTasks.forEach((task: any) => {
+      if (!task.costCode) return;
+      
+      if (!costCodeData[task.costCode]) {
+        costCodeData[task.costCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
+      }
+      
+      // Get task assignments to calculate actual and scheduled hours
+      const taskAssignments = (assignments as any[]).filter((assignment: any) => assignment.taskId === task.id);
+      
+      taskAssignments.forEach((assignment: any) => {
+        const actualHours = parseFloat(assignment.actualHours) || 0;
+        const scheduledHours = parseFloat(assignment.assignedHours) || 0;
+        
+        costCodeData[task.costCode].actualHours += actualHours;
+        costCodeData[task.costCode].scheduledHours += scheduledHours;
+      });
+    });
+    
+    // For budget hours, we'll use a multiplier of scheduled hours as placeholder
+    // In a real system, this would come from the budget API
+    Object.keys(costCodeData).forEach(costCode => {
+      costCodeData[costCode].budgetHours = costCodeData[costCode].scheduledHours * 1.25; // 25% buffer
+    });
+    
+    return costCodeData;
+  };
+
+  const getRemainingHoursStatus = (actualHours: number, budgetHours: number) => {
+    if (budgetHours === 0) return { color: 'text-gray-500', status: 'No budget', bgColor: 'bg-gray-100' };
+    
+    const remainingHours = budgetHours - actualHours;
+    const percentageRemaining = (remainingHours / budgetHours) * 100;
+    
+    if (remainingHours <= 0) {
+      return {
+        color: 'text-red-600',
+        status: `${Math.abs(remainingHours).toFixed(1)}h over`,
+        bgColor: 'bg-red-100'
+      };
+    } else if (percentageRemaining <= 15) {
+      return {
+        color: 'text-yellow-600', 
+        status: `${remainingHours.toFixed(1)}h remaining`,
+        bgColor: 'bg-yellow-100'
+      };
+    } else {
+      return {
+        color: 'text-green-600',
+        status: `${remainingHours.toFixed(1)}h remaining`, 
+        bgColor: 'bg-green-100'
+      };
+    }
+  };
+
   // Enhanced task card component
   const renderTaskCard = (task: any, date: string, showAssignmentToggle: boolean) => {
     const taskAssignments = getTaskAssignments(task.id, date);
@@ -667,6 +730,9 @@ export default function Dashboard() {
                 const totalTasks = locationTasks.length;
                 const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
                 
+                // Get cost code status for this location
+                const costCodeData = getCostCodeStatus(location.locationId);
+                
                 return (
                   <div key={location.locationId} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -675,8 +741,34 @@ export default function Dashboard() {
                         {progressPercentage}% Complete ({completedTasks}/{totalTasks} tasks)
                       </span>
                     </div>
-                    <Progress value={progressPercentage} className="mb-2" />
-                    <div className="flex justify-between text-sm text-gray-600">
+                    <Progress value={progressPercentage} className="mb-3" />
+                    
+                    {/* Cost Code Hours Status */}
+                    {Object.keys(costCodeData).length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Cost Code Hours</h5>
+                        <div className="space-y-2">
+                          {Object.entries(costCodeData).map(([costCode, data]) => {
+                            const status = getRemainingHoursStatus(data.actualHours, data.budgetHours);
+                            return (
+                              <div key={costCode} className={`flex items-center justify-between p-2 rounded ${status.bgColor}`}>
+                                <div className="flex items-center space-x-2">
+                                  <Badge variant="outline" className="text-xs">{costCode}</Badge>
+                                  <span className="text-sm text-gray-600">
+                                    {data.actualHours.toFixed(1)}h / {data.budgetHours.toFixed(1)}h
+                                  </span>
+                                </div>
+                                <span className={`text-xs font-medium ${status.color}`}>
+                                  {status.status}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-sm text-gray-600 mt-2">
                       <span>Tasks: {totalTasks}</span>
                       <span>Completed: {completedTasks}</span>
                     </div>
