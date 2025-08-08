@@ -956,7 +956,8 @@ class DatabaseStorage implements IStorage {
 
   async deleteUser(id: number): Promise<boolean> {
     const result = await this.db.delete(users).where(eq(users.id, id));
-    return true;
+    // Check if any rows were actually deleted
+    return result.rowCount > 0;
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
