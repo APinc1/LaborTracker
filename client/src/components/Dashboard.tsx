@@ -187,8 +187,8 @@ export default function Dashboard() {
                   const employee = getEmployeeInfo(assignment.employeeId);
                   if (!employee) return null;
                   
-                  const isForeman = employee.employeeType === 'Foreman';
-                  const isDriver = employee.employeeType === 'Driver';
+                  const isForeman = employee.isForeman === true;
+                  const isDriver = employee.primaryTrade === 'Driver' || employee.secondaryTrade === 'Driver';
                   const assignedHours = parseFloat(assignment.assignedHours) || 0;
                   
                   return (
