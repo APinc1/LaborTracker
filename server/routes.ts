@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage";
+import { storagePromise } from "./storage";
 import { 
   insertProjectSchema, insertBudgetLineItemSchema, insertLocationSchema, insertCrewSchema, 
   insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema 
@@ -9,6 +9,9 @@ import {
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize storage first
+  const storage = await storagePromise;
+  
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates

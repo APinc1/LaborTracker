@@ -1208,18 +1208,27 @@ class DatabaseStorage implements IStorage {
 }
 
 // Initialize storage with fallback to in-memory if database fails
-function initializeStorage(): IStorage {
+async function initializeStorage(): Promise<IStorage> {
   if (!process.env.DATABASE_URL) {
     console.log("No DATABASE_URL found, using in-memory storage");
     return new MemStorage();
   }
   
-  // For development, we'll use in-memory storage to avoid database connection issues
-  // When you want to use persistent storage, you can set up your Supabase database
-  // and change this to use DatabaseStorage()
-  console.log("Using in-memory storage for development (data will not persist between server restarts)");
-  console.log("To use persistent storage, set up your Supabase database and modify this function");
-  return new MemStorage();
+  try {
+    console.log("DATABASE_URL found, testing Supabase database connection...");
+    const dbStorage = new DatabaseStorage();
+    
+    // Test the connection by trying to fetch projects
+    await dbStorage.getProjects();
+    console.log("✅ Successfully connected to Supabase database");
+    return dbStorage;
+  } catch (error) {
+    console.error("❌ Failed to connect to Supabase database, falling back to in-memory storage:");
+    console.error("Error details:", error.message);
+    console.log("Using in-memory storage for development (data will not persist between server restarts)");
+    return new MemStorage();
+  }
 }
 
-export const storage = initializeStorage();
+export const storagePromise = initializeStorage();
+export let storage: IStorage;
