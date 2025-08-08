@@ -31,6 +31,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 - **Budget Management**: Detailed budget tracking, location-based budget allocations, Excel import with formula preservation, and editable quantity fields with real-time recalculation. Budget items support inline editing with an explicit save mechanism.
 - **Employee Management**: Comprehensive employee profiles with roles, trade specializations (Primary, Secondary, Tertiary), union status, and apprentice levels. Includes validation for unique Team Member IDs.
 - **Task Management**: Scheduling, assignment, and real-time status updates. Features include drag-and-drop reordering with dependency management, dynamic cost code date ranges, and intelligent date shifting based on task relationships. Supports both individual and bulk task creation with specific rules for sequential dependencies.
+- **Dashboard Features**: Real-time project overview with day-based task filtering (yesterday/today/tomorrow), employee assignment tracking with accurate project name resolution, and location progress monitoring with cost code budget tracking. Location names are clickable for navigation to detailed location pages. Location Progress section filters to show only locations with tasks scheduled on the selected day.
 - **Export Functionality**: PDF and Excel export capabilities for various reports.
 
 ### System Design Choices

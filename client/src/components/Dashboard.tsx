@@ -513,7 +513,6 @@ export default function Dashboard() {
           </div>
         </div>
       </header>
-
       <main className="p-6 space-y-6">
         {/* Three-Day Schedule Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -870,7 +869,8 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <Card>
           <CardHeader className="border-b">
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Quick Actions-- (in development)
+</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
