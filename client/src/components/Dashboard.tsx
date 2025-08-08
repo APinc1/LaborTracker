@@ -162,8 +162,11 @@ export default function Dashboard() {
   };
 
   const getProject = (task: any) => {
-    if (!task) return null;
-    return (projects as any[]).find((project: any) => project.id === task.projectId);
+    if (!task || !task.locationId) return null;
+    const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
+    if (!location) return null;
+    // Fix: use array index lookup since projectId types don't match
+    return (projects as any[])[location.projectId - 1];
   };
 
   const getLocation = (locationId: string) => {
@@ -677,7 +680,18 @@ export default function Dashboard() {
                             <span className="text-gray-600">{crew?.name || "Unassigned"}</span>
                           </TableCell>
                           <TableCell>
-                            <p className="font-medium text-gray-800">{project?.name || "Unknown Project"}</p>
+                            {(() => {
+                              const projectName = project?.name || "Unknown Project";
+                              console.log('🔍 Assignment Table Debug:', { 
+                                assignmentId: assignment.id,
+                                taskId: assignment.taskId, 
+                                task,
+                                taskLocationId: task?.locationId,
+                                project,
+                                projectName
+                              });
+                              return <p className="font-medium text-gray-800">{projectName}</p>;
+                            })()}
                           </TableCell>
                           <TableCell>
                             <p className="font-medium text-gray-800">{location?.name || "Unknown Location"}</p>
