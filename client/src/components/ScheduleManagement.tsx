@@ -336,9 +336,9 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return null;
 
-    // Find all completed tasks for this cost code before the current task date
+    // Find all tasks for this cost code up to and including the current task date
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
-    const completedTasksBeforeCurrent = allTasks.filter((t: any) => {
+    const relevantTasks = allTasks.filter((t: any) => {
       if (!t.costCode) return false;
       
       // Handle cost code matching with combined codes
@@ -358,32 +358,37 @@ export default function ScheduleManagement() {
       }
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
-      const isCompleted = getTaskStatus(t).status === 'complete';
       const isSameCostCode = tCostCode === taskCostCode;
-      const isBeforeCurrent = taskDate < currentTaskDate;
+      const isCurrentOrBefore = taskDate <= currentTaskDate;
       
-      return isSameCostCode && isCompleted && isBeforeCurrent;
+      return isSameCostCode && isCurrentOrBefore;
     });
 
-    // Sum actual hours from completed tasks before current task
-    const actualHoursFromCompletedTasks = completedTasksBeforeCurrent.reduce((total: number, t: any) => {
+    // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
+    const usedHours = relevantTasks.reduce((total: number, t: any) => {
       const taskId = t.id || t.taskId;
       const taskAssignments = assignments.filter((assignment: any) => 
         assignment.taskId === taskId
       );
       
+      // Try to get actual hours first
       const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
         return sum + (parseFloat(assignment.actualHours) || 0);
       }, 0);
       
-      return total + taskActualHours;
+      // If no actual hours, fall back to scheduled hours
+      let taskHours = taskActualHours;
+      if (taskActualHours === 0) {
+        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
+          return sum + (parseFloat(assignment.assignedHours) || 0);
+        }, 0);
+      }
+      
+      return total + taskHours;
     }, 0);
 
-    // Get scheduled hours for current task
-    const currentTaskScheduledHours = calculateScheduledHours(task);
-
     // Calculate remaining hours
-    const remainingHours = costCodeBudgetHours - actualHoursFromCompletedTasks - currentTaskScheduledHours;
+    const remainingHours = costCodeBudgetHours - usedHours;
     
     return Math.max(0, remainingHours); // Don't show negative hours
   };
