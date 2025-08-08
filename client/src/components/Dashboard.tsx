@@ -273,29 +273,32 @@ export default function Dashboard() {
   const getCostCodeStatus = (locationId: string) => {
     // Get budget data for this location
     const locationBudget = budgetDataByLocation[locationId] || [];
-    console.log('🔍 Budget data for location', locationId, ':', locationBudget);
     
     // Get all tasks for this location across all dates
     const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === locationId);
-    console.log('📋 Tasks for location', locationId, ':', allLocationTasks.map(t => ({ id: t.id, costCode: t.costCode, name: t.name })));
     
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
     
-    // Add budget hours from budget line items - check what field contains the cost code
+    // Add budget hours from budget line items
     locationBudget.forEach((budgetItem: any) => {
-      console.log('💰 Processing budget item:', budgetItem);
-      // Try different possible field names for cost code
       const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
       const totalHours = budgetItem.totalHours || budgetItem.hours || budgetItem.quantity;
       
-      if (costCode) {
-        costCodeData[costCode] = {
-          budgetHours: parseFloat(totalHours) || 0,
-          actualHours: 0,
-          scheduledHours: 0
-        };
-        console.log('✅ Added budget for cost code', costCode, ':', parseFloat(totalHours) || 0);
+      if (costCode && costCode.trim()) {
+        const trimmedCostCode = costCode.trim();
+        const hours = parseFloat(totalHours) || 0;
+        
+        // If this cost code already exists, add to the hours
+        if (costCodeData[trimmedCostCode]) {
+          costCodeData[trimmedCostCode].budgetHours += hours;
+        } else {
+          costCodeData[trimmedCostCode] = {
+            budgetHours: hours,
+            actualHours: 0,
+            scheduledHours: 0
+          };
+        }
       }
     });
     
@@ -303,8 +306,10 @@ export default function Dashboard() {
     allLocationTasks.forEach((task: any) => {
       if (!task.costCode) return;
       
-      if (!costCodeData[task.costCode]) {
-        costCodeData[task.costCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
+      const trimmedTaskCostCode = task.costCode.trim();
+      
+      if (!costCodeData[trimmedTaskCostCode]) {
+        costCodeData[trimmedTaskCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
       }
       
       // Get task assignments to calculate actual and scheduled hours
@@ -314,19 +319,18 @@ export default function Dashboard() {
         const actualHours = parseFloat(assignment.actualHours) || 0;
         const scheduledHours = parseFloat(assignment.assignedHours) || 0;
         
-        costCodeData[task.costCode].actualHours += actualHours;
-        costCodeData[task.costCode].scheduledHours += scheduledHours;
+        costCodeData[trimmedTaskCostCode].actualHours += actualHours;
+        costCodeData[trimmedTaskCostCode].scheduledHours += scheduledHours;
       });
     });
     
-    // Filter to only show cost codes that have either budget hours or actual hours
+    // Show all cost codes that have either budget hours > 0 OR actual/scheduled hours > 0
     const filteredCostCodeData = Object.fromEntries(
       Object.entries(costCodeData).filter(([costCode, data]) => 
         data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0
       )
     );
     
-    console.log('📊 Final cost code data for', locationId, ':', filteredCostCodeData);
     return filteredCostCodeData;
   };
 
