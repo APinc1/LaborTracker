@@ -311,7 +311,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                     <Clock className="w-3 h-3" />
                     <span className={remainingHoursColor || 'text-orange-600'}>
                       {remainingHours <= 0 
-                        ? `${Math.abs(remainingHours).toFixed(1)}h overrun` 
+                        ? `${Math.abs(remainingHours).toFixed(1)}h over` 
                         : `${remainingHours.toFixed(1)}h remaining`
                       }
                     </span>
