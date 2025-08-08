@@ -894,47 +894,29 @@ class DatabaseStorage implements IStorage {
   private db: any;
 
   constructor() {
-    // Use Supabase connection if available, otherwise fall back to default DATABASE_URL
-    let connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    console.log("Using Replit's managed PostgreSQL database with migrated Supabase data");
+    
+    // Now using Replit's DATABASE_URL (your Supabase data has been migrated)
+    const connectionString = process.env.DATABASE_URL;
     
     if (!connectionString) {
-      throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL environment variable is required");
+      throw new Error("DATABASE_URL environment variable is required");
     }
     
-    // Use different drivers for Supabase vs Neon
-    if (process.env.SUPABASE_DATABASE_URL) {
-      // For Supabase, use postgres driver
-      const sql = postgres(connectionString);
-      this.db = drizzlePostgres(sql, {
-        schema: {
-          users,
-          projects,
-          budgetLineItems,
-          locations,
-          locationBudgets,
-          crews,
-          employees,
-          tasks,
-          employeeAssignments,
-        },
-      });
-    } else {
-      // For Neon/Replit, use neon driver
-      const sql = neon(connectionString);
-      this.db = drizzle(sql, {
-        schema: {
-          users,
-          projects,
-          budgetLineItems,
-          locations,
-          locationBudgets,
-          crews,
-          employees,
-          tasks,
-          employeeAssignments,
-        },
-      });
-    }
+    const sql = neon(connectionString);
+    this.db = drizzle(sql, {
+      schema: {
+        users,
+        projects,
+        budgetLineItems,
+        locations,
+        locationBudgets,
+        crews,
+        employees,
+        tasks,
+        employeeAssignments,
+      },
+    });
   }
 
   // User methods
