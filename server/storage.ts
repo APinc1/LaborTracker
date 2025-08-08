@@ -5,7 +5,9 @@ import {
   type Employee, type InsertEmployee, type Task, type InsertTask, type EmployeeAssignment, type InsertEmployeeAssignment
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -893,26 +895,46 @@ class DatabaseStorage implements IStorage {
 
   constructor() {
     // Use Supabase connection if available, otherwise fall back to default DATABASE_URL
-    const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    let connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
     
     if (!connectionString) {
       throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL environment variable is required");
     }
     
-    const sql = neon(connectionString);
-    this.db = drizzle(sql, {
-      schema: {
-        users,
-        projects,
-        budgetLineItems,
-        locations,
-        locationBudgets,
-        crews,
-        employees,
-        tasks,
-        employeeAssignments,
-      },
-    });
+    // Use different drivers for Supabase vs Neon
+    if (process.env.SUPABASE_DATABASE_URL) {
+      // For Supabase, use postgres driver
+      const sql = postgres(connectionString);
+      this.db = drizzlePostgres(sql, {
+        schema: {
+          users,
+          projects,
+          budgetLineItems,
+          locations,
+          locationBudgets,
+          crews,
+          employees,
+          tasks,
+          employeeAssignments,
+        },
+      });
+    } else {
+      // For Neon/Replit, use neon driver
+      const sql = neon(connectionString);
+      this.db = drizzle(sql, {
+        schema: {
+          users,
+          projects,
+          budgetLineItems,
+          locations,
+          locationBudgets,
+          crews,
+          employees,
+          tasks,
+          employeeAssignments,
+        },
+      });
+    }
   }
 
   // User methods
@@ -1205,6 +1227,7 @@ async function initializeStorage(): Promise<IStorage> {
   try {
     const dbType = process.env.SUPABASE_DATABASE_URL ? "external Supabase" : "Replit PostgreSQL";
     console.log(`Database connection found, testing ${dbType} connection...`);
+    console.log(`Connection string format: ${connectionString.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
     const dbStorage = new DatabaseStorage();
     
     // Test the connection by trying to fetch users (more likely to exist than projects)
@@ -1214,6 +1237,7 @@ async function initializeStorage(): Promise<IStorage> {
   } catch (error) {
     console.error("❌ Failed to connect to database, falling back to in-memory storage:");
     console.error("Error details:", error.message);
+    console.error("Full error:", error);
     console.log("Using in-memory storage for development (data will not persist between server restarts)");
     return new MemStorage();
   }
