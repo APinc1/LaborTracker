@@ -680,18 +680,7 @@ export default function Dashboard() {
                             <span className="text-gray-600">{crew?.name || "Unassigned"}</span>
                           </TableCell>
                           <TableCell>
-                            {(() => {
-                              const projectName = project?.name || "Unknown Project";
-                              console.log('🔍 Assignment Table Debug:', { 
-                                assignmentId: assignment.id,
-                                taskId: assignment.taskId, 
-                                task,
-                                taskLocationId: task?.locationId,
-                                project,
-                                projectName
-                              });
-                              return <p className="font-medium text-gray-800">{projectName}</p>;
-                            })()}
+                            <p className="font-medium text-gray-800">{project?.name || "Unknown Project"}</p>
                           </TableCell>
                           <TableCell>
                             <p className="font-medium text-gray-800">{location?.name || "Unknown Location"}</p>
@@ -825,12 +814,14 @@ export default function Dashboard() {
                 return (
                   <div key={location.locationId} className="border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <Link
-                        to={`/locations/${location.locationId}`}
-                        className="font-medium text-gray-800 hover:text-primary underline cursor-pointer"
-                      >
-                        {project?.name} - {location.name}
-                      </Link>
+                      <div className="font-medium text-gray-800">
+                        {project?.name} - <Link
+                          to={`/locations/${location.locationId}`}
+                          className="hover:text-primary underline cursor-pointer"
+                        >
+                          {location.name}
+                        </Link>
+                      </div>
                       <span className="text-sm text-gray-600">
                         {progressPercentage}% Complete ({completedTasks}/{totalTasks} tasks)
                       </span>
