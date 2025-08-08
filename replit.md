@@ -4,6 +4,13 @@
 
 This full-stack construction project management system provides comprehensive capabilities including budget tracking, location management, employee scheduling, and task assignment. It aims to streamline operations and enhance efficiency for construction projects, with a vision to become a leading solution in the construction management software market.
 
+## Recent Changes (August 2025)
+- ✅ **Database Migration Complete**: Successfully migrated from external Supabase to Replit's managed PostgreSQL
+- ✅ **User Management Fixed**: Resolved user creation, deletion, and database persistence issues  
+- ✅ **UI Layout Improved**: Fixed Add User button positioning and form layout
+- ✅ **Schema Alignment**: Added missing database columns and table structure fixes
+- ✅ **Authentication Working**: Login system fully functional with admin/password123 credentials
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
