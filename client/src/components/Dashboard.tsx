@@ -250,14 +250,48 @@ export default function Dashboard() {
     );
   };
 
+  // Get budget data for specific location
+  const { data: budgetDataByLocation = {} } = useQuery({
+    queryKey: ["/api/budget", locations],
+    queryFn: async () => {
+      const budgetPromises = (locations as any[]).map(async (location: any) => {
+        const response = await fetch(`/api/locations/${location.locationId}/budget`);
+        const budgetItems = await response.json();
+        return { locationId: location.locationId, budgetItems };
+      });
+      const results = await Promise.all(budgetPromises);
+      return results.reduce((acc: any, { locationId, budgetItems }) => {
+        acc[locationId] = budgetItems;
+        return acc;
+      }, {});
+    },
+    enabled: (locations as any[]).length > 0,
+    staleTime: 60000,
+  });
+
   // Calculate cost code hours and status for location progress
   const getCostCodeStatus = (locationId: string) => {
+    // Get budget data for this location
+    const locationBudget = budgetDataByLocation[locationId] || [];
+    
     // Get all tasks for this location across all dates
     const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === locationId);
     
-    // Group by cost code
+    // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
     
+    // Add budget hours from budget line items
+    locationBudget.forEach((budgetItem: any) => {
+      if (budgetItem.costCode) {
+        costCodeData[budgetItem.costCode] = {
+          budgetHours: parseFloat(budgetItem.totalHours) || 0,
+          actualHours: 0,
+          scheduledHours: 0
+        };
+      }
+    });
+    
+    // Add actual and scheduled hours from tasks/assignments
     allLocationTasks.forEach((task: any) => {
       if (!task.costCode) return;
       
@@ -275,12 +309,6 @@ export default function Dashboard() {
         costCodeData[task.costCode].actualHours += actualHours;
         costCodeData[task.costCode].scheduledHours += scheduledHours;
       });
-    });
-    
-    // For budget hours, we'll use a multiplier of scheduled hours as placeholder
-    // In a real system, this would come from the budget API
-    Object.keys(costCodeData).forEach(costCode => {
-      costCodeData[costCode].budgetHours = costCodeData[costCode].scheduledHours * 1.25; // 25% buffer
     });
     
     return costCodeData;
