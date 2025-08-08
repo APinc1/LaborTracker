@@ -417,7 +417,7 @@ export default function DraggableTaskList({
   };
 
   // Calculate remaining hours for a cost code up to the current task date
-  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
+  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[], taskAssignments: any[]) => {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: undefined, totalBudgetHours: 0 };
 
@@ -489,19 +489,19 @@ export default function DraggableTaskList({
     // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
     const usedHours = relevantTasks.reduce((total: number, t: any) => {
       const taskId = t.id || t.taskId;
-      const taskAssignments = assignments.filter((assignment: any) => 
+      const taskAssignmentsList = taskAssignments.filter((assignment: any) => 
         assignment.taskId === taskId
       );
       
       // Try to get actual hours first
-      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
+      const taskActualHours = taskAssignmentsList.reduce((sum: number, assignment: any) => {
         return sum + (parseFloat(assignment.actualHours) || 0);
       }, 0);
       
       // If no actual hours, fall back to scheduled hours
       let taskHours = taskActualHours;
       if (taskActualHours === 0) {
-        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
+        taskHours = taskAssignmentsList.reduce((sum: number, assignment: any) => {
           return sum + (parseFloat(assignment.assignedHours) || 0);
         }, 0);
       }
@@ -554,22 +554,22 @@ export default function DraggableTaskList({
   // Enhanced sorting that properly groups linked tasks and positions them chronologically
   const sortedTasks = (() => {
     // Group tasks by their linked group (if any)
-    const linkedGroups = new Map();
-    const unlinkedTasks = [];
+    const linkedGroups = new Map<string, any[]>();
+    const unlinkedTasks: any[] = [];
     
     tasks.forEach(task => {
       if (task.linkedTaskGroup) {
         if (!linkedGroups.has(task.linkedTaskGroup)) {
           linkedGroups.set(task.linkedTaskGroup, []);
         }
-        linkedGroups.get(task.linkedTaskGroup).push(task);
+        linkedGroups.get(task.linkedTaskGroup)!.push(task);
       } else {
         unlinkedTasks.push(task);
       }
     });
     
     // Convert linked groups to sortable units (use earliest order/date as group position)
-    const sortableUnits = [];
+    const sortableUnits: any[] = [];
     
     // Add unlinked tasks as individual units
     unlinkedTasks.forEach(task => {
@@ -630,7 +630,7 @@ export default function DraggableTaskList({
     });
     
     // Flatten the sorted units back into a task array
-    const result = [];
+    const result: any[] = [];
     sortableUnits.forEach(unit => {
       result.push(...unit.tasks);
     });
@@ -788,14 +788,14 @@ export default function DraggableTaskList({
     });
     
     // Check if there are any completed tasks before or at the target position
-    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t, assignments) === 'complete');
+    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t, assignments as any[]) === 'complete');
     
     console.log('🔍 COMPLETED TASKS CHECK:', {
-      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t, assignments) })),
+      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t, assignments as any[]) })),
       count: completedTasksAtOrBeforeTarget.length
     });
     
-    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask, assignments) !== 'complete') {
+    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask, assignments as any[]) !== 'complete') {
       console.log('🚫 DRAG END: Cannot drag task before completed tasks');
       toast({
         title: "Invalid Move",
@@ -806,7 +806,7 @@ export default function DraggableTaskList({
     }
 
     // Prevent dragging completed tasks
-    if (getTaskStatus(draggedTask, assignments) === 'complete') {
+    if (getTaskStatus(draggedTask, assignments as any[]) === 'complete') {
       console.log('🚫 DRAG END: Cannot drag completed tasks');
       toast({
         title: "Invalid Move", 
@@ -1333,14 +1333,14 @@ export default function DraggableTaskList({
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
-                employees={employees}
-                assignments={assignments}
+                employees={employees as any[]}
+                assignments={assignments as any[]}
                 remainingHours={(() => {
-                  const result = calculateRemainingHours(task, sortedTasks, budgetItems);
+                  const result = calculateRemainingHours(task, sortedTasks, budgetItems as any[], assignments as any[]);
                   return result?.remainingHours;
                 })()}
                 remainingHoursColor={(() => {
-                  const result = calculateRemainingHours(task, sortedTasks, budgetItems);
+                  const result = calculateRemainingHours(task, sortedTasks, budgetItems as any[], assignments as any[]);
                   const remainingHours = result?.remainingHours;
                   const totalBudgetHours = result?.totalBudgetHours || 0;
                   return getRemainingHoursColor(remainingHours || 0, totalBudgetHours);
