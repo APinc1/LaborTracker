@@ -54,6 +54,7 @@ interface SortableTaskItemProps {
   onAssignTask?: (task: any) => void;
   employees: any[];
   assignments: any[];
+  remainingHours?: number;
 }
 
 // Helper function to determine task status - checks if all assignments have actual hours recorded
@@ -92,7 +93,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, remainingHours }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -257,100 +258,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
   const totalScheduledHours = calculateScheduledHours(task);
   const totalActualHours = calculateActualHours(task);
 
-  // Calculate remaining hours for this cost code up to the current task date
-  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
-    const costCode = task.costCode;
-    if (!costCode) return null;
-
-    // Get total budget hours for this cost code
-    const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
-      let itemCostCode = item.costCode || 'UNCATEGORIZED';
-      
-      // Handle combined cost codes (Demo/Ex + Base/Grading)
-      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
-          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
-          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
-        itemCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      // Handle current task cost code in the same way
-      let taskCostCode = costCode;
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (itemCostCode === taskCostCode) {
-        // Only include parent items or standalone items (avoid double counting)
-        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
-        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-        const hasChildren = budgetItems.some((child: any) => 
-          child.lineItemNumber && child.lineItemNumber.includes('.') && 
-          child.lineItemNumber.split('.')[0] === item.lineItemNumber
-        );
-        
-        if (isParent || (!isChild && !hasChildren)) {
-          return total + (parseFloat(item.hours) || 0);
-        }
-      }
-      return total;
-    }, 0);
-
-    if (costCodeBudgetHours === 0) return null;
-
-    // Find all completed tasks for this cost code before the current task date
-    const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
-    const completedTasksBeforeCurrent = allTasks.filter((t: any) => {
-      if (!t.costCode) return false;
-      
-      // Handle cost code matching with combined codes
-      let tCostCode = t.costCode;
-      let taskCostCode = costCode;
-      
-      if (tCostCode === 'DEMO/EX' || tCostCode === 'Demo/Ex' || 
-          tCostCode === 'BASE/GRADING' || tCostCode === 'Base/Grading' || 
-          tCostCode === 'Demo/Ex + Base/Grading' || tCostCode === 'DEMO/EX + BASE/GRADING') {
-        tCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
-      const isCompleted = getTaskStatus(t, assignments) === 'complete';
-      const isSameCostCode = tCostCode === taskCostCode;
-      const isBeforeCurrent = taskDate < currentTaskDate;
-      
-      return isSameCostCode && isCompleted && isBeforeCurrent;
-    });
-
-    // Sum actual hours from completed tasks before current task
-    const actualHoursFromCompletedTasks = completedTasksBeforeCurrent.reduce((total: number, t: any) => {
-      const taskId = t.id || t.taskId;
-      const taskAssignments = assignments.filter((assignment: any) => 
-        assignment.taskId === taskId
-      );
-      
-      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
-        return sum + (parseFloat(assignment.actualHours) || 0);
-      }, 0);
-      
-      return total + taskActualHours;
-    }, 0);
-
-    // Get scheduled hours for current task
-    const currentTaskScheduledHours = calculateScheduledHours(task);
-
-    // Calculate remaining hours
-    const remainingHours = costCodeBudgetHours - actualHoursFromCompletedTasks - currentTaskScheduledHours;
-    
-    return Math.max(0, remainingHours); // Don't show negative hours
-  };
-
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <Card className={`mb-2 transition-all duration-200 ${
@@ -398,15 +305,13 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   </div>
                 )}
                 
-                {(() => {
-                  const remainingHours = calculateRemainingHours(task, tasks, budgetItems);
-                  return remainingHours !== null && remainingHours > 0 && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-orange-600">{remainingHours.toFixed(1)}h remaining</span>
-                    </div>
-                  );
-                })()}
+                {remainingHours !== undefined && remainingHours > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-orange-600">{remainingHours.toFixed(1)}h remaining</span>
+                  </div>
+                )}
+                
                 
                 <Badge variant="secondary" className="text-xs">
                   {task.costCode}
@@ -494,6 +399,106 @@ export default function DraggableTaskList({
     enabled: !!locationId,
     staleTime: 30000,
   });
+
+  // Calculate remaining hours for a cost code up to the current task date
+  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
+    const costCode = task.costCode;
+    if (!costCode) return undefined;
+
+    // Get total budget hours for this cost code
+    const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
+      let itemCostCode = item.costCode || 'UNCATEGORIZED';
+      
+      // Handle combined cost codes (Demo/Ex + Base/Grading)
+      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
+          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
+          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
+        itemCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Handle current task cost code in the same way
+      let taskCostCode = costCode;
+      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+        taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (itemCostCode === taskCostCode) {
+        // Only include parent items or standalone items (avoid double counting)
+        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+        const hasChildren = budgetItems.some((child: any) => 
+          child.lineItemNumber && child.lineItemNumber.includes('.') && 
+          child.lineItemNumber.split('.')[0] === item.lineItemNumber
+        );
+        
+        if (isParent || (!isChild && !hasChildren)) {
+          return total + (parseFloat(item.hours) || 0);
+        }
+      }
+      return total;
+    }, 0);
+
+    if (costCodeBudgetHours === 0) return undefined;
+
+    // Find all completed tasks for this cost code before the current task date
+    const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
+    const completedTasksBeforeCurrent = allTasks.filter((t: any) => {
+      if (!t.costCode) return false;
+      
+      // Handle cost code matching with combined codes
+      let tCostCode = t.costCode;
+      let taskCostCode = costCode;
+      
+      if (tCostCode === 'DEMO/EX' || tCostCode === 'Demo/Ex' || 
+          tCostCode === 'BASE/GRADING' || tCostCode === 'Base/Grading' || 
+          tCostCode === 'Demo/Ex + Base/Grading' || tCostCode === 'DEMO/EX + BASE/GRADING') {
+        tCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+        taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
+      const isCompleted = getTaskStatus(t, assignments) === 'complete';
+      const isSameCostCode = tCostCode === taskCostCode;
+      const isBeforeCurrent = taskDate < currentTaskDate;
+      
+      return isSameCostCode && isCompleted && isBeforeCurrent;
+    });
+
+    // Sum actual hours from completed tasks before current task
+    const actualHoursFromCompletedTasks = completedTasksBeforeCurrent.reduce((total: number, t: any) => {
+      const taskId = t.id || t.taskId;
+      const taskAssignments = assignments.filter((assignment: any) => 
+        assignment.taskId === taskId
+      );
+      
+      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
+        return sum + (parseFloat(assignment.actualHours) || 0);
+      }, 0);
+      
+      return total + taskActualHours;
+    }, 0);
+
+    // Calculate scheduled hours for current task
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter((assignment: any) => 
+      assignment.taskId === taskId
+    );
+    const currentTaskScheduledHours = taskAssignments.reduce((sum: number, assignment: any) => {
+      return sum + parseFloat(assignment.assignedHours || 0);
+    }, 0);
+
+    // Calculate remaining hours
+    const remainingHours = costCodeBudgetHours - actualHoursFromCompletedTasks - currentTaskScheduledHours;
+    
+    return Math.max(0, remainingHours); // Don't show negative hours
+  };
 
   // State for link confirmation dialog
   const [linkConfirmDialog, setLinkConfirmDialog] = useState<{
@@ -1312,6 +1317,7 @@ export default function DraggableTaskList({
                 onAssignTask={onAssignTask}
                 employees={employees}
                 assignments={assignments}
+                remainingHours={calculateRemainingHours(task, sortedTasks, budgetItems)}
               />
             ))}
           </div>
