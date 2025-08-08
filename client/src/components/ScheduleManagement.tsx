@@ -294,10 +294,25 @@ export default function ScheduleManagement() {
     }).join(', ');
   };
 
+  // Helper function to get remaining hours color based on percentage
+  const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
+    if (totalBudgetHours === 0) return 'text-gray-600';
+    
+    const percentage = (remainingHours / totalBudgetHours) * 100;
+    
+    if (percentage <= 0) {
+      return 'text-red-600';
+    } else if (percentage <= 15) {
+      return 'text-yellow-600';
+    } else {
+      return 'text-green-600';
+    }
+  };
+
   // Calculate remaining hours for a cost code up to the current task date
   const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
     const costCode = task.costCode;
-    if (!costCode) return null;
+    if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
 
     // Get total budget hours for this cost code from all budget items
     const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
@@ -334,7 +349,7 @@ export default function ScheduleManagement() {
       return total;
     }, 0);
 
-    if (costCodeBudgetHours === 0) return null;
+    if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
     // Find all tasks for this cost code up to and including the current task date
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
@@ -390,7 +405,10 @@ export default function ScheduleManagement() {
     // Calculate remaining hours
     const remainingHours = costCodeBudgetHours - usedHours;
     
-    return Math.max(0, remainingHours); // Don't show negative hours
+    return {
+      remainingHours: Math.max(0, remainingHours), // Don't show negative hours
+      totalBudgetHours: costCodeBudgetHours
+    };
   };
 
   // Format detailed assignment display for task cards
@@ -662,11 +680,16 @@ export default function ScheduleManagement() {
                                     )}
                                   </div>
                                   {(() => {
-                                    const remainingHours = calculateRemainingHours(task, tasks, allBudgetItems);
-                                    return remainingHours !== null && remainingHours > 0 && (
+                                    const result = calculateRemainingHours(task, tasks, allBudgetItems);
+                                    const remainingHours = result?.remainingHours;
+                                    const totalBudgetHours = result?.totalBudgetHours || 0;
+                                    
+                                    return remainingHours !== null && remainingHours >= 0 && (
                                       <div className="flex items-center space-x-1 text-xs text-gray-600">
                                         <Clock className="w-3 h-3" />
-                                        <span className="text-orange-600">{remainingHours.toFixed(1)}h remaining</span>
+                                        <span className={getRemainingHoursColor(remainingHours, totalBudgetHours)}>
+                                          {remainingHours.toFixed(1)}h remaining
+                                        </span>
                                       </div>
                                     );
                                   })()}

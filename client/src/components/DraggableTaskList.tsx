@@ -55,6 +55,7 @@ interface SortableTaskItemProps {
   employees: any[];
   assignments: any[];
   remainingHours?: number;
+  remainingHoursColor?: string;
 }
 
 // Helper function to determine task status - checks if all assignments have actual hours recorded
@@ -93,7 +94,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, remainingHours }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -308,7 +309,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                 {remainingHours !== undefined && remainingHours > 0 && (
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span className="text-orange-600">{remainingHours.toFixed(1)}h remaining</span>
+                    <span className={remainingHoursColor || 'text-orange-600'}>{remainingHours.toFixed(1)}h remaining</span>
                   </div>
                 )}
                 
@@ -400,10 +401,25 @@ export default function DraggableTaskList({
     staleTime: 30000,
   });
 
+  // Helper function to get remaining hours color based on percentage
+  const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
+    if (totalBudgetHours === 0) return 'text-gray-600';
+    
+    const percentage = (remainingHours / totalBudgetHours) * 100;
+    
+    if (percentage <= 0) {
+      return 'text-red-600';
+    } else if (percentage <= 15) {
+      return 'text-yellow-600';
+    } else {
+      return 'text-green-600';
+    }
+  };
+
   // Calculate remaining hours for a cost code up to the current task date
   const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
     const costCode = task.costCode;
-    if (!costCode) return undefined;
+    if (!costCode) return { remainingHours: undefined, totalBudgetHours: 0 };
 
     // Get total budget hours for this cost code
     const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
@@ -440,7 +456,7 @@ export default function DraggableTaskList({
       return total;
     }, 0);
 
-    if (costCodeBudgetHours === 0) return undefined;
+    if (costCodeBudgetHours === 0) return { remainingHours: undefined, totalBudgetHours: 0 };
 
     // Find all tasks for this cost code up to and including the current task date
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
@@ -496,7 +512,10 @@ export default function DraggableTaskList({
     // Calculate remaining hours
     const remainingHours = costCodeBudgetHours - usedHours;
     
-    return Math.max(0, remainingHours); // Don't show negative hours
+    return {
+      remainingHours: Math.max(0, remainingHours), // Don't show negative hours
+      totalBudgetHours: costCodeBudgetHours
+    };
   };
 
   // State for link confirmation dialog
@@ -1316,7 +1335,16 @@ export default function DraggableTaskList({
                 onAssignTask={onAssignTask}
                 employees={employees}
                 assignments={assignments}
-                remainingHours={calculateRemainingHours(task, sortedTasks, budgetItems)}
+                remainingHours={(() => {
+                  const result = calculateRemainingHours(task, sortedTasks, budgetItems);
+                  return result?.remainingHours;
+                })()}
+                remainingHoursColor={(() => {
+                  const result = calculateRemainingHours(task, sortedTasks, budgetItems);
+                  const remainingHours = result?.remainingHours;
+                  const totalBudgetHours = result?.totalBudgetHours || 0;
+                  return getRemainingHoursColor(remainingHours || 0, totalBudgetHours);
+                })()}
               />
             ))}
           </div>
