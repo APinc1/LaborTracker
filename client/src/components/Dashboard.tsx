@@ -280,20 +280,30 @@ export default function Dashboard() {
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
     
+    // Helper function to normalize cost codes for combining
+    const normalizeCostCode = (costCode: string) => {
+      const trimmed = costCode.trim().toUpperCase();
+      // Combine DEMO/EX and BASE/GRADING into one category
+      if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING') {
+        return 'Demo/Ex + Base/Grading';
+      }
+      return costCode.trim();
+    };
+    
     // Add budget hours from budget line items
     locationBudget.forEach((budgetItem: any) => {
       const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
       const totalHours = budgetItem.totalHours || budgetItem.hours || budgetItem.quantity;
       
       if (costCode && costCode.trim()) {
-        const trimmedCostCode = costCode.trim();
+        const normalizedCostCode = normalizeCostCode(costCode);
         const hours = parseFloat(totalHours) || 0;
         
         // If this cost code already exists, add to the hours
-        if (costCodeData[trimmedCostCode]) {
-          costCodeData[trimmedCostCode].budgetHours += hours;
+        if (costCodeData[normalizedCostCode]) {
+          costCodeData[normalizedCostCode].budgetHours += hours;
         } else {
-          costCodeData[trimmedCostCode] = {
+          costCodeData[normalizedCostCode] = {
             budgetHours: hours,
             actualHours: 0,
             scheduledHours: 0
@@ -306,10 +316,10 @@ export default function Dashboard() {
     allLocationTasks.forEach((task: any) => {
       if (!task.costCode) return;
       
-      const trimmedTaskCostCode = task.costCode.trim();
+      const normalizedTaskCostCode = normalizeCostCode(task.costCode);
       
-      if (!costCodeData[trimmedTaskCostCode]) {
-        costCodeData[trimmedTaskCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
+      if (!costCodeData[normalizedTaskCostCode]) {
+        costCodeData[normalizedTaskCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
       }
       
       // Get task assignments to calculate actual and scheduled hours
@@ -319,8 +329,8 @@ export default function Dashboard() {
         const actualHours = parseFloat(assignment.actualHours) || 0;
         const scheduledHours = parseFloat(assignment.assignedHours) || 0;
         
-        costCodeData[trimmedTaskCostCode].actualHours += actualHours;
-        costCodeData[trimmedTaskCostCode].scheduledHours += scheduledHours;
+        costCodeData[normalizedTaskCostCode].actualHours += actualHours;
+        costCodeData[normalizedTaskCostCode].scheduledHours += scheduledHours;
       });
     });
     
