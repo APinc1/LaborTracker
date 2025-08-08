@@ -306,10 +306,15 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   </div>
                 )}
                 
-                {remainingHours !== undefined && remainingHours > 0 && (
+                {remainingHours !== undefined && (
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span className={remainingHoursColor || 'text-orange-600'}>{remainingHours.toFixed(1)}h remaining</span>
+                    <span className={remainingHoursColor || 'text-orange-600'}>
+                      {remainingHours <= 0 
+                        ? `${Math.abs(remainingHours).toFixed(1)}h overrun` 
+                        : `${remainingHours.toFixed(1)}h remaining`
+                      }
+                    </span>
                   </div>
                 )}
                 
@@ -407,24 +412,19 @@ export default function DraggableTaskList({
     
     const percentage = (remainingHours / totalBudgetHours) * 100;
     
-    if (percentage <= 0) {
-      return 'text-red-600';
+    if (remainingHours <= 0) {
+      return 'text-red-600'; // Red for zero or negative (overrun)
     } else if (percentage <= 15) {
-      return 'text-yellow-600';
+      return 'text-yellow-600'; // Yellow for low remaining (15% or less)
     } else {
-      return 'text-green-600';
+      return 'text-green-600'; // Green for healthy remaining
     }
   };
 
   // Calculate remaining hours for a cost code up to the current task date
   const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[], taskAssignments: any[]) => {
     const costCode = task.costCode;
-    console.log(`🔍 Calculating remaining hours for task: ${task.name}, costCode: ${costCode}`);
-    
-    if (!costCode) {
-      console.log(`❌ No cost code for task: ${task.name}`);
-      return { remainingHours: undefined, totalBudgetHours: 0 };
-    }
+    if (!costCode) return { remainingHours: undefined, totalBudgetHours: 0 };
 
     // Get total budget hours for this cost code
     const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
@@ -461,16 +461,10 @@ export default function DraggableTaskList({
       return total;
     }, 0);
 
-    console.log(`💰 Budget hours for ${costCode}: ${costCodeBudgetHours}`);
-    
-    if (costCodeBudgetHours === 0) {
-      console.log(`❌ No budget hours found for cost code: ${costCode}`);
-      return { remainingHours: undefined, totalBudgetHours: 0 };
-    }
+    if (costCodeBudgetHours === 0) return { remainingHours: undefined, totalBudgetHours: 0 };
 
     // Find all tasks for this cost code up to and including the current task date
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
-    console.log(`📅 Current task date: ${task.taskDate}, timestamp: ${currentTaskDate}`);
     
     const relevantTasks = allTasks.filter((t: any) => {
       if (!t.costCode) return false;
@@ -524,15 +518,8 @@ export default function DraggableTaskList({
     // Calculate remaining hours
     const remainingHours = costCodeBudgetHours - usedHours;
     
-    console.log(`📊 Final calculation for ${task.name}:`, {
-      costCodeBudgetHours,
-      usedHours,
-      remainingHours,
-      finalRemainingHours: Math.max(0, remainingHours)
-    });
-    
     return {
-      remainingHours: Math.max(0, remainingHours), // Don't show negative hours
+      remainingHours: remainingHours, // Allow negative hours to show overruns
       totalBudgetHours: costCodeBudgetHours
     };
   };
