@@ -107,16 +107,8 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
-  // State for showing assignments in task cards
-  const [showAssignments, setShowAssignments] = useState<{
-    yesterday: boolean;
-    today: boolean;
-    tomorrow: boolean;
-  }>({
-    yesterday: false,
-    today: false,
-    tomorrow: false,
-  });
+  // State for selected day for assignments
+  const [selectedDay, setSelectedDay] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
 
   const getEmployeeStatus = (hours: number) => {
     if (hours > 8) return { 
@@ -176,6 +168,48 @@ export default function Dashboard() {
   const getLocation = (locationId: string) => {
     return (locations as any[]).find((location: any) => location.locationId === locationId);
   };
+
+  // Get assignments and tasks for the selected day
+  const getSelectedDateData = () => {
+    let selectedDate = '';
+    let selectedTasks: any[] = [];
+    let selectedDateFormatted = '';
+    
+    switch (selectedDay) {
+      case 'yesterday':
+        selectedDate = previousDayFormatted;
+        selectedTasks = previousDayTasks as any[];
+        selectedDateFormatted = format(previousDay, "EEEE, MMMM d, yyyy");
+        break;
+      case 'today':
+        selectedDate = todayFormatted;
+        selectedTasks = todayTasks as any[];
+        selectedDateFormatted = format(today, "EEEE, MMMM d, yyyy");
+        break;
+      case 'tomorrow':
+        selectedDate = nextDayFormatted;
+        selectedTasks = nextDayTasks as any[];
+        selectedDateFormatted = format(nextDay, "EEEE, MMMM d, yyyy");
+        break;
+    }
+    
+    // Get task IDs for the selected date
+    const taskIds = selectedTasks.map((task: any) => task.id);
+    
+    // Filter assignments for tasks on the selected date
+    const filteredAssignments = (assignments as any[]).filter((assignment: any) => 
+      taskIds.includes(assignment.taskId)
+    );
+    
+    return {
+      selectedDate,
+      selectedTasks,
+      selectedDateFormatted,
+      filteredAssignments
+    };
+  };
+
+  const selectedDateData = getSelectedDateData();
 
   // Helper functions to get enhanced task information
   const getProjectName = (task: any) => {
@@ -349,23 +383,16 @@ export default function Dashboard() {
         {/* Three-Day Schedule Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Previous Day Tasks */}
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${selectedDay === 'yesterday' ? 'ring-2 ring-primary bg-primary/5' : 'hover:shadow-md'}`}
+            onClick={() => setSelectedDay('yesterday')}
+          >
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Yesterday</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="outline">
-                    {(previousDayTasks as any[]).length} Tasks
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAssignments(prev => ({ ...prev, yesterday: !prev.yesterday }))}
-                    className="text-xs"
-                  >
-                    {showAssignments.yesterday ? "Hide" : "Show"} Assignments
-                  </Button>
-                </div>
+                <Badge variant="outline">
+                  {(previousDayTasks as any[]).length} Tasks
+                </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(previousDay, "EEEE, MMMM d, yyyy")}
@@ -375,29 +402,22 @@ export default function Dashboard() {
               {(previousDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                (previousDayTasks as any[]).map((task: any) => renderTaskCard(task, previousDayFormatted, showAssignments.yesterday))
+                (previousDayTasks as any[]).map((task: any) => renderTaskCard(task, previousDayFormatted, selectedDay === 'yesterday'))
               )}
             </CardContent>
           </Card>
 
           {/* Today's Tasks */}
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${selectedDay === 'today' ? 'ring-2 ring-primary bg-primary/5' : 'hover:shadow-md'}`}
+            onClick={() => setSelectedDay('today')}
+          >
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Today</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Badge className="bg-primary text-primary-foreground">
-                    {(todayTasks as any[]).length} Tasks
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAssignments(prev => ({ ...prev, today: !prev.today }))}
-                    className="text-xs"
-                  >
-                    {showAssignments.today ? "Hide" : "Show"} Assignments
-                  </Button>
-                </div>
+                <Badge className="bg-primary text-primary-foreground">
+                  {(todayTasks as any[]).length} Tasks
+                </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(today, "MMMM d, yyyy")}
@@ -407,29 +427,22 @@ export default function Dashboard() {
               {(todayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled for today</p>
               ) : (
-                (todayTasks as any[]).map((task: any) => renderTaskCard(task, todayFormatted, showAssignments.today))
+                (todayTasks as any[]).map((task: any) => renderTaskCard(task, todayFormatted, selectedDay === 'today'))
               )}
             </CardContent>
           </Card>
 
           {/* Next Day Tasks */}
-          <Card>
+          <Card 
+            className={`cursor-pointer transition-all ${selectedDay === 'tomorrow' ? 'ring-2 ring-primary bg-primary/5' : 'hover:shadow-md'}`}
+            onClick={() => setSelectedDay('tomorrow')}
+          >
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
                 <CardTitle>Tomorrow</CardTitle>
-                <div className="flex items-center space-x-2">
-                  <Badge variant="secondary">
-                    {(nextDayTasks as any[]).length} Tasks
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAssignments(prev => ({ ...prev, tomorrow: !prev.tomorrow }))}
-                    className="text-xs"
-                  >
-                    {showAssignments.tomorrow ? "Hide" : "Show"} Assignments
-                  </Button>
-                </div>
+                <Badge variant="secondary">
+                  {(nextDayTasks as any[]).length} Tasks
+                </Badge>
               </div>
               <p className="text-sm text-gray-600 mt-1">
                 {format(nextDay, "EEEE, MMMM d, yyyy")}
@@ -439,7 +452,7 @@ export default function Dashboard() {
               {(nextDayTasks as any[]).length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No tasks scheduled</p>
               ) : (
-                (nextDayTasks as any[]).map((task: any) => renderTaskCard(task, nextDayFormatted, showAssignments.tomorrow))
+                (nextDayTasks as any[]).map((task: any) => renderTaskCard(task, nextDayFormatted, selectedDay === 'tomorrow'))
               )}
             </CardContent>
           </Card>
@@ -449,7 +462,12 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="border-b">
             <div className="flex items-center justify-between">
-              <CardTitle>Employee Assignments</CardTitle>
+              <div>
+                <CardTitle>Employee Assignments</CardTitle>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedDateData.selectedDateFormatted}
+                </p>
+              </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -486,14 +504,14 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(assignments as any[]).length === 0 ? (
+                  {selectedDateData.filteredAssignments.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={12} className="text-center py-8 text-gray-500">
-                        No employee assignments found
+                        No employee assignments found for {selectedDateData.selectedDateFormatted}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    (assignments as any[]).map((assignment: any) => {
+                    selectedDateData.filteredAssignments.map((assignment: any) => {
                       const employee = getEmployee(assignment.employeeId);
                       const crew = getCrew(employee?.crewId);
                       const task = getTask(assignment.taskId);
