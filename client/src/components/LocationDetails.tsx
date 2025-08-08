@@ -821,6 +821,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startTime: null,
               finishTime: null,
               notes: null,
+              order: tasksToCreate.length, // Properly assign order based on creation sequence
               dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
@@ -914,6 +915,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startTime: null,
               finishTime: null,
               notes: null,
+              order: tasksToCreate.length, // Properly assign order based on creation sequence
               dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
@@ -949,6 +951,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               startTime: null,
               finishTime: null,
               notes: null,
+              order: tasksToCreate.length, // Properly assign order based on creation sequence
               dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
