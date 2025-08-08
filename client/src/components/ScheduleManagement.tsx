@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2, CalendarDays } from "lucide-react";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from "date-fns";
+import { Plus, Calendar as CalendarIcon, Clock, User, MapPin, Tag, Edit, Trash2, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addWeeks, addMonths, subWeeks, subMonths } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import CreateTaskModal from "./CreateTaskModal";
@@ -72,6 +72,23 @@ export default function ScheduleManagement() {
   const confirmDeleteTask = () => {
     if (taskToDelete) {
       handleDeleteTask.mutate(taskToDelete.id.toString());
+    }
+  };
+
+  // Navigation functions for week/month view
+  const navigatePrevious = () => {
+    if (viewMode === 'week') {
+      setSelectedDate(subWeeks(selectedDate, 1));
+    } else {
+      setSelectedDate(subMonths(selectedDate, 1));
+    }
+  };
+
+  const navigateNext = () => {
+    if (viewMode === 'week') {
+      setSelectedDate(addWeeks(selectedDate, 1));
+    } else {
+      setSelectedDate(addMonths(selectedDate, 1));
     }
   };
 
@@ -588,13 +605,31 @@ export default function ScheduleManagement() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5" />
-                    {viewMode === 'week' 
-                      ? `Week of ${format(dateRange.start, 'MMMM d, yyyy')}`
-                      : `${format(dateRange.start, 'MMMM yyyy')}`
-                    }
-                  </CardTitle>
+                  <div className="flex items-center space-x-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={navigatePrevious}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <CardTitle className="flex items-center gap-2">
+                      <CalendarIcon className="w-5 h-5" />
+                      {viewMode === 'week' 
+                        ? `Week of ${format(dateRange.start, 'MMMM d, yyyy')}`
+                        : `${format(dateRange.start, 'MMMM yyyy')}`
+                      }
+                    </CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={navigateNext}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center gap-2">
                       <Button
@@ -699,23 +734,6 @@ export default function ScheduleManagement() {
                                       <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
                                     )}
                                   </div>
-                                  {(() => {
-                                    const result = calculateRemainingHours(task, tasks, allBudgetItems);
-                                    const remainingHours = result?.remainingHours;
-                                    const totalBudgetHours = result?.totalBudgetHours || 0;
-                                    
-                                    return remainingHours !== null && (
-                                      <div className="flex items-center space-x-1 text-xs text-gray-600">
-                                        <Clock className="w-3 h-3" />
-                                        <span className={getRemainingHoursColor(remainingHours, totalBudgetHours)}>
-                                          {remainingHours <= 0 
-                                            ? `${Math.abs(remainingHours).toFixed(1)}h over` 
-                                            : `${remainingHours.toFixed(1)}h remaining`
-                                          }
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
                                   <div className="mt-1">
                                     <Badge variant="outline" className="text-xs">
                                       {task.costCode}
