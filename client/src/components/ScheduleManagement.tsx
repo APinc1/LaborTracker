@@ -120,12 +120,32 @@ export default function ScheduleManagement() {
 
   // Fetch all budget items for remaining hours calculation
   const { data: allBudgetItems = [] } = useQuery({
-    queryKey: ["/api/budget/all"],
+    queryKey: ["/api/budget/all", selectedProject],
     queryFn: async () => {
-      // We need to get budget items for all locations to calculate remaining hours properly
-      // For now, we'll try to get them based on the selected project/location context
-      const allLocations = selectedProject && selectedProject !== "ALL_PROJECTS" ? locations : [];
-      const budgetPromises = allLocations.map(async (location: any) => {
+      // Get budget items for all relevant locations
+      let locationsToFetch = [];
+      
+      if (selectedProject === "ALL_PROJECTS") {
+        // When viewing all projects, get locations from all projects
+        const projectPromises = projects.map(async (project: any) => {
+          try {
+            const response = await fetch(`/api/projects/${project.id}/locations`);
+            if (response.ok) {
+              return await response.json();
+            }
+          } catch (error) {
+            console.error(`Failed to fetch locations for project ${project.id}:`, error);
+          }
+          return [];
+        });
+        const locationArrays = await Promise.all(projectPromises);
+        locationsToFetch = locationArrays.flat();
+      } else {
+        // When viewing a specific project, use its locations
+        locationsToFetch = locations;
+      }
+
+      const budgetPromises = locationsToFetch.map(async (location: any) => {
         try {
           const response = await fetch(`/api/locations/${location.locationId}/budget`);
           if (response.ok) {
@@ -139,7 +159,7 @@ export default function ScheduleManagement() {
       const budgetArrays = await Promise.all(budgetPromises);
       return budgetArrays.flat();
     },
-    enabled: selectedProject !== "ALL_PROJECTS" && locations.length > 0,
+    enabled: projects.length > 0,
     staleTime: 30000,
   });
 
