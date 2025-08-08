@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   MapPin, 
@@ -351,27 +352,27 @@ export default function Dashboard() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Employee</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Type</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Crew</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Assigned Task</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Hours</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Crew</TableHead>
+                    <TableHead>Assigned Task</TableHead>
+                    <TableHead>Hours</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {(assignments as any[]).length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                         No employee assignments found
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     (assignments as any[]).map((assignment: any) => {
                       const employee = (employees as any[]).find((e: any) => e.id === assignment.employeeId);
@@ -379,13 +380,13 @@ export default function Dashboard() {
                       const status = getEmployeeStatus(hours);
                       
                       return (
-                        <tr
+                        <TableRow
                           key={assignment.id}
-                          className={`border-b border-gray-100 hover:bg-gray-50 ${
-                            hours >= 8 ? "bg-red-50" : hours < 8 ? "bg-yellow-50" : ""
+                          className={`hover:bg-gray-50 ${
+                            hours > 8 ? "bg-red-50" : hours < 8 ? "bg-yellow-50" : "bg-green-50"
                           }`}
                         >
-                          <td className="py-3 px-4">
+                          <TableCell>
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                                 <User className="text-gray-600 text-sm" />
@@ -395,45 +396,48 @@ export default function Dashboard() {
                                 <p className="text-sm text-gray-500">{employee?.teamMemberId || "N/A"}</p>
                               </div>
                             </div>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <Badge variant={getEmployeeTypeVariant(employee?.employeeType || "")}>
                               {employee?.employeeType || "Unknown"}
                             </Badge>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <span className="text-gray-600">{employee?.crewId || "Unassigned"}</span>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <div>
                               <p className="font-medium text-gray-800">{assignment.taskName || assignment.taskId}</p>
                               <p className="text-sm text-gray-500">Task Assignment</p>
                             </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`font-medium ${status.textColor}`}>
-                              {hours.toFixed(1)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Clock className="w-4 h-4 text-gray-500" />
+                              <span className={`font-medium ${status.textColor}`}>
+                                {hours.toFixed(1)}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <div className="flex items-center space-x-2">
                               <div className={`w-3 h-3 ${status.color} rounded-full`}></div>
                               <span className={`text-sm ${status.textColor} font-medium`}>
                                 {status.text}
                               </span>
                             </div>
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
                               Edit
                             </Button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
