@@ -114,6 +114,28 @@ export default function Dashboard() {
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
+  const getEmployee = (employeeId: number) => {
+    return (employees as any[]).find((emp: any) => emp.id === employeeId);
+  };
+
+  const getCrew = (crewId: number) => {
+    return (crews as any[]).find((crew: any) => crew.id === crewId);
+  };
+
+  const getTask = (taskId: number) => {
+    return [...(todayTasks as any[]), ...(previousDayTasks as any[]), ...(nextDayTasks as any[])]
+      .find((task: any) => task.id === taskId || task.taskId === taskId);
+  };
+
+  const getProject = (task: any) => {
+    if (!task) return null;
+    return (projects as any[]).find((project: any) => project.id === task.projectId);
+  };
+
+  const getLocation = (locationId: string) => {
+    return (locations as any[]).find((location: any) => location.locationId === locationId);
+  };
+
   // Helper functions to get enhanced task information
   const getProjectName = (task: any) => {
     if (!task.locationId) return "Unknown Project";
@@ -381,7 +403,9 @@ export default function Dashboard() {
                     <TableHead>Employee</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Crew</TableHead>
-                    <TableHead>Assigned Task</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Task</TableHead>
                     <TableHead>Assigned Hours</TableHead>
                     <TableHead>Daily Total Assigned</TableHead>
                     <TableHead>Schedule Status</TableHead>
@@ -391,13 +415,17 @@ export default function Dashboard() {
                 <TableBody>
                   {(assignments as any[]).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                         No employee assignments found
                       </TableCell>
                     </TableRow>
                   ) : (
                     (assignments as any[]).map((assignment: any) => {
-                      const employee = (employees as any[]).find((e: any) => e.id === assignment.employeeId);
+                      const employee = getEmployee(assignment.employeeId);
+                      const crew = getCrew(employee?.crewId);
+                      const task = getTask(assignment.taskId);
+                      const project = getProject(task);
+                      const location = getLocation(task?.locationId);
                       const totalHours = getEmployeeHours(assignment.employeeId);
                       const status = getEmployeeStatus(totalHours);
                       
@@ -423,12 +451,18 @@ export default function Dashboard() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <span className="text-gray-600">{employee?.crewId || "Unassigned"}</span>
+                            <span className="text-gray-600">{crew?.name || "Unassigned"}</span>
+                          </TableCell>
+                          <TableCell>
+                            <p className="font-medium text-gray-800">{project?.name || "Unknown Project"}</p>
+                          </TableCell>
+                          <TableCell>
+                            <p className="font-medium text-gray-800">{location?.name || "Unknown Location"}</p>
                           </TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium text-gray-800">{assignment.taskName || assignment.taskId}</p>
-                              <p className="text-sm text-gray-500">Task Assignment</p>
+                              <p className="font-medium text-gray-800">{task?.name || "Unknown Task"}</p>
+                              <p className="text-sm text-gray-500">{task?.costCode || "N/A"}</p>
                             </div>
                           </TableCell>
                           <TableCell>
