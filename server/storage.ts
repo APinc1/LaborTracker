@@ -1197,28 +1197,27 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize storage with fallback to in-memory if database fails
+// Initialize storage using Replit's managed PostgreSQL (with migrated Supabase data)
 async function initializeStorage(): Promise<IStorage> {
-  const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL;
   
   if (!connectionString) {
-    console.log("No DATABASE_URL or SUPABASE_DATABASE_URL found, using in-memory storage");
+    console.log("No DATABASE_URL found, using in-memory storage");
     return new MemStorage();
   }
   
   try {
-    const dbType = process.env.SUPABASE_DATABASE_URL ? "external Supabase" : "Replit PostgreSQL";
-    console.log(`Database connection found, testing ${dbType} connection...`);
+    console.log("✅ Using Replit PostgreSQL with migrated Supabase data");
     console.log(`Connection string format: ${connectionString.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
     const dbStorage = new DatabaseStorage();
     
-    // Test the connection by trying to fetch users (more likely to exist than projects)
+    // Test the connection by trying to fetch users
     await dbStorage.getUsers();
-    console.log(`✅ Successfully connected to ${dbType} database`);
+    console.log("✅ Database connection successful");
     return dbStorage;
   } catch (error) {
     console.error("❌ Failed to connect to database, falling back to in-memory storage:");
-    console.error("Error details:", error.message);
+    console.error("Error details:", (error as Error).message);
     console.error("Full error:", error);
     console.log("Using in-memory storage for development (data will not persist between server restarts)");
     return new MemStorage();
