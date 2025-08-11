@@ -85,21 +85,28 @@ export default function UserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: (userData: UserFormData) =>
-      apiRequest("POST", "/api/users", userData),
-    onSuccess: () => {
+    mutationFn: (userData: UserFormData) => {
+      console.log("🚀 Creating user with data:", userData);
+      return apiRequest("POST", "/api/users", userData);
+    },
+    onSuccess: async (result) => {
+      console.log("✅ User creation success:", result);
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.removeQueries({ queryKey: ["/api/users"] });
-      refetch();
+      await refetch();
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
+      // Small delay to ensure UI updates
+      setTimeout(() => {
+        toast({
+          title: "Success",
+          description: "User created successfully",
+        });
+      }, 100);
     },
     onError: (error: any) => {
+      console.error("❌ User creation error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create user",
@@ -135,14 +142,16 @@ export default function UserManagement() {
   const deleteUserMutation = useMutation({
     mutationFn: (userId: number) =>
       apiRequest("DELETE", `/api/users/${userId}`),
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.removeQueries({ queryKey: ["/api/users"] });
-      refetch();
-      toast({
-        title: "Success",
-        description: "User deleted successfully",
-      });
+      await refetch();
+      setTimeout(() => {
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        });
+      }, 100);
     },
     onError: (error: any) => {
       toast({
