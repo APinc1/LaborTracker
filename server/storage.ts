@@ -894,29 +894,58 @@ class DatabaseStorage implements IStorage {
   private db: any;
 
   constructor() {
-    console.log("Using Replit's managed PostgreSQL database with migrated Supabase data");
+    console.log("Attempting Supabase connection...");
     
-    // Now using Replit's DATABASE_URL (your Supabase data has been migrated)
-    const connectionString = process.env.DATABASE_URL;
+    // Try Supabase first, then fall back to Replit if needed
+    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+    const replitUrl = process.env.DATABASE_URL;
     
-    if (!connectionString) {
-      throw new Error("DATABASE_URL environment variable is required");
+    if (supabaseUrl) {
+      console.log("Using Supabase database connection");
+      try {
+        // For Supabase, use postgres driver with specific SSL configuration
+        const sql = postgres(supabaseUrl, {
+          ssl: 'require',
+          max: 1, // Limit connections for Supabase free tier
+          idle_timeout: 20,
+          connect_timeout: 10
+        });
+        this.db = drizzlePostgres(sql, {
+          schema: {
+            users,
+            projects,
+            budgetLineItems,
+            locations,
+            locationBudgets,
+            crews,
+            employees,
+            tasks,
+            employeeAssignments,
+          },
+        });
+      } catch (error) {
+        console.error("Supabase connection failed:", error);
+        throw error;
+      }
+    } else if (replitUrl) {
+      console.log("Using Replit database as fallback");
+      const sql = neon(replitUrl);
+      this.db = drizzle(sql, {
+        schema: {
+          users,
+          projects,
+          budgetLineItems,
+          locations,
+          locationBudgets,
+          crews,
+          employees,
+          tasks,
+          employeeAssignments,
+        },
+      });
+    } else {
+      throw new Error("No database URL available");
     }
-    
-    const sql = neon(connectionString);
-    this.db = drizzle(sql, {
-      schema: {
-        users,
-        projects,
-        budgetLineItems,
-        locations,
-        locationBudgets,
-        crews,
-        employees,
-        tasks,
-        employeeAssignments,
-      },
-    });
   }
 
   // User methods
@@ -1197,31 +1226,46 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize storage using Replit's managed PostgreSQL (with migrated Supabase data)
+// Initialize storage with priority for Supabase, fallback to Replit/in-memory
 async function initializeStorage(): Promise<IStorage> {
-  const connectionString = process.env.DATABASE_URL;
+  const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+  const replitUrl = process.env.DATABASE_URL;
   
-  if (!connectionString) {
-    console.log("No DATABASE_URL found, using in-memory storage");
-    return new MemStorage();
+  // First try Supabase if available
+  if (supabaseUrl) {
+    try {
+      console.log("🔗 Attempting Supabase connection...");
+      console.log(`Supabase URL format: ${supabaseUrl.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
+      const dbStorage = new DatabaseStorage();
+      
+      // Test the connection
+      await dbStorage.getUsers();
+      console.log("✅ Successfully connected to Supabase database");
+      return dbStorage;
+    } catch (error) {
+      console.error("❌ Supabase connection failed:");
+      console.error("Error details:", (error as Error).message);
+      console.error("Full error:", error);
+    }
   }
   
-  try {
-    console.log("✅ Using Replit PostgreSQL with migrated Supabase data");
-    console.log(`Connection string format: ${connectionString.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
-    const dbStorage = new DatabaseStorage();
-    
-    // Test the connection by trying to fetch users
-    await dbStorage.getUsers();
-    console.log("✅ Database connection successful");
-    return dbStorage;
-  } catch (error) {
-    console.error("❌ Failed to connect to database, falling back to in-memory storage:");
-    console.error("Error details:", (error as Error).message);
-    console.error("Full error:", error);
-    console.log("Using in-memory storage for development (data will not persist between server restarts)");
-    return new MemStorage();
+  // Fallback to Replit database
+  if (replitUrl) {
+    try {
+      console.log("🔄 Falling back to Replit PostgreSQL...");
+      // Create a new instance without Supabase URL set
+      process.env.SUPABASE_DATABASE_URL = "";
+      const dbStorage = new DatabaseStorage();
+      await dbStorage.getUsers();
+      console.log("✅ Connected to Replit PostgreSQL");
+      return dbStorage;
+    } catch (error) {
+      console.error("❌ Replit database also failed:", (error as Error).message);
+    }
   }
+  
+  console.log("⚠️ All database connections failed, using in-memory storage");
+  return new MemStorage();
 }
 
 export const storagePromise = initializeStorage();
