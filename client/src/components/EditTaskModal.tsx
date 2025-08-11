@@ -2600,7 +2600,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           })
                         );
                         
-                        // Update currentDate for next iteration
+                        // Update currentDate for next iteration - CRITICAL for cascading
                         currentDate = newSequentialDate;
                         
                         // If this task is in a linked group, all tasks in the group get the same date
