@@ -1022,8 +1022,8 @@ class DatabaseStorage implements IStorage {
       
       // Now delete the user
       const result = await this.db.delete(users).where(eq(users.id, id));
-      console.log(`🗑️ User deletion result: rowCount = ${result.rowCount}`);
-      return result.rowCount > 0;
+      console.log(`🗑️ User deletion result: rowCount = ${result.rowCount}, result =`, result);
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('❌ Error in deleteUser:', error);
       return false;
