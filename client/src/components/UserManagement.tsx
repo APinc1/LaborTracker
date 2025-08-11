@@ -67,9 +67,11 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const { toast } = useToast();
 
-  const { data: users = [], isLoading } = useQuery({
+  const { data: users = [], isLoading, refetch } = useQuery({
     queryKey: ["/api/users"],
-  }) as { data: any[], isLoading: boolean };
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache in memory
+  }) as { data: any[], isLoading: boolean, refetch: () => Promise<any> };
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -87,7 +89,8 @@ export default function UserManagement() {
       apiRequest("POST", "/api/users", userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
+      queryClient.removeQueries({ queryKey: ["/api/users"] });
+      refetch();
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
@@ -110,7 +113,8 @@ export default function UserManagement() {
       apiRequest("PUT", `/api/users/${userData.id}`, userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
+      queryClient.removeQueries({ queryKey: ["/api/users"] });
+      refetch();
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
@@ -133,7 +137,8 @@ export default function UserManagement() {
       apiRequest("DELETE", `/api/users/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.refetchQueries({ queryKey: ["/api/users"] });
+      queryClient.removeQueries({ queryKey: ["/api/users"] });
+      refetch();
       toast({
         title: "Success",
         description: "User deleted successfully",
