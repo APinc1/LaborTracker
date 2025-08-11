@@ -1207,20 +1207,411 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize storage with fallback to in-memory if database fails
+// Hybrid storage class that automatically falls back to in-memory on database errors
+class HybridStorage implements IStorage {
+  private dbStorage: DatabaseStorage | null = null;
+  private memStorage: MemStorage;
+  private isDatabaseAvailable = false;
+
+  constructor() {
+    this.memStorage = new MemStorage();
+    
+    if (process.env.DATABASE_URL) {
+      try {
+        this.dbStorage = new DatabaseStorage();
+        console.log("DATABASE_URL found, will attempt database operations with automatic fallback");
+      } catch (error) {
+        console.error("Failed to initialize database storage:", error);
+        this.dbStorage = null;
+      }
+    } else {
+      console.log("No DATABASE_URL found, using in-memory storage");
+    }
+  }
+
+  private async executeWithFallback<T>(
+    dbOperation: () => Promise<T>,
+    memOperation: () => Promise<T>
+  ): Promise<T> {
+    if (this.dbStorage && this.isDatabaseAvailable) {
+      try {
+        return await dbOperation();
+      } catch (error) {
+        console.warn("Database operation failed, falling back to in-memory storage:", error.message);
+        this.isDatabaseAvailable = false;
+        return await memOperation();
+      }
+    } else if (this.dbStorage && !this.isDatabaseAvailable) {
+      // Try database once more, maybe connection is restored
+      try {
+        const result = await dbOperation();
+        this.isDatabaseAvailable = true;
+        console.log("Database connection restored!");
+        return result;
+      } catch (error) {
+        return await memOperation();
+      }
+    } else {
+      return await memOperation();
+    }
+  }
+
+  // User methods
+  async getUsers(): Promise<User[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getUsers(),
+      () => this.memStorage.getUsers()
+    );
+  }
+
+  async getUser(id: number): Promise<User | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getUser(id),
+      () => this.memStorage.getUser(id)
+    );
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getUserByUsername(username),
+      () => this.memStorage.getUserByUsername(username)
+    );
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getUserByResetToken(token),
+      () => this.memStorage.getUserByResetToken(token)
+    );
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createUser(user),
+      () => this.memStorage.createUser(user)
+    );
+  }
+
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateUser(id, user),
+      () => this.memStorage.updateUser(id, user)
+    );
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteUser(id),
+      () => this.memStorage.deleteUser(id)
+    );
+  }
+
+  async setPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.setPasswordResetToken(userId, token, expiresAt),
+      () => this.memStorage.setPasswordResetToken(userId, token, expiresAt)
+    );
+  }
+
+  async clearPasswordResetToken(userId: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.clearPasswordResetToken(userId),
+      () => this.memStorage.clearPasswordResetToken(userId)
+    );
+  }
+
+  // Project methods
+  async getProjects(): Promise<Project[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getProjects(),
+      () => this.memStorage.getProjects()
+    );
+  }
+
+  async getProject(id: number): Promise<Project | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getProject(id),
+      () => this.memStorage.getProject(id)
+    );
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createProject(project),
+      () => this.memStorage.createProject(project)
+    );
+  }
+
+  async updateProject(id: number, project: Partial<InsertProject>): Promise<Project> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateProject(id, project),
+      () => this.memStorage.updateProject(id, project)
+    );
+  }
+
+  async deleteProject(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteProject(id),
+      () => this.memStorage.deleteProject(id)
+    );
+  }
+
+  // Budget methods
+  async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getBudgetLineItems(locationId),
+      () => this.memStorage.getBudgetLineItems(locationId)
+    );
+  }
+
+  async createBudgetLineItem(budgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createBudgetLineItem(budgetLineItem),
+      () => this.memStorage.createBudgetLineItem(budgetLineItem)
+    );
+  }
+
+  async updateBudgetLineItem(id: number, budgetLineItem: Partial<InsertBudgetLineItem>): Promise<BudgetLineItem> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateBudgetLineItem(id, budgetLineItem),
+      () => this.memStorage.updateBudgetLineItem(id, budgetLineItem)
+    );
+  }
+
+  async deleteBudgetLineItem(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteBudgetLineItem(id),
+      () => this.memStorage.deleteBudgetLineItem(id)
+    );
+  }
+
+  // Location methods
+  async getLocations(projectId: number): Promise<Location[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getLocations(projectId),
+      () => this.memStorage.getLocations(projectId)
+    );
+  }
+
+  async getAllLocations(): Promise<Location[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getAllLocations(),
+      () => this.memStorage.getAllLocations()
+    );
+  }
+
+  async getLocation(id: number): Promise<Location | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getLocation(id),
+      () => this.memStorage.getLocation(id)
+    );
+  }
+
+  async createLocation(location: InsertLocation): Promise<Location> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createLocation(location),
+      () => this.memStorage.createLocation(location)
+    );
+  }
+
+  async updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateLocation(id, location),
+      () => this.memStorage.updateLocation(id, location)
+    );
+  }
+
+  async deleteLocation(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteLocation(id),
+      () => this.memStorage.deleteLocation(id)
+    );
+  }
+
+  // Location budget methods
+  async getLocationBudgets(locationId: number): Promise<LocationBudget[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getLocationBudgets(locationId),
+      () => this.memStorage.getLocationBudgets(locationId)
+    );
+  }
+
+  async createLocationBudget(locationBudget: InsertLocationBudget): Promise<LocationBudget> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createLocationBudget(locationBudget),
+      () => this.memStorage.createLocationBudget(locationBudget)
+    );
+  }
+
+  async updateLocationBudget(id: number, locationBudget: Partial<InsertLocationBudget>): Promise<LocationBudget> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateLocationBudget(id, locationBudget),
+      () => this.memStorage.updateLocationBudget(id, locationBudget)
+    );
+  }
+
+  // Crew methods
+  async getCrews(): Promise<Crew[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getCrews(),
+      () => this.memStorage.getCrews()
+    );
+  }
+
+  async createCrew(crew: InsertCrew): Promise<Crew> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createCrew(crew),
+      () => this.memStorage.createCrew(crew)
+    );
+  }
+
+  async updateCrew(id: number, crew: Partial<InsertCrew>): Promise<Crew> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateCrew(id, crew),
+      () => this.memStorage.updateCrew(id, crew)
+    );
+  }
+
+  async deleteCrew(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteCrew(id),
+      () => this.memStorage.deleteCrew(id)
+    );
+  }
+
+  // Employee methods
+  async getEmployees(): Promise<Employee[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getEmployees(),
+      () => this.memStorage.getEmployees()
+    );
+  }
+
+  async getEmployee(id: number): Promise<Employee | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getEmployee(id),
+      () => this.memStorage.getEmployee(id)
+    );
+  }
+
+  async createEmployee(employee: InsertEmployee): Promise<Employee> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createEmployee(employee),
+      () => this.memStorage.createEmployee(employee)
+    );
+  }
+
+  async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateEmployee(id, employee),
+      () => this.memStorage.updateEmployee(id, employee)
+    );
+  }
+
+  async deleteEmployee(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteEmployee(id),
+      () => this.memStorage.deleteEmployee(id)
+    );
+  }
+
+  async createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createUserFromEmployee(employeeId, username, role),
+      () => this.memStorage.createUserFromEmployee(employeeId, username, role)
+    );
+  }
+
+  // Task methods
+  async getTasks(locationId: string | number): Promise<Task[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getTasks(locationId),
+      () => this.memStorage.getTasks(locationId)
+    );
+  }
+
+  async getTask(id: number): Promise<Task | undefined> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getTask(id),
+      () => this.memStorage.getTask(id)
+    );
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createTask(task),
+      () => this.memStorage.createTask(task)
+    );
+  }
+
+  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateTask(id, task),
+      () => this.memStorage.updateTask(id, task)
+    );
+  }
+
+  async deleteTask(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteTask(id),
+      () => this.memStorage.deleteTask(id)
+    );
+  }
+
+  async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getTasksByDateRange(startDate, endDate),
+      () => this.memStorage.getTasksByDateRange(startDate, endDate)
+    );
+  }
+
+  // Employee assignment methods
+  async getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getEmployeeAssignments(taskId),
+      () => this.memStorage.getEmployeeAssignments(taskId)
+    );
+  }
+
+  async getAllEmployeeAssignments(): Promise<EmployeeAssignment[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getAllEmployeeAssignments(),
+      () => this.memStorage.getAllEmployeeAssignments()
+    );
+  }
+
+  async createEmployeeAssignment(assignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.createEmployeeAssignment(assignment),
+      () => this.memStorage.createEmployeeAssignment(assignment)
+    );
+  }
+
+  async updateEmployeeAssignment(id: number, assignment: Partial<InsertEmployeeAssignment>): Promise<EmployeeAssignment> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.updateEmployeeAssignment(id, assignment),
+      () => this.memStorage.updateEmployeeAssignment(id, assignment)
+    );
+  }
+
+  async deleteEmployeeAssignment(id: number): Promise<void> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.deleteEmployeeAssignment(id),
+      () => this.memStorage.deleteEmployeeAssignment(id)
+    );
+  }
+
+  async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
+    return this.executeWithFallback(
+      () => this.dbStorage!.getEmployeeAssignmentsByDate(date),
+      () => this.memStorage.getEmployeeAssignmentsByDate(date)
+    );
+  }
+}
+
+// Initialize storage with hybrid approach
 function initializeStorage(): IStorage {
-  if (!process.env.DATABASE_URL) {
-    console.log("No DATABASE_URL found, using in-memory storage");
-    return new MemStorage();
-  }
-  
-  try {
-    console.log("DATABASE_URL found, connecting to Supabase PostgreSQL database");
-    return new DatabaseStorage();
-  } catch (error) {
-    console.error("Failed to connect to database, falling back to in-memory storage:", error);
-    return new MemStorage();
-  }
+  return new HybridStorage();
 }
 
 export const storage = initializeStorage();
