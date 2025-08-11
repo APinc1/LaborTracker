@@ -837,11 +837,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
               );
               if (existingIndex >= 0) {
-                allTasks[existingIndex] = updatedTask;
+                allTasks[existingIndex] = {
+                  ...allTasks[existingIndex],
+                  linkedTaskGroup: updatedTask.linkedTaskGroup,
+                  taskDate: updatedTask.taskDate,
+                  dependentOnPrevious: updatedTask.dependentOnPrevious
+                  // CRITICAL: DO NOT update order - preserve original position
+                };
               }
             });
             
-            // Sort by order and recalculate sequential dates
+            // CRITICAL: Sort by original order (NOT by date) to maintain visual positions
             allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
             
             // Use the shared utility to realign dependent tasks
@@ -909,13 +915,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('🔗 Found group tasks:', groupTasks.length, groupTasks.map(t => t.name));
       
-      if (groupTasks.length >= 2 && !skipUnlinkDialog) {
-        // Multi-task group - show unlink dialog (unless user already chose to skip it)
+      if (groupTasks.length >= 3 && !skipUnlinkDialog) {
+        // Multi-task group (3+ tasks) - show unlink dialog (unless user already chose to skip it)
         setUnlinkingGroupSize(groupTasks.length + 1); // +1 for current task
         setShowUnlinkDialog(true);
         setPendingFormData(data);
         return;
-      } else if (skipUnlinkDialog && groupTasks.length >= 2) {
+      } else if (skipUnlinkDialog && groupTasks.length >= 3) {
         // User chose "Just unlink this task" - only unlink current task but keep its current position
         console.log('🔗 JUST UNLINKING CURRENT TASK - maintaining current position');
         processedData.linkedTaskGroup = null;
@@ -923,6 +929,32 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // CRITICAL: When unlinking "just this task", it should stay in its current visual position
         // and become sequential to the task that comes immediately before it in display order
         // NOT revert to its original order-based position
+      } else if (groupTasks.length === 1) {
+        // Two-task group (current + 1 other) - directly unlink both without dialog
+        console.log('🔗 TWO-TASK GROUP - directly unlinking both tasks');
+        
+        const otherTask = groupTasks[0];
+        const allTasksInGroup = [task, otherTask];
+        
+        // Sort by order to maintain sequential flow
+        allTasksInGroup.sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        // Both tasks become unlinked and sequential
+        const groupUpdates = allTasksInGroup.map(taskToUpdate => ({
+          ...taskToUpdate,
+          linkedTaskGroup: null,
+          dependentOnPrevious: true // Both become sequential in their current positions
+        }));
+        
+        console.log('🔗 Two-task unlink updates:', groupUpdates.map(t => ({ 
+          name: t.name, 
+          order: t.order,
+          sequential: t.dependentOnPrevious 
+        })));
+        
+        // Update both tasks and handle cascading
+        batchUpdateTasksMutation.mutate(groupUpdates);
+        return;
         
         // Check if current task is first task overall - first task must stay unsequential
         const allTasksSorted = (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
@@ -1529,24 +1561,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // This is the original logic for normal sequential dependency processing
           
           // Only reassign order values for non-"unsequential_shift_others" actions
-          // After processing dependencies, sort tasks by date and reassign orders to maintain chronological positioning
-          const finalSortedTasks = [...allUpdatedTasks].sort((a, b) => {
-            const dateA = new Date(a.taskDate).getTime();
-            const dateB = new Date(b.taskDate).getTime();
-            if (dateA !== dateB) return dateA - dateB;
-            return (a.order || 0) - (b.order || 0);
-          });
-          
-          // Reassign order values to maintain chronological positioning
-          finalSortedTasks.forEach((sortedTask, index) => {
-            const originalIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (sortedTask.taskId || sortedTask.id));
-            if (originalIndex >= 0) {
-              allUpdatedTasks[originalIndex] = {
-                ...allUpdatedTasks[originalIndex],
-                order: index
-              };
-            }
-          });
+          // CRITICAL: DO NOT reassign order values for linking operations
+          // Order changes should only happen during drag-and-drop, not linking
+          // Keep original order values to maintain visual task positions
+          console.log('🔗 Preserving original task order values during linking operation');
         }
         
         console.log('Sequential cascading complete');
