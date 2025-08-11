@@ -85,9 +85,11 @@ export default function UserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: (userData: UserFormData) => {
+    mutationFn: async (userData: UserFormData) => {
       console.log("🚀 Creating user with data:", userData);
-      return apiRequest("POST", "/api/users", userData);
+      const result = await apiRequest("POST", "/api/users", userData);
+      console.log("🔍 API response:", result);
+      return result;
     },
     onSuccess: async (result) => {
       console.log("✅ User creation success:", result);
