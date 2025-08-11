@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { neon } from "@neondatabase/serverless";
 import postgres from "postgres";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, or } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -993,9 +993,41 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    const result = await this.db.delete(users).where(eq(users.id, id));
-    // Check if any rows were actually deleted
-    return result.rowCount > 0;
+    try {
+      // First, update projects to remove references to this user
+      const projectsToUpdate = await this.db.select()
+        .from(projects)
+        .where(
+          or(
+            eq(projects.defaultSuperintendent, id),
+            eq(projects.defaultProjectManager, id)
+          )
+        );
+      
+      console.log(`🔄 Found ${projectsToUpdate.length} projects referencing user ${id}`);
+      
+      if (projectsToUpdate.length > 0) {
+        for (const project of projectsToUpdate) {
+          const updateData: any = {};
+          if (project.defaultSuperintendent === id) updateData.defaultSuperintendent = null;
+          if (project.defaultProjectManager === id) updateData.defaultProjectManager = null;
+          
+          await this.db.update(projects)
+            .set(updateData)
+            .where(eq(projects.id, project.id));
+          
+          console.log(`✅ Updated project ${project.name} to remove user ${id} references`);
+        }
+      }
+      
+      // Now delete the user
+      const result = await this.db.delete(users).where(eq(users.id, id));
+      console.log(`🗑️ User deletion result: rowCount = ${result.rowCount}`);
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('❌ Error in deleteUser:', error);
+      return false;
+    }
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
