@@ -950,10 +950,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         });
       }
 
-      // Create all tasks
+      // Create all tasks SEQUENTIALLY to avoid race conditions with first task rule
       console.log('Creating tasks:', tasksToCreate);
       
-      const createPromises = tasksToCreate.map(async (task) => {
+      const results = [];
+      for (const task of tasksToCreate) {
         const response = await fetch(`/api/locations/${locationId}/tasks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -966,10 +967,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         
         const result = await response.json();
         console.log('Task created:', result);
-        return result;
-      });
-
-      const results = await Promise.all(createPromises);
+        results.push(result);
+        
+        // Small delay to ensure tasks are created in proper sequence
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
       console.log('All tasks created successfully:', results.length);
       
       // Add a small delay to ensure tasks are properly saved

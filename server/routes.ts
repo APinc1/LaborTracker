@@ -577,11 +577,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // CRITICAL: Check if this will be the first task and enforce unsequential status
-      // Only enforce for the very first task when no tasks exist at all
+      // Only enforce for the very first task when no tasks exist at all AND order is 0
       const existingTasks = await storage.getTasks(req.params.locationId);
-      const isFirstTask = existingTasks.length === 0;
+      const isActualFirstTask = existingTasks.length === 0 && (validated.order === 0 || validated.order === undefined);
       
-      if (isFirstTask && validated.dependentOnPrevious) {
+      if (isActualFirstTask && validated.dependentOnPrevious) {
         console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
         validated.dependentOnPrevious = false;
       }
