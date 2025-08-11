@@ -576,40 +576,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const validated = insertTaskSchema.parse({
-        ...req.body,
-        locationId: req.params.locationId
-      });
-      
-      // CRITICAL: Check if this will be the first task and enforce unsequential status
+      // Handle both single task and array of tasks
+      const requestData = Array.isArray(req.body) ? req.body : [req.body];
       const existingTasks = await storage.getTasks(req.params.locationId);
-      const isFirstTask = existingTasks.length === 0 || 
-                         (validated.order !== undefined && validated.order === 0) ||
-                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order!));
+      const createdTasks = [];
       
-      if (isFirstTask && validated.dependentOnPrevious) {
-        console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
-        validated.dependentOnPrevious = false;
-      }
-      
-      const task = await storage.createTask(validated);
-      
-      // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
-      if (validated.linkedTaskGroup && req.body.linkedTaskId) {
-        try {
-          const existingTask = await storage.getTask(parseInt(req.body.linkedTaskId));
-          if (existingTask && !existingTask.linkedTaskGroup) {
-            await storage.updateTask(parseInt(req.body.linkedTaskId), {
-              linkedTaskGroup: validated.linkedTaskGroup
-            });
+      for (const taskData of requestData) {
+        console.log('🔍 Processing task data:', JSON.stringify(taskData, null, 2));
+        console.log('🔍 Request body type:', typeof req.body, 'Array?', Array.isArray(req.body));
+        console.log('🔍 LocationId param:', req.params.locationId);
+        
+        const taskWithLocation = {
+          ...taskData,
+          locationId: req.params.locationId
+        };
+        console.log('🔍 Task with location:', JSON.stringify(taskWithLocation, null, 2));
+        
+        const validated = insertTaskSchema.parse(taskWithLocation);
+        
+        // CRITICAL: Check if this will be the first task and enforce unsequential status
+        const isFirstTask = existingTasks.length === 0 || 
+                           (validated.order !== undefined && validated.order === 0) ||
+                           (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order!));
+        
+        if (isFirstTask && validated.dependentOnPrevious) {
+          console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
+          validated.dependentOnPrevious = false;
+        }
+        
+        const task = await storage.createTask(validated);
+        createdTasks.push(task);
+        
+        // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
+        if (validated.linkedTaskGroup && taskData.linkedTaskId) {
+          try {
+            const existingTask = await storage.getTask(parseInt(taskData.linkedTaskId));
+            if (existingTask && !existingTask.linkedTaskGroup) {
+              await storage.updateTask(parseInt(taskData.linkedTaskId), {
+                linkedTaskGroup: validated.linkedTaskGroup
+              });
+            }
+          } catch (updateError) {
+            console.error('Failed to update linked task group:', updateError);
+            // Continue with task creation even if linking fails
           }
-        } catch (updateError) {
-          console.error('Failed to update linked task group:', updateError);
-          // Continue with task creation even if linking fails
         }
       }
       
-      res.status(201).json(task);
+      res.status(201).json(Array.isArray(req.body) ? createdTasks : createdTasks[0]);
     } catch (error: any) {
       console.error('Task validation error:', error);
       if (error.issues) {

@@ -87,6 +87,7 @@ export default function UserManagement() {
       apiRequest("POST", "/api/users", userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
@@ -109,6 +110,7 @@ export default function UserManagement() {
       apiRequest("PUT", `/api/users/${userData.id}`, userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
@@ -131,6 +133,7 @@ export default function UserManagement() {
       apiRequest("DELETE", `/api/users/${userId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      queryClient.refetchQueries({ queryKey: ["/api/users"] });
       toast({
         title: "Success",
         description: "User deleted successfully",
