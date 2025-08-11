@@ -107,13 +107,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   // Add location mutation
   const addLocationMutation = useMutation({
     mutationFn: async (locationData: any) => {
-      return await apiRequest(`/api/projects/${projectId}/locations`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(locationData),
-      });
+      return await apiRequest("POST", `/api/projects/${projectId}/locations`, locationData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
