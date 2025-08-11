@@ -555,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('🔍 WORKING-getTasks for location:', locationParam, 'DB ID:', locationDbId);
       
       const postgres = (await import('postgres')).default;
-      const sql = postgres(process.env.DATABASE_URL!, {
+      const sql = postgres(process.env.SUPABASE_DATABASE_URL!, {
         ssl: 'require',
         max: 1,
         connect_timeout: 10,
@@ -671,9 +671,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const costCode = taskData.costCode || null;
             const estimatedHours = parseFloat(taskData.estimatedHours || '0') || null;
             
-            // Use direct database connection to execute
+            // Use direct database connection to execute - MUST use Supabase URL
             const postgres = (await import('postgres')).default;
-            const directDb = postgres(process.env.DATABASE_URL!, {
+            const directDb = postgres(process.env.SUPABASE_DATABASE_URL!, {
               ssl: 'require',
               max: 1,
               prepare: false
