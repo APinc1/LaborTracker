@@ -1,0 +1,123 @@
+Goal
+Connect the Node/TS Express backend (Drizzle ORM + connect-pg-simple) to Supabase Postgres using the Session pooler on the project host db.<project-ref>.supabase.co:6543 with SSL, and expose a simple health check.
+
+Steps
+Add env secret
+
+Create DATABASE_URL with this exact format (replace placeholders):
+
+perl
+Copy
+Edit
+postgresql://<DB_USER>:<DB_PASSWORD>@db.<project-ref>.supabase.co:6543/postgres?sslmode=require
+Do not use *.pooler.supabase.com and do not use port 5432.
+
+Install/confirm packages
+
+pgsql
+Copy
+Edit
+npm i pg drizzle-orm connect-pg-simple express-session
+npm i -D drizzle-kit tsx @types/express-session @types/pg
+Drizzle config
+Create/overwrite drizzle.config.ts:
+
+ts
+Copy
+Edit
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  schema: "./src/db/schema.ts",
+  out: "./drizzle",
+  driver: "pg",
+  dbCredentials: { connectionString: process.env.DATABASE_URL! },
+});
+Add script:
+
+json
+Copy
+Edit
+"scripts": { "db:push": "drizzle-kit push:pg" }
+DB pool + Drizzle
+Create src/db/index.ts:
+
+ts
+Copy
+Edit
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  allowExitOnIdle: true,
+});
+
+export const db = drizzle(pool);
+Sessions (connect-pg-simple)
+In src/server.ts (or wherever Express is created), wire the shared pool:
+
+ts
+Copy
+Edit
+import express from "express";
+import session from "express-session";
+import pgSession from "connect-pg-simple";
+import { pool } from "./db";
+
+const app = express();
+const PgSession = pgSession(session);
+
+app.use(session({
+  store: new PgSession({
+    pool,
+    tableName: "user_sessions",
+    createTableIfMissing: true,
+  }),
+  secret: process.env.SESSION_SECRET!,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { sameSite: "lax", secure: "auto" },
+}));
+DB health endpoint
+Add after session middleware:
+
+ts
+Copy
+Edit
+app.get("/health/db", async (_req, res) => {
+  try {
+    const r = await pool.query("select 1 as ok");
+    res.status(200).json({ ok: r.rows[0]?.ok === 1 });
+  } catch (e:any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+Connectivity sanity check (Shell)
+Run these in the Replit Shell:
+
+csharp
+Copy
+Edit
+getent hosts db.<project-ref>.supabase.co
+nc -vz db.<project-ref>.supabase.co 6543
+Both must resolve/connect. If not, you’re using the wrong host/port.
+
+Run migrations
+
+arduino
+Copy
+Edit
+npm run db:push
+Start app and verify
+Start the dev server, hit GET /health/db, and expect { "ok": true }.
+
+Notes
+We must use the Session pooler on db.<project-ref>.supabase.co:6543 with ?sslmode=require.
+
+Avoid the regional DNS like aws-0-us-east-2.pooler.supabase.com (Replit can’t resolve it).
+
+Keep a small pool (max 5) and reuse it for both Drizzle and the session store.
