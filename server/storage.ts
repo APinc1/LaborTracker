@@ -1247,18 +1247,27 @@ class DatabaseStorage implements IStorage {
     console.log('🔍 STORAGE-getTasks - using existing db connection for location_id:', numericId);
     
     try {
-      console.log('🔍 STORAGE-getTasks - querying with Drizzle ORM for locationId:', numericId, 'type:', typeof numericId);
-      const result = await this.db.select().from(tasks).where(eq(tasks.locationId, numericId));
-      console.log('✅ STORAGE-getTasks - Drizzle ORM found tasks:', result.length);
+      // Use raw SQL directly to avoid Drizzle schema conflicts
+      const postgres = await import('postgres');
+      const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
       
-      // Debug: Raw SQL to see what data exists
-      const debugSql = `SELECT COUNT(*) as count FROM tasks WHERE location_id = $1`;
-      console.log('🔍 STORAGE-getTasks - debug query:', debugSql, 'with value:', numericId);
+      if (!databaseUrl) {
+        throw new Error('No database URL available');
+      }
       
-      return result;
+      const freshSql = postgres.default(databaseUrl, {
+        idle_timeout: 20,
+        max_lifetime: 60 * 30,
+      });
+      
+      console.log('🔍 STORAGE-getTasks - querying with raw SQL for locationId:', numericId);
+      const result = await freshSql`SELECT * FROM tasks WHERE location_id = ${numericId} ORDER BY priority ASC, task_date ASC`;
+      console.log('✅ STORAGE-getTasks - Raw SQL found tasks:', result.length);
+      await freshSql.end();
+      return result as Task[];
     } catch (error) {
       console.error('❌ STORAGE-getTasks - DB error:', error);
-      throw error;
+      return [];
     }
 
   }
@@ -1369,11 +1378,53 @@ class DatabaseStorage implements IStorage {
 
   // Employee assignment methods
   async getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]> {
-    return await this.db.select().from(employeeAssignments).where(eq(employeeAssignments.taskId, taskId));
+    // Use raw SQL to avoid schema conflicts
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
+    }
+    
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
+    try {
+      const result = await freshSql`SELECT * FROM employee_assignments WHERE task_id = ${taskId}`;
+      await freshSql.end();
+      return result as EmployeeAssignment[];
+    } catch (error) {
+      console.error('❌ GET_EMPLOYEE_ASSIGNMENTS SQL ERROR:', error);
+      await freshSql.end();
+      throw error;
+    }
   }
 
   async getAllEmployeeAssignments(): Promise<EmployeeAssignment[]> {
-    return await this.db.select().from(employeeAssignments);
+    // Use raw SQL to avoid schema conflicts
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
+    }
+    
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
+    try {
+      const result = await freshSql`SELECT * FROM employee_assignments`;
+      await freshSql.end();
+      return result as EmployeeAssignment[];
+    } catch (error) {
+      console.error('❌ GET_ALL_EMPLOYEE_ASSIGNMENTS SQL ERROR:', error);
+      await freshSql.end();
+      throw error;
+    }
   }
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
@@ -1387,7 +1438,27 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteEmployeeAssignment(id: number): Promise<void> {
-    await this.db.delete(employeeAssignments).where(eq(employeeAssignments.id, id));
+    // Use raw SQL to avoid schema conflicts
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
+    }
+    
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
+    try {
+      await freshSql`DELETE FROM employee_assignments WHERE id = ${id}`;
+      await freshSql.end();
+    } catch (error) {
+      console.error('❌ DELETE_EMPLOYEE_ASSIGNMENT SQL ERROR:', error);
+      await freshSql.end();
+      throw error;
+    }
   }
 
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
