@@ -918,9 +918,9 @@ class DatabaseStorage implements IStorage {
         const sql = postgres(supabaseUrl, {
           ssl: 'require',
           max: 1, // Limit connections for Supabase free tier
-          idle_timeout: 20,
-          connect_timeout: 5,
-          query_timeout: 10
+          idle_timeout: 10,
+          connect_timeout: 3,
+          prepare: false // Disable prepared statements for better compatibility
         });
         this.db = drizzlePostgres(sql, {
           schema: {
@@ -1267,7 +1267,7 @@ async function initializeStorage(): Promise<IStorage> {
       // Test the connection with a simpler query
       try {
         await Promise.race([
-          dbStorage.db.select().from(users).limit(1),
+          dbStorage.getUsers(),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
         ]);
         console.log("✅ Successfully connected to Supabase database");
