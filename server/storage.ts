@@ -896,38 +896,48 @@ class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
     
-    // Handle different database URL formats
-    let connectionString = process.env.DATABASE_URL;
+    console.log("🔗 Initializing database connection...");
+    const connectionString = process.env.DATABASE_URL;
+    console.log("📍 Connection target:", connectionString.replace(/:[^:@]*@/, ':***@')); // Hide password in logs
     
-    // If it's a Supabase URL with special characters in password, encode it
-    if (connectionString.includes('#')) {
-      const urlParts = connectionString.split('@');
-      const authPart = urlParts[0];
-      const hostPart = urlParts[1];
+    try {
+      // Create neon client with optimized settings for Supabase
+      const sql = neon(connectionString, {
+        fetchConnectionCache: true,
+        fullResults: true,
+      });
       
-      // Extract password and encode special characters
-      const passwordMatch = authPart.match(/:([^:]+)$/);
-      if (passwordMatch) {
-        const password = passwordMatch[1];
-        const encodedPassword = encodeURIComponent(password);
-        connectionString = authPart.replace(`:${password}`, `:${encodedPassword}`) + '@' + hostPart;
-      }
+      this.db = drizzle(sql, {
+        schema: {
+          users,
+          projects,
+          budgetLineItems,
+          locations,
+          locationBudgets,
+          crews,
+          employees,
+          tasks,
+          employeeAssignments,
+        },
+        logger: false // Disable query logging for cleaner output
+      });
+      
+      console.log("✅ Database client initialized successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize database client:", error);
+      throw error;
     }
-    
-    const sql = neon(connectionString);
-    this.db = drizzle(sql, {
-      schema: {
-        users,
-        projects,
-        budgetLineItems,
-        locations,
-        locationBudgets,
-        crews,
-        employees,
-        tasks,
-        employeeAssignments,
-      },
-    });
+  }
+
+  // Test connection method
+  async testConnection(): Promise<boolean> {
+    try {
+      await this.db.select().from(users).limit(1);
+      return true;
+    } catch (error) {
+      console.error("❌ Database connection test failed:", error);
+      return false;
+    }
   }
 
   // User methods
@@ -1219,13 +1229,37 @@ class HybridStorage implements IStorage {
     if (process.env.DATABASE_URL) {
       try {
         this.dbStorage = new DatabaseStorage();
-        console.log("DATABASE_URL found, will attempt database operations with automatic fallback");
+        this.isDatabaseAvailable = true; // Start with database as available
+        console.log("✅ DATABASE_URL found, database storage initialized successfully");
+        console.log("🔗 Using Supabase PostgreSQL for data persistence");
+        
+        // Test connection immediately during initialization
+        this.testDatabaseConnection();
       } catch (error) {
-        console.error("Failed to initialize database storage:", error);
+        console.error("❌ Failed to initialize database storage:", error);
         this.dbStorage = null;
+        console.log("🔄 Falling back to in-memory storage");
       }
     } else {
       console.log("No DATABASE_URL found, using in-memory storage");
+    }
+  }
+
+  private async testDatabaseConnection() {
+    if (this.dbStorage) {
+      try {
+        console.log("🔍 Testing database connection...");
+        const testResult = await (this.dbStorage as any).testConnection();
+        if (testResult) {
+          console.log("✅ Database connection test successful!");
+        } else {
+          console.log("❌ Database connection test failed - will use fallback mode");
+          this.isDatabaseAvailable = false;
+        }
+      } catch (error) {
+        console.error("❌ Database connection test error:", error);
+        this.isDatabaseAvailable = false;
+      }
     }
   }
 
@@ -1235,10 +1269,14 @@ class HybridStorage implements IStorage {
   ): Promise<T> {
     if (this.dbStorage && this.isDatabaseAvailable) {
       try {
-        return await dbOperation();
+        const result = await dbOperation();
+        // Log successful database operations for debugging
+        console.log("💾 Database operation successful");
+        return result;
       } catch (error) {
-        console.warn("Database operation failed, falling back to in-memory storage:", (error as any)?.message || error);
+        console.warn("❌ Database operation failed, falling back to in-memory storage:", (error as any)?.message || error);
         this.isDatabaseAvailable = false;
+        console.log("🔄 Using in-memory storage for this operation");
         return await memOperation();
       }
     } else if (this.dbStorage && !this.isDatabaseAvailable) {
@@ -1246,12 +1284,14 @@ class HybridStorage implements IStorage {
       try {
         const result = await dbOperation();
         this.isDatabaseAvailable = true;
-        console.log("Database connection restored!");
+        console.log("✅ Database connection restored!");
         return result;
       } catch (error) {
+        console.log("🔧 Database still unavailable, using in-memory storage");
         return await memOperation();
       }
     } else {
+      console.log("🗃️ Using in-memory storage (no database configured)");
       return await memOperation();
     }
   }
