@@ -573,9 +573,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ORDER BY COALESCE(priority, 999) ASC, task_date ASC, id ASC
         `;
         
-        console.log('✅ CLEAN-getTasks found', result.length, 'tasks');
+        // Transform field names to camelCase for frontend compatibility
+        const transformedResult = result.map(task => ({
+          id: task.id,
+          taskId: task.task_id,
+          name: task.name,
+          title: task.name, // Add title for backwards compatibility
+          description: task.description,
+          costCode: task.cost_code,
+          locationId: task.location_id,
+          taskType: task.task_type,
+          taskDate: task.task_date,
+          startDate: task.start_date,
+          finishDate: task.finish_date,
+          scheduledHours: task.scheduled_hours,
+          actualHours: task.actual_hours,
+          status: task.status,
+          priority: task.priority,
+          taskOrder: task.priority, // Add taskOrder for backwards compatibility
+          superintendentId: task.superintendent_id,
+          foremanId: task.foreman_id,
+          crewId: task.crew_id,
+          dependencies: task.dependencies,
+          notes: task.notes
+        }));
+        
+        console.log('✅ CLEAN-getTasks found', transformedResult.length, 'tasks');
         await sql.end();
-        res.json(result);
+        res.json(transformedResult);
       } catch (sqlError) {
         console.error('❌ CLEAN-getTasks SQL error:', sqlError);
         await sql.end();
