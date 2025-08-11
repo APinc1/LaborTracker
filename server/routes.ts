@@ -890,7 +890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (currentTask && validated.dependentOnPrevious === true) {
         const allTasks = await storage.getTasks(currentTask.locationId);
         const sortedTasks = allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
+        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0]?.id === currentTask.id;
         
         // Only enforce if this is clearly a direct edit attempt (not a drag operation)
         if (isFirstTask && !req.body.order) {

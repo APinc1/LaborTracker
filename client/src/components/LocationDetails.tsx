@@ -109,12 +109,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const costCode = taskToDelete.costCode;
           
           // Find all related tasks of the same type and cost code
-          const relatedTasks = tasks.filter((t: any) => 
+          const relatedTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
             t.taskType === taskType && 
             t.costCode === costCode && 
             t.locationId === taskToDelete.locationId &&
             t.id !== taskToDelete.id
-          );
+          ) : [];
           
           // Find tasks that need renumbering (day numbers greater than deleted day)
           const tasksToUpdate = relatedTasks.filter((t: any) => {
@@ -181,11 +181,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     const taskName = task.name || task.title || 'Untitled Task';
     
     // Check if this is a multi-day task by counting similar tasks of same type and cost code
-    const relatedTasks = tasks.filter((t: any) => 
+    const relatedTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
       (t.name || t.title) === taskName && 
       t.costCode === task.costCode && 
       t.locationId === task.locationId
-    );
+    ) : [];
     
     if (relatedTasks.length > 1) {
       // Find the current day number by sorting by priority or id
@@ -387,8 +387,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const remainingHours = totalBudgetHours - totalActualHours;
 
   // Calculate progress
-  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
-  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+  const completedTasks = Array.isArray(tasks) ? tasks.filter((task: any) => task.actualHours).length : 0;
+  const progressPercentage = Array.isArray(tasks) && tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   // Helper function to get user-friendly cost code display names
   const getCostCodeDisplayName = (costCode: string) => {
@@ -405,16 +405,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   };
 
   // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
-  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
-    summary.totalBudgetHours > 0
+  const costCodeArray = Object.values(costCodeSummaries || {}).filter((summary: any) => 
+    summary?.totalBudgetHours > 0
   );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
-    if (!tasks || tasks.length === 0) {
+    if (!Array.isArray(tasks) || tasks.length === 0) {
       return {
-        startDate: location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
-        endDate: location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+        startDate: location?.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: location?.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
       };
     }
 
@@ -1133,7 +1133,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
                 Budget Summary
-                <Badge variant="secondary">{budgetItems.length} items</Badge>
+                <Badge variant="secondary">{Array.isArray(budgetItems) ? budgetItems.length : 0} items</Badge>
               </CardTitle>
               <Link href={`/budgets?locationId=${location.locationId}`}>
                 <Button variant="outline" size="sm">
@@ -1149,7 +1149,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : budgetItems.length === 0 ? (
+            ) : !Array.isArray(budgetItems) || budgetItems.length === 0 ? (
               <div className="text-center py-8">
                 <DollarSign className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500">No budget items found for this location</p>
@@ -1219,7 +1219,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                                     const originalQty = originalItems.reduce((sum: number, item: any) => {
                                       const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
                                       const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-                                      const hasChildren = budgetItems.some((child: any) => 
+                                      const hasChildren = Array.isArray(budgetItems) && budgetItems.some((child: any) => 
                                         child.lineItemNumber && child.lineItemNumber.includes('.') && 
                                         child.lineItemNumber.split('.')[0] === item.lineItemNumber
                                       );
@@ -1286,7 +1286,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
                 Tasks
-                <Badge variant="secondary">{tasks.length}</Badge>
+                <Badge variant="secondary">{Array.isArray(tasks) ? tasks.length : 0}</Badge>
               </div>
               <div className="flex items-center gap-2">
                 <Button 
@@ -1300,7 +1300,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <Button 
                   onClick={() => setShowGenerateTasksDialog(true)}
                   size="sm"
-                  disabled={tasks.length > 0 || isGeneratingTasks}
+                  disabled={(Array.isArray(tasks) ? tasks.length : 0) > 0 || isGeneratingTasks}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {isGeneratingTasks ? 'Generating...' : 'Generate Tasks'}

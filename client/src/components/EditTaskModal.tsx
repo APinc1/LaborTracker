@@ -249,11 +249,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Update each task individually
       const promises = tasksToUpdate.map(taskData => 
-        apiRequest(`/api/tasks/${taskData.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(taskData),
-          headers: { 'Content-Type': 'application/json' }
-        })
+        apiRequest('PUT', `/api/tasks/${taskData.id}`, taskData)
       );
       
       const responses = await Promise.all(promises);
