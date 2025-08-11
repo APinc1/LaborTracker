@@ -384,7 +384,6 @@ export class MemStorage implements IStorage {
 
     // Create sample employee assignments
     await this.createEmployeeAssignment({
-      assignmentId: `${formTask.id}_${mike.id}`,
       taskId: formTask.id,
       employeeId: mike.id,
       assignmentDate: today,
@@ -393,7 +392,6 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
-      assignmentId: `${demoTask.id}_${sarah.id}`,
       taskId: demoTask.id,
       employeeId: sarah.id,
       assignmentDate: today,
@@ -402,7 +400,6 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
-      assignmentId: `${formTask.id}_${tom.id}`,
       taskId: formTask.id,
       employeeId: tom.id,
       assignmentDate: today,
@@ -429,7 +426,10 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null
+      phone: insertUser.phone ?? null,
+      passwordResetToken: insertUser.passwordResetToken ?? null,
+      passwordResetExpires: insertUser.passwordResetExpires ?? null,
+      isPasswordSet: insertUser.isPasswordSet ?? null
     };
     this.users.set(id, user);
     return user;
@@ -562,7 +562,8 @@ export class MemStorage implements IStorage {
       dumpFeesCost: insertBudgetLineItem.dumpFeesCost ?? null,
       materialCost: insertBudgetLineItem.materialCost ?? null,
       subcontractorCost: insertBudgetLineItem.subcontractorCost ?? null,
-      notes: insertBudgetLineItem.notes ?? null
+      notes: insertBudgetLineItem.notes ?? null,
+      conversionFactor: insertBudgetLineItem.conversionFactor ?? null
     };
     this.budgetLineItems.set(id, budgetLineItem);
     return budgetLineItem;
@@ -602,6 +603,7 @@ export class MemStorage implements IStorage {
     const location: Location = { 
       ...insertLocation, 
       id,
+      startDate: insertLocation.startDate || new Date().toISOString().split('T')[0],
       endDate: insertLocation.endDate ?? null,
       isComplete: insertLocation.isComplete ?? null
     };
@@ -660,9 +662,7 @@ export class MemStorage implements IStorage {
     const locationBudget: LocationBudget = { 
       ...insertLocationBudget, 
       id,
-      adjustedQty: insertLocationBudget.adjustedQty ?? null,
-      adjustedHours: insertLocationBudget.adjustedHours ?? null,
-      actualQty: insertLocationBudget.actualQty ?? null
+      notes: insertLocationBudget.notes ?? null
     };
     this.locationBudgets.set(id, locationBudget);
     return locationBudget;
@@ -717,7 +717,12 @@ export class MemStorage implements IStorage {
       email: insertEmployee.email ?? null,
       phone: insertEmployee.phone ?? null,
       crewId: insertEmployee.crewId ?? null,
-      isForeman: insertEmployee.isForeman ?? null
+      isForeman: insertEmployee.isForeman ?? null,
+      apprenticeLevel: insertEmployee.apprenticeLevel ?? null,
+      primaryTrade: insertEmployee.primaryTrade ?? null,
+      secondaryTrade: insertEmployee.secondaryTrade ?? null,
+      tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
+      userId: insertEmployee.userId ?? null
     };
     this.employees.set(id, employee);
     return employee;
@@ -861,9 +866,11 @@ export class MemStorage implements IStorage {
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
     const id = this.currentEmployeeAssignmentId++;
+    const assignmentId = `${insertEmployeeAssignment.taskId}_${insertEmployeeAssignment.employeeId}_${Date.now()}`;
     const assignment: EmployeeAssignment = { 
       ...insertEmployeeAssignment, 
       id,
+      assignmentId,
       assignedHours: insertEmployeeAssignment.assignedHours ?? null,
       actualHours: insertEmployeeAssignment.actualHours ?? null
     };
