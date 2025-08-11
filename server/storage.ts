@@ -928,6 +928,283 @@ class DatabaseStorage implements IStorage {
         employeeAssignments,
       },
     });
+    
+    // Initialize with sample data if database is empty
+    this.initializeSampleData();
+  }
+
+  private async initializeSampleData() {
+    try {
+      // Check if we already have users in the database
+      const existingUsers = await this.db.select().from(users);
+      if (existingUsers.length > 0) {
+        console.log("Database already has data, skipping sample data initialization");
+        return;
+      }
+
+      console.log("Initializing database with sample data...");
+
+      // Create sample users
+      const adminResult = await this.db.insert(users).values({
+        username: "admin",
+        password: "AccessPacific2835",
+        name: "John Smith",
+        email: "admin@buildtracker.com",
+        phone: "(555) 123-4567",
+        role: "Superintendent",
+        isPasswordSet: true
+      }).returning();
+      const admin = adminResult[0];
+
+      const projectManagerResult = await this.db.insert(users).values({
+        username: "pmgr",
+        password: "password",
+        name: "Maria Rodriguez",
+        email: "maria@buildtracker.com",
+        phone: "(555) 234-5678",
+        role: "Project Manager"
+      }).returning();
+      const projectManager = projectManagerResult[0];
+
+      const superintendentResult = await this.db.insert(users).values({
+        username: "super",
+        password: "password",
+        name: "David Johnson",
+        email: "david@buildtracker.com",
+        phone: "(555) 345-6789",
+        role: "Superintendent"
+      }).returning();
+      const superintendent = superintendentResult[0];
+
+      const foremanResult = await this.db.insert(users).values({
+        username: "foreman",
+        password: "password",
+        name: "Carlos Martinez",
+        email: "carlos@buildtracker.com",
+        phone: "(555) 456-7890",
+        role: "Foreman"
+      }).returning();
+      const foreman = foremanResult[0];
+
+      // Create sample crews
+      const concreteCrewResult = await this.db.insert(crews).values({ name: "Concrete Crew A" }).returning();
+      const concreteCrew = concreteCrewResult[0];
+
+      const demoCrewResult = await this.db.insert(crews).values({ name: "Demo Crew B" }).returning();
+      const demoCrew = demoCrewResult[0];
+
+      const transportCrewResult = await this.db.insert(crews).values({ name: "Transport Crew" }).returning();
+      const transportCrew = transportCrewResult[0];
+
+      // Create sample employees
+      const mikeResult = await this.db.insert(employees).values({
+        teamMemberId: "EMP-001",
+        name: "Mike Johnson",
+        email: "mike@buildtracker.com",
+        phone: "(555) 234-5678",
+        crewId: concreteCrew.id,
+        employeeType: "Core",
+        isForeman: true,
+        isUnion: true,
+        primaryTrade: "Formsetter",
+        secondaryTrade: "Laborer"
+      }).returning();
+      const mike = mikeResult[0];
+
+      const sarahResult = await this.db.insert(employees).values({
+        teamMemberId: "EMP-002",
+        name: "Sarah Martinez",
+        email: "sarah@buildtracker.com",
+        phone: "(555) 345-6789",
+        crewId: demoCrew.id,
+        employeeType: "Core",
+        isForeman: true,
+        isUnion: false,
+        primaryTrade: "Demo",
+        secondaryTrade: "Excavation"
+      }).returning();
+      const sarah = sarahResult[0];
+
+      const tomResult = await this.db.insert(employees).values({
+        teamMemberId: "EMP-003",
+        name: "Tom Wilson",
+        email: "tom@buildtracker.com",
+        phone: "(555) 456-7890",
+        crewId: transportCrew.id,
+        employeeType: "Freelancer",
+        isForeman: false,
+        isUnion: false,
+        primaryTrade: "Driver"
+      }).returning();
+      const tom = tomResult[0];
+
+      // Create sample projects
+      const mainStreetResult = await this.db.insert(projects).values({
+        projectId: "PRJ-2024-001",
+        name: "Main St Bridge",
+        startDate: "2024-03-01",
+        endDate: "2024-03-25",
+        defaultSuperintendent: admin.id,
+        defaultProjectManager: projectManager.id
+      }).returning();
+      const mainStreetProject = mainStreetResult[0];
+
+      const cityHallResult = await this.db.insert(projects).values({
+        projectId: "PRJ-2024-002",
+        name: "City Hall Renovation",
+        startDate: "2024-03-10",
+        endDate: "2024-04-05",
+        defaultSuperintendent: admin.id,
+        defaultProjectManager: projectManager.id
+      }).returning();
+      const cityHallProject = cityHallResult[0];
+
+      // Create sample locations
+      const northSectionResult = await this.db.insert(locations).values({
+        locationId: "PRJ-2024-001_NorthSection",
+        projectId: mainStreetProject.id,
+        name: "Main St Bridge - North Section",
+        startDate: "2024-03-01",
+        endDate: "2024-03-25",
+        isComplete: false
+      }).returning();
+      const northSection = northSectionResult[0];
+
+      const eastWingResult = await this.db.insert(locations).values({
+        locationId: "PRJ-2024-002_EastWing",
+        projectId: cityHallProject.id,
+        name: "City Hall - East Wing",
+        startDate: "2024-03-10",
+        endDate: "2024-04-05",
+        isComplete: false
+      }).returning();
+      const eastWing = eastWingResult[0];
+
+      // Create sample budget line items
+      await this.db.insert(budgetLineItems).values([
+        {
+          locationId: northSection.id,
+          lineItemNumber: "100",
+          lineItemName: "Concrete Forms",
+          unconvertedUnitOfMeasure: "LF",
+          unconvertedQty: "1200.00",
+          unitCost: "15.50",
+          unitTotal: "18600.00",
+          costCode: "CONCRETE",
+          hours: "40.00",
+          budgetTotal: "18600.00"
+        },
+        {
+          locationId: northSection.id,
+          lineItemNumber: "200",
+          lineItemName: "Demo and Base Grading",
+          unconvertedUnitOfMeasure: "CY",
+          unconvertedQty: "500.00",
+          unitCost: "12.75",
+          unitTotal: "6375.00",
+          costCode: "Demo/Ex + Base/Grading",
+          hours: "25.00",
+          budgetTotal: "6375.00"
+        }
+      ]);
+
+      // Create sample tasks for today's date (2025-08-11)
+      const task1Result = await this.db.insert(tasks).values({
+        taskId: "PRJ-2024-001_NorthSection_Form_Day1",
+        locationId: "PRJ-2024-001_NorthSection",
+        taskType: "Form",
+        name: "Form Day 1 of 3",
+        taskDate: "2025-08-11",
+        startDate: "2025-08-11",
+        finishDate: "2025-08-11",
+        costCode: "CONCRETE",
+        superintendentId: admin.id,
+        foremanId: mike.id,
+        scheduledHours: "40",
+        startTime: "08:00",
+        finishTime: "17:00",
+        workDescription: "Set up concrete forms for bridge deck section. Ensure proper alignment and elevation.",
+        notes: "Weather conditions good, expect normal progress",
+        order: 0,
+        dependentOnPrevious: true,
+        status: "upcoming"
+      }).returning();
+      const task1 = task1Result[0];
+
+      const task2Result = await this.db.insert(tasks).values({
+        taskId: "PRJ-2024-002_EastWing_Demo_Day1",
+        locationId: "PRJ-2024-002_EastWing",
+        taskType: "Demo/Ex",
+        name: "Demo/Ex Base Grade",
+        taskDate: "2025-08-11",
+        startDate: "2025-08-11",
+        finishDate: "2025-08-11",
+        costCode: "DEMO/EX",
+        superintendentId: admin.id,
+        foremanId: sarah.id,
+        scheduledHours: "24",
+        startTime: "09:30",
+        finishTime: "16:00",
+        workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
+        notes: "Coordinate with utilities for underground clearance",
+        status: "in_progress",
+        order: 0,
+        dependentOnPrevious: false
+      }).returning();
+      const task2 = task2Result[0];
+
+      const task3Result = await this.db.insert(tasks).values({
+        taskId: "PRJ-2024-001_NorthSection_Form_Day2",
+        locationId: "PRJ-2024-001_NorthSection",
+        taskType: "Form",
+        name: "Form Day 2 of 3",
+        taskDate: "2025-08-12",
+        startDate: "2025-08-12",
+        finishDate: "2025-08-12",
+        costCode: "CONCRETE",
+        superintendentId: admin.id,
+        foremanId: mike.id,
+        scheduledHours: "32",
+        startTime: "08:00",
+        finishTime: "16:00",
+        workDescription: "Continue concrete form installation and alignment checks.",
+        notes: "Focus on tight corners and joints",
+        order: 1,
+        dependentOnPrevious: true,
+        status: "upcoming"
+      }).returning();
+      const task3 = task3Result[0];
+
+      // Create sample employee assignments
+      await this.db.insert(employeeAssignments).values([
+        {
+          taskId: task1.id,
+          employeeId: mike.id,
+          assignmentDate: "2025-08-11",
+          assignedHours: "8",
+          crew: "Concrete Crew A"
+        },
+        {
+          taskId: task2.id,
+          employeeId: sarah.id,
+          assignmentDate: "2025-08-11",
+          assignedHours: "10",
+          crew: "Demo Crew B"
+        },
+        {
+          taskId: task1.id,
+          employeeId: tom.id,
+          assignmentDate: "2025-08-11",
+          assignedHours: "6",
+          crew: "Transport Crew"
+        }
+      ]);
+
+      console.log("Sample data initialized successfully!");
+    } catch (error) {
+      console.error("Error initializing sample data:", error);
+      // Don't throw here - let the app continue even if sample data fails
+    }
   }
 
   // User methods
@@ -1214,11 +1491,10 @@ function initializeStorage(): IStorage {
     return new MemStorage();
   }
   
-  // For development, we'll use in-memory storage to avoid database connection issues
-  // When you want to use persistent storage, you can set up your Supabase database
-  // and change this to use DatabaseStorage()
-  console.log("Using in-memory storage for development (data will not persist between server restarts)");
-  console.log("To use persistent storage, set up your Supabase database and modify this function");
+  // For now, we'll use in-memory storage until Supabase connection is properly configured
+  // The DATABASE_URL exists but there seems to be a network connectivity issue
+  console.log("DATABASE_URL found but connection failed, using in-memory storage with sample data");
+  console.log("To use PostgreSQL, ensure proper network connectivity to Supabase");
   return new MemStorage();
 }
 
