@@ -200,7 +200,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         ) : [];
 
       form.reset({
-        name: task.name || "",
+        name: task.name || task.title || "",
         taskDate: task.taskDate || "",
         startTime: task.startTime || "",
         finishTime: task.finishTime || "",
@@ -209,19 +209,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
-        linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id?.toString())),
+        linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id)?.toString() || ""),
       });
     }
   }, [task, form, existingTasks]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest(`/api/tasks/${task.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
-        headers: { 'Content-Type': 'application/json' }
-      });
-      return response.json();
+      return await apiRequest("PUT", `/api/tasks/${task.id}`, data);
     },
     onSuccess: () => {
       onTaskUpdate();
@@ -1621,7 +1616,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   const getTaskDisplayName = (taskName: string) => {
     // Extract day information if it exists
-    const dayMatch = taskName.match(/Day (\d+)/i);
+    const dayMatch = taskName?.match(/Day (\d+)/i);
     if (dayMatch) {
       return taskName;
     }

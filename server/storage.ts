@@ -1320,8 +1320,8 @@ class DatabaseStorage implements IStorage {
       
       try {
         const result = await freshSql`
-          INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous)
-          VALUES (${insertTask.title}, ${insertTask.description || null}, ${insertTask.startDate}, ${insertTask.locationId || null}, ${insertTask.status || 'upcoming'}, ${insertTask.taskOrder || 0}, ${insertTask.dependentOnPrevious !== undefined ? insertTask.dependentOnPrevious : true})
+          INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous, cost_code, estimated_hours)
+          VALUES (${insertTask.title}, ${insertTask.description || null}, ${insertTask.startDate}, ${insertTask.locationId || null}, ${insertTask.status || 'upcoming'}, ${insertTask.taskOrder || 0}, ${insertTask.dependentOnPrevious !== undefined ? insertTask.dependentOnPrevious : true}, ${insertTask.costCode || null}, ${insertTask.estimatedHours || null})
           RETURNING *
         `;
         
