@@ -82,7 +82,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/users/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const userId = parseInt(req.params.id);
       const success = await storage.deleteUser(userId);
       if (!success) {
@@ -109,7 +108,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/projects/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const project = await storage.getProject(parseInt(req.params.id));
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
@@ -141,7 +139,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/projects', async (req, res) => {
     try {
-      const storage = await getStorage();
       // Validate required fields first
       if (!req.body.projectId || !req.body.name) {
         return res.status(400).json({ error: 'Project ID and name are required' });
@@ -178,7 +175,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/projects/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertProjectSchema.partial().parse(req.body);
       const project = await storage.updateProject(parseInt(req.params.id), validated);
       res.json(project);
@@ -189,7 +185,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/projects/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteProject(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
@@ -200,7 +195,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Budget line item routes
   app.get('/api/locations/:locationId/budget', async (req, res) => {
     try {
-      const storage = await getStorage();
       let locationDbId: number;
       
       // Handle both locationId string (e.g., "101_test") and pure database ID (e.g., "3")
@@ -236,7 +230,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/budget', async (req, res) => {
     try {
-      const storage = await getStorage();
       let locationDbId: number;
       
       // Handle both locationId string (e.g., "101_test") and pure database ID (e.g., "3")
@@ -268,7 +261,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/budget/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       console.log('Budget update request:', req.params.id, req.body);
       const validated = insertBudgetLineItemSchema.partial().parse(req.body);
       const budgetItem = await storage.updateBudgetLineItem(parseInt(req.params.id), validated);
@@ -285,7 +277,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/budget/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteBudgetLineItem(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
@@ -296,7 +287,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Location routes
   app.get('/api/projects/:projectId/locations', async (req, res) => {
     try {
-      const storage = await getStorage();
       const locations = await storage.getLocations(parseInt(req.params.projectId));
       res.json(locations);
     } catch (error) {
@@ -307,7 +297,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add general locations route
   app.get('/api/locations', async (req, res) => {
     try {
-      const storage = await getStorage();
       const locations = await storage.getAllLocations();
       res.json(locations);
     } catch (error: any) {
@@ -318,7 +307,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/locations/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const location = await storage.getLocation(req.params.id);
       if (!location) {
         return res.status(404).json({ error: 'Location not found' });
@@ -331,7 +319,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/projects/:projectId/locations', async (req, res) => {
     try {
-      const storage = await getStorage();
       const projectDbId = parseInt(req.params.projectId);
       
       // Get the project to access its actual projectId string
@@ -377,7 +364,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/locations/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertLocationSchema.partial().parse(req.body);
       const location = await storage.updateLocation(req.params.id, validated);
       res.json(location);
@@ -388,7 +374,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/locations/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteLocation(req.params.id);
       res.status(204).send();
     } catch (error) {
@@ -399,7 +384,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Location tasks route
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const storage = await getStorage();
       const tasks = await storage.getTasks(req.params.locationId);
       res.json(tasks);
     } catch (error) {
@@ -410,7 +394,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Crew routes
   app.get('/api/crews', async (req, res) => {
     try {
-      const storage = await getStorage();
       const crews = await storage.getCrews();
       res.json(crews);
     } catch (error) {
@@ -420,7 +403,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/crews', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertCrewSchema.parse(req.body);
       const crew = await storage.createCrew(validated);
       res.status(201).json(crew);
@@ -431,7 +413,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/crews/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertCrewSchema.partial().parse(req.body);
       const crew = await storage.updateCrew(parseInt(req.params.id), validated);
       res.json(crew);
@@ -442,7 +423,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/crews/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteCrew(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
@@ -453,7 +433,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee routes
   app.get('/api/employees', async (req, res) => {
     try {
-      const storage = await getStorage();
       const employees = await storage.getEmployees();
       res.json(employees);
     } catch (error) {
@@ -463,7 +442,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/employees/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const employee = await storage.getEmployee(parseInt(req.params.id));
       if (!employee) {
         return res.status(404).json({ error: 'Employee not found' });
@@ -476,7 +454,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/employees', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertEmployeeSchema.parse(req.body);
       const employee = await storage.createEmployee(validated);
       res.status(201).json(employee);
@@ -487,7 +464,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/employees/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertEmployeeSchema.partial().parse(req.body);
       const employee = await storage.updateEmployee(parseInt(req.params.id), validated);
       res.json(employee);
@@ -498,7 +474,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/employees/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteEmployee(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
@@ -508,7 +483,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/employees/:id/create-user', async (req, res) => {
     try {
-      const storage = await getStorage();
       const { username, role } = req.body;
       
       if (!username || !role) {
@@ -537,7 +511,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task routes
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const storage = await getStorage();
       const tasks = await storage.getTasks(req.params.locationId);
       res.json(tasks);
     } catch (error) {
@@ -547,7 +520,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const task = await storage.getTask(parseInt(req.params.id));
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
@@ -560,7 +532,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks/date-range/:startDate/:endDate', async (req, res) => {
     try {
-      const storage = await getStorage();
       const tasks = await storage.getTasksByDateRange(req.params.startDate, req.params.endDate);
       res.json(tasks);
     } catch (error) {
@@ -570,7 +541,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertTaskSchema.parse({
         ...req.body,
         locationId: req.params.locationId
@@ -616,7 +586,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/tasks/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertTaskSchema.partial().parse(req.body);
       
       // CRITICAL: Only enforce first task rule in specific scenarios to avoid interfering with drag operations
@@ -662,7 +631,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/tasks/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const taskId = parseInt(req.params.id);
       
       // Get the task being deleted to understand its context
@@ -799,7 +767,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee assignment routes
   app.get('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
-      const storage = await getStorage();
       const assignments = await storage.getEmployeeAssignments(parseInt(req.params.taskId));
       res.json(assignments);
     } catch (error) {
@@ -809,7 +776,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/assignments', async (req, res) => {
     try {
-      const storage = await getStorage();
       const assignments = await storage.getAllEmployeeAssignments();
       
       // Enhance assignments with task, location, and project data
@@ -861,7 +827,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/assignments/date/:date', async (req, res) => {
     try {
-      const storage = await getStorage();
       const assignments = await storage.getEmployeeAssignmentsByDate(req.params.date);
       res.json(assignments);
     } catch (error) {
@@ -871,7 +836,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/assignments', async (req, res) => {
     try {
-      const storage = await getStorage();
       console.log('Creating assignment:', req.body);
       const validated = insertEmployeeAssignmentSchema.parse(req.body);
       const assignment = await storage.createEmployeeAssignment(validated);
@@ -885,7 +849,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/assignments/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const assignmentId = parseInt(req.params.id);
       await storage.deleteEmployeeAssignment(assignmentId);
       res.status(200).json({ message: 'Assignment deleted successfully' });
@@ -897,7 +860,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
-      const storage = await getStorage();
       // Transform data for validation
       const dataToValidate = {
         ...req.body,
@@ -917,7 +879,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/assignments/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       const validated = insertEmployeeAssignmentSchema.partial().parse(req.body);
       const assignment = await storage.updateEmployeeAssignment(parseInt(req.params.id), validated);
       
@@ -949,7 +910,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/assignments/:id', async (req, res) => {
     try {
-      const storage = await getStorage();
       await storage.deleteEmployeeAssignment(parseInt(req.params.id));
       res.status(204).send();
     } catch (error) {
@@ -960,7 +920,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Authentication routes
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const storage = await getStorage();
       const { username, password } = req.body;
       
       if (!username || !password) {
@@ -995,7 +954,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/change-password', async (req, res) => {
     try {
-      const storage = await getStorage();
       const { userId, currentPassword, newPassword } = req.body;
       
       if (!userId || !currentPassword || !newPassword) {
@@ -1021,7 +979,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Password reset routes
   app.post('/api/auth/reset-password', async (req, res) => {
     try {
-      const storage = await getStorage();
       const { token, newPassword } = req.body;
       
       if (!token || !newPassword) {
@@ -1045,7 +1002,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/verify-reset-token/:token', async (req, res) => {
     try {
-      const storage = await getStorage();
       const user = await storage.getUserByResetToken(req.params.token);
       if (!user) {
         return res.status(400).json({ error: 'Invalid or expired reset token' });

@@ -38,7 +38,7 @@ export interface IStorage {
   // Location methods
   getLocations(projectId: number): Promise<Location[]>;
   getAllLocations(): Promise<Location[]>;
-  getLocation(id: number): Promise<Location | undefined>;
+  getLocation(id: string | number): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location>;
   deleteLocation(id: number): Promise<void>;
@@ -1330,9 +1330,16 @@ class DatabaseStorage implements IStorage {
     return await this.db.select().from(locations);
   }
 
-  async getLocation(id: number): Promise<Location | undefined> {
-    const result = await this.db.select().from(locations).where(eq(locations.id, id));
-    return result[0];
+  async getLocation(id: string | number): Promise<Location | undefined> {
+    if (typeof id === 'string') {
+      // Search by locationId string
+      const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      return result[0];
+    } else {
+      // Search by database ID number
+      const result = await this.db.select().from(locations).where(eq(locations.id, id));
+      return result[0];
+    }
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -1527,13 +1534,22 @@ export async function getStorageInstance(): Promise<IStorage> {
   return storageInstance;
 }
 
-// Initialize storage synchronously for immediate use
+// Initialize storage and replace the export
 initializeStorage().then(storage => {
   storageInstance = storage;
+  console.log("🔄 Storage instance updated to:", storage.constructor.name);
 }).catch(err => {
   console.error("Storage initialization error:", err);
   storageInstance = new MemStorage();
 });
+
+// Export function to get the current storage instance
+export const getStorage = async (): Promise<IStorage> => {
+  if (!storageInstance) {
+    storageInstance = await initializeStorage();
+  }
+  return storageInstance;
+};
 
 // Temporary storage instance for immediate use (will be replaced by async initialization)
 export const storage = new MemStorage();
