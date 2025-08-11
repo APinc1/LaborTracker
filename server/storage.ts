@@ -908,7 +908,10 @@ class DatabaseStorage implements IStorage {
           ssl: 'require',
           max: 1, // Limit connections for Supabase free tier
           idle_timeout: 20,
-          connect_timeout: 10
+          connect_timeout: 10,
+          transform: {
+            undefined: null
+          }
         });
         this.db = drizzlePostgres(sql, {
           schema: {
@@ -1238,9 +1241,17 @@ async function initializeStorage(): Promise<IStorage> {
       console.log(`Supabase URL format: ${supabaseUrl.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
       const dbStorage = new DatabaseStorage();
       
-      // Test the connection
-      await dbStorage.getUsers();
-      console.log("✅ Successfully connected to Supabase database");
+      // Test the connection with a simple query that should work
+      const testResult = await dbStorage.db.execute('SELECT 1 as test');
+      console.log("✅ Supabase connection test successful");
+      
+      // Try to get users, if it fails due to schema issues, still return the connection
+      try {
+        await dbStorage.getUsers();
+        console.log("✅ Successfully connected to Supabase database");
+      } catch (schemaError) {
+        console.log("⚠️ Connected to Supabase but schema needs adjustment:", (schemaError as Error).message);
+      }
       return dbStorage;
     } catch (error) {
       console.error("❌ Supabase connection failed:");
@@ -1253,9 +1264,11 @@ async function initializeStorage(): Promise<IStorage> {
   if (replitUrl) {
     try {
       console.log("🔄 Falling back to Replit PostgreSQL...");
-      // Create a new instance without Supabase URL set
+      // For Replit fallback, ensure we use the correct driver
+      const tempSupabaseUrl = process.env.SUPABASE_DATABASE_URL;
       process.env.SUPABASE_DATABASE_URL = "";
       const dbStorage = new DatabaseStorage();
+      process.env.SUPABASE_DATABASE_URL = tempSupabaseUrl;
       await dbStorage.getUsers();
       console.log("✅ Connected to Replit PostgreSQL");
       return dbStorage;
