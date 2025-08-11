@@ -42,9 +42,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const locationTaskQueries = useQuery({
     queryKey: ["/api/projects", projectId, "all-location-tasks"],
     queryFn: async () => {
-      if (!locations.length) return {};
+      if (!(locations as any[]).length) return {};
       
-      const taskPromises = locations.map(async (location: any) => {
+      const taskPromises = (locations as any[]).map(async (location: any) => {
         try {
           const response = await fetch(`/api/locations/${location.locationId}/tasks`);
           if (!response.ok) return { locationId: location.locationId, tasks: [] };
@@ -62,7 +62,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         return acc;
       }, {});
     },
-    enabled: locations.length > 0,
+    enabled: (locations as any[]).length > 0,
     staleTime: 30000,
   });
 
@@ -72,7 +72,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     
     if (!tasks || tasks.length === 0) {
       // Fallback to stored location dates if no tasks
-      const location = locations.find((loc: any) => loc.locationId === locationId);
+      const location = (locations as any[]).find((loc: any) => loc.locationId === locationId);
       return {
         startDate: location?.startDate ? format(new Date(location.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No tasks scheduled',
         endDate: location?.endDate ? format(new Date(location.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No tasks scheduled'
@@ -80,7 +80,21 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     }
 
     // Get all task dates and find earliest and latest (same logic as LocationDetails)
-    const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
+    const taskDates = tasks
+      .filter((task: any) => task.taskDate) // Filter out invalid task dates
+      .map((task: any) => {
+        const date = new Date(task.taskDate + 'T00:00:00');
+        return isNaN(date.getTime()) ? null : date.getTime(); // Check for invalid dates
+      })
+      .filter((time: number | null) => time !== null); // Remove null dates
+
+    if (taskDates.length === 0) {
+      return {
+        startDate: 'No valid tasks',
+        endDate: 'No valid tasks'
+      };
+    }
+
     const earliestTaskDate = new Date(Math.min(...taskDates));
     const latestTaskDate = new Date(Math.max(...taskDates));
 
@@ -92,11 +106,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
   // Add location mutation
   const addLocationMutation = useMutation({
-    mutationFn: (locationData: any) => 
-      apiRequest(`/api/projects/${projectId}/locations`, {
+    mutationFn: async (locationData: any) => {
+      return await apiRequest(`/api/projects/${projectId}/locations`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(locationData),
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
       setShowAddLocationDialog(false);
@@ -200,7 +218,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             <span>/</span>
             <span className="text-gray-900 font-medium">
               <Building2 className="w-4 h-4 mr-1 inline" />
-              {project?.name || 'Project'}
+              {(project as any)?.name || 'Project'}
             </span>
           </nav>
         </div>
@@ -213,7 +231,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </Button>
           </Link>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{project.name}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{(project as any)?.name}</h2>
             <p className="text-gray-600 mt-1">Project locations and details</p>
           </div>
         </div>
@@ -225,7 +243,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Project Overview
-              <Badge variant="outline">{project.projectId}</Badge>
+              <Badge variant="outline">{(project as any)?.projectId}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -235,7 +253,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <div>
                   <p className="text-sm text-gray-600">Duration</p>
                   <p className="font-medium">
-                    {project.startDate ? format(new Date(project.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {project.endDate ? format(new Date(project.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
+                    {(project as any)?.startDate ? format(new Date((project as any).startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {(project as any)?.endDate ? format(new Date((project as any).endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
                   </p>
                 </div>
               </div>
@@ -243,14 +261,14 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <User className="w-4 h-4 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-600">Superintendent</p>
-                  <p className="font-medium">{project.defaultSuperintendent || 'Unassigned'}</p>
+                  <p className="font-medium">{(project as any)?.defaultSuperintendent || 'Unassigned'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
                 <User className="w-4 h-4 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-600">Project Manager</p>
-                  <p className="font-medium">{project.defaultProjectManager || 'Unassigned'}</p>
+                  <p className="font-medium">{(project as any)?.defaultProjectManager || 'Unassigned'}</p>
                 </div>
               </div>
             </div>
@@ -264,7 +282,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
                 Project Locations
-                <Badge variant="secondary">{locations.length}</Badge>
+                <Badge variant="secondary">{(locations as any[]).length}</Badge>
               </CardTitle>
               <Button 
                 onClick={() => setShowAddLocationDialog(true)}
@@ -283,7 +301,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : locations.length === 0 ? (
+            ) : (locations as any[]).length === 0 ? (
               <div className="text-center py-8">
                 <MapPin className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500">No locations found for this project</p>
@@ -293,7 +311,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {locations.map((location: any) => (
+                {(locations as any[]).map((location: any) => (
                   <Card key={location.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
