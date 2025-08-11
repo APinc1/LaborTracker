@@ -1309,26 +1309,30 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(id: number): Promise<void> {
-    // Use raw SQL for Supabase compatibility similar to createTask method
-    if (process.env.SUPABASE_DATABASE_URL) {
-      const postgres = await import('postgres');
-      const freshSql = postgres.default(process.env.SUPABASE_DATABASE_URL, {
-        idle_timeout: 20,
-        max_lifetime: 60 * 30,
-      });
-      
-      try {
-        await freshSql`DELETE FROM tasks WHERE id = ${id}`;
-        await freshSql.end();
-        return;
-      } catch (error) {
-        await freshSql.end();
-        throw error;
-      }
+    // Always use raw SQL for Supabase to avoid Drizzle schema conflicts
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
     }
     
-    // Fallback to Drizzle ORM
-    await this.db.delete(tasks).where(eq(tasks.id, id));
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
+    try {
+      console.log('🗑️ DELETION: Using raw SQL to delete task ID:', id);
+      const result = await freshSql`DELETE FROM tasks WHERE id = ${id}`;
+      console.log('✅ DELETION: Task deleted successfully:', result);
+      await freshSql.end();
+      return;
+    } catch (error) {
+      console.error('❌ DELETION ERROR:', error);
+      await freshSql.end();
+      throw error;
+    }
   }
 
   async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {

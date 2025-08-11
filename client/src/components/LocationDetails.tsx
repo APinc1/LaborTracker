@@ -177,20 +177,21 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Helper function to format task name with day info
   const getTaskDisplayInfo = (task: any) => {
-    const dayMatch = task.name.match(/Day (\d+)/i);
-    if (dayMatch) {
-      const currentDay = parseInt(dayMatch[1]);
-      
-      // Count total days for this task type and cost code
-      const relatedTasks = tasks.filter((t: any) => 
-        t.taskType === task.taskType && 
-        t.costCode === task.costCode && 
-        t.locationId === task.locationId
-      );
-      
+    // Check if this is a multi-day task by counting similar tasks of same type and cost code
+    const relatedTasks = tasks.filter((t: any) => 
+      t.title === task.title && 
+      t.costCode === task.costCode && 
+      t.locationId === task.locationId
+    );
+    
+    if (relatedTasks.length > 1) {
+      // Find the current day number by sorting by task_order or id
+      const sortedTasks = relatedTasks.sort((a, b) => (a.taskOrder || a.id) - (b.taskOrder || b.id));
+      const currentDay = sortedTasks.findIndex(t => t.id === task.id) + 1;
       const totalDays = relatedTasks.length;
+      
       return {
-        displayName: task.name.replace(/Day \d+/i, `Day ${currentDay} of ${totalDays}`),
+        displayName: `${task.title} - Day ${currentDay} of ${totalDays}`,
         isMultiDay: true,
         currentDay,
         totalDays
@@ -198,7 +199,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     }
     
     return {
-      displayName: task.name,
+      displayName: task.title || task.name,
       isMultiDay: false,
       currentDay: null,
       totalDays: null
