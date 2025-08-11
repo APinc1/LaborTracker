@@ -2627,8 +2627,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                             }
                           }
                         }
-                        
-                        currentDate = newSequentialDate;
                       }
                       
                       // Execute subsequent updates if any
