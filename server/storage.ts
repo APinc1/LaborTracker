@@ -1243,33 +1243,24 @@ class DatabaseStorage implements IStorage {
       numericId = typeof locationId === 'string' ? parseInt(locationId) : locationId;
     }
     
-    // Use fresh connection to bypass cache issues
-    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-    if (supabaseUrl) {
-      const freshSql = postgres(supabaseUrl, {
-        ssl: 'require',
-        max: 1,
-        idle_timeout: 1,
-        connect_timeout: 3,
-        prepare: false,
-        connection: {
-          application_name: `fresh_${Date.now()}`
-        }
-      });
-      
-      try {
-        const result = await freshSql`SELECT * FROM tasks WHERE location_id = ${numericId}`;
-        await freshSql.end();
-        return result as Task[];
-      } catch (error) {
-        await freshSql.end();
-        throw error;
-      }
-    }
+    // Use existing database connection to avoid connection timeout issues
+    console.log('🔍 STORAGE-getTasks - using existing db connection for location_id:', numericId);
     
-    // Fallback to regular connection
-    const result = await this.db.select().from(tasks).where(eq(tasks.locationId, numericId));
-    return result;
+    try {
+      console.log('🔍 STORAGE-getTasks - querying with Drizzle ORM for locationId:', numericId, 'type:', typeof numericId);
+      const result = await this.db.select().from(tasks).where(eq(tasks.locationId, numericId));
+      console.log('✅ STORAGE-getTasks - Drizzle ORM found tasks:', result.length);
+      
+      // Debug: Raw SQL to see what data exists
+      const debugSql = `SELECT COUNT(*) as count FROM tasks WHERE location_id = $1`;
+      console.log('🔍 STORAGE-getTasks - debug query:', debugSql, 'with value:', numericId);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ STORAGE-getTasks - DB error:', error);
+      throw error;
+    }
+
   }
 
   async getTask(id: number): Promise<Task | undefined> {

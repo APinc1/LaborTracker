@@ -26,6 +26,7 @@ import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Tr
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies, realignDependentTasks } from '@shared/taskUtils';
+import { calculateRemainingHours, getRemainingHoursIndicator } from '@/lib/remainingHours';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,8 @@ interface DraggableTaskListProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   onTaskUpdate: () => void;
+  budgetItems?: any[];
+  showRemainingHours?: boolean;
 }
 
 interface SortableTaskItemProps {
@@ -54,8 +57,8 @@ interface SortableTaskItemProps {
   onAssignTask?: (task: any) => void;
   employees: any[];
   assignments: any[];
-  remainingHours?: number;
-  remainingHoursColor?: string;
+  budgetItems?: any[];
+  showRemainingHours?: boolean;
 }
 
 // Helper function to determine task status - checks if all assignments have actual hours recorded
@@ -94,7 +97,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, budgetItems, showRemainingHours }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -306,22 +309,26 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   </div>
                 )}
                 
-                {remainingHours !== undefined && (
-                  <div className="flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span className={remainingHoursColor || 'text-orange-600'}>
-                      {remainingHours <= 0 
-                        ? `${Math.abs(remainingHours).toFixed(1)}h over` 
-                        : `${remainingHours.toFixed(1)}h remaining`
-                      }
-                    </span>
-                  </div>
-                )}
-                
-                
-                <Badge variant="secondary" className="text-xs">
-                  {task.costCode}
-                </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {task.costCode}
+                  </Badge>
+                  
+                  {/* Add remaining hours display */}
+                  {showRemainingHours && task.costCode && budgetItems && (() => {
+                    const remainingHoursData = calculateRemainingHours(task.costCode, budgetItems, tasks);
+                    const indicator = getRemainingHoursIndicator(remainingHoursData);
+                    
+                    if (indicator && remainingHoursData.budgetHours > 0) {
+                      return (
+                        <div className={indicator.className}>
+                          {indicator.text}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
                 
                 {task.dependentOnPrevious && (
                   <Badge variant="outline" className="text-xs text-blue-600">
@@ -394,135 +401,16 @@ export default function DraggableTaskList({
   onEditTask, 
   onDeleteTask,
   onAssignTask,
-  onTaskUpdate 
+  onTaskUpdate,
+  budgetItems = [],
+  showRemainingHours = false
 }: DraggableTaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch budget items for remaining hours calculation
-  const { data: budgetItems = [] } = useQuery({
-    queryKey: ["/api/locations", locationId, "budget"],
-    enabled: !!locationId,
-    staleTime: 30000,
-  });
+  // Use budget items passed from parent component
 
-  // Helper function to get remaining hours color based on percentage
-  const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
-    if (totalBudgetHours === 0) return 'text-gray-600';
-    
-    const percentage = (remainingHours / totalBudgetHours) * 100;
-    
-    if (remainingHours <= 0) {
-      return 'text-red-600'; // Red for zero or negative (overrun)
-    } else if (percentage <= 15) {
-      return 'text-yellow-600'; // Yellow for low remaining (15% or less)
-    } else {
-      return 'text-green-600'; // Green for healthy remaining
-    }
-  };
 
-  // Calculate remaining hours for a cost code up to the current task date
-  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[], taskAssignments: any[]) => {
-    const costCode = task.costCode;
-    if (!costCode) return { remainingHours: undefined, totalBudgetHours: 0 };
-
-    // Get total budget hours for this cost code
-    const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
-      let itemCostCode = item.costCode || 'UNCATEGORIZED';
-      
-      // Handle combined cost codes (Demo/Ex + Base/Grading)
-      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
-          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
-          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
-        itemCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      // Handle current task cost code in the same way
-      let taskCostCode = costCode;
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (itemCostCode === taskCostCode) {
-        // Only include parent items or standalone items (avoid double counting)
-        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
-        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-        const hasChildren = budgetItems.some((child: any) => 
-          child.lineItemNumber && child.lineItemNumber.includes('.') && 
-          child.lineItemNumber.split('.')[0] === item.lineItemNumber
-        );
-        
-        if (isParent || (!isChild && !hasChildren)) {
-          return total + (parseFloat(item.hours) || 0);
-        }
-      }
-      return total;
-    }, 0);
-
-    if (costCodeBudgetHours === 0) return { remainingHours: undefined, totalBudgetHours: 0 };
-
-    // Find all tasks for this cost code up to and including the current task date
-    const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
-    
-    const relevantTasks = allTasks.filter((t: any) => {
-      if (!t.costCode) return false;
-      
-      // Handle cost code matching with combined codes
-      let tCostCode = t.costCode;
-      let taskCostCode = costCode;
-      
-      if (tCostCode === 'DEMO/EX' || tCostCode === 'Demo/Ex' || 
-          tCostCode === 'BASE/GRADING' || tCostCode === 'Base/Grading' || 
-          tCostCode === 'Demo/Ex + Base/Grading' || tCostCode === 'DEMO/EX + BASE/GRADING') {
-        tCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
-      const isSameCostCode = tCostCode === taskCostCode;
-      const isCurrentOrBefore = taskDate <= currentTaskDate;
-      
-      return isSameCostCode && isCurrentOrBefore;
-    });
-
-    // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
-    const usedHours = relevantTasks.reduce((total: number, t: any) => {
-      const taskId = t.id || t.taskId;
-      const taskAssignmentsList = taskAssignments.filter((assignment: any) => 
-        assignment.taskId === taskId
-      );
-      
-      // Try to get actual hours first
-      const taskActualHours = taskAssignmentsList.reduce((sum: number, assignment: any) => {
-        return sum + (parseFloat(assignment.actualHours) || 0);
-      }, 0);
-      
-      // If no actual hours, fall back to scheduled hours
-      let taskHours = taskActualHours;
-      if (taskActualHours === 0) {
-        taskHours = taskAssignmentsList.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.assignedHours) || 0);
-        }, 0);
-      }
-      
-      return total + taskHours;
-    }, 0);
-
-    // Calculate remaining hours
-    const remainingHours = costCodeBudgetHours - usedHours;
-    
-    return {
-      remainingHours: remainingHours, // Allow negative hours to show overruns
-      totalBudgetHours: costCodeBudgetHours
-    };
-  };
 
   // State for link confirmation dialog
   const [linkConfirmDialog, setLinkConfirmDialog] = useState<{
@@ -1341,16 +1229,8 @@ export default function DraggableTaskList({
                 onAssignTask={onAssignTask}
                 employees={employees as any[]}
                 assignments={assignments as any[]}
-                remainingHours={(() => {
-                  const result = calculateRemainingHours(task, sortedTasks, budgetItems as any[], assignments as any[]);
-                  return result?.remainingHours;
-                })()}
-                remainingHoursColor={(() => {
-                  const result = calculateRemainingHours(task, sortedTasks, budgetItems as any[], assignments as any[]);
-                  const remainingHours = result?.remainingHours;
-                  const totalBudgetHours = result?.totalBudgetHours || 0;
-                  return getRemainingHoursColor(remainingHours || 0, totalBudgetHours);
-                })()}
+                budgetItems={budgetItems}
+                showRemainingHours={showRemainingHours}
               />
             ))}
           </div>

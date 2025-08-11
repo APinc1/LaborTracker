@@ -21,6 +21,7 @@ import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 import TaskDetailModal from "./TaskDetailModal";
 import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
+import { calculateRemainingHours, getRemainingHoursIndicator } from "@/lib/remainingHours";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -1316,6 +1317,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
+                budgetItems={budgetItems || []}
+                showRemainingHours={true}
               />
             )}
           </CardContent>
