@@ -69,7 +69,7 @@ export default function UserManagement() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
-  });
+  }) as { data: any[], isLoading: boolean };
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
