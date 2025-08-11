@@ -438,20 +438,7 @@ export default function DraggableTaskList({
 
 
 
-  // State for link confirmation dialog
-  const [linkConfirmDialog, setLinkConfirmDialog] = useState<{
-    show: boolean;
-    draggedTask: any;
-    linkedGroup: string;
-    originalPosition: number;
-    newPosition: number;
-  }>({
-    show: false,
-    draggedTask: null,
-    linkedGroup: '',
-    originalPosition: -1,
-    newPosition: -1
-  });
+  // Link confirmation dialog disabled for now to prevent crashes
 
   // Fetch employees and assignments for task display
   const { data: employees = [] } = useQuery({
@@ -593,86 +580,7 @@ export default function DraggableTaskList({
   });
 
   // Handle linking the dragged task to the linked group
-  const handleConfirmLink = async () => {
-    const { draggedTask, linkedGroup, newPosition } = linkConfirmDialog;
-    
-    try {
-      console.log('🔗 LINKING: Adding task to linked group', {
-        task: draggedTask.name,
-        linkedGroup: linkedGroup
-      });
-      
-      // Find the target date for the linked group
-      const linkedGroupTasks = sortedTasks.filter(t => t.linkedTaskGroup === linkedGroup);
-      const targetDate = linkedGroupTasks.length > 0 ? linkedGroupTasks[0].taskDate : draggedTask.taskDate;
-      
-      // Update the task to be part of the linked group
-      const updatedTask = {
-        ...draggedTask,
-        linkedTaskGroup: linkedGroup,
-        taskDate: targetDate, // Set to same date as linked group
-        dependentOnPrevious: false // Linked tasks are unsequential
-      };
-      
-      // Create updated task list with the newly linked task
-      const allTasks = sortedTasks.map(task => {
-        if ((task.taskId || task.id) === (draggedTask.taskId || draggedTask.id)) {
-          return updatedTask;
-        }
-        return task;
-      });
-      
-      // CRITICAL: Apply sequential realignment to update downstream tasks
-      console.log('🔄 REALIGNING: Sequential tasks after linking');
-      const realignedTasks = realignDependentTasks(allTasks);
-      
-      // Find tasks that actually changed
-      const tasksToUpdate = realignedTasks.filter(task => {
-        const originalTask = sortedTasks.find(orig => 
-          (orig.taskId || orig.id) === (task.taskId || task.id)
-        );
-        return !originalTask || 
-               originalTask.taskDate !== task.taskDate || 
-               originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-               originalTask.dependentOnPrevious !== task.dependentOnPrevious;
-      });
-      
-      console.log('🔄 BATCH UPDATE: Tasks to update after linking:', 
-                  tasksToUpdate.map(t => ({ name: t.name, date: t.taskDate, linked: !!t.linkedTaskGroup })));
-      
-      // Batch update all affected tasks
-      if (tasksToUpdate.length > 0) {
-        await batchUpdateTasksMutation.mutateAsync(tasksToUpdate);
-      }
-      
-      toast({
-        title: "Task Linked",
-        description: `${draggedTask.name} has been linked to the group. Sequential tasks updated.`
-      });
-      
-    } catch (error: any) {
-      console.error('Failed to link task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to link the task. Please try again.",
-        variant: "destructive"
-      });
-    }
-    
-    // Close dialog
-    setLinkConfirmDialog({ show: false, draggedTask: null, linkedGroup: '', originalPosition: -1, newPosition: -1 });
-  };
-
-  // Handle reverting the dragged task to original position
-  const handleRevertPosition = () => {
-    console.log('🔄 REVERTING: Task position restored');
-    
-    // Simply close the dialog - the task will stay in its original position
-    setLinkConfirmDialog({ show: false, draggedTask: null, linkedGroup: '', originalPosition: -1, newPosition: -1 });
-    
-    // Force refresh to ensure UI is in sync
-    queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
-  };
+  // Dialog handlers removed to prevent crashes
 
   const handleDragEnd = (event: DragEndEvent) => {
     console.log('🚀 DRAG END EVENT TRIGGERED:', { activeId: event.active.id, overId: event.over?.id });
@@ -752,126 +660,12 @@ export default function DraggableTaskList({
       willCheckForLinking: !originalDraggedTask.linkedTaskGroup
     });
     
-    // CRITICAL: Check if dragging between two linked tasks
-    if (!originalDraggedTask.linkedTaskGroup) {
-      // Create a temporary array without the dragged task to see the final positions
-      const tasksWithoutDragged = sortedTasks.filter((_, index) => index !== oldIndex);
-      
-      // CRITICAL: We need to determine the final positions after the drag operation
-      // In drag operations, the newIndex represents where we're dropping relative to the target task
-      
-      // When dragging from oldIndex to newIndex, we need to figure out what tasks will be 
-      // immediately before and after the insertion point in the final array
-      
-      let finalInsertionIndex;
-      if (oldIndex < newIndex) {
-        // Dragging forward: the insertion point is AFTER the target task
-        finalInsertionIndex = newIndex; // Insert after the target task
-      } else {
-        // Dragging backward: the insertion point is BEFORE the target task  
-        finalInsertionIndex = newIndex; // Insert before the target task
-      }
-      
-      // Adjust for the removed task when calculating final positions
-      const finalArray = [...tasksWithoutDragged];
-      finalArray.splice(finalInsertionIndex, 0, originalDraggedTask);
-      
-      // Now find what tasks are actually before and after in the final position
-      const finalDraggedIndex = finalArray.findIndex(t => t === originalDraggedTask);
-      const taskBefore = finalDraggedIndex > 0 ? finalArray[finalDraggedIndex - 1] : null;
-      const taskAfter = finalDraggedIndex < finalArray.length - 1 ? finalArray[finalDraggedIndex + 1] : null;
-      
-      // Log the full task order for debugging
-      console.log('🔍 FULL TASK ORDER:', sortedTasks.map((t, i) => `${i}: ${t.name} (linked: ${!!t.linkedTaskGroup})`));
-      console.log('🔍 TASKS WITHOUT DRAGGED:', tasksWithoutDragged.map((t, i) => `${i}: ${t.name} (linked: ${!!t.linkedTaskGroup})`));
-      
-      console.log('🔍 DRAG DETECTION DEBUG:', {
-        draggedTask: originalDraggedTask.name,
-        draggedLinked: originalDraggedTask.linkedTaskGroup,
-        oldIndex,
-        newIndex,
-        finalInsertionIndex,
-        finalDraggedIndex,
-        taskBefore: taskBefore ? { name: taskBefore.name, linkedGroup: taskBefore.linkedTaskGroup } : null,
-        taskAfter: taskAfter ? { name: taskAfter.name, linkedGroup: taskAfter.linkedTaskGroup } : null,
-        hasTaskBefore: !!taskBefore,
-        hasTaskAfter: !!taskAfter,
-        taskBeforeLinked: !!taskBefore?.linkedTaskGroup,
-        taskAfterLinked: !!taskAfter?.linkedTaskGroup,
-        beforeGroup: taskBefore?.linkedTaskGroup || 'none',
-        afterGroup: taskAfter?.linkedTaskGroup || 'none',
-        sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup,
-        shouldDetect: taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup
-      });
-      
-      // Check if inserting between two tasks from the same linked group
-      // CRITICAL: Both taskBefore AND taskAfter must exist AND be from the same linked group
-      // AND we must be inserting truly BETWEEN them, not at the end of the group
-      
-      console.log('🔍 CONDITION CHECK DETAILED:');
-      console.log('  hasTaskBefore:', !!taskBefore);
-      console.log('  hasTaskAfter:', !!taskAfter);
-      console.log('  taskBefore name:', taskBefore?.name || 'none');
-      console.log('  taskAfter name:', taskAfter?.name || 'none');
-      console.log('  taskBeforeLinked:', !!taskBefore?.linkedTaskGroup);
-      console.log('  taskAfterLinked:', !!taskAfter?.linkedTaskGroup);
-      console.log('  beforeGroup:', taskBefore?.linkedTaskGroup || 'none');
-      console.log('  afterGroup:', taskAfter?.linkedTaskGroup || 'none');
-      console.log('  sameGroup:', taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup);
-      console.log('  differentTasks:', taskBefore !== taskAfter);
-      console.log('  willEnterDetection:', taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
-                           taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
-                           taskBefore !== taskAfter);
-      
-      if (taskBefore?.linkedTaskGroup && taskAfter?.linkedTaskGroup && 
-          taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
-          taskBefore !== taskAfter) { // Ensure they are different tasks
-        
-        // Additional check: Determine if we're truly BETWEEN linked tasks or just after them
-        // We need to check the actual insertion position, not just the target task
-        console.log('🔍 INSERTION POSITION ANALYSIS:', {
-          finalInsertionIndex,
-          finalDraggedIndex,
-          taskBefore: taskBefore ? taskBefore.name : 'none',
-          taskAfter: taskAfter ? taskAfter.name : 'none',
-          beforeLinked: !!taskBefore?.linkedTaskGroup,
-          afterLinked: !!taskAfter?.linkedTaskGroup,
-          bothLinked: !!taskBefore?.linkedTaskGroup && !!taskAfter?.linkedTaskGroup,
-          sameGroup: taskBefore?.linkedTaskGroup === taskAfter?.linkedTaskGroup
-        });
-        
-        // We're truly BETWEEN linked tasks if:
-        // 1. Both taskBefore and taskAfter exist
-        // 2. Both are from the same linked group  
-        // 3. We're not at the very end of the array
-        const isTrulyBetweenLinkedTasks = taskBefore?.linkedTaskGroup && 
-                                         taskAfter?.linkedTaskGroup && 
-                                         taskBefore.linkedTaskGroup === taskAfter.linkedTaskGroup &&
-                                         taskAfter !== null; // Ensure we're not at the end
-        
-        if (isTrulyBetweenLinkedTasks) {
-          console.log('🔗 DETECTED: Dragging between linked tasks!', {
-            draggedTask: originalDraggedTask.name,
-            linkedGroup: taskBefore.linkedTaskGroup,
-            taskBefore: taskBefore.name,
-            taskAfter: taskAfter.name
-          });
-          
-          // Show confirmation dialog
-          setLinkConfirmDialog({
-            show: true,
-            draggedTask: originalDraggedTask,
-            linkedGroup: taskBefore.linkedTaskGroup,
-            originalPosition: oldIndex,
-            newPosition: newIndex
-          });
-          
-          return; // Stop processing until user decides
-        } else {
-          console.log('🚫 NOT BETWEEN LINKED TASKS: Proceeding with normal reorder');
-        }
-      }
-    }
+    // Simple drag-and-drop reordering without complex linking logic
+    console.log('🔄 Simple reorder: ', { 
+      draggedTask: originalDraggedTask.name, 
+      fromIndex: oldIndex, 
+      toIndex: newIndex 
+    });
 
     // Handle reordering - linked tasks move as groups
     let reorderedTasks: any[];
@@ -1263,27 +1057,7 @@ export default function DraggableTaskList({
           <div className="text-sm text-gray-600">Updating task dependencies...</div>
         </div>
       )}
-      {/* Link Confirmation Dialog */}
-      <AlertDialog open={linkConfirmDialog.show} onOpenChange={(open) => !open && handleRevertPosition()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Link className="w-5 h-5 text-blue-600" />
-              Link Task to Group?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              You've placed "{linkConfirmDialog.draggedTask?.name}" between linked tasks. 
-              Would you like to link this task to the group so they all have the same date and move together?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleRevertPosition}>No</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmLink}>
-              Yes, link to group
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Link Confirmation Dialog - Disabled for now to prevent crashes */}
     </div>
   );
 }

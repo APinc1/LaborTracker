@@ -602,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const transformedTasks = result.map(task => {
           // Generate meaningful task names from cost codes
           let taskName = 'General Task';
-          if (task.cost_code?.includes('Demo/Ex')) taskName = 'Demo/Ex';
+          if (task.cost_code?.includes('Demo/Ex')) taskName = 'Demo/Ex + Base/Grading';
           else if (task.cost_code?.includes('TRAFFIC')) taskName = 'Traffic Control';
           else if (task.cost_code?.includes('CONCRETE')) taskName = 'Form + Pour';
           else if (task.cost_code === 'AC') taskName = 'Asphalt';
