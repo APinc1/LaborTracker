@@ -557,13 +557,21 @@ export default function DraggableTaskList({
     })
   );
 
-  // Enhanced sorting that properly groups linked tasks and positions them chronologically
+  // Enhanced sorting that maintains logical order while grouping linked tasks
   const sortedTasks = (() => {
-    // Group tasks by their linked group (if any)
+    // CRITICAL: Sort by logical order first, then handle linking display
+    // This preserves the intended task sequence (Traffic Control, Demo/Ex, Form+Pour, Asphalt, General Labor)
+    const logicallyOrderedTasks = [...tasks].sort((a, b) => {
+      const orderA = a.order ?? 999;
+      const orderB = b.order ?? 999;
+      return orderA - orderB;
+    });
+    
+    // Group tasks by their linked group (if any) while preserving logical order
     const linkedGroups = new Map<string, any[]>();
     const unlinkedTasks: any[] = [];
     
-    tasks.forEach(task => {
+    logicallyOrderedTasks.forEach(task => {
       if (task.linkedTaskGroup) {
         if (!linkedGroups.has(task.linkedTaskGroup)) {
           linkedGroups.set(task.linkedTaskGroup, []);
@@ -574,74 +582,55 @@ export default function DraggableTaskList({
       }
     });
     
-    // Convert linked groups to sortable units (use earliest order/date as group position)
+    // Convert to sortable units while maintaining logical order
     const sortableUnits: any[] = [];
     
-    // Add unlinked tasks as individual units
-    unlinkedTasks.forEach(task => {
-      sortableUnits.push({
-        type: 'single',
-        task: task,
-        sortOrder: task.order ?? 999,
-        sortDate: new Date(task.taskDate).getTime(),
-        tasks: [task]
-      });
+    // Process tasks in logical order to maintain intended sequence
+    logicallyOrderedTasks.forEach(task => {
+      // Skip if already processed as part of a linked group
+      if (task.linkedTaskGroup && sortableUnits.some(unit => 
+        unit.type === 'group' && unit.linkedTaskGroup === task.linkedTaskGroup)) {
+        return;
+      }
+      
+      if (task.linkedTaskGroup) {
+        // Add the entire linked group at the position of the first task in logical order
+        const groupTasks = linkedGroups.get(task.linkedTaskGroup)!;
+        const sortedGroupTasks = [...groupTasks].sort((a, b) => {
+          return (a.order ?? 999) - (b.order ?? 999);
+        });
+        
+        sortableUnits.push({
+          type: 'group',
+          linkedTaskGroup: task.linkedTaskGroup,
+          sortOrder: task.order ?? 999, // Use the order of the first task in logical sequence
+          sortDate: new Date(groupTasks[0].taskDate).getTime(),
+          tasks: sortedGroupTasks
+        });
+      } else {
+        // Add individual task
+        sortableUnits.push({
+          type: 'single',
+          task: task,
+          sortOrder: task.order ?? 999,
+          sortDate: new Date(task.taskDate).getTime(),
+          tasks: [task]
+        });
+      }
     });
     
-    // Add linked groups as group units
-    linkedGroups.forEach(groupTasks => {
-      // Since linked tasks should all have the same date, use that date for positioning
-      // Sort tasks within the group by their original order for internal consistency
-      const sortedGroupTasks = [...groupTasks].sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) {
-          return a.order - b.order;
-        }
-        if (a.order !== undefined) return -1;
-        if (b.order !== undefined) return 1;
-        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
-      });
-      
-      // Use the date from any task in the group (they should all be the same)
-      // But find the position where this date should appear chronologically
-      const groupDate = new Date(groupTasks[0].taskDate).getTime();
-      
-      // To position the group correctly, we need to find where this date falls
-      // in the overall chronological order, not use the earliest order number
-      sortableUnits.push({
-        type: 'group',
-        task: sortedGroupTasks[0], // Representative task for fallback sorting
-        sortOrder: 999, // Don't use order for positioning groups
-        sortDate: groupDate, // Use the group's target date
-        tasks: sortedGroupTasks
-      });
-    });
-    
-    // Sort the units by date first for proper chronological positioning
+    // Sort units by logical order (not by date) to maintain intended sequence
     sortableUnits.sort((a, b) => {
-      // Primary sort: by date for chronological order
-      if (a.sortDate !== b.sortDate) {
-        return a.sortDate - b.sortDate;
-      }
-      
-      // Secondary sort: by order for tasks on the same date
-      // But only use order if both are unlinked tasks (not groups)
-      if (a.type === 'single' && b.type === 'single') {
-        if (a.sortOrder !== b.sortOrder) {
-          return a.sortOrder - b.sortOrder;
-        }
-      }
-      
-      // Final fallback to ID comparison
-      return (a.task.taskId || a.task.id).localeCompare(b.task.taskId || b.task.id);
+      return a.sortOrder - b.sortOrder;
     });
     
-    // Flatten the sorted units back into a task array
-    const result: any[] = [];
+    // Flatten to final task array
+    const finalTasks: any[] = [];
     sortableUnits.forEach(unit => {
-      result.push(...unit.tasks);
+      finalTasks.push(...unit.tasks);
     });
     
-    return result;
+    return finalTasks;
   })();
 
   console.log('DraggableTaskList - Task ordering:', sortedTasks.map(t => ({ 
