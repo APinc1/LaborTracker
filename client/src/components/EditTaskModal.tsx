@@ -943,7 +943,46 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
         }));
         
-        batchUpdateTasksMutation.mutate(bothTasks);
+        // Trigger cascading for all subsequent tasks
+        const allTasks = [...(existingTasks as any[])];
+        
+        // Update the unlinked tasks
+        bothTasks.forEach(updatedTask => {
+          const existingIndex = allTasks.findIndex(t => 
+            (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+          );
+          if (existingIndex >= 0) {
+            allTasks[existingIndex] = {
+              ...allTasks[existingIndex],
+              linkedTaskGroup: null,
+              dependentOnPrevious: updatedTask.dependentOnPrevious
+              // CRITICAL: Keep original order and dates for now
+            };
+          }
+        });
+        
+        // Use shared utility to realign all dependent tasks
+        const realignedTasks = realignDependentTasks(allTasks);
+        
+        // Find tasks that changed
+        const finalTasksToUpdate = realignedTasks.filter(task => {
+          const originalTask = (existingTasks as any[]).find(t => 
+            (t.taskId || t.id) === (task.taskId || task.id)
+          );
+          return !originalTask || 
+                 originalTask.taskDate !== task.taskDate ||
+                 originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+                 originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+        });
+        
+        console.log('🔗 Two-task unlink with cascading:', finalTasksToUpdate.map(t => ({ 
+          name: t.name, 
+          date: t.taskDate,
+          order: t.order,
+          sequential: t.dependentOnPrevious 
+        })));
+        
+        batchUpdateTasksMutation.mutate(finalTasksToUpdate);
         return;
       } else {
         // Regular unlinking logic for other cases
@@ -1831,7 +1870,46 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
                               }));
                               
-                              batchUpdateTasksMutation.mutate(bothTasks);
+                              // Trigger cascading for all subsequent tasks
+                              const allTasks = [...(existingTasks as any[])];
+                              
+                              // Update the unlinked tasks
+                              bothTasks.forEach(updatedTask => {
+                                const existingIndex = allTasks.findIndex(t => 
+                                  (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+                                );
+                                if (existingIndex >= 0) {
+                                  allTasks[existingIndex] = {
+                                    ...allTasks[existingIndex],
+                                    linkedTaskGroup: null,
+                                    dependentOnPrevious: updatedTask.dependentOnPrevious
+                                    // CRITICAL: Keep original order and dates for now
+                                  };
+                                }
+                              });
+                              
+                              // Use shared utility to realign all dependent tasks
+                              const realignedTasks = realignDependentTasks(allTasks);
+                              
+                              // Find tasks that changed
+                              const finalTasksToUpdate = realignedTasks.filter(task => {
+                                const originalTask = (existingTasks as any[]).find(t => 
+                                  (t.taskId || t.id) === (task.taskId || task.id)
+                                );
+                                return !originalTask || 
+                                       originalTask.taskDate !== task.taskDate ||
+                                       originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+                                       originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+                              });
+                              
+                              console.log('🔗 Two-task unlink with cascading:', finalTasksToUpdate.map(t => ({ 
+                                name: t.name, 
+                                date: t.taskDate,
+                                order: t.order,
+                                sequential: t.dependentOnPrevious 
+                              })));
+                              
+                              batchUpdateTasksMutation.mutate(finalTasksToUpdate);
                               return;
                             } else if (groupTasks.length >= 2) {
                               // Multi-task group (3+ tasks) - show unlink dialog
