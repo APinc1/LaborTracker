@@ -50,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         setTimeout(() => reject(new Error('Request timeout after 8 seconds')), 8000)
       );
       
-      const users = await Promise.race([usersPromise, timeoutPromise]);
+      const users = await Promise.race([usersPromise, timeoutPromise]) as User[];
       console.log('✅ Successfully fetched users:', users.length);
       res.json(users);
     } catch (error: any) {
