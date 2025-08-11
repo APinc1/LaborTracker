@@ -32,24 +32,90 @@ interface DraggableTaskListProps {
   showRemainingHours?: boolean;
   assignments?: any[];
   location?: string;
+  locationId?: string;
 }
 
 // Task status helper
 function getTaskStatus(task: Task, assignments: any[] = []): 'upcoming' | 'in_progress' | 'complete' {
-  // Simple status determination - can be enhanced later
-  return 'upcoming';
+  const currentDate = new Date().toISOString().split('T')[0];
+  const taskDate = typeof task.taskDate === 'string' ? task.taskDate : task.taskDate.toISOString().split('T')[0];
+  
+  // Check if task has actual hours recorded (completed)
+  const taskAssignments = assignments.filter((assignment: any) => assignment.taskId === task.id);
+  const hasActualHours = taskAssignments.some((assignment: any) => 
+    assignment.actualHours && parseFloat(assignment.actualHours) > 0
+  );
+  
+  if (hasActualHours) {
+    return 'complete';
+  } else if (taskDate === currentDate) {
+    return 'in_progress';
+  } else {
+    return 'upcoming';
+  }
 }
 
 // Remaining hours calculation helper
 function calculateRemainingHours(task: Task, budgetItems: any[]): number | null {
-  // Simple remaining hours calculation - can be enhanced later
-  return 100.6;
+  if (!task.costCode || !budgetItems?.length) {
+    return null;
+  }
+
+  // Normalize cost codes for comparison
+  let normalizedTaskCostCode = task.costCode;
+  if (task.costCode === 'DEMO/EX' || task.costCode === 'Demo/Ex' || 
+      task.costCode === 'BASE/GRADING' || task.costCode === 'Base/Grading' || 
+      task.costCode === 'Demo/Ex + Base/Grading' || task.costCode === 'DEMO/EX + BASE/GRADING') {
+    normalizedTaskCostCode = 'Demo/ex + Base/grading';
+  }
+
+  // Find matching budget items for this cost code
+  const matchingBudgetItems = budgetItems.filter((item: any) => {
+    let itemCostCode = item.costCode || 'UNCATEGORIZED';
+    
+    // Normalize budget item cost codes
+    if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
+        itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
+        itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
+      itemCostCode = 'Demo/ex + Base/grading';
+    }
+    
+    return itemCostCode === normalizedTaskCostCode;
+  });
+
+  if (matchingBudgetItems.length === 0) {
+    return null;
+  }
+
+  // Calculate total budget hours (only for parent items to avoid double counting)
+  const totalBudgetHours = matchingBudgetItems.reduce((sum: number, item: any) => {
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    const hasChildren = budgetItems.some((child: any) => 
+      child.lineItemNumber && child.lineItemNumber.includes('.') && 
+      child.lineItemNumber.split('.')[0] === item.lineItemNumber
+    );
+    
+    // Include if it's a parent OR if it's a standalone item (not a child and has no children)
+    if (isParent || (!isChild && !hasChildren)) {
+      return sum + (parseFloat(item.hours) || 0);
+    }
+    
+    return sum;
+  }, 0);
+
+  // For now, assume no actual hours used (this would need assignments data to be accurate)
+  // This is a simplified calculation - in real usage, you'd subtract actual hours from assignments
+  return totalBudgetHours;
 }
 
 function getRemainingHoursIndicator(hours: number | null) {
   if (hours === null) return null;
   
-  if (hours > 20) {
+  // Calculate the percentage threshold for warning (15% of total)
+  const warningThreshold = hours * 0.15;
+  
+  if (hours > warningThreshold) {
     return { bgColor: 'bg-green-100', textColor: 'text-green-800' };
   } else if (hours > 0) {
     return { bgColor: 'bg-yellow-100', textColor: 'text-yellow-800' };
@@ -67,7 +133,8 @@ export default function DraggableTaskList({
   budgetItems = [],
   showRemainingHours = false,
   assignments = [],
-  location
+  location,
+  locationId
 }: DraggableTaskListProps) {
   const { toast } = useToast();
   const sensors = useSensors(
@@ -169,28 +236,32 @@ export default function DraggableTaskList({
   );
 }
 
-interface SortableTaskCardProps {
-  task: Task;
-  onEdit?: (task: Task) => void;
-  onDelete?: (task: Task) => void;
-  onAssign?: (task: Task) => void;
-  budgetItems: any[];
-  showRemainingHours?: boolean;
-  assignments: any[];
-}
-
+// SortableTaskCard component
 function SortableTaskCard({ 
   task, 
   onEdit, 
   onDelete, 
   onAssign, 
-  budgetItems, 
+  budgetItems = [], 
   showRemainingHours = false, 
-  assignments 
-}: SortableTaskCardProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.taskId || task.id,
-  });
+  assignments = [] 
+}: {
+  task: Task;
+  onEdit?: (task: Task) => void;
+  onDelete?: (task: Task) => void;
+  onAssign?: (task: Task) => void;
+  budgetItems: any[];
+  showRemainingHours: boolean;
+  assignments: any[];
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.taskId || task.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -199,133 +270,136 @@ function SortableTaskCard({
   };
 
   const taskStatus = getTaskStatus(task, assignments);
-  const statusConfig = {
-    upcoming: { label: 'Upcoming', color: 'bg-gray-100 text-gray-800' },
-    in_progress: { label: 'In Progress', color: 'bg-blue-100 text-blue-800' },
-    complete: { label: 'Complete', color: 'bg-green-100 text-green-800' }
-  };
+  const remainingHours = showRemainingHours ? calculateRemainingHours(task, budgetItems) : null;
+  const hoursIndicator = getRemainingHoursIndicator(remainingHours);
 
-  const currentStatus = statusConfig[taskStatus as keyof typeof statusConfig] || statusConfig.upcoming;
-
-  // Calculate remaining hours if requested and budget items are available
-  let remainingHoursDisplay = null;
-  if (showRemainingHours && Array.isArray(budgetItems) && budgetItems.length > 0) {
-    const remainingHours = calculateRemainingHours(task, budgetItems);
-    const indicator = getRemainingHoursIndicator(remainingHours);
-    
-    if (remainingHours !== null && indicator) {
-      remainingHoursDisplay = (
-        <Badge 
-          className={`${indicator.bgColor} ${indicator.textColor} text-xs`}
-        >
-          {remainingHours}h remaining
-        </Badge>
-      );
-    }
-  }
-
-  const safeFormatDate = (date: Date | string | number | null | undefined): string => {
+  const formatDate = (dateInput: string | Date): string => {
     try {
-      if (date === null || date === undefined) return 'No date';
-      
-      let dateObj: Date;
-      if (typeof date === 'string') {
-        dateObj = date.includes('T') ? new Date(date) : new Date(date + 'T00:00:00');
-      } else if (typeof date === 'number') {
-        dateObj = new Date(date);
-      } else {
-        dateObj = date;
-      }
-      
-      if (!dateObj || isNaN(dateObj.getTime())) return 'Invalid date';
-      return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const date = typeof dateInput === 'string' ? new Date(dateInput + 'T00:00:00') : dateInput;
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
+      });
     } catch (error) {
-      return 'Invalid date';
+      return 'Invalid Date';
     }
   };
+
+  // Determine status badge style
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'complete':
+        return { variant: 'default' as const, label: 'Complete', className: 'bg-green-100 text-green-800' };
+      case 'in_progress':
+        return { variant: 'secondary' as const, label: 'In Progress', className: 'bg-blue-100 text-blue-800' };
+      default:
+        return { variant: 'outline' as const, label: 'Upcoming', className: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
+  const statusBadge = getStatusBadge(taskStatus);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...attributes}
       className={`bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow ${
-        isDragging ? 'shadow-lg ring-2 ring-blue-300' : ''
+        isDragging ? 'z-50 shadow-lg' : ''
       }`}
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-3 flex-1">
+          {/* Drag handle */}
           <div
+            {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-gray-100"
+            className="cursor-grab active:cursor-grabbing mt-1 p-1 rounded hover:bg-gray-100"
           >
             <GripVertical className="w-4 h-4 text-gray-400" />
           </div>
-          
+
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-2">
               <h3 className="font-medium text-gray-900 truncate">
-                {task.name || task.title || 'Untitled Task'}
+                {task.name || task.title || `Task ${task.id}`}
               </h3>
+              
+              {/* Sequential badge */}
               {task.dependentOnPrevious && (
                 <Badge variant="outline" className="text-xs">
                   Sequential
                 </Badge>
               )}
-              {task.linkedTaskGroup && (
-                <Badge variant="secondary" className="text-xs">
-                  Linked
+              
+              {/* Status badge */}
+              <Badge variant={statusBadge.variant} className={`text-xs ${statusBadge.className}`}>
+                {statusBadge.label}
+              </Badge>
+
+              {/* Remaining hours indicator */}
+              {showRemainingHours && hoursIndicator && remainingHours !== null && (
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs ${hoursIndicator.bgColor} ${hoursIndicator.textColor} border-0`}
+                >
+                  {remainingHours.toFixed(1)}h remaining
                 </Badge>
               )}
-              <Badge className={currentStatus.color}>
-                {currentStatus.label}
-              </Badge>
             </div>
-            
+
             <div className="flex items-center gap-4 text-sm text-gray-600">
               <div className="flex items-center gap-1">
                 <Calendar className="w-4 h-4" />
-                {safeFormatDate(task.taskDate)}
+                <span>{formatDate(task.taskDate)}</span>
               </div>
               
               {task.costCode && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="secondary" className="text-xs">
                   {task.costCode}
                 </Badge>
               )}
-              
-              {remainingHoursDisplay}
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onEdit?.(task)}
-            className="h-8 w-8 p-0"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-1 ml-4">
+          {onAssign && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onAssign(task)}
+              className="h-8 w-8 p-0"
+              title="Assign workers"
+            >
+              <UserPlus className="w-4 h-4" />
+            </Button>
+          )}
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onAssign?.(task)}
-            className="h-8 w-8 p-0"
-          >
-            <UserPlus className="w-4 h-4" />
-          </Button>
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(task)}
+              className="h-8 w-8 p-0"
+              title="Edit task"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+          )}
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onDelete?.(task)}
-            className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          {onDelete && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(task)}
+              className="h-8 w-8 p-0 text-red-600 hover:text-red-800"
+              title="Delete task"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>
