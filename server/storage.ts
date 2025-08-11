@@ -1264,8 +1264,30 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: number): Promise<Task | undefined> {
-    const result = await this.db.select().from(tasks).where(eq(tasks.id, id));
-    return result[0];
+    // Use raw SQL for Supabase compatibility similar to other task methods
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
+    }
+    
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
+    try {
+      console.log('🔍 GET_TASK: Using raw SQL to get task ID:', id);
+      const result = await freshSql`SELECT * FROM tasks WHERE id = ${id} LIMIT 1`;
+      console.log('✅ GET_TASK: Found task:', result.length > 0 ? 'YES' : 'NO');
+      await freshSql.end();
+      return result[0] as Task | undefined;
+    } catch (error) {
+      console.error('❌ GET_TASK ERROR:', error);
+      await freshSql.end();
+      throw error;
+    }
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
@@ -1324,8 +1346,9 @@ class DatabaseStorage implements IStorage {
     
     try {
       console.log('🗑️ DELETION: Using raw SQL to delete task ID:', id);
+      console.log('🗑️ DELETION: Database URL configured:', !!databaseUrl);
       const result = await freshSql`DELETE FROM tasks WHERE id = ${id}`;
-      console.log('✅ DELETION: Task deleted successfully:', result);
+      console.log('✅ DELETION: Task deleted successfully, affected rows:', result.count);
       await freshSql.end();
       return;
     } catch (error) {
