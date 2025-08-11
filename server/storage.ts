@@ -382,6 +382,7 @@ export class MemStorage implements IStorage {
 
     // Create sample employee assignments
     await this.createEmployeeAssignment({
+      assignmentId: `${formTask.id}_${mike.id}`,
       taskId: formTask.id,
       employeeId: mike.id,
       assignmentDate: today,
@@ -390,6 +391,7 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
+      assignmentId: `${demoTask.id}_${sarah.id}`,
       taskId: demoTask.id,
       employeeId: sarah.id,
       assignmentDate: today,
@@ -398,6 +400,7 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
+      assignmentId: `${formTask.id}_${tom.id}`,
       taskId: formTask.id,
       employeeId: tom.id,
       assignmentDate: today,
@@ -424,10 +427,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null,
-      passwordResetToken: insertUser.passwordResetToken ?? null,
-      passwordResetExpires: insertUser.passwordResetExpires ?? null,
-      isPasswordSet: insertUser.isPasswordSet ?? false
+      phone: insertUser.phone ?? null
     };
     this.users.set(id, user);
     return user;
@@ -896,57 +896,38 @@ class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
     
-    console.log("🔗 Initializing database connection...");
-    const connectionString = process.env.DATABASE_URL;
-    console.log("📍 Connection target:", connectionString.replace(/:[^:@]*@/, ':***@')); // Hide password in logs
+    // Handle different database URL formats
+    let connectionString = process.env.DATABASE_URL;
     
-    try {
-      // Try multiple connection configurations for better compatibility
-      let sql;
+    // If it's a Supabase URL with special characters in password, encode it
+    if (connectionString.includes('#')) {
+      const urlParts = connectionString.split('@');
+      const authPart = urlParts[0];
+      const hostPart = urlParts[1];
       
-      // First try with minimal configuration
-      if (connectionString.includes('pooler.supabase.com')) {
-        console.log("🔄 Attempting session pooler connection with minimal config...");
-        sql = neon(connectionString);
-      } else {
-        console.log("🔄 Attempting direct connection...");
-        sql = neon(connectionString, {
-          fetchConnectionCache: true,
-          fullResults: true,
-        });
+      // Extract password and encode special characters
+      const passwordMatch = authPart.match(/:([^:]+)$/);
+      if (passwordMatch) {
+        const password = passwordMatch[1];
+        const encodedPassword = encodeURIComponent(password);
+        connectionString = authPart.replace(`:${password}`, `:${encodedPassword}`) + '@' + hostPart;
       }
-      
-      this.db = drizzle(sql, {
-        schema: {
-          users,
-          projects,
-          budgetLineItems,
-          locations,
-          locationBudgets,
-          crews,
-          employees,
-          tasks,
-          employeeAssignments,
-        },
-        logger: false // Disable query logging for cleaner output
-      });
-      
-      console.log("✅ Database client initialized successfully");
-    } catch (error) {
-      console.error("❌ Failed to initialize database client:", error);
-      throw error;
     }
-  }
-
-  // Test connection method
-  async testConnection(): Promise<boolean> {
-    try {
-      await this.db.select().from(users).limit(1);
-      return true;
-    } catch (error) {
-      console.error("❌ Database connection test failed:", error);
-      return false;
-    }
+    
+    const sql = neon(connectionString);
+    this.db = drizzle(sql, {
+      schema: {
+        users,
+        projects,
+        budgetLineItems,
+        locations,
+        locationBudgets,
+        crews,
+        employees,
+        tasks,
+        employeeAssignments,
+      },
+    });
   }
 
   // User methods
@@ -1226,469 +1207,19 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Hybrid storage class that automatically falls back to in-memory on database errors
-class HybridStorage implements IStorage {
-  private dbStorage: DatabaseStorage | null = null;
-  private memStorage: MemStorage;
-  private isDatabaseAvailable = false;
-
-  constructor() {
-    this.memStorage = new MemStorage();
-    
-    if (process.env.DATABASE_URL) {
-      try {
-        this.dbStorage = new DatabaseStorage();
-        this.isDatabaseAvailable = true; // Start with database as available
-        console.log("✅ DATABASE_URL found, database storage initialized successfully");
-        console.log("🔗 Using Supabase PostgreSQL for data persistence");
-        
-        // Test connection immediately during initialization
-        this.testDatabaseConnection();
-      } catch (error) {
-        console.error("❌ Failed to initialize database storage:", error);
-        this.dbStorage = null;
-        console.log("🔄 Falling back to in-memory storage");
-      }
-    } else {
-      console.log("No DATABASE_URL found, using in-memory storage");
-    }
-  }
-
-  private async testDatabaseConnection() {
-    if (this.dbStorage) {
-      try {
-        console.log("🔍 Testing database connection...");
-        
-        // Add timeout to connection test
-        const testPromise = (this.dbStorage as any).testConnection();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000)
-        );
-        
-        const testResult = await Promise.race([testPromise, timeoutPromise]);
-        if (testResult) {
-          console.log("✅ Database connection test successful!");
-        } else {
-          console.log("❌ Database connection test failed - will use fallback mode");
-          this.isDatabaseAvailable = false;
-        }
-      } catch (error) {
-        console.error("❌ Database connection test error:", error);
-        this.isDatabaseAvailable = false;
-        
-        // Try to retry connection once more
-        console.log("🔄 Retrying database connection in 2 seconds...");
-        setTimeout(() => this.retryConnection(), 2000);
-      }
-    }
-  }
-
-  private async retryConnection() {
-    if (this.dbStorage) {
-      try {
-        console.log("🔄 Attempting database reconnection...");
-        const testResult = await (this.dbStorage as any).testConnection();
-        if (testResult) {
-          console.log("✅ Database reconnection successful!");
-          this.isDatabaseAvailable = true;
-        } else {
-          console.log("❌ Database reconnection failed - staying in fallback mode");
-        }
-      } catch (error) {
-        console.log("❌ Database reconnection failed:", (error as any)?.message || error);
-      }
-    }
-  }
-
-  private async executeWithFallback<T>(
-    dbOperation: () => Promise<T>,
-    memOperation: () => Promise<T>
-  ): Promise<T> {
-    if (this.dbStorage && this.isDatabaseAvailable) {
-      try {
-        const result = await dbOperation();
-        // Log successful database operations for debugging
-        console.log("💾 Database operation successful");
-        return result;
-      } catch (error) {
-        console.warn("❌ Database operation failed, falling back to in-memory storage:", (error as any)?.message || error);
-        this.isDatabaseAvailable = false;
-        console.log("🔄 Using in-memory storage for this operation");
-        return await memOperation();
-      }
-    } else if (this.dbStorage && !this.isDatabaseAvailable) {
-      // Try database once more, maybe connection is restored
-      try {
-        const result = await dbOperation();
-        this.isDatabaseAvailable = true;
-        console.log("✅ Database connection restored!");
-        return result;
-      } catch (error) {
-        console.log("🔧 Database still unavailable, using in-memory storage");
-        return await memOperation();
-      }
-    } else {
-      console.log("🗃️ Using in-memory storage (no database configured)");
-      return await memOperation();
-    }
-  }
-
-  // User methods
-  async getUsers(): Promise<User[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getUsers(),
-      () => this.memStorage.getUsers()
-    );
-  }
-
-  async getUser(id: number): Promise<User | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getUser(id),
-      () => this.memStorage.getUser(id)
-    );
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getUserByUsername(username),
-      () => this.memStorage.getUserByUsername(username)
-    );
-  }
-
-  async getUserByResetToken(token: string): Promise<User | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getUserByResetToken(token),
-      () => this.memStorage.getUserByResetToken(token)
-    );
-  }
-
-  async createUser(user: InsertUser): Promise<User> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createUser(user),
-      () => this.memStorage.createUser(user)
-    );
-  }
-
-  async updateUser(id: number, user: Partial<InsertUser>): Promise<User> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateUser(id, user),
-      () => this.memStorage.updateUser(id, user)
-    );
-  }
-
-  async deleteUser(id: number): Promise<boolean> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteUser(id),
-      () => this.memStorage.deleteUser(id)
-    );
-  }
-
-  async setPasswordResetToken(userId: number, token: string, expiresAt: Date): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.setPasswordResetToken(userId, token, expiresAt),
-      () => this.memStorage.setPasswordResetToken(userId, token, expiresAt)
-    );
-  }
-
-  async clearPasswordResetToken(userId: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.clearPasswordResetToken(userId),
-      () => this.memStorage.clearPasswordResetToken(userId)
-    );
-  }
-
-  // Project methods
-  async getProjects(): Promise<Project[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getProjects(),
-      () => this.memStorage.getProjects()
-    );
-  }
-
-  async getProject(id: number): Promise<Project | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getProject(id),
-      () => this.memStorage.getProject(id)
-    );
-  }
-
-  async createProject(project: InsertProject): Promise<Project> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createProject(project),
-      () => this.memStorage.createProject(project)
-    );
-  }
-
-  async updateProject(id: number, project: Partial<InsertProject>): Promise<Project> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateProject(id, project),
-      () => this.memStorage.updateProject(id, project)
-    );
-  }
-
-  async deleteProject(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteProject(id),
-      () => this.memStorage.deleteProject(id)
-    );
-  }
-
-  // Budget methods
-  async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getBudgetLineItems(locationId),
-      () => this.memStorage.getBudgetLineItems(locationId)
-    );
-  }
-
-  async createBudgetLineItem(budgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createBudgetLineItem(budgetLineItem),
-      () => this.memStorage.createBudgetLineItem(budgetLineItem)
-    );
-  }
-
-  async updateBudgetLineItem(id: number, budgetLineItem: Partial<InsertBudgetLineItem>): Promise<BudgetLineItem> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateBudgetLineItem(id, budgetLineItem),
-      () => this.memStorage.updateBudgetLineItem(id, budgetLineItem)
-    );
-  }
-
-  async deleteBudgetLineItem(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteBudgetLineItem(id),
-      () => this.memStorage.deleteBudgetLineItem(id)
-    );
-  }
-
-  // Location methods
-  async getLocations(projectId: number): Promise<Location[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getLocations(projectId),
-      () => this.memStorage.getLocations(projectId)
-    );
-  }
-
-  async getAllLocations(): Promise<Location[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getAllLocations(),
-      () => this.memStorage.getAllLocations()
-    );
-  }
-
-  async getLocation(id: number): Promise<Location | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getLocation(id),
-      () => this.memStorage.getLocation(id)
-    );
-  }
-
-  async createLocation(location: InsertLocation): Promise<Location> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createLocation(location),
-      () => this.memStorage.createLocation(location)
-    );
-  }
-
-  async updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateLocation(id, location),
-      () => this.memStorage.updateLocation(id, location)
-    );
-  }
-
-  async deleteLocation(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteLocation(id),
-      () => this.memStorage.deleteLocation(id)
-    );
-  }
-
-  // Location budget methods
-  async getLocationBudgets(locationId: number): Promise<LocationBudget[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getLocationBudgets(locationId),
-      () => this.memStorage.getLocationBudgets(locationId)
-    );
-  }
-
-  async createLocationBudget(locationBudget: InsertLocationBudget): Promise<LocationBudget> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createLocationBudget(locationBudget),
-      () => this.memStorage.createLocationBudget(locationBudget)
-    );
-  }
-
-  async updateLocationBudget(id: number, locationBudget: Partial<InsertLocationBudget>): Promise<LocationBudget> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateLocationBudget(id, locationBudget),
-      () => this.memStorage.updateLocationBudget(id, locationBudget)
-    );
-  }
-
-  // Crew methods
-  async getCrews(): Promise<Crew[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getCrews(),
-      () => this.memStorage.getCrews()
-    );
-  }
-
-  async createCrew(crew: InsertCrew): Promise<Crew> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createCrew(crew),
-      () => this.memStorage.createCrew(crew)
-    );
-  }
-
-  async updateCrew(id: number, crew: Partial<InsertCrew>): Promise<Crew> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateCrew(id, crew),
-      () => this.memStorage.updateCrew(id, crew)
-    );
-  }
-
-  async deleteCrew(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteCrew(id),
-      () => this.memStorage.deleteCrew(id)
-    );
-  }
-
-  // Employee methods
-  async getEmployees(): Promise<Employee[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getEmployees(),
-      () => this.memStorage.getEmployees()
-    );
-  }
-
-  async getEmployee(id: number): Promise<Employee | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getEmployee(id),
-      () => this.memStorage.getEmployee(id)
-    );
-  }
-
-  async createEmployee(employee: InsertEmployee): Promise<Employee> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createEmployee(employee),
-      () => this.memStorage.createEmployee(employee)
-    );
-  }
-
-  async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateEmployee(id, employee),
-      () => this.memStorage.updateEmployee(id, employee)
-    );
-  }
-
-  async deleteEmployee(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteEmployee(id),
-      () => this.memStorage.deleteEmployee(id)
-    );
-  }
-
-  async createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createUserFromEmployee(employeeId, username, role),
-      () => this.memStorage.createUserFromEmployee(employeeId, username, role)
-    );
-  }
-
-  // Task methods
-  async getTasks(locationId: string | number): Promise<Task[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getTasks(locationId),
-      () => this.memStorage.getTasks(locationId)
-    );
-  }
-
-  async getTask(id: number): Promise<Task | undefined> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getTask(id),
-      () => this.memStorage.getTask(id)
-    );
-  }
-
-  async createTask(task: InsertTask): Promise<Task> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createTask(task),
-      () => this.memStorage.createTask(task)
-    );
-  }
-
-  async updateTask(id: number, task: Partial<InsertTask>): Promise<Task> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateTask(id, task),
-      () => this.memStorage.updateTask(id, task)
-    );
-  }
-
-  async deleteTask(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteTask(id),
-      () => this.memStorage.deleteTask(id)
-    );
-  }
-
-  async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getTasksByDateRange(startDate, endDate),
-      () => this.memStorage.getTasksByDateRange(startDate, endDate)
-    );
-  }
-
-  // Employee assignment methods
-  async getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getEmployeeAssignments(taskId),
-      () => this.memStorage.getEmployeeAssignments(taskId)
-    );
-  }
-
-  async getAllEmployeeAssignments(): Promise<EmployeeAssignment[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getAllEmployeeAssignments(),
-      () => this.memStorage.getAllEmployeeAssignments()
-    );
-  }
-
-  async createEmployeeAssignment(assignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.createEmployeeAssignment(assignment),
-      () => this.memStorage.createEmployeeAssignment(assignment)
-    );
-  }
-
-  async updateEmployeeAssignment(id: number, assignment: Partial<InsertEmployeeAssignment>): Promise<EmployeeAssignment> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.updateEmployeeAssignment(id, assignment),
-      () => this.memStorage.updateEmployeeAssignment(id, assignment)
-    );
-  }
-
-  async deleteEmployeeAssignment(id: number): Promise<void> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.deleteEmployeeAssignment(id),
-      () => this.memStorage.deleteEmployeeAssignment(id)
-    );
-  }
-
-  async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
-    return this.executeWithFallback(
-      () => this.dbStorage!.getEmployeeAssignmentsByDate(date),
-      () => this.memStorage.getEmployeeAssignmentsByDate(date)
-    );
-  }
-}
-
-// Initialize storage with hybrid approach
+// Initialize storage with fallback to in-memory if database fails
 function initializeStorage(): IStorage {
-  return new HybridStorage();
+  if (!process.env.DATABASE_URL) {
+    console.log("No DATABASE_URL found, using in-memory storage");
+    return new MemStorage();
+  }
+  
+  // For development, we'll use in-memory storage to avoid database connection issues
+  // When you want to use persistent storage, you can set up your Supabase database
+  // and change this to use DatabaseStorage()
+  console.log("Using in-memory storage for development (data will not persist between server restarts)");
+  console.log("To use persistent storage, set up your Supabase database and modify this function");
+  return new MemStorage();
 }
 
 export const storage = initializeStorage();
