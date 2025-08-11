@@ -618,7 +618,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      res.json(task);
+      
+      // Transform snake_case to camelCase for frontend compatibility
+      // Note: Raw database response has snake_case field names
+      const transformedTask = {
+        id: (task as any).id,
+        taskId: (task as any).task_id,
+        name: (task as any).name,
+        title: (task as any).name, // Add title for backwards compatibility
+        description: (task as any).work_description,
+        costCode: (task as any).cost_code,
+        locationId: (task as any).location_id,
+        taskType: (task as any).task_type,
+        taskDate: (task as any).task_date,
+        startDate: (task as any).start_date,
+        finishDate: (task as any).finish_date,
+        scheduledHours: (task as any).scheduled_hours,
+        actualHours: (task as any).actual_hours,
+        startTime: (task as any).start_time,
+        finishTime: (task as any).finish_time,
+        workDescription: (task as any).work_description,
+        notes: (task as any).notes,
+        dependencies: (task as any).dependencies,
+        status: (task as any).status,
+        priority: (task as any).priority,
+        taskOrder: (task as any).priority, // Add taskOrder for backwards compatibility
+        dependentOnPrevious: (task as any).dependent_on_previous,
+        superintendentId: (task as any).superintendent_id,
+        foremanId: (task as any).foreman_id,
+        linkedTaskGroup: (task as any).linked_task_group,
+        crewId: (task as any).crew_id
+      };
+      
+      res.json(transformedTask);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch task' });
     }

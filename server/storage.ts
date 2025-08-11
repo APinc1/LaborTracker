@@ -1273,6 +1273,12 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: number): Promise<Task | undefined> {
+    // Validate input ID
+    if (!id || isNaN(id)) {
+      console.error('❌ GET_TASK: Invalid ID provided:', id);
+      return undefined;
+    }
+    
     // Use raw SQL directly since Drizzle schema might not match Supabase exactly
     const postgres = await import('postgres');
     const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;

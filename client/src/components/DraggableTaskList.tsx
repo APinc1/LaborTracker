@@ -146,7 +146,9 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No date';
     try {
-      return new Date(dateString + 'T00:00:00').toLocaleDateString('en-US', {
+      // Handle both ISO date strings and simple date strings
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric'
       });
@@ -544,11 +546,7 @@ export default function DraggableTaskList({
     mutationFn: async (updatedTasks: any[]) => {
       // Update each task individually
       const promises = updatedTasks.map(taskData => 
-        apiRequest(`/api/tasks/${taskData.id}`, {
-          method: 'PUT',
-          body: JSON.stringify(taskData),
-          headers: { 'Content-Type': 'application/json' }
-        })
+        apiRequest('PUT', `/api/tasks/${taskData.id}`, taskData)
       );
       
       const responses = await Promise.all(promises);
