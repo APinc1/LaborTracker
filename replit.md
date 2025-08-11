@@ -21,7 +21,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 ### Technical Implementations
 - **Frontend**: React 18 with TypeScript, Vite for builds, TanStack Query for state management, Wouter for routing, and React Hook Form with Zod for form validation.
 - **Backend**: Express.js with TypeScript, utilizing a RESTful API design with CRUD operations.
-- **Database**: PostgreSQL via Drizzle ORM for type-safe operations. Supports dual-mode storage (PostgreSQL/in-memory) with automatic fallback.
+- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Successfully migrated from in-memory to persistent storage using postgres-js driver with SSL connection.
 - **Real-time**: WebSocket server for live updates and notifications across clients.
 - **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization.
 - **Data Flow**: Client requests via React Query, processed by Express routes, interacting with the database via Drizzle ORM, with WebSocket broadcasting changes.
@@ -52,7 +52,8 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 - **Drag and Drop**: `@dnd-kit`
 
 ### Backend
-- **Database Connection**: `@neondatabase/serverless` (for PostgreSQL)
+- **Database Connection**: `postgres-js` (for Supabase PostgreSQL)
+- **Database Fallback**: `@neondatabase/serverless` (legacy support)
 - **WebSocket**: `ws`
 - **Session Storage**: `connect-pg-simple`
 - **Development Utility**: `tsx` (for TypeScript execution)

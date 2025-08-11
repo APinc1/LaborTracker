@@ -6,6 +6,8 @@ import {
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
+import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
@@ -896,38 +898,38 @@ class DatabaseStorage implements IStorage {
       throw new Error("DATABASE_URL environment variable is required");
     }
     
-    // Handle different database URL formats
     let connectionString = process.env.DATABASE_URL;
+    console.log("Initializing Supabase PostgreSQL connection...");
     
-    // If it's a Supabase URL with special characters in password, encode it
-    if (connectionString.includes('#')) {
-      const urlParts = connectionString.split('@');
-      const authPart = urlParts[0];
-      const hostPart = urlParts[1];
+    try {
+      // Use postgres-js for better Supabase compatibility
+      const client = postgres(connectionString, {
+        ssl: 'require',
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10,
+      });
       
-      // Extract password and encode special characters
-      const passwordMatch = authPart.match(/:([^:]+)$/);
-      if (passwordMatch) {
-        const password = passwordMatch[1];
-        const encodedPassword = encodeURIComponent(password);
-        connectionString = authPart.replace(`:${password}`, `:${encodedPassword}`) + '@' + hostPart;
-      }
+      this.db = drizzlePostgres(client, {
+        schema: {
+          users,
+          projects,
+          budgetLineItems,
+          locations,
+          locationBudgets,
+          crews,
+          employees,
+          tasks,
+          employeeAssignments,
+        },
+      });
+      
+      console.log("PostgreSQL client initialized successfully");
+      
+    } catch (error) {
+      console.error("Failed to initialize PostgreSQL client:", error);
+      throw error;
     }
-    
-    const sql = neon(connectionString);
-    this.db = drizzle(sql, {
-      schema: {
-        users,
-        projects,
-        budgetLineItems,
-        locations,
-        locationBudgets,
-        crews,
-        employees,
-        tasks,
-        employeeAssignments,
-      },
-    });
     
     // Initialize with sample data if database is empty
     this.initializeSampleData();
@@ -1178,6 +1180,7 @@ class DatabaseStorage implements IStorage {
       // Create sample employee assignments
       await this.db.insert(employeeAssignments).values([
         {
+          assignmentId: "1_1",
           taskId: task1.id,
           employeeId: mike.id,
           assignmentDate: "2025-08-11",
@@ -1185,6 +1188,7 @@ class DatabaseStorage implements IStorage {
           crew: "Concrete Crew A"
         },
         {
+          assignmentId: "2_1",
           taskId: task2.id,
           employeeId: sarah.id,
           assignmentDate: "2025-08-11",
@@ -1192,6 +1196,7 @@ class DatabaseStorage implements IStorage {
           crew: "Demo Crew B"
         },
         {
+          assignmentId: "1_2",
           taskId: task1.id,
           employeeId: tom.id,
           assignmentDate: "2025-08-11",
@@ -1485,17 +1490,50 @@ class DatabaseStorage implements IStorage {
 }
 
 // Initialize storage with fallback to in-memory if database fails
-function initializeStorage(): IStorage {
+async function initializeStorage(): Promise<IStorage> {
   if (!process.env.DATABASE_URL) {
     console.log("No DATABASE_URL found, using in-memory storage");
     return new MemStorage();
   }
   
-  // For now, we'll use in-memory storage until Supabase connection is properly configured
-  // The DATABASE_URL exists but there seems to be a network connectivity issue
-  console.log("DATABASE_URL found but connection failed, using in-memory storage with sample data");
-  console.log("To use PostgreSQL, ensure proper network connectivity to Supabase");
-  return new MemStorage();
+  try {
+    console.log("Attempting to connect to Supabase PostgreSQL database...");
+    const dbStorage = new DatabaseStorage();
+    
+    // Test the connection with a simple query
+    console.log("Testing database connection...");
+    const users = await dbStorage.getUsers();
+    console.log(`✓ Successfully connected to PostgreSQL database! Found ${users.length} users.`);
+    return dbStorage;
+    
+  } catch (error) {
+    console.error("✗ Failed to connect to Supabase database:", error.message);
+    console.log("📦 Falling back to in-memory storage with sample data");
+    console.log("🔧 To troubleshoot:");
+    console.log("   1. Verify DATABASE_URL is correct");
+    console.log("   2. Check network connectivity to Supabase");
+    console.log("   3. Ensure Supabase project is active");
+    return new MemStorage();
+  }
 }
 
-export const storage = initializeStorage();
+// Storage initialization
+let storageInstance: IStorage | null = null;
+
+export async function getStorageInstance(): Promise<IStorage> {
+  if (!storageInstance) {
+    storageInstance = await initializeStorage();
+  }
+  return storageInstance;
+}
+
+// Initialize storage synchronously for immediate use
+initializeStorage().then(storage => {
+  storageInstance = storage;
+}).catch(err => {
+  console.error("Storage initialization error:", err);
+  storageInstance = new MemStorage();
+});
+
+// Temporary storage instance for immediate use (will be replaced by async initialization)
+export const storage = new MemStorage();
