@@ -850,8 +850,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Task not found' });
       }
       
+      console.log('🔍 DELETION: Task to delete details:', {
+        id: taskToDelete.id,
+        name: taskToDelete.name,
+        location_id: taskToDelete.location_id
+      });
+      
       // Get all tasks in the same location for sequential cascading
-      const locationTasks = await storage.getTasks(taskToDelete.locationId);
+      // Use location_id field (Supabase uses snake_case)
+      const actualLocationId = taskToDelete.location_id;
+      if (!actualLocationId) {
+        console.error('❌ DELETION: No location ID found in task:', taskToDelete);
+        return res.status(400).json({ error: 'Task has no valid location ID' });
+      }
+      
+      const locationTasks = await storage.getTasks(actualLocationId);
       
       // Handle linked task unlinking before deletion using the proper utility function
       console.log('🔍 DELETION: Checking if task needs unlinking:', {

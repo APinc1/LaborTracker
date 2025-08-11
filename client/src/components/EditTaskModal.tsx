@@ -199,9 +199,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           (t.taskId || t.id) !== (task.taskId || task.id)
         ) : [];
 
+      // Format the date properly for HTML input (YYYY-MM-DD format)
+      const formatDateForInput = (dateStr: string) => {
+        if (!dateStr) return "";
+        try {
+          const date = new Date(dateStr);
+          return date.toISOString().split('T')[0];
+        } catch {
+          return "";
+        }
+      };
+
       form.reset({
         name: task.name || task.title || "",
-        taskDate: task.taskDate || "",
+        taskDate: formatDateForInput(task.taskDate),
         startTime: task.startTime || "",
         finishTime: task.finishTime || "",
         workDescription: task.workDescription || "",

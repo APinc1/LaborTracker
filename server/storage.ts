@@ -1264,42 +1264,29 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTask(id: number): Promise<Task | undefined> {
-    // Try Drizzle ORM first since other parts of the app use it successfully
+    // Use raw SQL directly since Drizzle schema might not match Supabase exactly
+    const postgres = await import('postgres');
+    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      throw new Error('No database URL available');
+    }
+    
+    const freshSql = postgres.default(databaseUrl, {
+      idle_timeout: 20,
+      max_lifetime: 60 * 30,
+    });
+    
     try {
-      console.log('🔍 GET_TASK: Using Drizzle ORM to get task ID:', id);
-      const result = await this.db.select().from(tasks).where(eq(tasks.id, id));
-      console.log('✅ GET_TASK: Found task via Drizzle:', result.length > 0 ? 'YES' : 'NO');
-      if (result.length > 0) {
-        console.log('🔍 GET_TASK: Task data:', { id: result[0].id, title: result[0].title });
-      }
-      return result[0];
+      console.log('🔍 GET_TASK: Using raw SQL to get task ID:', id);
+      const result = await freshSql`SELECT * FROM tasks WHERE id = ${id} LIMIT 1`;
+      console.log('✅ GET_TASK: Found task via raw SQL:', result.length > 0 ? 'YES' : 'NO');
+      await freshSql.end();
+      return result[0] as Task | undefined;
     } catch (error) {
-      console.error('❌ GET_TASK Drizzle ERROR:', error);
-      
-      // Fallback to raw SQL if Drizzle fails
-      const postgres = await import('postgres');
-      const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-      
-      if (!databaseUrl) {
-        throw new Error('No database URL available');
-      }
-      
-      const freshSql = postgres.default(databaseUrl, {
-        idle_timeout: 20,
-        max_lifetime: 60 * 30,
-      });
-      
-      try {
-        console.log('🔍 GET_TASK: Fallback to raw SQL for task ID:', id);
-        const result = await freshSql`SELECT * FROM tasks WHERE id = ${id} LIMIT 1`;
-        console.log('✅ GET_TASK: Found task via raw SQL:', result.length > 0 ? 'YES' : 'NO');
-        await freshSql.end();
-        return result[0] as Task | undefined;
-      } catch (sqlError) {
-        console.error('❌ GET_TASK SQL ERROR:', sqlError);
-        await freshSql.end();
-        throw sqlError;
-      }
+      console.error('❌ GET_TASK SQL ERROR:', error);
+      await freshSql.end();
+      throw error;
     }
   }
 
