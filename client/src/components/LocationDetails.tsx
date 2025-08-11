@@ -145,7 +145,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           }
         }
 
-        await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
         toast({
           title: "Task deleted",
           description: "Task has been removed and related tasks updated successfully",
@@ -273,7 +273,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   }
 
   // Calculate budget totals in hours
-  const totalBudgetHours = budgetItems.reduce((sum: number, item: any) => {
+  const totalBudgetHours = (budgetItems as any[]).reduce((sum: number, item: any) => {
     if (!item) return sum;
     
     // Only include items that are either:
@@ -282,7 +282,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Skip child items to avoid double counting
     const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
     const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-    const hasChildren = budgetItems.some((child: any) => 
+    const hasChildren = (budgetItems as any[]).some((child: any) => 
       child.lineItemNumber && child.lineItemNumber.includes('.') && 
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
@@ -406,22 +406,22 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
   const costCodeArray = Object.values(costCodeSummaries || {}).filter((summary: any) => 
-    summary?.totalBudgetHours > 0
+    (summary as any)?.totalBudgetHours > 0
   );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
     if (!Array.isArray(tasks) || tasks.length === 0) {
       return {
-        startDate: location?.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
-        endDate: location?.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+        startDate: (location as any)?.startDate ? safeFormatDate((location as any).startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: (location as any)?.endDate ? safeFormatDate((location as any).endDate, 'MMM d, yyyy') : 'No tasks scheduled'
       };
     }
 
     // Get all task dates and find earliest and latest
     const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
-    const earliestTaskDate = new Date(Math.min(...taskDates));
-    const latestTaskDate = new Date(Math.max(...taskDates));
+    const earliestTaskDate = new Date(Math.min(...taskDates.filter(date => !isNaN(date))));
+    const latestTaskDate = new Date(Math.max(...taskDates.filter(date => !isNaN(date))));
 
     return {
       startDate: safeFormatDate(earliestTaskDate, 'MMM d, yyyy'),
@@ -629,7 +629,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     setIsGeneratingTasks(true);
     try {
       // Get cost codes with budget hours > 0 (includes Traffic Control and General Labor)
-      const validCostCodes = costCodeArray.filter(summary => summary.totalBudgetHours > 0);
+      const validCostCodes = costCodeArray.filter(summary => (summary as any).totalBudgetHours > 0);
       
       if (validCostCodes.length === 0) {
         toast({
@@ -652,10 +652,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
       validCostCodes.forEach(summary => {
         // Map cost code to task type (simplified mapping)
-        let taskType = summary.costCode;
+        let taskType = (summary as any).costCode;
         
         // Enhanced mapping based on cost code naming convention
-        const codeUpper = summary.costCode.toUpperCase();
+        const codeUpper = (summary as any).costCode.toUpperCase();
         
         if (codeUpper.includes('DEMO') || codeUpper.includes('DEMOLITION') || codeUpper.includes('EX')) {
           taskType = 'Demo/Ex';
@@ -695,7 +695,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         }
         
         taskGroups[taskType].costCodes.push(summary);
-        taskGroups[taskType].totalHours += summary.totalBudgetHours;
+        taskGroups[taskType].totalHours += (summary as any).totalBudgetHours;
       });
 
       // Calculate days for each task type (total hours / 40)
@@ -755,7 +755,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               costCodes: concreteCostCodes,
               totalHours: concreteHours / 2,
               days: formDays,
-              alternatingWith: 'Pour'
+              alternatingWith: 'Pour' as any
             };
           }
           
@@ -764,7 +764,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               costCodes: concreteCostCodes,
               totalHours: concreteHours / 2,
               days: pourDays,
-              alternatingWith: 'Form'
+              alternatingWith: 'Form' as any
             };
           }
         }
@@ -783,7 +783,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       let globalDayIndex = 0;
       
       // Handle alternating Form/Pour tasks specially
-      const hasAlternatingFormPour = taskGroups['Form']?.alternatingWith === 'Pour' && taskGroups['Pour']?.alternatingWith === 'Form';
+      const hasAlternatingFormPour = (taskGroups['Form'] as any)?.alternatingWith === 'Pour' && (taskGroups['Pour'] as any)?.alternatingWith === 'Form';
       
       if (hasAlternatingFormPour) {
         // Handle alternating Form/Pour separately
@@ -995,7 +995,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Refresh tasks data
-      await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
       
       toast({
         title: "Tasks generated successfully",
@@ -1041,7 +1041,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
-                  {project.name}
+                  {(project as any).name}
                 </Button>
                 <span>/</span>
               </>
@@ -1057,13 +1057,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             
             <span className="text-gray-900 font-medium">
               <MapPin className="w-4 h-4 mr-1 inline" />
-              {location?.name || 'Location'}
+              {(location as any)?.name || 'Location'}
             </span>
           </nav>
         </div>
         
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{location.name}</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{(location as any).name}</h2>
           <p className="text-gray-600 mt-1">Location overview and details</p>
         </div>
       </header>
@@ -1075,7 +1075,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
               Location Overview
-              <Badge variant="outline">{location.locationId}</Badge>
+              <Badge variant="outline">{(location as any).locationId}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1094,25 +1094,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <DollarSign className="w-4 h-4 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-600">Budget Allocation</p>
-                  <p className="font-medium">${location.budgetAllocated?.toLocaleString() || 'N/A'}</p>
+                  <p className="font-medium">${(location as any).budgetAllocated?.toLocaleString() || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {location.isComplete ? (
+                {(location as any).isComplete ? (
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 ) : (
                   <Clock className="w-4 h-4 text-orange-600" />
                 )}
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <p className="font-medium">{location.isComplete ? 'Completed' : 'In Progress'}</p>
+                  <p className="font-medium">{(location as any).isComplete ? 'Completed' : 'In Progress'}</p>
                 </div>
               </div>
             </div>
             
-            {location.description && (
+            {(location as any).description && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">{location.description}</p>
+                <p className="text-sm text-gray-700">{(location as any).description}</p>
               </div>
             )}
 
@@ -1135,7 +1135,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 Budget Summary
                 <Badge variant="secondary">{Array.isArray(budgetItems) ? budgetItems.length : 0} items</Badge>
               </CardTitle>
-              <Link href={`/budgets?locationId=${location.locationId}`}>
+              <Link href={`/budgets?locationId=${(location as any).locationId}`}>
                 <Button variant="outline" size="sm">
                   View Full Budget
                 </Button>
@@ -1156,7 +1156,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <p className="text-sm text-gray-400 mt-2">
                   Budget items will appear here once they are added
                 </p>
-                <Link href={`/budgets?locationId=${location.locationId}`}>
+                <Link href={`/budgets?locationId=${(location as any).locationId}`}>
                   <Button className="mt-4">
                     Manage Budget
                   </Button>
@@ -1317,7 +1317,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <DraggableTaskList
-                tasks={tasks || []}
+                tasks={(tasks as any[]) || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTaskClick}
@@ -1325,7 +1325,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
-                budgetItems={budgetItems || []}
+                budgetItems={(budgetItems as any[]) || []}
                 showRemainingHours={true}
               />
             )}
@@ -1577,9 +1577,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           setEditingTask(null);
         }}
         task={editingTask}
-        locationTasks={tasks || []}
+        locationTasks={(tasks as any[]) || []}
         onTaskUpdate={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
         }}
       />
 
@@ -1587,8 +1587,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
-        selectedProject={location?.projectId}
-        selectedLocation={location?.id}
+        selectedProject={(location as any)?.projectId}
+        selectedLocation={(location as any)?.id}
       />
 
       {/* Task Detail Modal */}
