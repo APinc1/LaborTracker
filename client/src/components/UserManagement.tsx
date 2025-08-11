@@ -11,17 +11,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -67,11 +56,9 @@ export default function UserManagement() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const { toast } = useToast();
 
-  const { data: users = [], isLoading, refetch } = useQuery({
+  const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
-    staleTime: 0, // Always consider data stale
-    gcTime: 0, // Don't cache in memory
-  }) as { data: any[], isLoading: boolean, refetch: () => Promise<any> };
+  });
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -85,30 +72,19 @@ export default function UserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: async (userData: UserFormData) => {
-      console.log("🚀 Creating user with data:", userData);
-      const result = await apiRequest("POST", "/api/users", userData);
-      console.log("🔍 API response:", result);
-      return result;
-    },
-    onSuccess: async (result) => {
-      console.log("✅ User creation success:", result);
+    mutationFn: (userData: UserFormData) =>
+      apiRequest("POST", "/api/users", userData),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.removeQueries({ queryKey: ["/api/users"] });
-      await refetch();
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
-      // Small delay to ensure UI updates
-      setTimeout(() => {
-        toast({
-          title: "Success",
-          description: "User created successfully",
-        });
-      }, 100);
+      toast({
+        title: "Success",
+        description: "User created successfully",
+      });
     },
     onError: (error: any) => {
-      console.error("❌ User creation error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create user",
@@ -122,8 +98,6 @@ export default function UserManagement() {
       apiRequest("PUT", `/api/users/${userData.id}`, userData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.removeQueries({ queryKey: ["/api/users"] });
-      refetch();
       setIsCreateDialogOpen(false);
       setEditingUser(null);
       form.reset();
@@ -144,16 +118,12 @@ export default function UserManagement() {
   const deleteUserMutation = useMutation({
     mutationFn: (userId: number) =>
       apiRequest("DELETE", `/api/users/${userId}`),
-    onSuccess: async () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      queryClient.removeQueries({ queryKey: ["/api/users"] });
-      await refetch();
-      setTimeout(() => {
-        toast({
-          title: "Success",
-          description: "User deleted successfully",
-        });
-      }, 100);
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
     },
     onError: (error: any) => {
       toast({
@@ -185,7 +155,9 @@ export default function UserManagement() {
   };
 
   const handleDelete = (userId: number) => {
-    deleteUserMutation.mutate(userId);
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      deleteUserMutation.mutate(userId);
+    }
   };
 
   const roleStats = users.reduce((acc: any, user: any) => {
@@ -195,12 +167,11 @@ export default function UserManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">User Management</h1>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button
-              className="mr-4"
               onClick={() => {
                 setEditingUser(null);
                 form.reset();
@@ -388,34 +359,14 @@ export default function UserManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={deleteUserMutation.isPending}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete the user "{user.name}" and remove them from any project assignments. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(user.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete User
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(user.id)}
+                          disabled={deleteUserMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -21,7 +21,6 @@ import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 import TaskDetailModal from "./TaskDetailModal";
 import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
-import { calculateRemainingHours, getRemainingHoursIndicator } from "@/lib/remainingHours";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -29,13 +28,8 @@ interface LocationDetailsProps {
 
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Safe date formatting helper
-  const safeFormatDate = (date: Date | string | number | null | undefined, formatStr: string = 'yyyy-MM-dd'): string => {
+  const safeFormatDate = (date: Date | string | number, formatStr: string = 'yyyy-MM-dd'): string => {
     try {
-      // Handle null/undefined dates
-      if (date === null || date === undefined) {
-        return format(new Date(), formatStr); // Return current date for null/undefined
-      }
-
       let dateObj: Date;
       if (typeof date === 'string') {
         // Fix timezone offset by adding time component for date strings
@@ -47,12 +41,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
       
       if (!dateObj || isNaN(dateObj.getTime())) {
-        return format(new Date(), formatStr); // Return current date for invalid dates
+        console.warn('Invalid date provided to safeFormatDate:', date);
+        return '2025-07-16';
       }
       return format(dateObj, formatStr);
     } catch (error) {
       console.error('Error formatting date:', date, error);
-      return format(new Date(), formatStr); // Return current date on error
+      return '2025-07-16';
     }
   };
 
@@ -109,12 +104,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           const costCode = taskToDelete.costCode;
           
           // Find all related tasks of the same type and cost code
-          const relatedTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
+          const relatedTasks = tasks.filter((t: any) => 
             t.taskType === taskType && 
             t.costCode === costCode && 
             t.locationId === taskToDelete.locationId &&
             t.id !== taskToDelete.id
-          ) : [];
+          );
           
           // Find tasks that need renumbering (day numbers greater than deleted day)
           const tasksToUpdate = relatedTasks.filter((t: any) => {
@@ -145,7 +140,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           }
         }
 
-        await queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
+        await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
         toast({
           title: "Task deleted",
           description: "Task has been removed and related tasks updated successfully",
@@ -177,24 +172,20 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   // Helper function to format task name with day info
   const getTaskDisplayInfo = (task: any) => {
-    // Use the actual task name from the database
-    const taskName = task.name || task.title || 'Untitled Task';
-    
-    // Check if this is a multi-day task by counting similar tasks of same type and cost code
-    const relatedTasks = Array.isArray(tasks) ? tasks.filter((t: any) => 
-      (t.name || t.title) === taskName && 
-      t.costCode === task.costCode && 
-      t.locationId === task.locationId
-    ) : [];
-    
-    if (relatedTasks.length > 1) {
-      // Find the current day number by sorting by priority or id
-      const sortedTasks = relatedTasks.sort((a, b) => (a.priority || a.id) - (b.priority || b.id));
-      const currentDay = sortedTasks.findIndex(t => t.id === task.id) + 1;
-      const totalDays = relatedTasks.length;
+    const dayMatch = task.name.match(/Day (\d+)/i);
+    if (dayMatch) {
+      const currentDay = parseInt(dayMatch[1]);
       
+      // Count total days for this task type and cost code
+      const relatedTasks = tasks.filter((t: any) => 
+        t.taskType === task.taskType && 
+        t.costCode === task.costCode && 
+        t.locationId === task.locationId
+      );
+      
+      const totalDays = relatedTasks.length;
       return {
-        displayName: `${taskName} - Day ${currentDay} of ${totalDays}`,
+        displayName: task.name.replace(/Day \d+/i, `Day ${currentDay} of ${totalDays}`),
         isMultiDay: true,
         currentDay,
         totalDays
@@ -202,7 +193,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     }
     
     return {
-      displayName: taskName,
+      displayName: task.name,
       isMultiDay: false,
       currentDay: null,
       totalDays: null
@@ -273,7 +264,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   }
 
   // Calculate budget totals in hours
-  const totalBudgetHours = (budgetItems as any[]).reduce((sum: number, item: any) => {
+  const totalBudgetHours = budgetItems.reduce((sum: number, item: any) => {
     if (!item) return sum;
     
     // Only include items that are either:
@@ -282,7 +273,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Skip child items to avoid double counting
     const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
     const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-    const hasChildren = (budgetItems as any[]).some((child: any) => 
+    const hasChildren = budgetItems.some((child: any) => 
       child.lineItemNumber && child.lineItemNumber.includes('.') && 
       child.lineItemNumber.split('.')[0] === item.lineItemNumber
     );
@@ -387,8 +378,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const remainingHours = totalBudgetHours - totalActualHours;
 
   // Calculate progress
-  const completedTasks = Array.isArray(tasks) ? tasks.filter((task: any) => task.actualHours).length : 0;
-  const progressPercentage = Array.isArray(tasks) && tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
+  const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   // Helper function to get user-friendly cost code display names
   const getCostCodeDisplayName = (costCode: string) => {
@@ -405,23 +396,23 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   };
 
   // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
-  const costCodeArray = Object.values(costCodeSummaries || {}).filter((summary: any) => 
-    (summary as any)?.totalBudgetHours > 0
+  const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
+    summary.totalBudgetHours > 0
   );
 
   // Calculate actual location duration based on task dates
   const getLocationDuration = () => {
-    if (!Array.isArray(tasks) || tasks.length === 0) {
+    if (!tasks || tasks.length === 0) {
       return {
-        startDate: (location as any)?.startDate ? safeFormatDate((location as any).startDate, 'MMM d, yyyy') : 'No tasks scheduled',
-        endDate: (location as any)?.endDate ? safeFormatDate((location as any).endDate, 'MMM d, yyyy') : 'No tasks scheduled'
+        startDate: location.startDate ? safeFormatDate(location.startDate, 'MMM d, yyyy') : 'No tasks scheduled',
+        endDate: location.endDate ? safeFormatDate(location.endDate, 'MMM d, yyyy') : 'No tasks scheduled'
       };
     }
 
     // Get all task dates and find earliest and latest
     const taskDates = tasks.map((task: any) => new Date(task.taskDate + 'T00:00:00').getTime());
-    const earliestTaskDate = new Date(Math.min(...taskDates.filter(date => !isNaN(date))));
-    const latestTaskDate = new Date(Math.max(...taskDates.filter(date => !isNaN(date))));
+    const earliestTaskDate = new Date(Math.min(...taskDates));
+    const latestTaskDate = new Date(Math.max(...taskDates));
 
     return {
       startDate: safeFormatDate(earliestTaskDate, 'MMM d, yyyy'),
@@ -629,7 +620,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     setIsGeneratingTasks(true);
     try {
       // Get cost codes with budget hours > 0 (includes Traffic Control and General Labor)
-      const validCostCodes = costCodeArray.filter(summary => (summary as any).totalBudgetHours > 0);
+      const validCostCodes = costCodeArray.filter(summary => summary.totalBudgetHours > 0);
       
       if (validCostCodes.length === 0) {
         toast({
@@ -652,10 +643,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
       validCostCodes.forEach(summary => {
         // Map cost code to task type (simplified mapping)
-        let taskType = (summary as any).costCode;
+        let taskType = summary.costCode;
         
         // Enhanced mapping based on cost code naming convention
-        const codeUpper = (summary as any).costCode.toUpperCase();
+        const codeUpper = summary.costCode.toUpperCase();
         
         if (codeUpper.includes('DEMO') || codeUpper.includes('DEMOLITION') || codeUpper.includes('EX')) {
           taskType = 'Demo/Ex';
@@ -695,7 +686,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         }
         
         taskGroups[taskType].costCodes.push(summary);
-        taskGroups[taskType].totalHours += (summary as any).totalBudgetHours;
+        taskGroups[taskType].totalHours += summary.totalBudgetHours;
       });
 
       // Calculate days for each task type (total hours / 40)
@@ -755,7 +746,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               costCodes: concreteCostCodes,
               totalHours: concreteHours / 2,
               days: formDays,
-              alternatingWith: 'Pour' as any
+              alternatingWith: 'Pour'
             };
           }
           
@@ -764,7 +755,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               costCodes: concreteCostCodes,
               totalHours: concreteHours / 2,
               days: pourDays,
-              alternatingWith: 'Form' as any
+              alternatingWith: 'Form'
             };
           }
         }
@@ -783,7 +774,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       let globalDayIndex = 0;
       
       // Handle alternating Form/Pour tasks specially
-      const hasAlternatingFormPour = (taskGroups['Form'] as any)?.alternatingWith === 'Pour' && (taskGroups['Pour'] as any)?.alternatingWith === 'Form';
+      const hasAlternatingFormPour = taskGroups['Form']?.alternatingWith === 'Pour' && taskGroups['Pour']?.alternatingWith === 'Form';
       
       if (hasAlternatingFormPour) {
         // Handle alternating Form/Pour separately
@@ -925,7 +916,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               finishTime: null,
               notes: null,
               order: tasksToCreate.length, // Properly assign order based on creation sequence
-              dependentOnPrevious: tasksToCreate.length === 0 ? false : true // All tasks except first are sequential
+              dependentOnPrevious: tasksToCreate.length === 0 ? false : true // First task is non-sequential
             });
             
             globalDayIndex++;
@@ -995,7 +986,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Refresh tasks data
-      await queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
       
       toast({
         title: "Tasks generated successfully",
@@ -1041,7 +1032,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
-                  {(project as any).name}
+                  {project.name}
                 </Button>
                 <span>/</span>
               </>
@@ -1057,13 +1048,13 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             
             <span className="text-gray-900 font-medium">
               <MapPin className="w-4 h-4 mr-1 inline" />
-              {(location as any)?.name || 'Location'}
+              {location?.name || 'Location'}
             </span>
           </nav>
         </div>
         
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">{(location as any).name}</h2>
+          <h2 className="text-2xl font-bold text-gray-800">{location.name}</h2>
           <p className="text-gray-600 mt-1">Location overview and details</p>
         </div>
       </header>
@@ -1075,7 +1066,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
             <CardTitle className="flex items-center gap-2">
               <MapPin className="w-5 h-5" />
               Location Overview
-              <Badge variant="outline">{(location as any).locationId}</Badge>
+              <Badge variant="outline">{location.locationId}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -1094,25 +1085,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <DollarSign className="w-4 h-4 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-600">Budget Allocation</p>
-                  <p className="font-medium">${(location as any).budgetAllocated?.toLocaleString() || 'N/A'}</p>
+                  <p className="font-medium">${location.budgetAllocated?.toLocaleString() || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {(location as any).isComplete ? (
+                {location.isComplete ? (
                   <CheckCircle className="w-4 h-4 text-green-600" />
                 ) : (
                   <Clock className="w-4 h-4 text-orange-600" />
                 )}
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <p className="font-medium">{(location as any).isComplete ? 'Completed' : 'In Progress'}</p>
+                  <p className="font-medium">{location.isComplete ? 'Completed' : 'In Progress'}</p>
                 </div>
               </div>
             </div>
             
-            {(location as any).description && (
+            {location.description && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-700">{(location as any).description}</p>
+                <p className="text-sm text-gray-700">{location.description}</p>
               </div>
             )}
 
@@ -1133,9 +1124,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               <CardTitle className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
                 Budget Summary
-                <Badge variant="secondary">{Array.isArray(budgetItems) ? budgetItems.length : 0} items</Badge>
+                <Badge variant="secondary">{budgetItems.length} items</Badge>
               </CardTitle>
-              <Link href={`/budgets?locationId=${(location as any).locationId}`}>
+              <Link href={`/budgets?locationId=${location.locationId}`}>
                 <Button variant="outline" size="sm">
                   View Full Budget
                 </Button>
@@ -1149,14 +1140,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   <Skeleton key={i} className="h-20 w-full" />
                 ))}
               </div>
-            ) : !Array.isArray(budgetItems) || budgetItems.length === 0 ? (
+            ) : budgetItems.length === 0 ? (
               <div className="text-center py-8">
                 <DollarSign className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500">No budget items found for this location</p>
                 <p className="text-sm text-gray-400 mt-2">
                   Budget items will appear here once they are added
                 </p>
-                <Link href={`/budgets?locationId=${(location as any).locationId}`}>
+                <Link href={`/budgets?locationId=${location.locationId}`}>
                   <Button className="mt-4">
                     Manage Budget
                   </Button>
@@ -1219,7 +1210,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                                     const originalQty = originalItems.reduce((sum: number, item: any) => {
                                       const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
                                       const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-                                      const hasChildren = Array.isArray(budgetItems) && budgetItems.some((child: any) => 
+                                      const hasChildren = budgetItems.some((child: any) => 
                                         child.lineItemNumber && child.lineItemNumber.includes('.') && 
                                         child.lineItemNumber.split('.')[0] === item.lineItemNumber
                                       );
@@ -1286,7 +1277,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
                 Tasks
-                <Badge variant="secondary">{Array.isArray(tasks) ? tasks.length : 0}</Badge>
+                <Badge variant="secondary">{tasks.length}</Badge>
               </div>
               <div className="flex items-center gap-2">
                 <Button 
@@ -1300,7 +1291,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <Button 
                   onClick={() => setShowGenerateTasksDialog(true)}
                   size="sm"
-                  disabled={(Array.isArray(tasks) ? tasks.length : 0) > 0 || isGeneratingTasks}
+                  disabled={tasks.length > 0 || isGeneratingTasks}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   {isGeneratingTasks ? 'Generating...' : 'Generate Tasks'}
@@ -1317,7 +1308,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <DraggableTaskList
-                tasks={(tasks as any[]) || []}
+                tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTaskClick}
@@ -1325,8 +1316,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
-                budgetItems={(budgetItems as any[]) || []}
-                showRemainingHours={true}
               />
             )}
           </CardContent>
@@ -1577,9 +1566,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           setEditingTask(null);
         }}
         task={editingTask}
-        locationTasks={(tasks as any[]) || []}
+        locationTasks={tasks || []}
         onTaskUpdate={() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/locations", (location as any)?.locationId || locationId, "tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/locations", location?.locationId || locationId, "tasks"] });
         }}
       />
 
@@ -1587,8 +1576,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
-        selectedProject={(location as any)?.projectId}
-        selectedLocation={(location as any)?.id}
+        selectedProject={location?.projectId}
+        selectedLocation={location?.id}
       />
 
       {/* Task Detail Modal */}

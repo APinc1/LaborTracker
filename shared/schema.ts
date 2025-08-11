@@ -98,44 +98,42 @@ export const employees = pgTable("employees", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  taskId: text("task_id").unique(),
-  title: text("title").notNull(),
-  description: text("description"),
-  costCode: text("cost_code"),
-  locationId: integer("location_id"),
-  taskType: text("task_type"),
-  taskDate: date("task_date"),
+  taskId: text("task_id").notNull().unique(),
+  locationId: text("location_id").notNull(),
+  taskType: text("task_type").notNull(),
+  name: text("name").notNull(),
+  taskDate: date("task_date").notNull(),
   startDate: date("start_date").notNull(),
-  endDate: date("end_date"),
-  finishDate: date("finish_date"),
-  estimatedHours: decimal("estimated_hours", { precision: 10, scale: 2 }),
-  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  finishDate: date("finish_date").notNull(),
+  costCode: text("cost_code").notNull(),
+  superintendentId: integer("superintendent_id").references(() => users.id),
+  foremanId: integer("foreman_id").references(() => employees.id),
   scheduledHours: decimal("scheduled_hours", { precision: 10, scale: 2 }),
-  status: text("status").default("upcoming"),
-  taskOrder: integer("task_order").default(0),
-  dependentOnPrevious: boolean("dependent_on_previous").default(true),
-  superintendentId: integer("superintendent_id"),
-  foremanId: integer("foreman_id"),
-  linkedTaskGroup: text("linked_task_group"),
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  startTime: text("start_time"),
+  finishTime: text("finish_time"),
   workDescription: text("work_description"),
-  createdAt: timestamp("created_at").defaultNow(),
+  notes: text("notes"),
+  status: text("status").notNull().default("upcoming"), // upcoming, in_progress, complete
+  order: integer("order").notNull().default(0),
+  dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
+  linkedTaskGroup: text("linked_task_group"), // Tasks with same group ID occur on same date
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
   id: serial("id").primaryKey(),
-  assignmentId: text("assignment_id"),
+  assignmentId: text("assignment_id").notNull().unique(),
   taskId: integer("task_id").references(() => tasks.id).notNull(),
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
-  assignmentDate: date("assigned_date").notNull(), // Map to assigned_date column
-  assignedHours: decimal("hours_allocated", { precision: 10, scale: 2 }).default("8"), // Map to hours_allocated column
+  assignmentDate: date("assignment_date").notNull(),
+  assignedHours: decimal("assigned_hours", { precision: 10, scale: 2 }).default("8"),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
-  order: integer("order").default(0),
 });
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true }).extend({
-  startDate: z.string().min(1, "Start date is required"),
+  startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable()
 });
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true });
@@ -146,11 +144,8 @@ export const insertLocationSchema = createInsertSchema(locations).omit({ id: tru
 export const insertLocationBudgetSchema = createInsertSchema(locationBudgets).omit({ id: true });
 export const insertCrewSchema = createInsertSchema(crews).omit({ id: true });
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true });
-export const insertTaskSchema = createInsertSchema(tasks).omit({ 
-  id: true, 
-  createdAt: true
-}).extend({
-  locationId: z.union([z.string(), z.number()]).transform(val => Number(val))
+export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
+  locationId: z.union([z.string(), z.number()]).transform(val => String(val))
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true, assignmentId: true });
 

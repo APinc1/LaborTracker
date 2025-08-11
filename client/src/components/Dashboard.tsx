@@ -108,35 +108,6 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
-  // Simplified budget data fetching - we'll use this for remaining hours calculation
-  const { data: allBudgetData = [] } = useQuery({
-    queryKey: ["/api/all-budget-data"],
-    queryFn: async () => {
-      // Fetch budget data for all locations and combine
-      if (!locations || (locations as any[]).length === 0) return [];
-      
-      const budgetPromises = (locations as any[]).map(async (location: any) => {
-        try {
-          const response = await fetch(`/api/locations/${location.locationId}/budget`);
-          if (!response.ok) return [];
-          const budgetItems = await response.json();
-          return budgetItems.map((item: any) => ({
-            ...item,
-            locationDbId: location.id,
-            locationId: location.locationId
-          }));
-        } catch (error) {
-          return [];
-        }
-      });
-      
-      const results = await Promise.all(budgetPromises);
-      return results.flat();
-    },
-    enabled: !!(locations as any[]).length,
-    staleTime: 30000,
-  });
-
   // State for selected day for assignments
   const [selectedDay, setSelectedDay] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
 
@@ -175,46 +146,6 @@ export default function Dashboard() {
     return (assignments as any[])
       .filter((assignment: any) => assignment.employeeId === employeeId)
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
-  };
-
-  // Calculate remaining hours for a cost code at a specific location
-  const getRemainingHours = (locationId: string, costCode: string) => {
-    if (!costCode || !allBudgetData) return { remainingHours: 0, totalBudgetHours: 0, usedHours: 0, percentage: 0 };
-    
-    // Find budget items matching this location and cost code
-    const costCodeBudget = (allBudgetData as any[])
-      .filter((item: any) => item.locationId === locationId && item.cost_code === costCode)
-      .reduce((total: number, item: any) => total + (parseFloat(item.hours) || 0), 0);
-    
-    // Calculate used hours from all tasks with this cost code at this location
-    const usedHours = (allTasks as any[] || [])
-      .filter((task: any) => task.locationId === locationId && task.costCode === costCode)
-      .reduce((total: number, task: any) => total + (parseFloat(task.actualHours) || parseFloat(task.scheduledHours) || parseFloat(task.estimatedHours) || 0), 0);
-    
-    const remainingHours = Math.max(0, costCodeBudget - usedHours);
-    const percentage = costCodeBudget > 0 ? (usedHours / costCodeBudget) * 100 : 0;
-    
-    return {
-      remainingHours,
-      totalBudgetHours: costCodeBudget,
-      usedHours,
-      percentage
-    };
-  };
-
-  // Get color coding for remaining hours display
-  const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
-    if (totalBudgetHours === 0) return { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-300" };
-    
-    const percentage = (remainingHours / totalBudgetHours) * 100;
-    
-    if (remainingHours <= 0) {
-      return { bg: "bg-red-100", text: "text-red-600", border: "border-red-300" };
-    } else if (percentage <= 15) {
-      return { bg: "bg-yellow-100", text: "text-yellow-600", border: "border-yellow-300" };
-    } else {
-      return { bg: "bg-green-100", text: "text-green-600", border: "border-green-300" };
-    }
   };
 
   const getEmployee = (employeeId: number) => {
@@ -481,28 +412,12 @@ export default function Dashboard() {
             <span>{locationName}</span>
           </div>
 
-          {/* Cost Code with Remaining Hours */}
+          {/* Cost Code */}
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <Tag className="w-4 h-4" />
             <Badge variant="outline" className="text-xs">
               {task.costCode}
             </Badge>
-            {task.costCode && (() => {
-              const { remainingHours, totalBudgetHours } = getRemainingHours(task.locationId, task.costCode);
-              const colors = getRemainingHoursColor(remainingHours, totalBudgetHours);
-              
-              if (totalBudgetHours > 0) {
-                return (
-                  <div className={`px-2 py-1 rounded text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
-                    {remainingHours <= 0 ? 
-                      "0h remaining" : 
-                      `${remainingHours.toFixed(1)}h remaining`
-                    }
-                  </div>
-                );
-              }
-              return null;
-            })()}
           </div>
 
           {/* Hours Information */}

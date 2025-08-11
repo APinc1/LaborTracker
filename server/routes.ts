@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storagePromise } from "./storage";
+import { storage } from "./storage";
 import { 
   insertProjectSchema, insertBudgetLineItemSchema, insertLocationSchema, insertCrewSchema, 
   insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema 
@@ -9,9 +9,6 @@ import {
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize storage first
-  const storage = await storagePromise;
-  
   const httpServer = createServer(app);
 
   // WebSocket server for real-time updates
@@ -42,40 +39,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User routes
   app.get('/api/users', async (req, res) => {
     try {
-      console.log('🔍 Getting users from storage...');
-      
-      // Add timeout to prevent hanging
-      const usersPromise = storage.getUsers();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout after 8 seconds')), 8000)
-      );
-      
-      const users = await Promise.race([usersPromise, timeoutPromise]) as User[];
-      console.log('✅ Successfully fetched users:', users.length);
+      const users = await storage.getUsers();
       res.json(users);
     } catch (error: any) {
-      console.error('❌ Error fetching users:', error);
-      
-      // Fallback response with the known users from database
-      const fallbackUsers = [
-        { id: 1, username: 'admin', name: 'System Administrator', email: 'admin@construction.com', role: 'Admin', isPasswordSet: true },
-        { id: 2, username: 'mike.johnson', name: 'Mike Johnson', email: 'mike.johnson@construction.com', role: 'Superintendent', isPasswordSet: true },
-        { id: 3, username: 'sarah.davis', name: 'Sarah Davis', email: 'sarah.davis@construction.com', role: 'Project Manager', isPasswordSet: true }
-      ];
-      
-      console.log('🔄 Using fallback users data');
-      res.json(fallbackUsers);
-    }
-  });
-
-  // Simple test route to check database connectivity
-  app.get('/api/test', async (req, res) => {
-    try {
-      console.log('🧪 Testing database connection...');
-      res.json({ status: 'OK', message: 'Server is running', time: new Date().toISOString() });
-    } catch (error: any) {
-      console.error('❌ Test route error:', error);
-      res.status(500).json({ error: 'Test failed' });
+      console.error('Error fetching users:', error);
+      res.status(500).json({ error: 'Failed to fetch users' });
     }
   });
 
@@ -112,20 +80,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/users/:id', async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
-      console.log(`🗑️ Attempting to delete user ID: ${userId}`);
-      
       const success = await storage.deleteUser(userId);
-      console.log(`🗑️ Delete operation result: ${success}`);
-      
       if (!success) {
-        console.log(`❌ User ${userId} not found or could not be deleted`);
         return res.status(404).json({ error: 'User not found' });
       }
-      
-      console.log(`✅ Successfully deleted user ${userId}`);
       res.json({ success: true });
     } catch (error: any) {
-      console.error('❌ Error deleting user:', error);
+      console.error('Error deleting user:', error);
       res.status(500).json({ error: 'Failed to delete user' });
     }
   });
@@ -417,7 +378,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Location tasks route
-  // This route was replaced by the more comprehensive one below
+  app.get('/api/locations/:locationId/tasks', async (req, res) => {
+    try {
+      const tasks = await storage.getTasks(req.params.locationId);
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch tasks' });
+    }
+  });
 
   // Crew routes
   app.get('/api/crews', async (req, res) => {
@@ -536,132 +504,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Task routes - Direct SQL working solution applied to main route
+  // Task routes
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const locationParam = req.params.locationId;
-      let locationDbId: number;
-      
-      if (/^\d+$/.test(locationParam)) {
-        locationDbId = parseInt(locationParam);
-      } else {
-        const location = await storage.getLocation(locationParam);
-        if (!location) {
-          return res.status(404).json({ error: 'Location not found' });
-        }
-        locationDbId = location.id;
-      }
-
-      console.log('🔍 DEBUG-getTasks for location:', locationParam, 'DB ID:', locationDbId);
-      
-      // Use direct SQL query with proper column names
-      const postgres = (await import('postgres')).default;
-      const sql = postgres(process.env.SUPABASE_DATABASE_URL!, {
-        ssl: 'require',
-        max: 1,
-        connect_timeout: 10,
-        idle_timeout: 2
-      });
-      
-      try {
-        // Get task data
-        const result = await sql`
-          SELECT id, work_description, cost_code, location_id, 
-                 task_date, start_date, status
-          FROM tasks 
-          WHERE location_id = ${locationDbId}
-          ORDER BY id ASC
-        `;
-        
-        console.log('🔍 SQL QUERY RESULT:', result.length, 'rows');
-        console.log('🔍 First 2 results:', result.slice(0, 2));
-        
-        // Generate task names from cost codes since work_description is null
-        console.log('🔧 Generating task names from cost codes...');
-        
-        // Get budget hours for remaining hours calculation
-        const budgetQuery = await sql`
-          SELECT cost_code, SUM(hours) as budget_hours 
-          FROM budget_line_items 
-          WHERE location_id = ${locationDbId}
-          GROUP BY cost_code
-        `;
-        const budgetMap = budgetQuery.reduce((map, item) => {
-          map[item.cost_code] = parseFloat(item.budget_hours) || 0;
-          return map;
-        }, {});
-        
-        // Calculate total scheduled hours by cost code
-        const costCodeHours = result.reduce((map, task) => {
-          const costCode = task.cost_code;
-          map[costCode] = (map[costCode] || 0) + 8; // Each task = 8 hours
-          return map;
-        }, {});
-        
-        // Transform field names to camelCase
-        const transformedTasks = result.map(task => {
-          // Generate meaningful task names from cost codes
-          let taskName = 'General Task';
-          if (task.cost_code?.includes('Demo/Ex')) taskName = 'Demo/Ex + Base/Grading';
-          else if (task.cost_code?.includes('TRAFFIC')) taskName = 'Traffic Control';
-          else if (task.cost_code?.includes('CONCRETE')) taskName = 'Form + Pour';
-          else if (task.cost_code === 'AC') taskName = 'Asphalt';
-          else if (task.cost_code?.includes('GNRL')) taskName = 'General Labor';  
-          else if (task.cost_code?.includes('EXCAV')) taskName = 'Excavation';
-          
-          // Calculate remaining hours for this cost code
-          const budgetHours = budgetMap[task.cost_code] || 0;
-          const scheduledHours = costCodeHours[task.cost_code] || 0;
-          const remainingHours = Math.max(0, budgetHours - scheduledHours);
-          const remainingPercentage = budgetHours > 0 ? (remainingHours / budgetHours) * 100 : 0;
-          
-          // Determine color coding: green if >15%, yellow if ≤15%, red if ≤0%
-          let hoursStatus = 'green';
-          if (remainingPercentage <= 0) hoursStatus = 'red';
-          else if (remainingPercentage <= 15) hoursStatus = 'yellow';
-          
-          return {
-            id: task.id,
-            taskId: `TASK_${task.id}`,
-            name: taskName,
-            title: taskName,
-            description: task.work_description || taskName,
-            costCode: task.cost_code,
-            locationId: task.location_id,
-            taskType: task.cost_code || 'General',
-            taskDate: task.task_date || task.start_date,
-            startDate: task.start_date,
-            finishDate: null,
-            scheduledHours: 8,
-            actualHours: 0,
-            status: task.status || 'upcoming',
-            priority: 1,
-            taskOrder: 1,
-            superintendentId: null,
-            foremanId: null,
-            crewId: null,
-            dependencies: null,
-            notes: null,
-            dependentOnPrevious: task.dependent_on_previous ?? false,
-            linkedTaskGroup: null,
-            // Remaining hours tracking
-            budgetHours: budgetMap[task.cost_code] || 0,
-            remainingHours: Math.max(0, (budgetMap[task.cost_code] || 0) - (costCodeHours[task.cost_code] || 0)),
-            hoursStatus: hoursStatus
-          };
-        });
-        
-        await sql.end();
-        
-        console.log('✅ CLEAN-getTasks found', transformedTasks.length, 'tasks');
-        res.json(transformedTasks);
-      } catch (sqlError) {
-        console.error('❌ CLEAN-getTasks SQL error:', sqlError);
-        await sql.end();
-        res.status(500).json({ error: 'Failed to fetch tasks' });
-      }
+      const tasks = await storage.getTasks(req.params.locationId);
+      res.json(tasks);
     } catch (error) {
-      console.error('❌ CLEAN-getTasks error:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -672,39 +520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
-      
-      // Transform snake_case to camelCase for frontend compatibility
-      // Note: Raw database response has snake_case field names
-      const transformedTask = {
-        id: (task as any).id,
-        taskId: (task as any).task_id,
-        name: (task as any).name,
-        title: (task as any).name, // Add title for backwards compatibility
-        description: (task as any).work_description,
-        costCode: (task as any).cost_code,
-        locationId: (task as any).location_id,
-        taskType: (task as any).task_type,
-        taskDate: (task as any).task_date,
-        startDate: (task as any).start_date,
-        finishDate: (task as any).finish_date,
-        scheduledHours: (task as any).scheduled_hours,
-        actualHours: (task as any).actual_hours,
-        startTime: (task as any).start_time,
-        finishTime: (task as any).finish_time,
-        workDescription: (task as any).work_description,
-        notes: (task as any).notes,
-        dependencies: (task as any).dependencies,
-        status: (task as any).status,
-        priority: (task as any).priority,
-        taskOrder: (task as any).priority, // Add taskOrder for backwards compatibility
-        dependentOnPrevious: (task as any).dependent_on_previous ?? false,
-        superintendentId: (task as any).superintendent_id,
-        foremanId: (task as any).foreman_id,
-        linkedTaskGroup: (task as any).linked_task_group,
-        crewId: (task as any).crew_id
-      };
-      
-      res.json(transformedTask);
+      res.json(task);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch task' });
     }
@@ -721,165 +537,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      // Handle both single task and array of tasks
-      const requestData = Array.isArray(req.body) ? req.body : [req.body];
-      const createdTasks = [];
+      const validated = insertTaskSchema.parse({
+        ...req.body,
+        locationId: req.params.locationId
+      });
       
-      for (const taskData of requestData) {
-        console.log('🔍 Processing task data:', JSON.stringify(taskData, null, 2));
-        
-        // Handle locationId lookup - convert locationId string to database ID
-        let locationDbId: number;
-        const locationParam = req.params.locationId;
-        
-        // Check if it's a pure numeric string (database ID) vs locationId format
-        if (/^\d+$/.test(locationParam)) {
-          locationDbId = parseInt(locationParam);
-        } else {
-          // It's a locationId string - find the location by locationId
-          const location = await storage.getLocation(locationParam);
-          if (!location) {
-            return res.status(404).json({ error: 'Location not found' });
-          }
-          locationDbId = location.id;
-        }
-
-        // WORKING SOLUTION: Use the execute_sql_tool approach which we know works
-        const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-        if (supabaseUrl) {
-          try {
-            console.log('🔍 Creating task using working SQL execution method');
-            
-            const title = taskData.title || taskData.name || 'Untitled Task';
-            const description = taskData.description || taskData.workDescription || null;
-            const startDate = taskData.startDate || taskData.taskDate;
-            const status = taskData.status || 'upcoming';
-            const taskOrder = taskData.taskOrder || taskData.order || 0;
-            // CRITICAL FIX: Set sequential dependency - all tasks except first should be sequential
-            const taskIndex = requestData.indexOf(taskData);
-            const dependentOnPrevious = taskIndex > 0; // First task (index 0) = false, all others = true
-            const taskDate = taskData.taskDate || startDate; // Use specific task date if provided
-            
-            console.log('🔍 Task data received:', {
-              title,
-              description,
-              startDate,
-              locationDbId,
-              status,
-              taskOrder,
-              dependentOnPrevious
-            });
-            
-            // Actually insert into database using execute_sql_tool approach
-            console.log('🔍 Inserting task into database...');
-            
-            // Use raw query to bypass cache issues
-            const { sql } = await import('postgres');
-            const insertQuery = `
-              INSERT INTO tasks (work_description, description, start_date, location_id, status, cost_code, estimated_hours) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7) 
-              RETURNING *
-            `;
-            
-            const costCode = taskData.costCode || null;
-            const estimatedHours = parseFloat(taskData.estimatedHours || '0') || null;
-            
-            // Use direct database connection to execute - MUST use Supabase URL
-            const postgres = (await import('postgres')).default;
-            const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-            const replitUrl = process.env.DATABASE_URL;
-            
-            console.log('🔗 URL Debug:');
-            console.log('  SUPABASE_DATABASE_URL length:', supabaseUrl?.length || 0);
-            console.log('  DATABASE_URL length:', replitUrl?.length || 0);
-            console.log('  SUPABASE starts with:', supabaseUrl?.substring(0, 20) || 'undefined');
-            console.log('  DATABASE starts with:', replitUrl?.substring(0, 20) || 'undefined');
-            
-            if (!supabaseUrl) {
-              throw new Error('SUPABASE_DATABASE_URL not found in environment');
-            }
-            
-            console.log('🔗 Creating postgres connection to Supabase...');
-            const directDb = postgres(supabaseUrl, {
-              ssl: 'require',
-              max: 1,
-              prepare: false
-            });
-            
-            try {
-              // First test which database we're actually connecting to
-              console.log('🔗 Testing database connection...');
-              const dbTest = await directDb`SELECT current_database(), current_user`;
-              console.log('🔗 Connected to database:', dbTest[0].current_database, 'as user:', dbTest[0].current_user);
-              
-              // Check if we're connected to the wrong database  
-              if (dbTest[0].current_database === 'neondb') {
-                console.log('❌ ERROR: Connected to Replit neondb instead of Supabase!');
-                await directDb.end();
-                throw new Error('Wrong database connection - connected to Replit instead of Supabase');
-              }
-              
-              // Also verify the tasks table structure
-              const tableCheck = await directDb`SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks' AND column_name IN ('work_description', 'task_name', 'name') ORDER BY column_name`;
-              console.log('🔍 Available task columns:', tableCheck.map(c => c.column_name));
-              
-              if (tableCheck.length === 0) {
-                console.log('❌ No work_description/task_name/name columns found in tasks table');
-                await directDb.end();
-                throw new Error('Tasks table structure mismatch');
-              }
-              
-              console.log('🔍 About to execute INSERT with values:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
-              
-              // Use correct Supabase schema columns with proper ordering and dates
-              const taskId = `${locationDbId}_${title.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
-              const taskType = taskData.taskType || title; // Use taskType if provided, otherwise use title
-              const result = await directDb`
-                INSERT INTO tasks (task_id, name, work_description, start_date, task_date, location_id, status, priority, cost_code, scheduled_hours, task_type, dependent_on_previous) 
-                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${taskDate}, ${locationDbId}, ${status}, ${taskOrder}, ${costCode}, ${estimatedHours}, ${taskType}, ${dependentOnPrevious})
-                RETURNING *
-              `;
-              
-              await directDb.end();
-              
-              if (result && result.length > 0) {
-                console.log('✅ Task successfully inserted into database:', result[0].id);
-                createdTasks.push(result[0]);
-              }
-            } catch (dbError) {
-              await directDb.end();
-              console.error('❌ Database insert failed:', dbError);
-              console.error('❌ Failed values were:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
-              // Don't create fallback data - let it fail so we can fix the real issue
-              throw dbError;
-            }
-            
-          } catch (sqlError) {
-            console.error('❌ Task creation failed:', sqlError);
-            return res.status(500).json({ 
-              error: 'Failed to create task', 
-              details: sqlError.message 
+      // CRITICAL: Check if this will be the first task and enforce unsequential status
+      const existingTasks = await storage.getTasks(req.params.locationId);
+      const isFirstTask = existingTasks.length === 0 || 
+                         (validated.order !== undefined && validated.order === 0) ||
+                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order));
+      
+      if (isFirstTask && validated.dependentOnPrevious) {
+        console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
+        validated.dependentOnPrevious = false;
+      }
+      
+      const task = await storage.createTask(validated);
+      
+      // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
+      if (validated.linkedTaskGroup && req.body.linkedTaskId) {
+        try {
+          const existingTask = await storage.getTask(parseInt(req.body.linkedTaskId));
+          if (existingTask && !existingTask.linkedTaskGroup) {
+            await storage.updateTask(parseInt(req.body.linkedTaskId), {
+              linkedTaskGroup: validated.linkedTaskGroup
             });
           }
-        } else {
-          // Fallback for non-Supabase environments - use regular storage method
-          const validated = insertTaskSchema.parse({
-            ...taskData,
-            locationId: locationDbId
-          });
-          
-          const task = await storage.createTask(validated);
-          createdTasks.push(task);
+        } catch (updateError) {
+          console.error('Failed to update linked task group:', updateError);
+          // Continue with task creation even if linking fails
         }
       }
       
-      res.status(201).json(Array.isArray(req.body) ? createdTasks : createdTasks[0]);
+      res.status(201).json(task);
     } catch (error: any) {
-      console.error('Task creation error:', error);
-      res.status(400).json({ 
-        error: 'Failed to create task', 
-        details: error.message 
-      });
+      console.error('Task validation error:', error);
+      if (error.issues) {
+        console.error('Validation issues:', error.issues);
+      }
+      res.status(400).json({ error: 'Invalid task data', details: error.message });
     }
   });
 
@@ -892,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (currentTask && validated.dependentOnPrevious === true) {
         const allTasks = await storage.getTasks(currentTask.locationId);
         const sortedTasks = allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0]?.id === currentTask.id;
+        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
         
         // Only enforce if this is clearly a direct edit attempt (not a drag operation)
         if (isFirstTask && !req.body.order) {
@@ -938,21 +635,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Task not found' });
       }
       
-      console.log('🔍 DELETION: Task to delete details:', {
-        id: taskToDelete.id,
-        name: taskToDelete.name,
-        location_id: taskToDelete.location_id
-      });
-      
       // Get all tasks in the same location for sequential cascading
-      // Use location_id field (Supabase uses snake_case)
-      const actualLocationId = taskToDelete.location_id;
-      if (!actualLocationId) {
-        console.error('❌ DELETION: No location ID found in task:', taskToDelete);
-        return res.status(400).json({ error: 'Task has no valid location ID' });
-      }
-      
-      const locationTasks = await storage.getTasks(actualLocationId);
+      const locationTasks = await storage.getTasks(taskToDelete.locationId);
       
       // Handle linked task unlinking before deletion using the proper utility function
       console.log('🔍 DELETION: Checking if task needs unlinking:', {

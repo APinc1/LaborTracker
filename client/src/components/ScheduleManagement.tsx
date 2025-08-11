@@ -14,7 +14,6 @@ import CreateTaskModal from "./CreateTaskModal";
 import EditTaskModal from "./EditTaskModal";
 import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
 import { apiRequest } from "@/lib/queryClient";
-import { calculateRemainingHours, getRemainingHoursIndicator } from "@/lib/remainingHours";
 
 export default function ScheduleManagement() {
   const [selectedProject, setSelectedProject] = useState<string>("ALL_PROJECTS");
@@ -735,18 +734,6 @@ export default function ScheduleManagement() {
                                       <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
                                     )}
                                   </div>
-                                  {/* Remaining Hours Indicator */}
-                                  {(() => {
-                                    const remainingHours = calculateRemainingHours(task, tasks, allBudgetItems);
-                                    const indicator = getRemainingHoursIndicator(remainingHours);
-                                    return indicator && (
-                                      <div className="flex items-center space-x-1 text-xs mt-1">
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${indicator.bgColor} ${indicator.textColor}`}>
-                                          {indicator.text}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
                                   <div className="mt-1">
                                     <Badge variant="outline" className="text-xs">
                                       {task.costCode}
@@ -841,13 +828,18 @@ export default function ScheduleManagement() {
                                 )}
                               </div>
                               {(() => {
-                                const remainingHours = calculateRemainingHours(task, tasks, allBudgetItems);
-                                const indicator = getRemainingHoursIndicator(remainingHours);
-                                return indicator && (
+                                const result = calculateRemainingHours(task, tasks, allBudgetItems);
+                                const remainingHours = result?.remainingHours;
+                                const totalBudgetHours = result?.totalBudgetHours || 0;
+                                
+                                return remainingHours !== null && (
                                   <div className="flex items-center space-x-2 mt-1">
                                     <Clock className="w-4 h-4 text-gray-500" />
-                                    <span className={`${indicator.textColor} font-medium`}>
-                                      {indicator.text}
+                                    <span className={getRemainingHoursColor(remainingHours, totalBudgetHours)}>
+                                      {remainingHours <= 0 
+                                        ? `${Math.abs(remainingHours).toFixed(1)}h over` 
+                                        : `${remainingHours.toFixed(1)}h remaining`
+                                      }
                                     </span>
                                   </div>
                                 );

@@ -5,10 +5,8 @@ import {
   type Employee, type InsertEmployee, type Task, type InsertTask, type EmployeeAssignment, type InsertEmployeeAssignment
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
-import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { neon } from "@neondatabase/serverless";
-import postgres from "postgres";
-import { eq, and, gte, lte, or } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -38,10 +36,10 @@ export interface IStorage {
   // Location methods
   getLocations(projectId: number): Promise<Location[]>;
   getAllLocations(): Promise<Location[]>;
-  getLocation(id: string | number): Promise<Location | undefined>;
+  getLocation(id: number): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
-  updateLocation(id: string | number, location: Partial<InsertLocation>): Promise<Location>;
-  deleteLocation(id: string | number): Promise<void>;
+  updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location>;
+  deleteLocation(id: number): Promise<void>;
   
   // Location budget methods
   getLocationBudgets(locationId: number): Promise<LocationBudget[]>;
@@ -384,6 +382,7 @@ export class MemStorage implements IStorage {
 
     // Create sample employee assignments
     await this.createEmployeeAssignment({
+      assignmentId: `${formTask.id}_${mike.id}`,
       taskId: formTask.id,
       employeeId: mike.id,
       assignmentDate: today,
@@ -392,6 +391,7 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
+      assignmentId: `${demoTask.id}_${sarah.id}`,
       taskId: demoTask.id,
       employeeId: sarah.id,
       assignmentDate: today,
@@ -400,6 +400,7 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
+      assignmentId: `${formTask.id}_${tom.id}`,
       taskId: formTask.id,
       employeeId: tom.id,
       assignmentDate: today,
@@ -426,10 +427,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null,
-      passwordResetToken: insertUser.passwordResetToken ?? null,
-      passwordResetExpires: insertUser.passwordResetExpires ?? null,
-      isPasswordSet: insertUser.isPasswordSet ?? null
+      phone: insertUser.phone ?? null
     };
     this.users.set(id, user);
     return user;
@@ -514,14 +512,14 @@ export class MemStorage implements IStorage {
     const id = this.currentProjectId++;
     
     const project: Project = { 
+      ...insertProject, 
       id, 
-      projectId: insertProject.projectId,
-      name: insertProject.name,
       createdAt: new Date(),
-      startDate: insertProject.startDate || null,
-      endDate: insertProject.endDate || null,
-      defaultSuperintendent: insertProject.defaultSuperintendent || null,
-      defaultProjectManager: insertProject.defaultProjectManager || null
+      // Ensure null values are preserved for optional fields
+      startDate: insertProject.startDate === null ? null : insertProject.startDate || null,
+      endDate: insertProject.endDate === null ? null : insertProject.endDate,
+      defaultSuperintendent: insertProject.defaultSuperintendent ?? null,
+      defaultProjectManager: insertProject.defaultProjectManager ?? null
     };
     
     this.projects.set(id, project);
@@ -562,8 +560,7 @@ export class MemStorage implements IStorage {
       dumpFeesCost: insertBudgetLineItem.dumpFeesCost ?? null,
       materialCost: insertBudgetLineItem.materialCost ?? null,
       subcontractorCost: insertBudgetLineItem.subcontractorCost ?? null,
-      notes: insertBudgetLineItem.notes ?? null,
-      conversionFactor: insertBudgetLineItem.conversionFactor ?? null
+      notes: insertBudgetLineItem.notes ?? null
     };
     this.budgetLineItems.set(id, budgetLineItem);
     return budgetLineItem;
@@ -603,12 +600,8 @@ export class MemStorage implements IStorage {
     const location: Location = { 
       ...insertLocation, 
       id,
-      startDate: insertLocation.startDate || new Date().toISOString().split('T')[0],
       endDate: insertLocation.endDate ?? null,
-      isComplete: insertLocation.isComplete ?? null,
-      description: insertLocation.description ?? null,
-      estimatedCost: insertLocation.estimatedCost ?? null,
-      actualCost: insertLocation.actualCost ?? null
+      isComplete: insertLocation.isComplete ?? null
     };
     this.locations.set(id, location);
     return location;
@@ -620,7 +613,7 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      for (const [key, loc] of Array.from(this.locations.entries())) {
+      for (const [key, loc] of this.locations.entries()) {
         if (loc.locationId === id) {
           existing = loc;
           locationKey = key;
@@ -634,7 +627,7 @@ export class MemStorage implements IStorage {
     }
     
     if (!existing) throw new Error('Location not found');
-    const updated = { ...existing, ...updateLocation, startDate: updateLocation.startDate || existing.startDate };
+    const updated = { ...existing, ...updateLocation };
     this.locations.set(locationKey!, updated);
     return updated;
   }
@@ -642,7 +635,7 @@ export class MemStorage implements IStorage {
   async deleteLocation(id: string | number): Promise<void> {
     if (typeof id === 'string') {
       // Find and delete by locationId field
-      for (const [key, loc] of Array.from(this.locations.entries())) {
+      for (const [key, loc] of this.locations.entries()) {
         if (loc.locationId === id) {
           this.locations.delete(key);
           return;
@@ -665,7 +658,9 @@ export class MemStorage implements IStorage {
     const locationBudget: LocationBudget = { 
       ...insertLocationBudget, 
       id,
-      notes: insertLocationBudget.notes ?? null
+      adjustedQty: insertLocationBudget.adjustedQty ?? null,
+      adjustedHours: insertLocationBudget.adjustedHours ?? null,
+      actualQty: insertLocationBudget.actualQty ?? null
     };
     this.locationBudgets.set(id, locationBudget);
     return locationBudget;
@@ -720,13 +715,7 @@ export class MemStorage implements IStorage {
       email: insertEmployee.email ?? null,
       phone: insertEmployee.phone ?? null,
       crewId: insertEmployee.crewId ?? null,
-      isForeman: insertEmployee.isForeman ?? null,
-      apprenticeLevel: insertEmployee.apprenticeLevel ?? null,
-      primaryTrade: insertEmployee.primaryTrade ?? null,
-      secondaryTrade: insertEmployee.secondaryTrade ?? null,
-      tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
-      userId: insertEmployee.userId ?? null,
-      isUnion: insertEmployee.isUnion ?? null
+      isForeman: insertEmployee.isForeman ?? null
     };
     this.employees.set(id, employee);
     return employee;
@@ -870,11 +859,9 @@ export class MemStorage implements IStorage {
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
     const id = this.currentEmployeeAssignmentId++;
-    const assignmentId = `${insertEmployeeAssignment.taskId}_${insertEmployeeAssignment.employeeId}_${Date.now()}`;
     const assignment: EmployeeAssignment = { 
       ...insertEmployeeAssignment, 
       id,
-      assignmentId,
       assignedHours: insertEmployeeAssignment.assignedHours ?? null,
       actualHours: insertEmployeeAssignment.actualHours ?? null
     };
@@ -905,54 +892,42 @@ class DatabaseStorage implements IStorage {
   private db: any;
 
   constructor() {
-    console.log("Attempting Supabase connection...");
-    
-    // Try Supabase first, then fall back to Replit if needed
-    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-    const replitUrl = process.env.DATABASE_URL;
-    
-    if (supabaseUrl) {
-      console.log("Using Supabase database connection");
-      try {
-        // For Supabase, use postgres driver with specific SSL configuration
-        // FORCE FRESH CONNECTION by adding timestamp to avoid cached schemas
-        const sql = postgres(supabaseUrl, {
-          ssl: 'require',
-          max: 1, // Limit connections for Supabase free tier
-          idle_timeout: 10,
-          connect_timeout: 3,
-          prepare: false, // Disable prepared statements for better compatibility
-          connection: {
-            application_name: `replit_app_${Date.now()}` // Force new connection
-          }
-        });
-        
-        // Use Drizzle with fresh schema
-        this.db = drizzlePostgres(sql, {
-          schema: {
-            users,
-            projects,  
-            budgetLineItems,
-            locations,
-            locationBudgets,
-            crews,
-            employees,
-            tasks,
-            employeeAssignments,
-          },
-        });
-        console.log("✅ Successfully connected to Supabase database");
-      } catch (error) {
-        console.error("Supabase connection failed:", error);
-        throw error;
-      }
-    } else if (replitUrl) {
-      console.log("Using Replit database as fallback");
-      const sql = neon(replitUrl);
-      this.db = drizzle(sql);
-    } else {
-      throw new Error("No database URL available");
+    if (!process.env.DATABASE_URL) {
+      throw new Error("DATABASE_URL environment variable is required");
     }
+    
+    // Handle different database URL formats
+    let connectionString = process.env.DATABASE_URL;
+    
+    // If it's a Supabase URL with special characters in password, encode it
+    if (connectionString.includes('#')) {
+      const urlParts = connectionString.split('@');
+      const authPart = urlParts[0];
+      const hostPart = urlParts[1];
+      
+      // Extract password and encode special characters
+      const passwordMatch = authPart.match(/:([^:]+)$/);
+      if (passwordMatch) {
+        const password = passwordMatch[1];
+        const encodedPassword = encodeURIComponent(password);
+        connectionString = authPart.replace(`:${password}`, `:${encodedPassword}`) + '@' + hostPart;
+      }
+    }
+    
+    const sql = neon(connectionString);
+    this.db = drizzle(sql, {
+      schema: {
+        users,
+        projects,
+        budgetLineItems,
+        locations,
+        locationBudgets,
+        crews,
+        employees,
+        tasks,
+        employeeAssignments,
+      },
+    });
   }
 
   // User methods
@@ -988,46 +963,8 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    try {
-      // First, update projects to remove references to this user
-      const projectsToUpdate = await this.db.select()
-        .from(projects)
-        .where(
-          or(
-            eq(projects.defaultSuperintendent, id),
-            eq(projects.defaultProjectManager, id)
-          )
-        );
-      
-      console.log(`🔄 Found ${projectsToUpdate.length} projects referencing user ${id}`);
-      
-      if (projectsToUpdate.length > 0) {
-        for (const project of projectsToUpdate) {
-          const updateData: any = {};
-          if (project.defaultSuperintendent === id) updateData.defaultSuperintendent = null;
-          if (project.defaultProjectManager === id) updateData.defaultProjectManager = null;
-          
-          await this.db.update(projects)
-            .set(updateData)
-            .where(eq(projects.id, project.id));
-          
-          console.log(`✅ Updated project ${project.name} to remove user ${id} references`);
-        }
-      }
-      
-      // Now delete the user
-      const result = await this.db.delete(users).where(eq(users.id, id));
-      console.log(`🗑️ User deletion result:`, result);
-      
-      // The result array length indicates successful deletion
-      // Empty array means the user was deleted successfully
-      const wasDeleted = result !== null;
-      console.log(`🗑️ User was deleted: ${wasDeleted}`);
-      return wasDeleted;
-    } catch (error) {
-      console.error('❌ Error in deleteUser:', error);
-      return false;
-    }
+    const result = await this.db.delete(users).where(eq(users.id, id));
+    return true;
   }
 
   async getUserByResetToken(token: string): Promise<User | undefined> {
@@ -1111,14 +1048,9 @@ class DatabaseStorage implements IStorage {
     return await this.db.select().from(locations);
   }
 
-  async getLocation(id: string | number): Promise<Location | undefined> {
-    if (typeof id === 'string') {
-      const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
-      return result[0];
-    } else {
-      const result = await this.db.select().from(locations).where(eq(locations.id, id));
-      return result[0];
-    }
+  async getLocation(id: number): Promise<Location | undefined> {
+    const result = await this.db.select().from(locations).where(eq(locations.id, id));
+    return result[0];
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -1126,22 +1058,13 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateLocation(id: string | number, updateLocation: Partial<InsertLocation>): Promise<Location> {
-    if (typeof id === 'string') {
-      const result = await this.db.update(locations).set(updateLocation).where(eq(locations.locationId, id)).returning();
-      return result[0];
-    } else {
-      const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, id)).returning();
-      return result[0];
-    }
+  async updateLocation(id: number, updateLocation: Partial<InsertLocation>): Promise<Location> {
+    const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, id)).returning();
+    return result[0];
   }
 
-  async deleteLocation(id: string | number): Promise<void> {
-    if (typeof id === 'string') {
-      await this.db.delete(locations).where(eq(locations.locationId, id));
-    } else {
-      await this.db.delete(locations).where(eq(locations.id, id));
-    }
+  async deleteLocation(id: number): Promise<void> {
+    await this.db.delete(locations).where(eq(locations.id, id));
   }
 
   // Location budget methods
@@ -1225,117 +1148,15 @@ class DatabaseStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: string | number): Promise<Task[]> {
-    console.log("🔍 getTasks called with locationId:", locationId, "type:", typeof locationId);
-    
-    // Handle both locationId string lookup and direct database ID
-    let numericId: number;
-    if (typeof locationId === 'string' && !/^\d+$/.test(locationId)) {
-      // It's a locationId string - find the location first to get the database ID
-      const location = await this.getLocation(locationId);
-      if (!location) {
-        console.log("🔍 getTasks - location not found for:", locationId);
-        return [];
-      }
-      console.log("🔍 getTasks - resolved locationId", locationId, "to database ID", location.id);
-      numericId = location.id;
-    } else {
-      // It's a numeric ID (either string or number)
-      numericId = typeof locationId === 'string' ? parseInt(locationId) : locationId;
-    }
-    
-    // Use existing database connection to avoid connection timeout issues
-    console.log('🔍 STORAGE-getTasks - using existing db connection for location_id:', numericId);
-    
-    try {
-      // Use raw SQL directly to avoid Drizzle schema conflicts
-      const postgres = await import('postgres');
-      const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-      
-      if (!databaseUrl) {
-        throw new Error('No database URL available');
-      }
-      
-      const freshSql = postgres.default(databaseUrl, {
-        idle_timeout: 20,
-        max_lifetime: 60 * 30,
-      });
-      
-      console.log('🔍 STORAGE-getTasks - querying with raw SQL for locationId:', numericId);
-      const result = await freshSql`SELECT * FROM tasks WHERE location_id = ${numericId} ORDER BY priority ASC, task_date ASC`;
-      console.log('✅ STORAGE-getTasks - Raw SQL found tasks:', result.length);
-      await freshSql.end();
-      return result as Task[];
-    } catch (error) {
-      console.error('❌ STORAGE-getTasks - DB error:', error);
-      return [];
-    }
-
+    return await this.db.select().from(tasks).where(eq(tasks.locationId, String(locationId)));
   }
 
   async getTask(id: number): Promise<Task | undefined> {
-    // Validate input ID
-    if (!id || isNaN(id)) {
-      console.error('❌ GET_TASK: Invalid ID provided:', id);
-      return undefined;
-    }
-    
-    // Use raw SQL directly since Drizzle schema might not match Supabase exactly
-    const postgres = await import('postgres');
-    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    
-    if (!databaseUrl) {
-      throw new Error('No database URL available');
-    }
-    
-    const freshSql = postgres.default(databaseUrl, {
-      idle_timeout: 20,
-      max_lifetime: 60 * 30,
-    });
-    
-    try {
-      console.log('🔍 GET_TASK: Using raw SQL to get task ID:', id);
-      const result = await freshSql`SELECT * FROM tasks WHERE id = ${id} LIMIT 1`;
-      console.log('✅ GET_TASK: Found task via raw SQL:', result.length > 0 ? 'YES' : 'NO');
-      await freshSql.end();
-      return result[0] as Task | undefined;
-    } catch (error) {
-      console.error('❌ GET_TASK SQL ERROR:', error);
-      await freshSql.end();
-      throw error;
-    }
+    const result = await this.db.select().from(tasks).where(eq(tasks.id, id));
+    return result[0];
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
-    // Create a fresh connection bypassing the cached pool for this operation
-    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-    if (supabaseUrl) {
-      const freshSql = postgres(supabaseUrl, {
-        ssl: 'require',
-        max: 1,
-        idle_timeout: 1,
-        connect_timeout: 3,
-        prepare: false,
-        connection: {
-          application_name: `fresh_${Date.now()}`
-        }
-      });
-      
-      try {
-        const result = await freshSql`
-          INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous, cost_code, estimated_hours)
-          VALUES (${insertTask.title}, ${insertTask.description || null}, ${insertTask.startDate}, ${insertTask.locationId || null}, ${insertTask.status || 'upcoming'}, ${insertTask.taskOrder || 0}, ${insertTask.dependentOnPrevious !== undefined ? insertTask.dependentOnPrevious : true}, ${insertTask.costCode || null}, ${insertTask.estimatedHours || null})
-          RETURNING *
-        `;
-        
-        await freshSql.end();
-        return result[0] as Task;
-      } catch (error) {
-        await freshSql.end();
-        throw error;
-      }
-    }
-    
-    // Fallback to regular connection if no Supabase URL
     const result = await this.db.insert(tasks).values(insertTask).returning();
     return result[0];
   }
@@ -1346,31 +1167,7 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(id: number): Promise<void> {
-    // Always use raw SQL for Supabase to avoid Drizzle schema conflicts
-    const postgres = await import('postgres');
-    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    
-    if (!databaseUrl) {
-      throw new Error('No database URL available');
-    }
-    
-    const freshSql = postgres.default(databaseUrl, {
-      idle_timeout: 20,
-      max_lifetime: 60 * 30,
-    });
-    
-    try {
-      console.log('🗑️ DELETION: Using raw SQL to delete task ID:', id);
-      console.log('🗑️ DELETION: Database URL configured:', !!databaseUrl);
-      const result = await freshSql`DELETE FROM tasks WHERE id = ${id}`;
-      console.log('✅ DELETION: Task deleted successfully, affected rows:', result.count);
-      await freshSql.end();
-      return;
-    } catch (error) {
-      console.error('❌ DELETION ERROR:', error);
-      await freshSql.end();
-      throw error;
-    }
+    await this.db.delete(tasks).where(eq(tasks.id, id));
   }
 
   async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {
@@ -1384,53 +1181,11 @@ class DatabaseStorage implements IStorage {
 
   // Employee assignment methods
   async getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]> {
-    // Use raw SQL to avoid schema conflicts
-    const postgres = await import('postgres');
-    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    
-    if (!databaseUrl) {
-      throw new Error('No database URL available');
-    }
-    
-    const freshSql = postgres.default(databaseUrl, {
-      idle_timeout: 20,
-      max_lifetime: 60 * 30,
-    });
-    
-    try {
-      const result = await freshSql`SELECT * FROM employee_assignments WHERE task_id = ${taskId}`;
-      await freshSql.end();
-      return result as EmployeeAssignment[];
-    } catch (error) {
-      console.error('❌ GET_EMPLOYEE_ASSIGNMENTS SQL ERROR:', error);
-      await freshSql.end();
-      throw error;
-    }
+    return await this.db.select().from(employeeAssignments).where(eq(employeeAssignments.taskId, taskId));
   }
 
   async getAllEmployeeAssignments(): Promise<EmployeeAssignment[]> {
-    // Use raw SQL to avoid schema conflicts
-    const postgres = await import('postgres');
-    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    
-    if (!databaseUrl) {
-      throw new Error('No database URL available');
-    }
-    
-    const freshSql = postgres.default(databaseUrl, {
-      idle_timeout: 20,
-      max_lifetime: 60 * 30,
-    });
-    
-    try {
-      const result = await freshSql`SELECT * FROM employee_assignments`;
-      await freshSql.end();
-      return result as EmployeeAssignment[];
-    } catch (error) {
-      console.error('❌ GET_ALL_EMPLOYEE_ASSIGNMENTS SQL ERROR:', error);
-      await freshSql.end();
-      throw error;
-    }
+    return await this.db.select().from(employeeAssignments);
   }
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
@@ -1444,27 +1199,7 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteEmployeeAssignment(id: number): Promise<void> {
-    // Use raw SQL to avoid schema conflicts
-    const postgres = await import('postgres');
-    const databaseUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-    
-    if (!databaseUrl) {
-      throw new Error('No database URL available');
-    }
-    
-    const freshSql = postgres.default(databaseUrl, {
-      idle_timeout: 20,
-      max_lifetime: 60 * 30,
-    });
-    
-    try {
-      await freshSql`DELETE FROM employee_assignments WHERE id = ${id}`;
-      await freshSql.end();
-    } catch (error) {
-      console.error('❌ DELETE_EMPLOYEE_ASSIGNMENT SQL ERROR:', error);
-      await freshSql.end();
-      throw error;
-    }
+    await this.db.delete(employeeAssignments).where(eq(employeeAssignments.id, id));
   }
 
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
@@ -1472,54 +1207,19 @@ class DatabaseStorage implements IStorage {
   }
 }
 
-// Initialize storage with priority for Supabase, fallback to Replit/in-memory
-async function initializeStorage(): Promise<IStorage> {
-  const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
-  const replitUrl = process.env.DATABASE_URL;
-  
-  // First try Supabase if available
-  if (supabaseUrl) {
-    try {
-      console.log("🔗 Attempting Supabase connection...");
-      console.log(`Supabase URL format: ${supabaseUrl.replace(/:\/\/[^:]*:[^@]*@/, '://***:***@')}`);
-      const dbStorage = new DatabaseStorage();
-      
-      // Test the connection with a simpler query
-      try {
-        await Promise.race([
-          dbStorage.getUsers(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
-        ]);
-        console.log("✅ Successfully connected to Supabase database");
-        return dbStorage;
-      } catch (testError) {
-        throw new Error(`Connection test failed: ${(testError as Error).message}`);
-      }
-    } catch (error) {
-      console.error("❌ Supabase connection failed:");
-      console.error("Error details:", (error as Error).message);
-      console.error("Full error:", error);
-    }
+// Initialize storage with fallback to in-memory if database fails
+function initializeStorage(): IStorage {
+  if (!process.env.DATABASE_URL) {
+    console.log("No DATABASE_URL found, using in-memory storage");
+    return new MemStorage();
   }
   
-  // Fallback to Replit database
-  if (replitUrl) {
-    try {
-      console.log("🔄 Falling back to Replit PostgreSQL...");
-      // Create a new instance without Supabase URL set
-      process.env.SUPABASE_DATABASE_URL = "";
-      const dbStorage = new DatabaseStorage();
-      await dbStorage.getUsers();
-      console.log("✅ Connected to Replit PostgreSQL");
-      return dbStorage;
-    } catch (error) {
-      console.error("❌ Replit database also failed:", (error as Error).message);
-    }
-  }
-  
-  console.log("⚠️ All database connections failed, using in-memory storage");
+  // For development, we'll use in-memory storage to avoid database connection issues
+  // When you want to use persistent storage, you can set up your Supabase database
+  // and change this to use DatabaseStorage()
+  console.log("Using in-memory storage for development (data will not persist between server restarts)");
+  console.log("To use persistent storage, set up your Supabase database and modify this function");
   return new MemStorage();
 }
 
-export const storagePromise = initializeStorage();
-export let storage: IStorage;
+export const storage = initializeStorage();

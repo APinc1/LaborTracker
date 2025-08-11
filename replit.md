@@ -4,19 +4,6 @@
 
 This full-stack construction project management system provides comprehensive capabilities including budget tracking, location management, employee scheduling, and task assignment. It aims to streamline operations and enhance efficiency for construction projects, with a vision to become a leading solution in the construction management software market.
 
-## Recent Changes (August 2025)
-- ✅ **Session Pooler Upgrade**: Successfully upgraded from Transaction pooler to Session pooler for better performance and connection management
-- ✅ **API Connectivity Restored**: Users API now loads successfully with 62ms response time, returning all 4 users (admin, mike.johnson, sarah.davis, emilyalameddine)
-- ✅ **TypeScript Compilation Fixed**: Resolved all 17+ compilation errors preventing API functionality
-- ✅ **Supabase Integration Complete**: Application fully connected to user's external Supabase database (not Replit's managed PostgreSQL)
-- ✅ **Database Schema Updates**: Fixed column mismatches and added missing fields for compatibility
-- ✅ **Connection Timeout Handling**: Implemented proper timeout and fallback mechanisms for robust API performance
-- ✅ **Multiple APIs Functional**: Projects, locations, crews, and assignments APIs all working correctly
-- ✅ **External Database Working**: Application successfully uses user's Supabase database
-- ✅ **User Management Fixed**: Resolved critical apiRequest function to return JSON data instead of Response objects, enabling real-time user creation/deletion
-- ✅ **Tasks Table Recreated**: Completely rebuilt tasks table with clean schema matching application expectations
-- ✅ **Task Creation FULLY RESOLVED**: Fixed database connection inconsistency, corrected SQL schema mismatch (using 'name' instead of 'title' column), and successfully implemented proper task insertion into Supabase database with complete data validation and real-time task generation
-
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
@@ -34,7 +21,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 ### Technical Implementations
 - **Frontend**: React 18 with TypeScript, Vite for builds, TanStack Query for state management, Wouter for routing, and React Hook Form with Zod for form validation.
 - **Backend**: Express.js with TypeScript, utilizing a RESTful API design with CRUD operations.
-- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Uses Transaction pooler for optimal connection management with fallback to Replit PostgreSQL if needed.
+- **Database**: PostgreSQL via Drizzle ORM for type-safe operations. Supports dual-mode storage (PostgreSQL/in-memory) with automatic fallback.
 - **Real-time**: WebSocket server for live updates and notifications across clients.
 - **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization.
 - **Data Flow**: Client requests via React Query, processed by Express routes, interacting with the database via Drizzle ORM, with WebSocket broadcasting changes.

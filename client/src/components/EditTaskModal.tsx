@@ -118,7 +118,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   );
 
   // Helper function to safely format dates  
-  const safeFormatDate = (date: Date | null | undefined): string => {
+  const safeFormatDate = (date: Date): string => {
     if (!date || isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
     return date.toISOString().split('T')[0];
   };
@@ -199,20 +199,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           (t.taskId || t.id) !== (task.taskId || task.id)
         ) : [];
 
-      // Format the date properly for HTML input (YYYY-MM-DD format)
-      const formatDateForInput = (dateStr: string) => {
-        if (!dateStr) return "";
-        try {
-          const date = new Date(dateStr);
-          return date.toISOString().split('T')[0];
-        } catch {
-          return "";
-        }
-      };
-
       form.reset({
-        name: task.name || task.title || "",
-        taskDate: formatDateForInput(task.taskDate),
+        name: task.name || "",
+        taskDate: task.taskDate || "",
         startTime: task.startTime || "",
         finishTime: task.finishTime || "",
         workDescription: task.workDescription || "",
@@ -220,14 +209,19 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         status: status,
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
-        linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id)?.toString() || ""),
+        linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id?.toString())),
       });
     }
   }, [task, form, existingTasks]);
 
   const updateTaskMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest("PUT", `/api/tasks/${task.id}`, data);
+      const response = await apiRequest(`/api/tasks/${task.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.json();
     },
     onSuccess: () => {
       onTaskUpdate();
@@ -249,7 +243,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Update each task individually
       const promises = tasksToUpdate.map(taskData => 
-        apiRequest('PUT', `/api/tasks/${taskData.id}`, taskData)
+        apiRequest(`/api/tasks/${taskData.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(taskData),
+          headers: { 'Content-Type': 'application/json' }
+        })
       );
       
       const responses = await Promise.all(promises);
@@ -1623,7 +1621,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   const getTaskDisplayName = (taskName: string) => {
     // Extract day information if it exists
-    const dayMatch = taskName?.match(/Day (\d+)/i);
+    const dayMatch = taskName.match(/Day (\d+)/i);
     if (dayMatch) {
       return taskName;
     }
@@ -2386,8 +2384,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Position for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-gray-600 space-y-2">
+            <AlertDialogDescription className="text-gray-600 space-y-2">
+              <div>
                 <div>You're linking "{linkingOptions?.currentTask?.name}" to {linkingOptions?.targetTasks?.length || 0} task(s):</div>
                 {linkingOptions?.targetTasks && (
                   <ul className="text-sm mt-1 ml-4 list-disc">
