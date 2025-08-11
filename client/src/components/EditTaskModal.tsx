@@ -1571,6 +1571,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           // Order changes should only happen during drag-and-drop, not linking
           // Keep original order values to maintain visual task positions
           console.log('🔗 Preserving original task order values during linking operation');
+          
+          // CRITICAL FIX: Make sure no order reassignment happens anywhere
+          console.log('🔗 LINKING ACTION DETECTED - SKIPPING ORDER REASSIGNMENT ENTIRELY');
         }
         
         console.log('Sequential cascading complete');

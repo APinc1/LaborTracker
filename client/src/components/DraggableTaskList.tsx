@@ -618,16 +618,17 @@ export default function DraggableTaskList({
       });
     });
     
-    // CRITICAL: Sort by DATE FIRST to maintain chronological flow, then by order for same dates
-    // This ensures that tasks that were visually positioned together stay together
+    // CRITICAL: Sort by ORDER FIRST to preserve user-intended task positioning, then by date for natural flow
+    // This ensures that manual task arrangements (via drag-and-drop) are always respected
     sortableUnits.sort((a, b) => {
-      // Primary sort: by date for chronological positioning
-      if (a.sortDate !== b.sortDate) {
-        return a.sortDate - b.sortDate;
+      // Primary sort: by order to maintain user's intended visual arrangement
+      const orderDiff = a.sortOrder - b.sortOrder;
+      if (orderDiff !== 0) {
+        return orderDiff;
       }
       
-      // Secondary sort: by order for tasks on the same date
-      return a.sortOrder - b.sortOrder;
+      // Secondary sort: by date only when orders are identical (rare edge case)
+      return a.sortDate - b.sortDate;
     });
     
     console.log('🔍 SORTED UNITS:', sortableUnits.map(unit => ({
