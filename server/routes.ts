@@ -549,7 +549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingTasks = await storage.getTasks(req.params.locationId);
       const isFirstTask = existingTasks.length === 0 || 
                          (validated.order !== undefined && validated.order === 0) ||
-                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order));
+                         (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order!));
       
       if (isFirstTask && validated.dependentOnPrevious) {
         console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);

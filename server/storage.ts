@@ -38,10 +38,10 @@ export interface IStorage {
   // Location methods
   getLocations(projectId: number): Promise<Location[]>;
   getAllLocations(): Promise<Location[]>;
-  getLocation(id: number): Promise<Location | undefined>;
+  getLocation(id: string | number): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
-  updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location>;
-  deleteLocation(id: number): Promise<void>;
+  updateLocation(id: string | number, location: Partial<InsertLocation>): Promise<Location>;
+  deleteLocation(id: string | number): Promise<void>;
   
   // Location budget methods
   getLocationBudgets(locationId: number): Promise<LocationBudget[]>;
@@ -514,14 +514,14 @@ export class MemStorage implements IStorage {
     const id = this.currentProjectId++;
     
     const project: Project = { 
-      ...insertProject, 
       id, 
+      projectId: insertProject.projectId,
+      name: insertProject.name,
       createdAt: new Date(),
-      // Ensure null values are preserved for optional fields
-      startDate: insertProject.startDate === null ? null : insertProject.startDate || null,
-      endDate: insertProject.endDate === null ? null : insertProject.endDate,
-      defaultSuperintendent: insertProject.defaultSuperintendent ?? null,
-      defaultProjectManager: insertProject.defaultProjectManager ?? null
+      startDate: insertProject.startDate || null,
+      endDate: insertProject.endDate || null,
+      defaultSuperintendent: insertProject.defaultSuperintendent || null,
+      defaultProjectManager: insertProject.defaultProjectManager || null
     };
     
     this.projects.set(id, project);
@@ -605,7 +605,10 @@ export class MemStorage implements IStorage {
       id,
       startDate: insertLocation.startDate || new Date().toISOString().split('T')[0],
       endDate: insertLocation.endDate ?? null,
-      isComplete: insertLocation.isComplete ?? null
+      isComplete: insertLocation.isComplete ?? null,
+      description: insertLocation.description ?? null,
+      estimatedCost: insertLocation.estimatedCost ?? null,
+      actualCost: insertLocation.actualCost ?? null
     };
     this.locations.set(id, location);
     return location;
@@ -617,7 +620,7 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      for (const [key, loc] of this.locations.entries()) {
+      for (const [key, loc] of Array.from(this.locations.entries())) {
         if (loc.locationId === id) {
           existing = loc;
           locationKey = key;
@@ -631,7 +634,7 @@ export class MemStorage implements IStorage {
     }
     
     if (!existing) throw new Error('Location not found');
-    const updated = { ...existing, ...updateLocation };
+    const updated = { ...existing, ...updateLocation, startDate: updateLocation.startDate || existing.startDate };
     this.locations.set(locationKey!, updated);
     return updated;
   }
@@ -639,7 +642,7 @@ export class MemStorage implements IStorage {
   async deleteLocation(id: string | number): Promise<void> {
     if (typeof id === 'string') {
       // Find and delete by locationId field
-      for (const [key, loc] of this.locations.entries()) {
+      for (const [key, loc] of Array.from(this.locations.entries())) {
         if (loc.locationId === id) {
           this.locations.delete(key);
           return;
@@ -722,7 +725,8 @@ export class MemStorage implements IStorage {
       primaryTrade: insertEmployee.primaryTrade ?? null,
       secondaryTrade: insertEmployee.secondaryTrade ?? null,
       tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
-      userId: insertEmployee.userId ?? null
+      userId: insertEmployee.userId ?? null,
+      isUnion: insertEmployee.isUnion ?? null
     };
     this.employees.set(id, employee);
     return employee;
@@ -1074,9 +1078,14 @@ class DatabaseStorage implements IStorage {
     return await this.db.select().from(locations);
   }
 
-  async getLocation(id: number): Promise<Location | undefined> {
-    const result = await this.db.select().from(locations).where(eq(locations.id, id));
-    return result[0];
+  async getLocation(id: string | number): Promise<Location | undefined> {
+    if (typeof id === 'string') {
+      const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      return result[0];
+    } else {
+      const result = await this.db.select().from(locations).where(eq(locations.id, id));
+      return result[0];
+    }
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -1084,13 +1093,22 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateLocation(id: number, updateLocation: Partial<InsertLocation>): Promise<Location> {
-    const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, id)).returning();
-    return result[0];
+  async updateLocation(id: string | number, updateLocation: Partial<InsertLocation>): Promise<Location> {
+    if (typeof id === 'string') {
+      const result = await this.db.update(locations).set(updateLocation).where(eq(locations.locationId, id)).returning();
+      return result[0];
+    } else {
+      const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, id)).returning();
+      return result[0];
+    }
   }
 
-  async deleteLocation(id: number): Promise<void> {
-    await this.db.delete(locations).where(eq(locations.id, id));
+  async deleteLocation(id: string | number): Promise<void> {
+    if (typeof id === 'string') {
+      await this.db.delete(locations).where(eq(locations.locationId, id));
+    } else {
+      await this.db.delete(locations).where(eq(locations.id, id));
+    }
   }
 
   // Location budget methods
