@@ -916,24 +916,53 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         setPendingFormData(data);
         return;
       } else if (skipUnlinkDialog && groupTasks.length >= 2) {
-        // User chose "Just unlink this task" - only unlink current task
-        console.log('🔗 JUST UNLINKING CURRENT TASK - other tasks remain linked');
+        // User chose "Just unlink this task" - only unlink current task but keep its current position
+        console.log('🔗 JUST UNLINKING CURRENT TASK - maintaining current position');
         processedData.linkedTaskGroup = null;
         
-        // Check if current task is first task - first task must stay unsequential
-        const isCurrentTaskFirst = task.order === 0 || ((existingTasks as any[]).length > 0 && 
-          (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0))[0].id === task.id);
+        // CRITICAL: When unlinking "just this task", it should stay in its current visual position
+        // and become sequential to the task that comes immediately before it in display order
+        // NOT revert to its original order-based position
         
-        // Keep current sequential status unless it's the first task
-        processedData.dependentOnPrevious = isCurrentTaskFirst ? false : task.dependentOnPrevious;
+        // Check if current task is first task overall - first task must stay unsequential
+        const allTasksSorted = (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        const isCurrentTaskFirst = task.order === 0 || (allTasksSorted.length > 0 && allTasksSorted[0].id === task.id);
         
-        console.log('Current task unlinking (just this task):', {
-          isCurrentTaskFirst,
-          originalSequential: task.dependentOnPrevious,
-          finalStatus: processedData.dependentOnPrevious
-        });
+        if (isCurrentTaskFirst) {
+          processedData.dependentOnPrevious = false;
+          console.log('Current task is first overall - keeping unsequential');
+        } else {
+          // Make this task sequential to maintain its current visual position
+          // It should follow the task that comes immediately before it in the linked group
+          processedData.dependentOnPrevious = true;
+          
+          // Calculate the proper date for this unlinked task - it should be sequential to the Demo/Ex task
+          // Find the task that should be the "previous" task (the linked group it's leaving)
+          const remainingLinkedTasks = groupTasks.filter(t => t.linkedTaskGroup === task.linkedTaskGroup);
+          if (remainingLinkedTasks.length > 0) {
+            // Sort remaining linked tasks by order to find which one should be the predecessor
+            const sortedLinkedTasks = remainingLinkedTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+            const predecessorTask = sortedLinkedTasks[0]; // Use the first task in the linked group as predecessor
+            
+            // Calculate next working day from the predecessor task
+            const baseDate = new Date(predecessorTask.taskDate + 'T00:00:00');
+            const nextDate = new Date(baseDate);
+            nextDate.setDate(nextDate.getDate() + 1);
+            // Skip weekends
+            while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+              nextDate.setDate(nextDate.getDate() + 1);
+            }
+            const sequentialDate = nextDate.toISOString().split('T')[0];
+            
+            processedData.taskDate = sequentialDate;
+            console.log('🔗 UNLINK POSITION: Task will be sequential to', predecessorTask.name, 'with date:', sequentialDate);
+          }
+          
+          console.log('Current task will be sequential to maintain its current position after the linked group');
+        }
         
-        // Do NOT mark linkingChanged = true because we don't want to affect other tasks
+        // Mark dependency as changed to trigger downstream sequential updates
+        dependencyChanged = true;
       } else {
         // Two-task group or larger - unlink all tasks and restore natural sequential dependencies
         processedData.linkedTaskGroup = null;
