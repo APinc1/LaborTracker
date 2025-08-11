@@ -559,19 +559,24 @@ export default function DraggableTaskList({
 
   // Enhanced sorting that maintains logical order while grouping linked tasks
   const sortedTasks = (() => {
-    // CRITICAL: Sort by logical order first, then handle linking display
-    // This preserves the intended task sequence (Traffic Control, Demo/Ex, Form+Pour, Asphalt, General Labor)
-    const logicallyOrderedTasks = [...tasks].sort((a, b) => {
-      const orderA = a.order ?? 999;
-      const orderB = b.order ?? 999;
-      return orderA - orderB;
-    });
+    // CRITICAL INSIGHT: We need to be smarter about when to use order vs when to use chronological/date sorting
+    // - For linked tasks: use their shared date for positioning in the chronological flow
+    // - For unlinked sequential tasks: maintain their dependency chain visually 
+    // - Only fall back to original order for truly independent tasks
     
-    // Group tasks by their linked group (if any) while preserving logical order
+    console.log('🔍 SORTING INPUT TASKS:', tasks.map(t => ({ 
+      name: t.name, 
+      order: t.order, 
+      date: t.taskDate, 
+      linked: !!t.linkedTaskGroup,
+      sequential: t.dependentOnPrevious 
+    })));
+    
+    // Group tasks by their linked group (if any)
     const linkedGroups = new Map<string, any[]>();
     const unlinkedTasks: any[] = [];
     
-    logicallyOrderedTasks.forEach(task => {
+    tasks.forEach(task => {
       if (task.linkedTaskGroup) {
         if (!linkedGroups.has(task.linkedTaskGroup)) {
           linkedGroups.set(task.linkedTaskGroup, []);
@@ -582,47 +587,55 @@ export default function DraggableTaskList({
       }
     });
     
-    // Convert to sortable units while maintaining logical order
+    // Create sortable units - but use CHRONOLOGICAL positioning, not order field
     const sortableUnits: any[] = [];
     
-    // Process tasks in logical order to maintain intended sequence
-    logicallyOrderedTasks.forEach(task => {
-      // Skip if already processed as part of a linked group
-      if (task.linkedTaskGroup && sortableUnits.some(unit => 
-        unit.type === 'group' && unit.linkedTaskGroup === task.linkedTaskGroup)) {
-        return;
-      }
+    // Add linked groups as units (positioned by their shared date)
+    linkedGroups.forEach(groupTasks => {
+      const sortedGroupTasks = [...groupTasks].sort((a, b) => {
+        return (a.order ?? 999) - (b.order ?? 999);
+      });
       
-      if (task.linkedTaskGroup) {
-        // Add the entire linked group at the position of the first task in logical order
-        const groupTasks = linkedGroups.get(task.linkedTaskGroup)!;
-        const sortedGroupTasks = [...groupTasks].sort((a, b) => {
-          return (a.order ?? 999) - (b.order ?? 999);
-        });
-        
-        sortableUnits.push({
-          type: 'group',
-          linkedTaskGroup: task.linkedTaskGroup,
-          sortOrder: task.order ?? 999, // Use the order of the first task in logical sequence
-          sortDate: new Date(groupTasks[0].taskDate).getTime(),
-          tasks: sortedGroupTasks
-        });
-      } else {
-        // Add individual task
-        sortableUnits.push({
-          type: 'single',
-          task: task,
-          sortOrder: task.order ?? 999,
-          sortDate: new Date(task.taskDate).getTime(),
-          tasks: [task]
-        });
-      }
+      const groupDate = new Date(groupTasks[0].taskDate).getTime();
+      
+      sortableUnits.push({
+        type: 'group',
+        linkedTaskGroup: groupTasks[0].linkedTaskGroup,
+        sortDate: groupDate,
+        sortOrder: Math.min(...groupTasks.map(t => t.order ?? 999)), // Use earliest order for fallback
+        tasks: sortedGroupTasks
+      });
     });
     
-    // Sort units by logical order (not by date) to maintain intended sequence
+    // Add individual unlinked tasks
+    unlinkedTasks.forEach(task => {
+      sortableUnits.push({
+        type: 'single',
+        task: task,
+        sortDate: new Date(task.taskDate).getTime(),
+        sortOrder: task.order ?? 999,
+        tasks: [task]
+      });
+    });
+    
+    // CRITICAL: Sort by DATE FIRST to maintain chronological flow, then by order for same dates
+    // This ensures that tasks that were visually positioned together stay together
     sortableUnits.sort((a, b) => {
+      // Primary sort: by date for chronological positioning
+      if (a.sortDate !== b.sortDate) {
+        return a.sortDate - b.sortDate;
+      }
+      
+      // Secondary sort: by order for tasks on the same date
       return a.sortOrder - b.sortOrder;
     });
+    
+    console.log('🔍 SORTED UNITS:', sortableUnits.map(unit => ({
+      type: unit.type,
+      date: new Date(unit.sortDate).toISOString().split('T')[0],
+      order: unit.sortOrder,
+      tasks: unit.tasks.map((t: any) => t.name)
+    })));
     
     // Flatten to final task array
     const finalTasks: any[] = [];
