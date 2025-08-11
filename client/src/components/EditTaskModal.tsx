@@ -961,8 +961,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           console.log('Current task will be sequential to maintain its current position after the linked group');
         }
         
-        // Mark dependency as changed to trigger downstream sequential updates
-        dependencyChanged = true;
+        // Mark that linking has changed to trigger downstream updates
+        linkingChanged = true;
       } else {
         // Two-task group or larger - unlink all tasks and restore natural sequential dependencies
         processedData.linkedTaskGroup = null;
@@ -1226,127 +1226,61 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             console.log('Positioned unlinked task after linked group with sequential dependency');
           }
         } else {
-          // User chose "Unlink all tasks" - original logic
-          console.log('🔗 UNLINKING ALL TASKS in group');
+          // User chose "Unlink all tasks" - maintain current visual arrangement
+          console.log('🔗 UNLINKING ALL TASKS in group - maintaining current positions');
           
-          // Find and unlink all partner tasks
-          const partnerTasks = allUpdatedTasks.filter(t => 
-            t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
-          );
+          // Find all tasks in the linked group (including current task)
+          const allGroupTasks = [task, ...groupTasks];
           
-          // When unlinking, restore natural sequential dependencies based on task order
-          console.log('🔗 Unlinking all tasks - restoring natural sequential dependencies');
-          console.log('🔗 All tasks before unlinking:', allUpdatedTasks.map(t => ({ 
+          // Sort the group tasks by their current visual order (order field)
+          // to determine which should be sequential to which
+          const sortedGroupTasks = allGroupTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+          
+          console.log('🔗 Group tasks in visual order:', sortedGroupTasks.map(t => ({ 
             name: t.name, 
-            order: t.order, 
-            id: t.taskId || t.id, 
-            linkedGroup: t.linkedTaskGroup 
+            order: t.order,
+            currentDate: t.taskDate
           })));
           
-          // Get sorted list to determine first task properly
-          const sortedForFirstCheck = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-          const firstTaskId = sortedForFirstCheck[0]?.taskId || sortedForFirstCheck[0]?.id;
-          console.log('🔗 First task ID in list:', firstTaskId);
+          // Check if the entire group is at the very beginning of the task list
+          const allTasksSorted = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+          const firstOverallTaskId = allTasksSorted[0]?.taskId || allTasksSorted[0]?.id;
+          const firstGroupTaskId = sortedGroupTasks[0]?.taskId || sortedGroupTasks[0]?.id;
+          const groupStartsAtBeginning = firstGroupTaskId === firstOverallTaskId;
           
+          // Update all tasks in the group
           allUpdatedTasks = allUpdatedTasks.map(t => {
             if (t.linkedTaskGroup === task.linkedTaskGroup) {
-              // Check if this is the first task in the entire list
               const taskId = t.taskId || t.id;
-              const isFirstTask = t.order === 0 || taskId === firstTaskId;
               
-              // Natural sequential status: sequential if not the first task
-              const naturalSequentialStatus = !isFirstTask;
+              // Find this task's position within the group
+              const positionInGroup = sortedGroupTasks.findIndex(gt => (gt.taskId || gt.id) === taskId);
               
-              console.log('🔗 Unlinking task:', t.name, 'order:', t.order, 'taskId:', taskId, 'isFirst:', isFirstTask, 'natural sequential:', naturalSequentialStatus);
+              // First task in group: sequential only if group doesn't start at the very beginning
+              // Subsequent tasks in group: always sequential to maintain the chain
+              const shouldBeSequential = groupStartsAtBeginning ? (positionInGroup > 0) : true;
+              
+              console.log('🔗 Unlinking task:', t.name, 'position in group:', positionInGroup, 'should be sequential:', shouldBeSequential);
               
               return { 
                 ...t, 
                 linkedTaskGroup: null, 
-                dependentOnPrevious: naturalSequentialStatus
+                dependentOnPrevious: shouldBeSequential
               };
             }
             return t;
           });
           
-          // Also update the current task (processedData) being edited
+          // Update the current task being edited
           const currentTaskId = task.taskId || task.id;
-          const isCurrentTaskFirst = task.order === 0 || currentTaskId === firstTaskId;
-          const currentTaskNaturalSequential = !isCurrentTaskFirst;
+          const currentPositionInGroup = sortedGroupTasks.findIndex(gt => (gt.taskId || gt.id) === currentTaskId);
+          const currentShouldBeSequential = groupStartsAtBeginning ? (currentPositionInGroup > 0) : true;
           
-          console.log('🔗 Updating current task sequential status:', currentTaskNaturalSequential, 'order:', task.order);
+          console.log('🔗 Current task position in group:', currentPositionInGroup, 'should be sequential:', currentShouldBeSequential);
           processedData.linkedTaskGroup = null;
-          processedData.dependentOnPrevious = currentTaskNaturalSequential;
+          processedData.dependentOnPrevious = currentShouldBeSequential;
           
-          // CRITICAL: If current task becomes sequential after unlinking, calculate its new date
-          if (currentTaskNaturalSequential && task.order > 0) {
-            // Find the previous task by order to calculate sequential date
-            const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-            const currentOrderIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === currentTaskId);
-            
-            if (currentOrderIndex > 0) {
-              const prevTask = allTasksSortedByOrder[currentOrderIndex - 1];
-              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              // Update current task's date
-              processedData.taskDate = newDate;
-              console.log('🔗 Updated current task date to sequential:', newDate, 'based on previous task:', prevTask.name);
-            }
-          }
-          
-          console.log('Unlinked all tasks from group:', task.linkedTaskGroup, 'restored natural sequential dependencies');
-          
-          // CRITICAL: Recalculate ALL sequential task dates in order after unlinking
-          // This ensures that if task B becomes sequential to A, and C is sequential to B, 
-          // then C gets updated with B's new date + 1 day
-          const allTasksSortedByOrder = [...allUpdatedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-          
-          for (let i = 0; i < allTasksSortedByOrder.length; i++) {
-            const currentTask = allTasksSortedByOrder[i];
-            const currentTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
-            
-            // Skip if task doesn't exist in allUpdatedTasks or isn't sequential
-            if (currentTaskIndex < 0 || !allUpdatedTasks[currentTaskIndex].dependentOnPrevious) {
-              continue;
-            }
-            
-            // Find the previous task by order
-            if (i > 0) {
-              const prevTask = allTasksSortedByOrder[i - 1];
-              const baseDate = new Date(prevTask.taskDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              // Update task with sequential date
-              allUpdatedTasks[currentTaskIndex] = {
-                ...allUpdatedTasks[currentTaskIndex],
-                taskDate: newDate
-              };
-              
-              // Also update the sorted array reference for chain effect
-              allTasksSortedByOrder[i].taskDate = newDate;
-              
-              console.log('🔗 Updated sequential task date:', currentTask.name, 'to:', newDate, 'based on previous task:', prevTask.name);
-            }
-          }
-          
-          // Update current task if it was processed in the loop above
-          const updatedCurrentTask = allUpdatedTasks.find(t => (t.taskId || t.id) === currentTaskId);
-          if (updatedCurrentTask && processedData.dependentOnPrevious) {
-            processedData.taskDate = updatedCurrentTask.taskDate;
-            console.log('🔗 Synced current task date with batch update:', processedData.taskDate);
-          }
+          console.log('🔗 Maintaining visual positions - tasks will stay next to each other as sequential chain');
         }
       }
 
