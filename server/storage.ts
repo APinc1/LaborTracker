@@ -915,17 +915,23 @@ class DatabaseStorage implements IStorage {
       console.log("Using Supabase database connection");
       try {
         // For Supabase, use postgres driver with specific SSL configuration
+        // FORCE FRESH CONNECTION by adding timestamp to avoid cached schemas
         const sql = postgres(supabaseUrl, {
           ssl: 'require',
           max: 1, // Limit connections for Supabase free tier
           idle_timeout: 10,
           connect_timeout: 3,
-          prepare: false // Disable prepared statements for better compatibility
+          prepare: false, // Disable prepared statements for better compatibility
+          connection: {
+            application_name: `replit_app_${Date.now()}` // Force new connection
+          }
         });
+        
+        // Use Drizzle with fresh schema
         this.db = drizzlePostgres(sql, {
           schema: {
             users,
-            projects,
+            projects,  
             budgetLineItems,
             locations,
             locationBudgets,
@@ -935,6 +941,7 @@ class DatabaseStorage implements IStorage {
             employeeAssignments,
           },
         });
+        console.log("✅ Successfully connected to Supabase database");
       } catch (error) {
         console.error("Supabase connection failed:", error);
         throw error;
@@ -942,19 +949,7 @@ class DatabaseStorage implements IStorage {
     } else if (replitUrl) {
       console.log("Using Replit database as fallback");
       const sql = neon(replitUrl);
-      this.db = drizzle(sql, {
-        schema: {
-          users,
-          projects,
-          budgetLineItems,
-          locations,
-          locationBudgets,
-          crews,
-          employees,
-          tasks,
-          employeeAssignments,
-        },
-      });
+      this.db = drizzle(sql);
     } else {
       throw new Error("No database URL available");
     }
@@ -1230,7 +1225,51 @@ class DatabaseStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: string | number): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(eq(tasks.locationId, String(locationId)));
+    console.log("🔍 getTasks called with locationId:", locationId, "type:", typeof locationId);
+    
+    // Handle both locationId string lookup and direct database ID
+    let numericId: number;
+    if (typeof locationId === 'string' && !/^\d+$/.test(locationId)) {
+      // It's a locationId string - find the location first to get the database ID
+      const location = await this.getLocation(locationId);
+      if (!location) {
+        console.log("🔍 getTasks - location not found for:", locationId);
+        return [];
+      }
+      console.log("🔍 getTasks - resolved locationId", locationId, "to database ID", location.id);
+      numericId = location.id;
+    } else {
+      // It's a numeric ID (either string or number)
+      numericId = typeof locationId === 'string' ? parseInt(locationId) : locationId;
+    }
+    
+    // Use fresh connection to bypass cache issues
+    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+    if (supabaseUrl) {
+      const freshSql = postgres(supabaseUrl, {
+        ssl: 'require',
+        max: 1,
+        idle_timeout: 1,
+        connect_timeout: 3,
+        prepare: false,
+        connection: {
+          application_name: `fresh_${Date.now()}`
+        }
+      });
+      
+      try {
+        const result = await freshSql`SELECT * FROM tasks WHERE location_id = ${numericId}`;
+        await freshSql.end();
+        return result as Task[];
+      } catch (error) {
+        await freshSql.end();
+        throw error;
+      }
+    }
+    
+    // Fallback to regular connection
+    const result = await this.db.select().from(tasks).where(eq(tasks.locationId, numericId));
+    return result;
   }
 
   async getTask(id: number): Promise<Task | undefined> {
@@ -1239,6 +1278,36 @@ class DatabaseStorage implements IStorage {
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
+    // Create a fresh connection bypassing the cached pool for this operation
+    const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+    if (supabaseUrl) {
+      const freshSql = postgres(supabaseUrl, {
+        ssl: 'require',
+        max: 1,
+        idle_timeout: 1,
+        connect_timeout: 3,
+        prepare: false,
+        connection: {
+          application_name: `fresh_${Date.now()}`
+        }
+      });
+      
+      try {
+        const result = await freshSql`
+          INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous)
+          VALUES (${insertTask.title}, ${insertTask.description || null}, ${insertTask.startDate}, ${insertTask.locationId || null}, ${insertTask.status || 'upcoming'}, ${insertTask.taskOrder || 0}, ${insertTask.dependentOnPrevious !== undefined ? insertTask.dependentOnPrevious : true})
+          RETURNING *
+        `;
+        
+        await freshSql.end();
+        return result[0] as Task;
+      } catch (error) {
+        await freshSql.end();
+        throw error;
+      }
+    }
+    
+    // Fallback to regular connection if no Supabase URL
     const result = await this.db.insert(tasks).values(insertTask).returning();
     return result[0];
   }

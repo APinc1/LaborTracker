@@ -98,32 +98,27 @@ export const employees = pgTable("employees", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  taskId: text("task_id").notNull().unique(),
-  locationId: integer("location_id"),
-  projectId: integer("project_id"),
-  assignedEmployeeId: integer("assigned_employee_id"),
-  taskType: text("task_type"),
+  taskId: text("task_id").unique(),
   title: text("title").notNull(),
   description: text("description"),
+  costCode: text("cost_code"),
+  locationId: integer("location_id"),
+  taskType: text("task_type"),
   taskDate: date("task_date"),
   startDate: date("start_date").notNull(),
   endDate: date("end_date"),
   finishDate: date("finish_date"),
-  costCode: text("cost_code"),
-  superintendentId: integer("superintendent_id").references(() => users.id),
-  foremanId: integer("foreman_id").references(() => employees.id),
-  scheduledHours: decimal("scheduled_hours", { precision: 10, scale: 2 }),
   estimatedHours: decimal("estimated_hours", { precision: 10, scale: 2 }),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
-  startTime: text("start_time"),
-  finishTime: text("finish_time"),
+  scheduledHours: decimal("scheduled_hours", { precision: 10, scale: 2 }),
+  status: text("status").default("upcoming"),
+  taskOrder: integer("task_order").default(0),
+  dependentOnPrevious: boolean("dependent_on_previous").default(true),
+  superintendentId: integer("superintendent_id"),
+  foremanId: integer("foreman_id"),
+  linkedTaskGroup: text("linked_task_group"),
   workDescription: text("work_description"),
-  notes: text("notes"),
-  status: text("status").notNull().default("upcoming"), // upcoming, in_progress, complete
-  order: integer("task_order").notNull().default(0), // Map to task_order column
-  dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
-  linkedTaskGroup: text("linked_task_group"), // Tasks with same group ID occur on same date
-  createdAt: timestamp("created_at"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
@@ -151,7 +146,10 @@ export const insertLocationSchema = createInsertSchema(locations).omit({ id: tru
 export const insertLocationBudgetSchema = createInsertSchema(locationBudgets).omit({ id: true });
 export const insertCrewSchema = createInsertSchema(crews).omit({ id: true });
 export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true });
-export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
+export const insertTaskSchema = createInsertSchema(tasks).omit({ 
+  id: true, 
+  createdAt: true
+}).extend({
   locationId: z.union([z.string(), z.number()]).transform(val => Number(val))
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true, assignmentId: true });

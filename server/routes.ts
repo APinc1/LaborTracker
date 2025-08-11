@@ -546,9 +546,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Task routes
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
-      const tasks = await storage.getTasks(req.params.locationId);
+      // Handle locationId lookup for GET requests too
+      let locationDbId: number;
+      const locationParam = req.params.locationId;
+      
+      if (/^\d+$/.test(locationParam)) {
+        locationDbId = parseInt(locationParam);
+      } else {
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      }
+
+      // Use direct SQL for Supabase to bypass cache issues
+      const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+      if (supabaseUrl) {
+        const postgres = (await import('postgres')).default;
+        const directSql = postgres(supabaseUrl, {
+          ssl: 'require',
+          max: 1,
+          idle_timeout: 1,
+          connect_timeout: 5,
+          prepare: false,
+          connection: {
+            application_name: `fetch_${Date.now()}`
+          }
+        });
+        
+        try {
+          const result = await directSql`
+            SELECT * FROM tasks 
+            WHERE location_id = ${locationDbId} 
+            ORDER BY task_order ASC, id ASC
+          `;
+          await directSql.end();
+          res.json(result);
+          return;
+        } catch (sqlError) {
+          await directSql.end();
+          console.error('Direct SQL fetch failed:', sqlError);
+        }
+      }
+      
+      // Fallback for non-Supabase environments
+      const tasks = await storage.getTasks(locationParam);
       res.json(tasks);
     } catch (error) {
+      console.error('Failed to fetch tasks:', error);
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -578,58 +624,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Handle both single task and array of tasks
       const requestData = Array.isArray(req.body) ? req.body : [req.body];
-      const existingTasks = await storage.getTasks(req.params.locationId);
       const createdTasks = [];
       
       for (const taskData of requestData) {
         console.log('🔍 Processing task data:', JSON.stringify(taskData, null, 2));
-        console.log('🔍 Request body type:', typeof req.body, 'Array?', Array.isArray(req.body));
-        console.log('🔍 LocationId param:', req.params.locationId);
         
-        const taskWithLocation = {
-          ...taskData,
-          locationId: req.params.locationId
-        };
-        console.log('🔍 Task with location:', JSON.stringify(taskWithLocation, null, 2));
+        // Handle locationId lookup - convert locationId string to database ID
+        let locationDbId: number;
+        const locationParam = req.params.locationId;
         
-        const validated = insertTaskSchema.parse(taskWithLocation);
-        
-        // CRITICAL: Check if this will be the first task and enforce unsequential status
-        const isFirstTask = existingTasks.length === 0 || 
-                           (validated.order !== undefined && validated.order === 0) ||
-                           (validated.order !== undefined && existingTasks.every(t => (t.order || 0) > validated.order!));
-        
-        if (isFirstTask && validated.dependentOnPrevious) {
-          console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
-          validated.dependentOnPrevious = false;
-        }
-        
-        const task = await storage.createTask(validated);
-        createdTasks.push(task);
-        
-        // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
-        if (validated.linkedTaskGroup && taskData.linkedTaskId) {
-          try {
-            const existingTask = await storage.getTask(parseInt(taskData.linkedTaskId));
-            if (existingTask && !existingTask.linkedTaskGroup) {
-              await storage.updateTask(parseInt(taskData.linkedTaskId), {
-                linkedTaskGroup: validated.linkedTaskGroup
-              });
-            }
-          } catch (updateError) {
-            console.error('Failed to update linked task group:', updateError);
-            // Continue with task creation even if linking fails
+        // Check if it's a pure numeric string (database ID) vs locationId format
+        if (/^\d+$/.test(locationParam)) {
+          locationDbId = parseInt(locationParam);
+        } else {
+          // It's a locationId string - find the location by locationId
+          const location = await storage.getLocation(locationParam);
+          if (!location) {
+            return res.status(404).json({ error: 'Location not found' });
           }
+          locationDbId = location.id;
+        }
+
+        // COMPLETE BYPASS: Use direct SQL for Supabase to avoid all schema cache issues
+        const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+        if (supabaseUrl) {
+          const postgres = (await import('postgres')).default;
+          const directSql = postgres(supabaseUrl, {
+            ssl: 'require',
+            max: 1,
+            idle_timeout: 1,
+            connect_timeout: 5,
+            prepare: false,
+            connection: {
+              application_name: `direct_${Date.now()}`
+            }
+          });
+          
+          try {
+            console.log('🔍 Creating task with direct SQL - using exact working query');
+            
+            // Use the exact same query pattern that works in the SQL tool
+            const insertQuery = `
+              INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7) 
+              RETURNING *
+            `;
+            
+            const values = [
+              taskData.title,
+              taskData.description || null, 
+              taskData.startDate,
+              locationDbId,
+              taskData.status || 'upcoming',
+              taskData.taskOrder || 0,
+              taskData.dependentOnPrevious !== false
+            ];
+            
+            console.log('🔍 Query values:', values);
+            const result = await directSql.unsafe(insertQuery, values);
+            
+            await directSql.end();
+            console.log('✅ Direct SQL task creation successful');
+            createdTasks.push(result[0]);
+            
+          } catch (sqlError) {
+            await directSql.end();
+            console.error('❌ Direct SQL task creation failed:', sqlError);
+            return res.status(500).json({ 
+              error: 'Failed to create task', 
+              details: sqlError.message 
+            });
+          }
+        } else {
+          // Fallback for non-Supabase environments - use regular storage method
+          const validated = insertTaskSchema.parse({
+            ...taskData,
+            locationId: locationDbId
+          });
+          
+          const task = await storage.createTask(validated);
+          createdTasks.push(task);
         }
       }
       
       res.status(201).json(Array.isArray(req.body) ? createdTasks : createdTasks[0]);
     } catch (error: any) {
-      console.error('Task validation error:', error);
-      if (error.issues) {
-        console.error('Validation issues:', error.issues);
-      }
-      res.status(400).json({ error: 'Invalid task data', details: error.message });
+      console.error('Task creation error:', error);
+      res.status(400).json({ 
+        error: 'Failed to create task', 
+        details: error.message 
+      });
     }
   });
 
