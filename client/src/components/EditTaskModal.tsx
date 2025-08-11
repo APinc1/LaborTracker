@@ -118,7 +118,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   );
 
   // Helper function to safely format dates  
-  const safeFormatDate = (date: Date): string => {
+  const safeFormatDate = (date: Date | null | undefined): string => {
     if (!date || isNaN(date.getTime())) return new Date().toISOString().split('T')[0];
     return date.toISOString().split('T')[0];
   };

@@ -29,8 +29,13 @@ interface LocationDetailsProps {
 
 export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Safe date formatting helper
-  const safeFormatDate = (date: Date | string | number, formatStr: string = 'yyyy-MM-dd'): string => {
+  const safeFormatDate = (date: Date | string | number | null | undefined, formatStr: string = 'yyyy-MM-dd'): string => {
     try {
+      // Handle null/undefined dates
+      if (date === null || date === undefined) {
+        return format(new Date(), formatStr); // Return current date for null/undefined
+      }
+
       let dateObj: Date;
       if (typeof date === 'string') {
         // Fix timezone offset by adding time component for date strings
@@ -42,13 +47,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       }
       
       if (!dateObj || isNaN(dateObj.getTime())) {
-        console.warn('Invalid date provided to safeFormatDate:', date);
-        return '2025-07-16';
+        return format(new Date(), formatStr); // Return current date for invalid dates
       }
       return format(dateObj, formatStr);
     } catch (error) {
       console.error('Error formatting date:', date, error);
-      return '2025-07-16';
+      return format(new Date(), formatStr); // Return current date on error
     }
   };
 

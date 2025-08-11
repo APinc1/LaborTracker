@@ -1309,6 +1309,25 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteTask(id: number): Promise<void> {
+    // Use raw SQL for Supabase compatibility similar to createTask method
+    if (process.env.SUPABASE_DATABASE_URL) {
+      const postgres = await import('postgres');
+      const freshSql = postgres.default(process.env.SUPABASE_DATABASE_URL, {
+        idle_timeout: 20,
+        max_lifetime: 60 * 30,
+      });
+      
+      try {
+        await freshSql`DELETE FROM tasks WHERE id = ${id}`;
+        await freshSql.end();
+        return;
+      } catch (error) {
+        await freshSql.end();
+        throw error;
+      }
+    }
+    
+    // Fallback to Drizzle ORM
     await this.db.delete(tasks).where(eq(tasks.id, id));
   }
 
