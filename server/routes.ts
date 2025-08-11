@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                  superintendent_id, foreman_id, crew_id, dependencies, notes
           FROM tasks 
           WHERE location_id = ${locationDbId}
-          ORDER BY COALESCE(priority, 1) ASC, id ASC
+          ORDER BY COALESCE(priority, 999) ASC, task_date ASC, id ASC
         `;
         
         console.log('✅ CLEAN-getTasks found', result.length, 'tasks');
@@ -645,6 +645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const status = taskData.status || 'upcoming';
             const taskOrder = taskData.taskOrder || taskData.order || 0;
             const dependentOnPrevious = taskData.dependentOnPrevious !== false;
+            const taskDate = taskData.taskDate || startDate; // Use specific task date if provided
             
             console.log('🔍 Task data received:', {
               title,
@@ -717,11 +718,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               console.log('🔍 About to execute INSERT with values:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
               
-              // Use correct Supabase schema columns
+              // Use correct Supabase schema columns with proper ordering and dates
               const taskId = `${locationDbId}_${title.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
+              const taskType = taskData.taskType || title; // Use taskType if provided, otherwise use title
               const result = await directDb`
                 INSERT INTO tasks (task_id, name, work_description, start_date, task_date, location_id, status, priority, cost_code, scheduled_hours, task_type) 
-                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${startDate}, ${locationDbId}, ${status}, ${taskOrder || 1}, ${costCode}, ${estimatedHours}, ${costCode})
+                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${taskDate}, ${locationDbId}, ${status}, ${taskOrder}, ${costCode}, ${estimatedHours}, ${taskType})
                 RETURNING *
               `;
               
