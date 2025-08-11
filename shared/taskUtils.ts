@@ -248,8 +248,23 @@ export function realignDependentTasks(tasks: any[]): any[] {
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
-      console.log(`🔧 DEBUG: Previous task "${previousTask.name}" date: ${previousTask.taskDate}`);
-      const previousDate = parseDateString(previousTask.taskDate);
+      // CRITICAL: For linked groups, we need to find the actual previous task that matters
+      // If the previous task is linked and unsequential, we need to look further back
+      let actualPreviousTask = previousTask;
+      let lookbackIndex = i - 1;
+      
+      // If previous task is in a linked group and is unsequential, 
+      // find the last sequential task or first task in the dependency chain
+      while (lookbackIndex > 0 && 
+             actualPreviousTask.linkedTaskGroup && 
+             !actualPreviousTask.dependentOnPrevious) {
+        console.log(`🔍 Previous task "${actualPreviousTask.name}" is linked+unsequential, looking further back...`);
+        lookbackIndex--;
+        actualPreviousTask = updatedTasks[lookbackIndex];
+      }
+      
+      console.log(`🔧 DEBUG: Actual previous task "${actualPreviousTask.name}" date: ${actualPreviousTask.taskDate}`);
+      const previousDate = parseDateString(actualPreviousTask.taskDate);
       console.log(`🔧 DEBUG: Parsed previous date:`, previousDate);
       console.log(`🔧 DEBUG: Previous date day of week: ${previousDate.getDay()} (0=Sun, 1=Mon, etc)`);
       const nextWeekday = getNextWeekday(previousDate);
@@ -258,7 +273,7 @@ export function realignDependentTasks(tasks: any[]): any[] {
       const newDateString = formatDateToString(nextWeekday);
       console.log(`🔧 DEBUG: Formatted new date string: ${newDateString}`);
       
-      console.log(`✅ SEQUENTIAL UPDATE: "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${previousTask.name}" on ${previousTask.taskDate})`);
+      console.log(`✅ SEQUENTIAL UPDATE: "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${actualPreviousTask.name}" on ${actualPreviousTask.taskDate})`);
       
       updatedTasks[i] = {
         ...currentTask,

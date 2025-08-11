@@ -936,11 +936,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
         const otherTask = groupTasks[0];
         
-        // Both tasks become unlinked and sequential (keeping their current positions)
-        const bothTasks = [task, otherTask].map(t => ({
+        // CRITICAL: When unlinking, preserve the current visual order established by linking
+        // Find the current visual order from the task list (not original order)
+        const currentTasks = [...(existingTasks as any[])];
+        const firstTaskCurrentOrder = Math.min(task.order || 0, otherTask.order || 0);
+        const secondTaskCurrentOrder = Math.max(task.order || 0, otherTask.order || 0);
+        
+        // Identify which task is visually first and second
+        const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
+        const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
+        
+        console.log('🔗 UNLINK ORDER PRESERVATION:', {
+          firstTask: firstTask.name,
+          firstOrder: firstTask.order,
+          secondTask: secondTask.name, 
+          secondOrder: secondTask.order
+        });
+        
+        // Both tasks become unlinked - first stays in position, second becomes sequential
+        const bothTasks = [firstTask, secondTask].map((t, index) => ({
           ...t,
           linkedTaskGroup: null,
-          dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
+          dependentOnPrevious: index === 0 ? (t.order === 0 ? false : true) : true // Second task always becomes sequential
         }));
         
         // Trigger cascading for all subsequent tasks
