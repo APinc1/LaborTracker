@@ -901,11 +901,20 @@ class DatabaseStorage implements IStorage {
     console.log("📍 Connection target:", connectionString.replace(/:[^:@]*@/, ':***@')); // Hide password in logs
     
     try {
-      // Create neon client with optimized settings for Supabase
-      const sql = neon(connectionString, {
-        fetchConnectionCache: true,
-        fullResults: true,
-      });
+      // Try multiple connection configurations for better compatibility
+      let sql;
+      
+      // First try with minimal configuration
+      if (connectionString.includes('pooler.supabase.com')) {
+        console.log("🔄 Attempting session pooler connection with minimal config...");
+        sql = neon(connectionString);
+      } else {
+        console.log("🔄 Attempting direct connection...");
+        sql = neon(connectionString, {
+          fetchConnectionCache: true,
+          fullResults: true,
+        });
+      }
       
       this.db = drizzle(sql, {
         schema: {
@@ -1249,7 +1258,14 @@ class HybridStorage implements IStorage {
     if (this.dbStorage) {
       try {
         console.log("🔍 Testing database connection...");
-        const testResult = await (this.dbStorage as any).testConnection();
+        
+        // Add timeout to connection test
+        const testPromise = (this.dbStorage as any).testConnection();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000)
+        );
+        
+        const testResult = await Promise.race([testPromise, timeoutPromise]);
         if (testResult) {
           console.log("✅ Database connection test successful!");
         } else {
@@ -1259,6 +1275,27 @@ class HybridStorage implements IStorage {
       } catch (error) {
         console.error("❌ Database connection test error:", error);
         this.isDatabaseAvailable = false;
+        
+        // Try to retry connection once more
+        console.log("🔄 Retrying database connection in 2 seconds...");
+        setTimeout(() => this.retryConnection(), 2000);
+      }
+    }
+  }
+
+  private async retryConnection() {
+    if (this.dbStorage) {
+      try {
+        console.log("🔄 Attempting database reconnection...");
+        const testResult = await (this.dbStorage as any).testConnection();
+        if (testResult) {
+          console.log("✅ Database reconnection successful!");
+          this.isDatabaseAvailable = true;
+        } else {
+          console.log("❌ Database reconnection failed - staying in fallback mode");
+        }
+      } catch (error) {
+        console.log("❌ Database reconnection failed:", (error as any)?.message || error);
       }
     }
   }
