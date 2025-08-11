@@ -680,17 +680,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             try {
-              const result = await directDb.unsafe(insertQuery, [
-                title,
-                description,
-                startDate,
-                locationDbId,
-                status,
-                taskOrder,
-                dependentOnPrevious,
-                costCode,
-                estimatedHours
-              ]);
+              console.log('🔍 About to execute INSERT with values:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
+              const result = await directDb`
+                INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous, cost_code, estimated_hours) 
+                VALUES (${title}, ${description}, ${startDate}, ${locationDbId}, ${status}, ${taskOrder}, ${dependentOnPrevious}, ${costCode}, ${estimatedHours})
+                RETURNING *
+              `;
               
               await directDb.end();
               
@@ -701,21 +696,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } catch (dbError) {
               await directDb.end();
               console.error('❌ Database insert failed:', dbError);
-              // Fallback to simulated response
-              const createdTask = {
-                id: Date.now(),
-                title,
-                description,
-                start_date: startDate,
-                location_id: locationDbId,
-                status,
-                task_order: taskOrder,
-                dependent_on_previous: dependentOnPrevious,
-                cost_code: costCode,
-                estimated_hours: estimatedHours,
-                created_at: new Date().toISOString()
-              };
-              createdTasks.push(createdTask);
+              console.error('❌ Failed values were:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
+              // Don't create fallback data - let it fail so we can fix the real issue
+              throw dbError;
             }
             
           } catch (sqlError) {
