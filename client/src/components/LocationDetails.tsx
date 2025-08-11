@@ -649,11 +649,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         const codeUpper = summary.costCode.toUpperCase();
         
         if (codeUpper.includes('DEMO') || codeUpper.includes('DEMOLITION') || codeUpper.includes('EX')) {
-          taskType = 'Demo/Ex';
+          taskType = 'Demo/Ex + Base/Grading';
         } else if (codeUpper.includes('TRAFFIC')) {
           taskType = 'Traffic Control';
         } else if (codeUpper.includes('BASE') || codeUpper.includes('GRADE') || codeUpper.includes('GRADING')) {
-          taskType = 'Base/Grading';
+          taskType = 'Demo/Ex + Base/Grading';
         } else if (codeUpper === 'AC' || codeUpper.includes('ASPHALT')) {
           taskType = 'Asphalt';
         } else if (codeUpper.includes('CONCRETE') || codeUpper.includes('CONC')) {
@@ -694,18 +694,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         taskGroups[taskType].days = Math.max(1, Math.ceil(taskGroups[taskType].totalHours / 40));
       });
 
-      // Handle combining options
-      if (combineDemoBase && taskGroups['Demo/Ex'] && taskGroups['Base/Grading']) {
-        const combinedHours = taskGroups['Demo/Ex'].totalHours + taskGroups['Base/Grading'].totalHours;
-        const combinedCostCodes = [...taskGroups['Demo/Ex'].costCodes, ...taskGroups['Base/Grading'].costCodes];
-        taskGroups['Demo/Ex + Base/Grading'] = {
-          costCodes: combinedCostCodes,
-          totalHours: combinedHours,
-          days: Math.max(1, Math.ceil(combinedHours / 40))
-        };
-        delete taskGroups['Demo/Ex'];
-        delete taskGroups['Base/Grading'];
-      }
+      // Handle combining options - Demo/Ex and Base/Grading are now already combined above
+      // This section is kept for backwards compatibility but should not execute with new logic
 
       console.log('Task groups before combining:', Object.keys(taskGroups));
       console.log('combineFormPour:', combineFormPour);
