@@ -755,7 +755,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const startDate = taskData.startDate || taskData.taskDate;
             const status = taskData.status || 'upcoming';
             const taskOrder = taskData.taskOrder || taskData.order || 0;
-            const dependentOnPrevious = taskData.dependentOnPrevious ?? false;
+            // CRITICAL FIX: Set sequential dependency - all tasks except first should be sequential
+            const taskIndex = requestData.indexOf(taskData);
+            const dependentOnPrevious = taskIndex > 0; // First task (index 0) = false, all others = true
             const taskDate = taskData.taskDate || startDate; // Use specific task date if provided
             
             console.log('🔍 Task data received:', {
@@ -833,8 +835,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const taskId = `${locationDbId}_${title.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
               const taskType = taskData.taskType || title; // Use taskType if provided, otherwise use title
               const result = await directDb`
-                INSERT INTO tasks (task_id, name, work_description, start_date, task_date, location_id, status, priority, cost_code, scheduled_hours, task_type) 
-                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${taskDate}, ${locationDbId}, ${status}, ${taskOrder}, ${costCode}, ${estimatedHours}, ${taskType})
+                INSERT INTO tasks (task_id, name, work_description, start_date, task_date, location_id, status, priority, cost_code, scheduled_hours, task_type, dependent_on_previous) 
+                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${taskDate}, ${locationDbId}, ${status}, ${taskOrder}, ${costCode}, ${estimatedHours}, ${taskType}, ${dependentOnPrevious})
                 RETURNING *
               `;
               
