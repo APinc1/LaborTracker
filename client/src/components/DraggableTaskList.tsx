@@ -147,11 +147,17 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     if (!dateString) return 'No date';
     try {
       // Handle both ISO date strings and simple date strings
+      // For ISO dates like 2025-08-11T00:00:00.000Z, use UTC to avoid timezone issues
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-      });
+      
+      // Use UTC methods to avoid local timezone shifting dates
+      const utcMonth = date.getUTCMonth();
+      const utcDay = date.getUTCDate();
+      
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      return `${months[utcMonth]} ${utcDay}`;
     } catch {
       return 'Invalid date';
     }
@@ -316,19 +322,37 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                     {task.costCode}
                   </Badge>
                   
-                  {/* Add remaining hours display */}
-                  {showRemainingHours && task.costCode && budgetItems && (() => {
-                    const remainingHoursData = calculateRemainingHours(task.costCode, budgetItems, tasks);
-                    const indicator = getRemainingHoursIndicator(remainingHoursData);
+                  {/* Add remaining hours display using API data */}
+                  {showRemainingHours && task.budgetHours !== undefined && task.remainingHours !== undefined && (() => {
+                    // Use API-provided remaining hours data
+                    const budgetHours = task.budgetHours || 0;
+                    const remainingHours = task.remainingHours || 0;
+                    const hoursStatus = task.hoursStatus || 'red';
                     
-                    if (indicator && remainingHoursData.budgetHours > 0) {
-                      return (
-                        <div className={indicator.className}>
-                          {indicator.text}
-                        </div>
-                      );
+                    // Only show if there's budget data
+                    if (budgetHours <= 0) return null;
+                    
+                    // Determine styling based on API status
+                    let className = 'px-2 py-1 rounded text-xs font-medium';
+                    switch (hoursStatus) {
+                      case 'green':
+                        className += ' text-green-700 bg-green-50 border border-green-200';
+                        break;
+                      case 'yellow':
+                        className += ' text-yellow-700 bg-yellow-50 border border-yellow-200';
+                        break;
+                      case 'red':
+                        className += ' text-red-700 bg-red-50 border border-red-200';
+                        break;
+                      default:
+                        className += ' text-gray-700 bg-gray-50 border border-gray-200';
                     }
-                    return null;
+                    
+                    return (
+                      <div className={className}>
+                        {remainingHours.toFixed(1)}h remaining
+                      </div>
+                    );
                   })()}
                 </div>
                 

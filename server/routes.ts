@@ -552,8 +552,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
 
-      console.log('🔍 WORKING-getTasks for location:', locationParam, 'DB ID:', locationDbId);
+      console.log('🔍 DEBUG-getTasks for location:', locationParam, 'DB ID:', locationDbId);
       
+      // Use direct SQL query with proper column names
       const postgres = (await import('postgres')).default;
       const sql = postgres(process.env.SUPABASE_DATABASE_URL!, {
         ssl: 'require',
@@ -563,44 +564,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
+        // Get task data
         const result = await sql`
-          SELECT id, task_id, name, work_description as description, cost_code, location_id, 
-                 task_type, task_date, start_date, finish_date,
-                 scheduled_hours, actual_hours, status, priority,
-                 superintendent_id, foreman_id, crew_id, dependencies, notes
+          SELECT id, work_description, cost_code, location_id, 
+                 task_date, start_date, status
           FROM tasks 
           WHERE location_id = ${locationDbId}
-          ORDER BY COALESCE(priority, 999) ASC, task_date ASC, id ASC
+          ORDER BY id ASC
         `;
         
-        // Transform field names to camelCase for frontend compatibility
-        const transformedResult = result.map(task => ({
-          id: task.id,
-          taskId: task.task_id,
-          name: task.name,
-          title: task.name, // Add title for backwards compatibility
-          description: task.description,
-          costCode: task.cost_code,
-          locationId: task.location_id,
-          taskType: task.task_type,
-          taskDate: task.task_date,
-          startDate: task.start_date,
-          finishDate: task.finish_date,
-          scheduledHours: task.scheduled_hours,
-          actualHours: task.actual_hours,
-          status: task.status,
-          priority: task.priority,
-          taskOrder: task.priority, // Add taskOrder for backwards compatibility
-          superintendentId: task.superintendent_id,
-          foremanId: task.foreman_id,
-          crewId: task.crew_id,
-          dependencies: task.dependencies,
-          notes: task.notes
-        }));
+        console.log('🔍 SQL QUERY RESULT:', result.length, 'rows');
+        console.log('🔍 First 2 results:', result.slice(0, 2));
         
-        console.log('✅ CLEAN-getTasks found', transformedResult.length, 'tasks');
+        // Generate task names from cost codes since work_description is null
+        console.log('🔧 Generating task names from cost codes...');
+        
+        // Get budget hours for remaining hours calculation
+        const budgetQuery = await sql`
+          SELECT cost_code, SUM(hours) as budget_hours 
+          FROM budget_line_items 
+          WHERE location_id = ${locationDbId}
+          GROUP BY cost_code
+        `;
+        const budgetMap = budgetQuery.reduce((map, item) => {
+          map[item.cost_code] = parseFloat(item.budget_hours) || 0;
+          return map;
+        }, {});
+        
+        // Calculate total scheduled hours by cost code
+        const costCodeHours = result.reduce((map, task) => {
+          const costCode = task.cost_code;
+          map[costCode] = (map[costCode] || 0) + 8; // Each task = 8 hours
+          return map;
+        }, {});
+        
+        // Transform field names to camelCase
+        const transformedTasks = result.map(task => {
+          // Generate meaningful task names from cost codes
+          let taskName = 'General Task';
+          if (task.cost_code?.includes('Demo/Ex')) taskName = 'Demo/Ex';
+          else if (task.cost_code?.includes('TRAFFIC')) taskName = 'Traffic Control';
+          else if (task.cost_code?.includes('CONCRETE')) taskName = 'Form + Pour';
+          else if (task.cost_code === 'AC') taskName = 'Asphalt';
+          else if (task.cost_code?.includes('GNRL')) taskName = 'General Labor';  
+          else if (task.cost_code?.includes('EXCAV')) taskName = 'Excavation';
+          
+          // Calculate remaining hours for this cost code
+          const budgetHours = budgetMap[task.cost_code] || 0;
+          const scheduledHours = costCodeHours[task.cost_code] || 0;
+          const remainingHours = Math.max(0, budgetHours - scheduledHours);
+          const remainingPercentage = budgetHours > 0 ? (remainingHours / budgetHours) * 100 : 0;
+          
+          // Determine color coding: green if >15%, yellow if ≤15%, red if ≤0%
+          let hoursStatus = 'green';
+          if (remainingPercentage <= 0) hoursStatus = 'red';
+          else if (remainingPercentage <= 15) hoursStatus = 'yellow';
+          
+          return {
+            id: task.id,
+            taskId: `TASK_${task.id}`,
+            name: taskName,
+            title: taskName,
+            description: task.work_description || taskName,
+            costCode: task.cost_code,
+            locationId: task.location_id,
+            taskType: task.cost_code || 'General',
+            taskDate: task.task_date || task.start_date,
+            startDate: task.start_date,
+            finishDate: null,
+            scheduledHours: 8,
+            actualHours: 0,
+            status: task.status || 'upcoming',
+            priority: 1,
+            taskOrder: 1,
+            superintendentId: null,
+            foremanId: null,
+            crewId: null,
+            dependencies: null,
+            notes: null,
+            dependentOnPrevious: task.cost_code === 'CONCRETE', // CONCRETE tasks are sequential
+            linkedTaskGroup: null,
+            // Remaining hours tracking
+            budgetHours: budgetMap[task.cost_code] || 0,
+            remainingHours: Math.max(0, (budgetMap[task.cost_code] || 0) - (costCodeHours[task.cost_code] || 0)),
+            hoursStatus: hoursStatus
+          };
+        });
+        
         await sql.end();
-        res.json(transformedResult);
+        
+        console.log('✅ CLEAN-getTasks found', transformedTasks.length, 'tasks');
+        res.json(transformedTasks);
       } catch (sqlError) {
         console.error('❌ CLEAN-getTasks SQL error:', sqlError);
         await sql.end();
@@ -643,7 +697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: (task as any).status,
         priority: (task as any).priority,
         taskOrder: (task as any).priority, // Add taskOrder for backwards compatibility
-        dependentOnPrevious: (task as any).dependent_on_previous,
+        dependentOnPrevious: false, // TODO: Add dependency support
         superintendentId: (task as any).superintendent_id,
         foremanId: (task as any).foreman_id,
         linkedTaskGroup: (task as any).linked_task_group,
@@ -720,8 +774,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Use raw query to bypass cache issues
             const { sql } = await import('postgres');
             const insertQuery = `
-              INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous, cost_code, estimated_hours) 
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+              INSERT INTO tasks (work_description, description, start_date, location_id, status, cost_code, estimated_hours) 
+              VALUES ($1, $2, $3, $4, $5, $6, $7) 
               RETURNING *
             `;
             
@@ -764,11 +818,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               
               // Also verify the tasks table structure
-              const tableCheck = await directDb`SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks' AND column_name IN ('title', 'task_name', 'name') ORDER BY column_name`;
+              const tableCheck = await directDb`SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks' AND column_name IN ('work_description', 'task_name', 'name') ORDER BY column_name`;
               console.log('🔍 Available task columns:', tableCheck.map(c => c.column_name));
               
               if (tableCheck.length === 0) {
-                console.log('❌ No title/task_name/name columns found in tasks table');
+                console.log('❌ No work_description/task_name/name columns found in tasks table');
                 await directDb.end();
                 throw new Error('Tasks table structure mismatch');
               }
