@@ -382,7 +382,6 @@ export class MemStorage implements IStorage {
 
     // Create sample employee assignments
     await this.createEmployeeAssignment({
-      assignmentId: `${formTask.id}_${mike.id}`,
       taskId: formTask.id,
       employeeId: mike.id,
       assignmentDate: today,
@@ -391,7 +390,6 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
-      assignmentId: `${demoTask.id}_${sarah.id}`,
       taskId: demoTask.id,
       employeeId: sarah.id,
       assignmentDate: today,
@@ -400,7 +398,6 @@ export class MemStorage implements IStorage {
     });
 
     await this.createEmployeeAssignment({
-      assignmentId: `${formTask.id}_${tom.id}`,
       taskId: formTask.id,
       employeeId: tom.id,
       assignmentDate: today,
@@ -427,7 +424,10 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null
+      phone: insertUser.phone ?? null,
+      passwordResetToken: insertUser.passwordResetToken ?? null,
+      passwordResetExpires: insertUser.passwordResetExpires ?? null,
+      isPasswordSet: insertUser.isPasswordSet ?? false
     };
     this.users.set(id, user);
     return user;
@@ -1237,7 +1237,7 @@ class HybridStorage implements IStorage {
       try {
         return await dbOperation();
       } catch (error) {
-        console.warn("Database operation failed, falling back to in-memory storage:", error.message);
+        console.warn("Database operation failed, falling back to in-memory storage:", (error as any)?.message || error);
         this.isDatabaseAvailable = false;
         return await memOperation();
       }
