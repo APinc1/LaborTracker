@@ -1290,15 +1290,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         const taskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
         
-        // Sort tasks by date and order to find chronological position
+        // CRITICAL: Sort by ORDER FIELD, not by date, to maintain logical task sequence
+        // This ensures we find the correct predecessor task in the intended workflow order
         const sortedTasks = [...allUpdatedTasks].sort((a, b) => {
-          const dateA = new Date(a.taskDate).getTime();
-          const dateB = new Date(b.taskDate).getTime();
-          if (dateA !== dateB) return dateA - dateB;
           return (a.order || 0) - (b.order || 0);
         });
         
-        // Find current task in sorted list to get its chronological position
+        // Find current task in sorted list to get its logical position
         const currentTask = allUpdatedTasks[taskIndex];
         const sortedTaskIndex = sortedTasks.findIndex(t => (t.taskId || t.id) === (currentTask.taskId || currentTask.id));
         
@@ -2545,10 +2543,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     await Promise.all(unlinkPromises);
                     
                     // CRITICAL: After unlinking tasks, recalculate downstream sequential task dates
-                    // Get all tasks after the unlinked group to see if any need date updates
+                    // Find ALL subsequent tasks that come after the unlinked group (not just sequential ones)
+                    // because a linked task might become sequential to an unlinked task
                     const maxOrderInGroup = Math.max(...allTasks.map(t => t.order || 0));
                     const subsequentTasks = (existingTasks as any[])
-                      .filter(t => (t.order || 0) > maxOrderInGroup && t.dependentOnPrevious)
+                      .filter(t => (t.order || 0) > maxOrderInGroup)
                       .sort((a, b) => (a.order || 0) - (b.order || 0));
                     
                     console.log('🔗 Found', subsequentTasks.length, 'subsequent sequential tasks to potentially update:', 
@@ -2566,7 +2565,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       const subsequentUpdates = [];
                       
                       for (const subsequentTask of subsequentTasks) {
-                        // Calculate next working day
+                        // Only process sequential tasks (but we need to check ALL tasks to maintain chain)
+                        if (!subsequentTask.dependentOnPrevious) {
+                          // Non-sequential task breaks the chain - update currentDate and continue
+                          currentDate = subsequentTask.taskDate;
+                          continue;
+                        }
+                        
+                        // Calculate next working day for sequential task
                         const baseDate = new Date(currentDate + 'T00:00:00');
                         const nextDate = new Date(baseDate);
                         nextDate.setDate(nextDate.getDate() + 1);
@@ -2576,25 +2582,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                         }
                         const newSequentialDate = nextDate.toISOString().split('T')[0];
                         
-                        // Only update if date actually changed
-                        if (newSequentialDate !== subsequentTask.taskDate) {
-                          console.log('🔗 Updating subsequent sequential task:', subsequentTask.name, 
-                            'from:', subsequentTask.taskDate, 'to:', newSequentialDate);
-                          
-                          subsequentUpdates.push(
-                            apiRequest(`/api/tasks/${subsequentTask.id}`, {
-                              method: 'PUT',
-                              body: JSON.stringify({
-                                taskDate: newSequentialDate,
-                                startDate: newSequentialDate,
-                                finishDate: newSequentialDate
-                              }),
-                              headers: {
-                                'Content-Type': 'application/json'
-                              }
-                            })
-                          );
-                        }
+                        // Always update sequential tasks to maintain the chain
+                        console.log('🔗 Updating subsequent sequential task:', subsequentTask.name, 
+                          'from:', subsequentTask.taskDate, 'to:', newSequentialDate);
+                        
+                        subsequentUpdates.push(
+                          apiRequest(`/api/tasks/${subsequentTask.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({
+                              taskDate: newSequentialDate,
+                              startDate: newSequentialDate,
+                              finishDate: newSequentialDate
+                            }),
+                            headers: {
+                              'Content-Type': 'application/json'
+                            }
+                          })
+                        );
+                        
+                        // Update currentDate for next iteration
+                        currentDate = newSequentialDate;
                         
                         // If this task is in a linked group, all tasks in the group get the same date
                         if (subsequentTask.linkedTaskGroup) {
