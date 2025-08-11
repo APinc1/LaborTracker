@@ -564,14 +564,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         const result = await sql`
-          SELECT id, task_id, title, description, cost_code, location_id, 
-                 task_type, task_date, start_date, end_date, finish_date,
-                 estimated_hours, actual_hours, scheduled_hours, status,
-                 task_order, dependent_on_previous, superintendent_id,
-                 foreman_id, linked_task_group, work_description, created_at
+          SELECT id, task_id, name, work_description as description, cost_code, location_id, 
+                 task_type, task_date, start_date, finish_date,
+                 scheduled_hours, actual_hours, status, priority,
+                 superintendent_id, foreman_id, crew_id, dependencies, notes
           FROM tasks 
           WHERE location_id = ${locationDbId}
-          ORDER BY COALESCE(task_order, 0) ASC, id ASC
+          ORDER BY COALESCE(priority, 1) ASC, id ASC
         `;
         
         console.log('✅ CLEAN-getTasks found', result.length, 'tasks');
@@ -673,17 +672,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Use direct database connection to execute - MUST use Supabase URL
             const postgres = (await import('postgres')).default;
-            const directDb = postgres(process.env.SUPABASE_DATABASE_URL!, {
+            const supabaseUrl = process.env.SUPABASE_DATABASE_URL;
+            const replitUrl = process.env.DATABASE_URL;
+            
+            console.log('🔗 URL Debug:');
+            console.log('  SUPABASE_DATABASE_URL length:', supabaseUrl?.length || 0);
+            console.log('  DATABASE_URL length:', replitUrl?.length || 0);
+            console.log('  SUPABASE starts with:', supabaseUrl?.substring(0, 20) || 'undefined');
+            console.log('  DATABASE starts with:', replitUrl?.substring(0, 20) || 'undefined');
+            
+            if (!supabaseUrl) {
+              throw new Error('SUPABASE_DATABASE_URL not found in environment');
+            }
+            
+            console.log('🔗 Creating postgres connection to Supabase...');
+            const directDb = postgres(supabaseUrl, {
               ssl: 'require',
               max: 1,
               prepare: false
             });
             
             try {
+              // First test which database we're actually connecting to
+              console.log('🔗 Testing database connection...');
+              const dbTest = await directDb`SELECT current_database(), current_user`;
+              console.log('🔗 Connected to database:', dbTest[0].current_database, 'as user:', dbTest[0].current_user);
+              
+              // Check if we're connected to the wrong database  
+              if (dbTest[0].current_database === 'neondb') {
+                console.log('❌ ERROR: Connected to Replit neondb instead of Supabase!');
+                await directDb.end();
+                throw new Error('Wrong database connection - connected to Replit instead of Supabase');
+              }
+              
+              // Also verify the tasks table structure
+              const tableCheck = await directDb`SELECT column_name FROM information_schema.columns WHERE table_name = 'tasks' AND column_name IN ('title', 'task_name', 'name') ORDER BY column_name`;
+              console.log('🔍 Available task columns:', tableCheck.map(c => c.column_name));
+              
+              if (tableCheck.length === 0) {
+                console.log('❌ No title/task_name/name columns found in tasks table');
+                await directDb.end();
+                throw new Error('Tasks table structure mismatch');
+              }
+              
               console.log('🔍 About to execute INSERT with values:', [title, description, startDate, locationDbId, status, taskOrder, dependentOnPrevious, costCode, estimatedHours]);
+              
+              // Use correct Supabase schema columns
+              const taskId = `${locationDbId}_${title.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`;
               const result = await directDb`
-                INSERT INTO tasks (title, description, start_date, location_id, status, task_order, dependent_on_previous, cost_code, estimated_hours) 
-                VALUES (${title}, ${description}, ${startDate}, ${locationDbId}, ${status}, ${taskOrder}, ${dependentOnPrevious}, ${costCode}, ${estimatedHours})
+                INSERT INTO tasks (task_id, name, work_description, start_date, task_date, location_id, status, priority, cost_code, scheduled_hours, task_type) 
+                VALUES (${taskId}, ${title}, ${description}, ${startDate}, ${startDate}, ${locationDbId}, ${status}, ${taskOrder || 1}, ${costCode}, ${estimatedHours}, ${costCode})
                 RETURNING *
               `;
               
