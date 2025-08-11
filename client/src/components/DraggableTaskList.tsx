@@ -660,69 +660,16 @@ export default function DraggableTaskList({
       willCheckForLinking: !originalDraggedTask.linkedTaskGroup
     });
     
-    // Simple drag-and-drop reordering without complex linking logic
-    console.log('🔄 Simple reorder: ', { 
+    // Simplified drag-and-drop - just reorder tasks without complex linking detection
+    console.log('🔄 Processing drag reorder:', { 
       draggedTask: originalDraggedTask.name, 
       fromIndex: oldIndex, 
       toIndex: newIndex 
     });
 
-    // Handle reordering - linked tasks move as groups
-    let reorderedTasks: any[];
-    
-    if (originalDraggedTask.linkedTaskGroup) {
-      // CRITICAL: For linked tasks, move the entire group as a unit
-      console.log('Moving linked task group:', originalDraggedTask.linkedTaskGroup);
-      
-      // Find all tasks in the dragged group
-      const draggedGroupTasks = sortedTasks.filter(t => 
-        t.linkedTaskGroup === originalDraggedTask.linkedTaskGroup
-      );
-      
-      // Check if we're actually changing the group's position
-      const groupStartIndex = Math.min(...draggedGroupTasks.map(t => sortedTasks.indexOf(t)));
-      const groupEndIndex = Math.max(...draggedGroupTasks.map(t => sortedTasks.indexOf(t)));
-      
-      // If the new position is within the current group bounds, it's not really moving
-      if (newIndex >= groupStartIndex && newIndex <= groupEndIndex) {
-        console.log('Dragging within same linked group bounds - no actual movement');
-        return;
-      }
-      
-      console.log('Moving linked group from positions', groupStartIndex, '-', groupEndIndex, 'to position', newIndex);
-      
-      // Find all other tasks (not in the dragged group)  
-      const otherTasks = sortedTasks.filter(t => 
-        t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
-      );
-      
-      // Determine where to insert the group
-      let insertPosition = 0;
-      
-      if (newIndex < groupStartIndex) {
-        // Moving group earlier - find position in other tasks
-        const nonGroupTasksBeforeNewIndex = sortedTasks.slice(0, newIndex).filter(t => 
-          t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
-        );
-        insertPosition = nonGroupTasksBeforeNewIndex.length;
-      } else {
-        // Moving group later - find position in other tasks
-        const nonGroupTasksBeforeNewIndex = sortedTasks.slice(0, newIndex + 1).filter(t => 
-          t.linkedTaskGroup !== originalDraggedTask.linkedTaskGroup
-        );
-        insertPosition = nonGroupTasksBeforeNewIndex.length;
-      }
-      
-      // Insert the group at the calculated position
-      const beforeTarget = otherTasks.slice(0, insertPosition);
-      const afterTarget = otherTasks.slice(insertPosition);
-      
-      reorderedTasks = [...beforeTarget, ...draggedGroupTasks, ...afterTarget];
-      console.log('Reordered task names:', reorderedTasks.map(t => t.name));
-    } else {
-      // Normal reordering for non-linked tasks
-      reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
-    }
+    // Simple reordering using arrayMove
+    const reorderedTasks = arrayMove(sortedTasks, oldIndex, newIndex);
+    console.log('✅ Tasks reordered:', reorderedTasks.map((t, i) => `${i}: ${t.name}`));
 
     // Apply intelligent reordering with smart date handling
     let tasksWithUpdatedOrder = reorderedTasks.map((task, index) => ({

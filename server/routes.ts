@@ -642,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             crewId: null,
             dependencies: null,
             notes: null,
-            dependentOnPrevious: task.cost_code === 'CONCRETE', // CONCRETE tasks are sequential
+            dependentOnPrevious: task.dependent_on_previous ?? false,
             linkedTaskGroup: null,
             // Remaining hours tracking
             budgetHours: budgetMap[task.cost_code] || 0,
@@ -697,7 +697,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: (task as any).status,
         priority: (task as any).priority,
         taskOrder: (task as any).priority, // Add taskOrder for backwards compatibility
-        dependentOnPrevious: false, // TODO: Add dependency support
+        dependentOnPrevious: (task as any).dependent_on_previous ?? false,
         superintendentId: (task as any).superintendent_id,
         foremanId: (task as any).foreman_id,
         linkedTaskGroup: (task as any).linked_task_group,
@@ -755,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const startDate = taskData.startDate || taskData.taskDate;
             const status = taskData.status || 'upcoming';
             const taskOrder = taskData.taskOrder || taskData.order || 0;
-            const dependentOnPrevious = taskData.dependentOnPrevious !== false;
+            const dependentOnPrevious = taskData.dependentOnPrevious ?? false;
             const taskDate = taskData.taskDate || startDate; // Use specific task date if provided
             
             console.log('🔍 Task data received:', {

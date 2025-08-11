@@ -2390,8 +2390,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             <AlertDialogTitle className="text-lg font-semibold">
               Choose Position for Linked Tasks
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600 space-y-2">
-              <div>
+            <AlertDialogDescription asChild>
+              <div className="text-gray-600 space-y-2">
                 <div>You're linking "{linkingOptions?.currentTask?.name}" to {linkingOptions?.targetTasks?.length || 0} task(s):</div>
                 {linkingOptions?.targetTasks && (
                   <ul className="text-sm mt-1 ml-4 list-disc">
