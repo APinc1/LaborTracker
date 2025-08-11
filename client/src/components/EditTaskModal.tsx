@@ -915,46 +915,39 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('🔗 Found group tasks:', groupTasks.length, groupTasks.map(t => t.name));
       
-      if (groupTasks.length >= 3 && !skipUnlinkDialog) {
+      if (groupTasks.length >= 2 && !skipUnlinkDialog) {
         // Multi-task group (3+ tasks) - show unlink dialog (unless user already chose to skip it)
         setUnlinkingGroupSize(groupTasks.length + 1); // +1 for current task
         setShowUnlinkDialog(true);
         setPendingFormData(data);
         return;
-      } else if (skipUnlinkDialog && groupTasks.length >= 3) {
-        // User chose "Just unlink this task" - only unlink current task but keep its current position
+      } else if (skipUnlinkDialog && groupTasks.length >= 1) {
+        // User chose "Just unlink this task" - only unlink current task
         console.log('🔗 JUST UNLINKING CURRENT TASK - maintaining current position');
         processedData.linkedTaskGroup = null;
         
-        // CRITICAL: When unlinking "just this task", it should stay in its current visual position
-        // and become sequential to the task that comes immediately before it in display order
-        // NOT revert to its original order-based position
+        // CRITICAL: Task stays in current position and becomes sequential unless it's first
+        processedData.dependentOnPrevious = task.order === 0 ? false : true;
+        
+        // Mark that linking has changed to trigger downstream updates
+        linkingChanged = true;
       } else if (groupTasks.length === 1) {
-        // Two-task group (current + 1 other) - directly unlink both without dialog
-        console.log('🔗 TWO-TASK GROUP - directly unlinking both tasks');
-        
+        // Two-task group - auto-unlink both tasks directly
+        console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
         const otherTask = groupTasks[0];
-        const allTasksInGroup = [task, otherTask];
         
-        // Sort by order to maintain sequential flow
-        allTasksInGroup.sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        // Both tasks become unlinked and sequential
-        const groupUpdates = allTasksInGroup.map(taskToUpdate => ({
-          ...taskToUpdate,
+        // Both tasks become unlinked and sequential (keeping their current positions)
+        const bothTasks = [task, otherTask].map(t => ({
+          ...t,
           linkedTaskGroup: null,
-          dependentOnPrevious: true // Both become sequential in their current positions
+          dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
         }));
         
-        console.log('🔗 Two-task unlink updates:', groupUpdates.map(t => ({ 
-          name: t.name, 
-          order: t.order,
-          sequential: t.dependentOnPrevious 
-        })));
-        
-        // Update both tasks and handle cascading
-        batchUpdateTasksMutation.mutate(groupUpdates);
+        batchUpdateTasksMutation.mutate(bothTasks);
         return;
+      } else {
+        // Regular unlinking logic for other cases
+        processedData.linkedTaskGroup = null;
         
         // Check if current task is first task overall - first task must stay unsequential
         const allTasksSorted = (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
@@ -994,32 +987,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
         
         // Mark that linking has changed to trigger downstream updates
-        linkingChanged = true;
-      } else {
-        // Two-task group or larger - unlink all tasks and restore natural sequential dependencies
-        processedData.linkedTaskGroup = null;
-        
-        // Get all tasks in the group including current task
-        const allGroupTasks = [task, ...groupTasks];
-        
-        // Sort all tasks by order to determine natural sequential dependencies
-        const allTasksSortedByOrder = (existingTasks as any[]).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-        
-        // For current task, determine what its sequential status should naturally be
-        const currentTaskOrder = task.order || 0;
-        const isCurrentTaskFirst = currentTaskOrder === 0 || 
-          allTasksSortedByOrder[0] && (allTasksSortedByOrder[0].taskId || allTasksSortedByOrder[0].id) === (task.taskId || task.id);
-        
-        // Current task should be sequential if it's not the first task in the entire list
-        processedData.dependentOnPrevious = !isCurrentTaskFirst;
-        
-        console.log('Current task unlinking (natural dependencies):', {
-          currentTaskOrder,
-          isCurrentTaskFirst,
-          naturalSequentialStatus: processedData.dependentOnPrevious
-        });
-        
-        // Mark that we need to unlink and restore sequential status for other tasks too
         linkingChanged = true;
       }
     } else if (task.linkedTaskGroup && dependencyChanged) {
@@ -1847,13 +1814,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                           if (!checked && task.linkedTaskGroup && !skipUnlinkDialog) {
                             // User is unchecking link - determine group size for unlink dialog
                             const groupTasks = (existingTasks as any[]).filter((t: any) => 
-                              t.linkedTaskGroup === task.linkedTaskGroup
+                              t.linkedTaskGroup === task.linkedTaskGroup && (t.taskId || t.id) !== (task.taskId || task.id)
                             );
                             
                             console.log('🔗 Found groupTasks:', groupTasks.length, 'total group size:', groupTasks.length + 1);
                             
-                            if (groupTasks.length >= 2) { // Changed from > 2 to >= 2 (3+ total tasks)
-                              // Multi-task group - show unlink dialog
+                            if (groupTasks.length === 1) {
+                              // Two-task group - auto-unlink both tasks directly
+                              console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
+                              const otherTask = groupTasks[0];
+                              
+                              // Both tasks become unlinked and sequential (keeping their current positions)
+                              const bothTasks = [task, otherTask].map(t => ({
+                                ...t,
+                                linkedTaskGroup: null,
+                                dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
+                              }));
+                              
+                              batchUpdateTasksMutation.mutate(bothTasks);
+                              return;
+                            } else if (groupTasks.length >= 2) {
+                              // Multi-task group (3+ tasks) - show unlink dialog
                               setUnlinkingGroupSize(groupTasks.length + 1); // +1 to include current task
                               setShowUnlinkDialog(true);
                               setPendingFormData({ ...form.getValues(), linkToExistingTask: false });
