@@ -53,6 +53,8 @@ export default function EmployeeManagement() {
   const [selectedEmployeeForUser, setSelectedEmployeeForUser] = useState<any>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
+  const [editingCrewMembers, setEditingCrewMembers] = useState<any>(null);
+  const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
@@ -444,6 +446,41 @@ export default function EmployeeManagement() {
   const handleDeleteCrew = (id: number) => {
     if (confirm('Are you sure you want to delete this crew?')) {
       deleteCrewMutation.mutate(id);
+    }
+  };
+
+  const handleEditCrewMembers = (crew: any) => {
+    setEditingCrewMembers(crew);
+    setIsEditMembersOpen(true);
+  };
+
+  const handleRemoveFromCrew = async (employeeId: number) => {
+    try {
+      const response = await apiRequest(`/api/employees/${employeeId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ crewId: null }),
+      });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+        toast({ title: "Success", description: "Employee removed from crew" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to remove employee from crew", variant: "destructive" });
+    }
+  };
+
+  const handleAddToCrew = async (employeeId: number, crewId: number) => {
+    try {
+      const response = await apiRequest(`/api/employees/${employeeId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ crewId }),
+      });
+      if (response.ok) {
+        queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+        toast({ title: "Success", description: "Employee added to crew" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to add employee to crew", variant: "destructive" });
     }
   };
 
@@ -1079,7 +1116,16 @@ export default function EmployeeManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleEditCrewMembers(crew)}
+                                title="Manage Members"
+                              >
+                                <Users className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleEditCrew(crew)}
+                                title="Edit Crew Name"
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -1088,6 +1134,7 @@ export default function EmployeeManagement() {
                                 size="sm"
                                 onClick={() => handleDeleteCrew(crew.id)}
                                 className="text-red-500 hover:text-red-700"
+                                title="Delete Crew"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -1152,6 +1199,94 @@ export default function EmployeeManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Crew Member Management Dialog */}
+      <Dialog open={isEditMembersOpen} onOpenChange={setIsEditMembersOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Manage Crew Members - {editingCrewMembers?.name}</DialogTitle>
+          </DialogHeader>
+          {editingCrewMembers && (
+            <div className="space-y-6">
+              {/* Current Members */}
+              <div>
+                <h3 className="text-lg font-medium mb-3">Current Members</h3>
+                <div className="space-y-2">
+                  {employees.filter((emp: any) => emp.crewId === editingCrewMembers.id).length === 0 ? (
+                    <p className="text-gray-500 italic">No members currently assigned to this crew.</p>
+                  ) : (
+                    employees
+                      .filter((emp: any) => emp.crewId === editingCrewMembers.id)
+                      .map((member: any) => (
+                        <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{member.name}</p>
+                              <p className="text-sm text-gray-500">{member.teamMemberId} • {member.primaryTrade}</p>
+                            </div>
+                            <Badge variant="outline">{member.employeeType}</Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFromCrew(member.id)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              {/* Available Employees */}
+              <div>
+                <h3 className="text-lg font-medium mb-3">Available Employees</h3>
+                <div className="space-y-2">
+                  {employees.filter((emp: any) => !emp.crewId).length === 0 ? (
+                    <p className="text-gray-500 italic">No unassigned employees available.</p>
+                  ) : (
+                    employees
+                      .filter((emp: any) => !emp.crewId)
+                      .map((employee: any) => (
+                        <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                              <User className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium">{employee.name}</p>
+                              <p className="text-sm text-gray-500">{employee.teamMemberId} • {employee.primaryTrade}</p>
+                            </div>
+                            <Badge variant="outline">{employee.employeeType}</Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAddToCrew(employee.id, editingCrewMembers.id)}
+                            className="text-green-600 hover:text-green-700"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button onClick={() => setIsEditMembersOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
