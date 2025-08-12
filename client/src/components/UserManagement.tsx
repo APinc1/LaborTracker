@@ -46,7 +46,7 @@ const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  role: z.enum(["Admin", "Superintendent", "Project Manager", "Foreman"]),
+  role: z.enum(["Admin", "Superintendent", "Project Manager", "Foreman", "Employee"]),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -58,7 +58,7 @@ export default function UserManagement() {
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["/api/users"],
-  });
+  }) as { data: any[], isLoading: boolean };
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -72,8 +72,17 @@ export default function UserManagement() {
   });
 
   const createUserMutation = useMutation({
-    mutationFn: (userData: UserFormData) =>
-      apiRequest("POST", "/api/users", userData),
+    mutationFn: async (userData: UserFormData) => {
+      const response = await apiRequest("/api/users", {
+        method: "POST",
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create user");
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
@@ -94,8 +103,17 @@ export default function UserManagement() {
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: (userData: UserFormData & { id: number }) =>
-      apiRequest("PUT", `/api/users/${userData.id}`, userData),
+    mutationFn: async (userData: UserFormData & { id: number }) => {
+      const response = await apiRequest(`/api/users/${userData.id}`, {
+        method: "PUT",
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update user");
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
@@ -116,8 +134,16 @@ export default function UserManagement() {
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: (userId: number) =>
-      apiRequest("DELETE", `/api/users/${userId}`),
+    mutationFn: async (userId: number) => {
+      const response = await apiRequest(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete user");
+      }
+      return response;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       toast({
@@ -160,7 +186,7 @@ export default function UserManagement() {
     }
   };
 
-  const roleStats = users.reduce((acc: any, user: any) => {
+  const roleStats = (users as any[]).reduce((acc: any, user: any) => {
     acc[user.role] = (acc[user.role] || 0) + 1;
     return acc;
   }, {});
@@ -271,6 +297,8 @@ export default function UserManagement() {
                           <SelectItem value="Superintendent">Superintendent</SelectItem>
                           <SelectItem value="Project Manager">Project Manager</SelectItem>
                           <SelectItem value="Foreman">Foreman</SelectItem>
+                          <SelectItem value="Employee">Employee</SelectItem>
+                          <SelectItem value="Employee">Employee</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -340,7 +368,7 @@ export default function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user: any) => (
+                {(users as any[]).map((user: any) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.username}</TableCell>
