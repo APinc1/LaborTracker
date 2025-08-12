@@ -31,8 +31,8 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   primaryTrade: z.string().min(1, "Primary trade is required"),
   secondaryTrade: z.string().optional(), // Optional field
   tertiaryTrade: z.string().optional(), // Optional field
-  isForeman: z.boolean().optional(),
-  isUnion: z.boolean().optional(),
+  isForeman: z.boolean().default(false),
+  isUnion: z.boolean().default(false),
 });
 
 // Validation schema for creating user from employee
@@ -561,7 +561,7 @@ export default function EmployeeManagement() {
                           name="email"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email *</FormLabel>
+                              <FormLabel>Email</FormLabel>
                               <FormControl>
                                 <Input type="email" placeholder="john@example.com" {...field} />
                               </FormControl>
