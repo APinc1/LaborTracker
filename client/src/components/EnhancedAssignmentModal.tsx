@@ -163,9 +163,9 @@ export default function EnhancedAssignmentModal({
     if (isOpen) {
       if (currentTask && currentTask.superintendentId) {
         setSelectedSuperintendentId(currentTask.superintendentId.toString());
-      } else if (currentProject && currentProject.defaultSuperintendentId) {
+      } else if (currentProject && currentProject.defaultSuperintendent) {
         // Default to project-level superintendent if task doesn't have one assigned
-        setSelectedSuperintendentId(currentProject.defaultSuperintendentId.toString());
+        setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
       }
     }
   }, [isOpen, existingAssignments, employees, crews, currentTask, currentProject]);

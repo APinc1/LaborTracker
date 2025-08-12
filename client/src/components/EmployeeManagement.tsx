@@ -24,7 +24,7 @@ import { z } from "zod";
 const employeeFormSchema = insertEmployeeSchema.extend({
   teamMemberId: z.string().min(1, "Team Member ID is required"),
   name: z.string().min(1, "Full name is required"),
-  email: z.string().email("Valid email is required"),
+  email: z.string().optional(),
   phone: z.string().optional(), // Phone is now optional
   employeeType: z.string().min(1, "Employee type is required"),
   crewId: z.string().min(1, "Crew selection is required"),
