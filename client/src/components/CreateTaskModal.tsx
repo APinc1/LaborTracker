@@ -959,7 +959,7 @@ export default function CreateTaskModal({
                 </SelectTrigger>
                 <SelectContent>
                   {(projects as any[]).map((project: any) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
+                    <SelectItem key={project.id} value={String(project.id)}>
                       {project.name}
                     </SelectItem>
                   ))}
@@ -984,7 +984,7 @@ export default function CreateTaskModal({
                 </SelectTrigger>
                 <SelectContent>
                   {(locations as any[]).map((location: any) => (
-                    <SelectItem key={location.id} value={location.id.toString()}>
+                    <SelectItem key={location.id} value={String(location.id)}>
                       {location.name}
                     </SelectItem>
                   ))}

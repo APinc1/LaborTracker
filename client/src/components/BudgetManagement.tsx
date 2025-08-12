@@ -1310,7 +1310,7 @@ export default function BudgetManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {(projects as any[]).map((project: any) => (
-                        <SelectItem key={project.id} value={project.id.toString()}>
+                        <SelectItem key={project.id} value={String(project.id)}>
                           {project.name} ({project.projectId})
                         </SelectItem>
                       ))}

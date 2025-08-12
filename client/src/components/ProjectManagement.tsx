@@ -293,8 +293,8 @@ export default function ProjectManagement() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {superintendents.map((user: any) => (
-                                <SelectItem key={user.id} value={user.id.toString()}>
+                              {superintendents.filter(user => user && user.id).map((user: any) => (
+                                <SelectItem key={user.id} value={String(user.id)}>
                                   {user.name}
                                 </SelectItem>
                               ))}
@@ -318,8 +318,8 @@ export default function ProjectManagement() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {projectManagers.map((user: any) => (
-                                <SelectItem key={user.id} value={user.id.toString()}>
+                              {projectManagers.filter(user => user && user.id).map((user: any) => (
+                                <SelectItem key={user.id} value={String(user.id)}>
                                   {user.name}
                                 </SelectItem>
                               ))}

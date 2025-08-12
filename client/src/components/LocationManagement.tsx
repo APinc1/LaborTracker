@@ -275,7 +275,7 @@ export default function LocationManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id.toString()}>
+                        <SelectItem key={project.id} value={String(project.id)}>
                           {project.name} ({project.projectId})
                         </SelectItem>
                       ))}
@@ -513,7 +513,7 @@ export default function LocationManagement() {
                       </FormControl>
                       <SelectContent>
                         {budgetItems.map((item) => (
-                          <SelectItem key={item.id} value={item.id.toString()}>
+                          <SelectItem key={item.id} value={String(item.id)}>
                             {item.lineItemNumber} - {item.lineItemName}
                           </SelectItem>
                         ))}

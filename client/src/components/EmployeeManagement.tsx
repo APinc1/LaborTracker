@@ -712,8 +712,8 @@ export default function EmployeeManagement() {
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="none">No Crew</SelectItem>
-                                  {crews.map((crew: any) => (
-                                    <SelectItem key={crew.id} value={crew.id.toString()}>
+                                  {crews.filter(crew => crew && crew.id).map((crew: any) => (
+                                    <SelectItem key={crew.id} value={String(crew.id)}>
                                       {crew.name}
                                     </SelectItem>
                                   ))}

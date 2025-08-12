@@ -703,8 +703,8 @@ export default function AssignmentManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(assignmentTasks as any[]).map((task: any) => (
-                              <SelectItem key={task.id} value={task.id.toString()}>
+                            {(assignmentTasks as any[]).filter(task => task && task.id).map((task: any) => (
+                              <SelectItem key={task.id} value={String(task.id)}>
                                 {task.name} - {task.costCode}
                               </SelectItem>
                             ))}

@@ -588,7 +588,7 @@ export default function ScheduleManagement() {
                   <SelectContent>
                     <SelectItem value="ALL_PROJECTS">All projects</SelectItem>
                     {projects.map((project: any) => (
-                      <SelectItem key={project.id} value={project.id.toString()}>
+                      <SelectItem key={project.id} value={String(project.id)}>
                         {project.name}
                       </SelectItem>
                     ))}
