@@ -234,8 +234,8 @@ export default function AssignmentManagement() {
       employeeIds: z.array(z.string()).optional(),
     })),
     defaultValues: {
-      taskId: '',
-      employeeId: '',
+      taskId: undefined,
+      employeeId: undefined,
       employeeIds: [] as string[],
       assignmentDate: selectedDate,
       assignedHours: '8',
