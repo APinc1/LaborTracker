@@ -224,7 +224,7 @@ export default function UserManagement() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>Username *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -331,7 +331,6 @@ export default function UserManagement() {
           </DialogContent>
         </Dialog>
       </div>
-
       {/* Role Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(roleStats).map(([role, count]) => (
@@ -346,7 +345,6 @@ export default function UserManagement() {
           </Card>
         ))}
       </div>
-
       {/* Users Table */}
       <Card>
         <CardHeader>
