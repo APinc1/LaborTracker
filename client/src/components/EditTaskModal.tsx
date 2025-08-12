@@ -1904,20 +1904,42 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                             
                             if (groupTasks.length === 1) {
                               // Two-task group - auto-unlink both tasks directly
-                              console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
+                              console.log('🔗 CHECKBOX TWO-TASK GROUP - auto-unlinking both tasks');
                               const otherTask = groupTasks[0];
                               
-                              // Both tasks become unlinked and sequential (keeping their current positions)
-                              const bothTasks = [task, otherTask].map(t => ({
-                                ...t,
-                                linkedTaskGroup: null,
-                                dependentOnPrevious: t.order === 0 ? false : true // First task stays unsequential
-                              }));
+                              // CRITICAL: Apply the same fractional order logic as the form submission path
+                              const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
+                              const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
+                              
+                              const newOrderForSecondTask = (firstTask.order || 0) + 0.1;
+                              
+                              console.log('🔗 CHECKBOX UNLINK ORDER PRESERVATION:', {
+                                firstTask: firstTask.name,
+                                firstOrder: firstTask.order,
+                                secondTask: secondTask.name, 
+                                secondOrder: secondTask.order,
+                                newOrder: newOrderForSecondTask
+                              });
+                              
+                              // Both tasks become unlinked with preserved visual positioning
+                              const bothTasks = [
+                                {
+                                  ...firstTask,
+                                  linkedTaskGroup: null,
+                                  dependentOnPrevious: firstTask.order === 0 ? false : true
+                                },
+                                {
+                                  ...secondTask,
+                                  linkedTaskGroup: null,
+                                  dependentOnPrevious: true,
+                                  order: newOrderForSecondTask // CRITICAL: Preserve position with fractional order
+                                }
+                              ];
                               
                               // Trigger cascading for all subsequent tasks
                               const allTasks = [...(existingTasks as any[])];
                               
-                              // Update the unlinked tasks
+                              // Update the unlinked tasks with new order values
                               bothTasks.forEach(updatedTask => {
                                 const existingIndex = allTasks.findIndex(t => 
                                   (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
@@ -1926,8 +1948,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                   allTasks[existingIndex] = {
                                     ...allTasks[existingIndex],
                                     linkedTaskGroup: null,
-                                    dependentOnPrevious: updatedTask.dependentOnPrevious
-                                    // CRITICAL: Keep original order and dates for now
+                                    dependentOnPrevious: updatedTask.dependentOnPrevious,
+                                    order: updatedTask.order // CRITICAL: Apply the new order value
                                   };
                                 }
                               });
@@ -1943,7 +1965,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 return !originalTask || 
                                        originalTask.taskDate !== task.taskDate ||
                                        originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-                                       originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+                                       originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+                                       originalTask.order !== task.order; // CRITICAL: Include order changes
                               });
                               
                               console.log('🔗 Two-task unlink with cascading:', finalTasksToUpdate.map(t => ({ 
