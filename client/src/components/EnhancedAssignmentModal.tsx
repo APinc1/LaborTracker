@@ -815,7 +815,7 @@ export default function EnhancedAssignmentModal({
           </div>
           
           {/* White space div to balance modal spacing */}
-          <div className="h-32"></div>
+          <div className="h-32 mt-[59px] mb-[59px]"></div>
         </div>
       </DialogContent>
     </Dialog>
