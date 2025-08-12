@@ -181,7 +181,14 @@ export default function EmployeeManagement() {
 
   const createCrewMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', '/api/crews', data);
+      const response = await apiRequest('/api/crews', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create crew');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -197,7 +204,14 @@ export default function EmployeeManagement() {
 
   const updateCrewMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await apiRequest('PUT', `/api/crews/${id}`, data);
+      const response = await apiRequest(`/api/crews/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update crew');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -213,7 +227,14 @@ export default function EmployeeManagement() {
 
   const deleteCrewMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/crews/${id}`);
+      const response = await apiRequest(`/api/crews/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete crew');
+      }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crews"] });
@@ -226,7 +247,14 @@ export default function EmployeeManagement() {
 
   const createUserMutation = useMutation({
     mutationFn: async ({ employeeId, data }: { employeeId: number; data: any }) => {
-      const response = await apiRequest('POST', `/api/employees/${employeeId}/create-user`, data);
+      const response = await apiRequest(`/api/employees/${employeeId}/create-user`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create user');
+      }
       return response.json();
     },
     onSuccess: (result) => {
