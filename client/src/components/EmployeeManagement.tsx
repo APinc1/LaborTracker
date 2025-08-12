@@ -31,8 +31,8 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   primaryTrade: z.string().min(1, "Primary trade is required"),
   secondaryTrade: z.string().optional(), // Optional field
   tertiaryTrade: z.string().optional(), // Optional field
-  isForeman: z.boolean().default(false),
-  isUnion: z.boolean().default(false),
+  isForeman: z.boolean().optional().default(false),
+  isUnion: z.boolean().optional().default(false),
 });
 
 // Validation schema for creating user from employee
@@ -313,11 +313,15 @@ export default function EmployeeManagement() {
   });
 
   const onSubmitEmployee = (data: any) => {
+    console.log('Form submission data:', data);
+    console.log('Form errors:', employeeForm.formState.errors);
+    
     const processedData = {
       ...data,
       crewId: data.crewId ? parseInt(data.crewId) : null,
       apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
-      isForeman: data.employeeType === "Core" ? data.isForeman : false,
+      isForeman: data.employeeType === "Core" ? Boolean(data.isForeman) : false,
+      isUnion: Boolean(data.isUnion),
       primaryTrade: data.primaryTrade || null,
       secondaryTrade: data.secondaryTrade === "none" || !data.secondaryTrade ? null : data.secondaryTrade,
       tertiaryTrade: data.tertiaryTrade === "none" || !data.tertiaryTrade ? null : data.tertiaryTrade,
