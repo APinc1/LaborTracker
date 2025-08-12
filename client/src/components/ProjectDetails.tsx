@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [newLocationDescription, setNewLocationDescription] = useState("");
   const [newLocationStartDate, setNewLocationStartDate] = useState("");
   const [newLocationEndDate, setNewLocationEndDate] = useState("");
+  const [editingLocation, setEditingLocation] = useState<any>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const { toast } = useToast();
   
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -147,6 +151,112 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     }
 
     addLocationMutation.mutate(locationData);
+  };
+
+  // Edit location mutation
+  const editLocationMutation = useMutation({
+    mutationFn: ({ locationId, data }: { locationId: string; data: any }) =>
+      apiRequest(`/api/locations/${locationId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
+      setEditingLocation(null);
+      setNewLocationName("");
+      setNewLocationDescription("");
+      setNewLocationStartDate("");
+      setNewLocationEndDate("");
+      toast({
+        title: "Location updated",
+        description: "Location has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update location",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete location mutation
+  const deleteLocationMutation = useMutation({
+    mutationFn: (locationId: string) =>
+      apiRequest(`/api/locations/${locationId}`, {
+        method: "DELETE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
+      setDeleteConfirmOpen(false);
+      setLocationToDelete(null);
+      toast({
+        title: "Location deleted",
+        description: "Location has been deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to delete location",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditLocation = (location: any) => {
+    setEditingLocation(location);
+    setNewLocationName(location.name);
+    setNewLocationDescription(location.description || "");
+    setNewLocationStartDate(location.startDate || "");
+    setNewLocationEndDate(location.endDate || "");
+    setShowAddLocationDialog(true);
+  };
+
+  const handleDeleteLocation = (location: any) => {
+    setLocationToDelete(location);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteLocation = () => {
+    if (locationToDelete) {
+      deleteLocationMutation.mutate(locationToDelete.locationId);
+    }
+  };
+
+  const handleSubmitLocation = () => {
+    if (!newLocationName.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Location name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const locationData: any = {
+      name: newLocationName.trim(),
+      description: newLocationDescription.trim(),
+      projectId: parseInt(projectId),
+    };
+
+    // Add start and end dates if provided
+    if (newLocationStartDate) {
+      locationData.startDate = newLocationStartDate;
+    }
+    if (newLocationEndDate) {
+      locationData.endDate = newLocationEndDate;
+    }
+
+    if (editingLocation) {
+      editLocationMutation.mutate({
+        locationId: editingLocation.locationId,
+        data: locationData,
+      });
+    } else {
+      addLocationMutation.mutate(locationData);
+    }
   };
 
   if (projectLoading) {
@@ -342,6 +452,21 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               View Budget
                             </Button>
                           </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditLocation(location)}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLocation(location)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -352,11 +477,20 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           </CardContent>
         </Card>
 
-        {/* Add Location Dialog */}
-        <Dialog open={showAddLocationDialog} onOpenChange={setShowAddLocationDialog}>
+        {/* Add/Edit Location Dialog */}
+        <Dialog open={showAddLocationDialog} onOpenChange={(open) => {
+          if (!open) {
+            setShowAddLocationDialog(false);
+            setEditingLocation(null);
+            setNewLocationName("");
+            setNewLocationDescription("");
+            setNewLocationStartDate("");
+            setNewLocationEndDate("");
+          }
+        }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Location</DialogTitle>
+              <DialogTitle>{editingLocation ? 'Edit Location' : 'Add New Location'}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -401,20 +535,46 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <Button 
                   variant="outline" 
                   onClick={() => setShowAddLocationDialog(false)}
-                  disabled={addLocationMutation.isPending}
+                  disabled={addLocationMutation.isPending || editLocationMutation.isPending}
                 >
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handleAddLocation}
-                  disabled={addLocationMutation.isPending}
+                  onClick={handleSubmitLocation}
+                  disabled={addLocationMutation.isPending || editLocationMutation.isPending}
                 >
-                  {addLocationMutation.isPending ? "Adding..." : "Add Location"}
+                  {editingLocation 
+                    ? (editLocationMutation.isPending ? "Updating..." : "Update Location")
+                    : (addLocationMutation.isPending ? "Adding..." : "Add Location")
+                  }
                 </Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Location Confirmation Dialog */}
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete this location?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the location "{locationToDelete?.name}" and all associated data including tasks and budget items.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setDeleteConfirmOpen(false);
+                setLocationToDelete(null);
+              }}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteLocation} className="bg-red-600 hover:bg-red-700">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </div>
   );
