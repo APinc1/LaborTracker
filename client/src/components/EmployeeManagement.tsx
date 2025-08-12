@@ -94,6 +94,7 @@ export default function EmployeeManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       toast({ title: "Success", description: "Employee created successfully" });
       setIsCreateEmployeeOpen(false);
+      setEditingEmployee(null);
       employeeForm.reset();
     },
     onError: (error: Error) => {
@@ -117,6 +118,7 @@ export default function EmployeeManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       toast({ title: "Success", description: "Employee updated successfully" });
+      setIsCreateEmployeeOpen(false);
       setEditingEmployee(null);
       employeeForm.reset();
     },
@@ -343,6 +345,18 @@ export default function EmployeeManagement() {
     }
   };
 
+  const handleCancelEmployeeDialog = () => {
+    setIsCreateEmployeeOpen(false);
+    setEditingEmployee(null);
+    employeeForm.reset();
+  };
+
+  const handleAddEmployee = () => {
+    setEditingEmployee(null);
+    employeeForm.reset();
+    setIsCreateEmployeeOpen(true);
+  };
+
   const handleDeleteCrew = (id: number) => {
     if (confirm('Are you sure you want to delete this crew?')) {
       deleteCrewMutation.mutate(id);
@@ -409,7 +423,7 @@ export default function EmployeeManagement() {
                 }
               }}>
                 <DialogTrigger asChild>
-                  <Button onClick={() => setIsCreateEmployeeOpen(true)} className="bg-primary hover:bg-primary/90">
+                  <Button onClick={handleAddEmployee} className="bg-primary hover:bg-primary/90">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Employee
                   </Button>
@@ -668,24 +682,7 @@ export default function EmployeeManagement() {
                         />
                       </div>
                       <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => {
-                          setIsCreateEmployeeOpen(false);
-                          setEditingEmployee(null);
-                          employeeForm.reset({
-                            teamMemberId: '',
-                            name: '',
-                            email: '',
-                            phone: '',
-                            crewId: '',
-                            employeeType: 'Core',
-                            apprenticeLevel: null,
-                            isForeman: false,
-                            isUnion: false,
-                            primaryTrade: '',
-                            secondaryTrade: '',
-                            tertiaryTrade: '',
-                          });
-                        }}>
+                        <Button type="button" variant="outline" onClick={handleCancelEmployeeDialog}>
                           Cancel
                         </Button>
                         <Button type="submit" disabled={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}>
