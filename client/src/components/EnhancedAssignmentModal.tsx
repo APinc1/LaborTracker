@@ -813,6 +813,9 @@ export default function EnhancedAssignmentModal({
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
           </div>
+          
+          {/* White space div to balance modal spacing */}
+          <div className="h-24"></div>
         </div>
       </DialogContent>
     </Dialog>
