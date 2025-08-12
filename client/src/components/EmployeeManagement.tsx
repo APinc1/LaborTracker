@@ -77,7 +77,14 @@ export default function EmployeeManagement() {
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', '/api/employees', data);
+      const response = await apiRequest('/api/employees', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details ? `Validation errors: ${JSON.stringify(errorData.details)}` : errorData.error || 'Failed to create employee');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -86,8 +93,9 @@ export default function EmployeeManagement() {
       setIsCreateEmployeeOpen(false);
       employeeForm.reset();
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create employee", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error('Employee creation error:', error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
