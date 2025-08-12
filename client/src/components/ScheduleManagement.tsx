@@ -289,23 +289,20 @@ export default function ScheduleManagement() {
 
   // Get project name from task
   const getProjectName = (task: any) => {
-    // Extract project ID from locationId (format: PRJ-YYYY-###_LocationName)
-    const projectIdMatch = task.locationId?.match(/^(PRJ-\d{4}-\d{3})/);
-    if (!projectIdMatch) return 'Unknown Project';
+    // First, try to find the location by locationId
+    const location = locations.find((loc: any) => loc.locationId === task.locationId);
+    if (!location) return 'Unknown Project';
     
-    const projectId = projectIdMatch[1];
-    const project = projects.find((p: any) => p.projectId === projectId);
+    // Then find the project by the location's projectId
+    const project = projects.find((p: any) => p.id === location.projectId);
     return project?.name || 'Unknown Project';
   };
 
   // Get location name from task
   const getLocationName = (task: any) => {
-    // Extract location name from locationId (format: PRJ-YYYY-###_LocationName)
-    const locationMatch = task.locationId?.match(/^PRJ-\d{4}-\d{3}_(.+)$/);
-    if (!locationMatch) return 'Unknown Location';
-    
-    // Convert underscores to spaces and handle common abbreviations
-    return locationMatch[1].replace(/_/g, ' ');
+    // Find the location by locationId in the locations data
+    const location = locations.find((loc: any) => loc.locationId === task.locationId);
+    return location?.name || 'Unknown Location';
   };
 
   // Format assignment display with proper formatting
