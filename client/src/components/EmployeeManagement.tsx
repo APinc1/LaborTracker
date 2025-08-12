@@ -95,7 +95,20 @@ export default function EmployeeManagement() {
       toast({ title: "Success", description: "Employee created successfully" });
       setIsCreateEmployeeOpen(false);
       setEditingEmployee(null);
-      employeeForm.reset();
+      employeeForm.reset({
+        teamMemberId: '',
+        name: '',
+        email: '',
+        phone: '',
+        crewId: '',
+        employeeType: 'Core',
+        apprenticeLevel: null,
+        isForeman: false,
+        isUnion: false,
+        primaryTrade: '',
+        secondaryTrade: '',
+        tertiaryTrade: '',
+      });
     },
     onError: (error: Error) => {
       console.error('Employee creation error:', error);
@@ -120,7 +133,20 @@ export default function EmployeeManagement() {
       toast({ title: "Success", description: "Employee updated successfully" });
       setIsCreateEmployeeOpen(false);
       setEditingEmployee(null);
-      employeeForm.reset();
+      employeeForm.reset({
+        teamMemberId: '',
+        name: '',
+        email: '',
+        phone: '',
+        crewId: '',
+        employeeType: 'Core',
+        apprenticeLevel: null,
+        isForeman: false,
+        isUnion: false,
+        primaryTrade: '',
+        secondaryTrade: '',
+        tertiaryTrade: '',
+      });
     },
     onError: (error: Error) => {
       console.error('Employee update error:', error);
@@ -348,12 +374,38 @@ export default function EmployeeManagement() {
   const handleCancelEmployeeDialog = () => {
     setIsCreateEmployeeOpen(false);
     setEditingEmployee(null);
-    employeeForm.reset();
+    employeeForm.reset({
+      teamMemberId: '',
+      name: '',
+      email: '',
+      phone: '',
+      crewId: '',
+      employeeType: 'Core',
+      apprenticeLevel: null,
+      isForeman: false,
+      isUnion: false,
+      primaryTrade: '',
+      secondaryTrade: '',
+      tertiaryTrade: '',
+    });
   };
 
   const handleAddEmployee = () => {
     setEditingEmployee(null);
-    employeeForm.reset();
+    employeeForm.reset({
+      teamMemberId: '',
+      name: '',
+      email: '',
+      phone: '',
+      crewId: '',
+      employeeType: 'Core',
+      apprenticeLevel: null,
+      isForeman: false,
+      isUnion: false,
+      primaryTrade: '',
+      secondaryTrade: '',
+      tertiaryTrade: '',
+    });
     setIsCreateEmployeeOpen(true);
   };
 
@@ -419,7 +471,20 @@ export default function EmployeeManagement() {
                 if (!open) {
                   setIsCreateEmployeeOpen(false);
                   setEditingEmployee(null);
-                  employeeForm.reset();
+                  employeeForm.reset({
+                    teamMemberId: '',
+                    name: '',
+                    email: '',
+                    phone: '',
+                    crewId: '',
+                    employeeType: 'Core',
+                    apprenticeLevel: null,
+                    isForeman: false,
+                    isUnion: false,
+                    primaryTrade: '',
+                    secondaryTrade: '',
+                    tertiaryTrade: '',
+                  });
                 }
               }}>
                 <DialogTrigger asChild>
