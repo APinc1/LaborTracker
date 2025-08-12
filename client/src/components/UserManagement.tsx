@@ -259,7 +259,7 @@ export default function UserManagement() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Email *</FormLabel>
                       <FormControl>
                         <Input type="email" {...field} />
                       </FormControl>
