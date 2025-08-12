@@ -960,11 +960,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         });
         
         // The key insight: secondTask (GL tester) should get a new order that places it right after firstTask
-        const newOrderForSecondTask = (firstTask.order || 0) + 0.1; // Fractional order to insert between existing orders
+        // Convert orders to numbers for calculation
+        const firstOrder = typeof firstTask.order === 'string' ? parseFloat(firstTask.order) : (firstTask.order || 0);
+        const newOrderForSecondTask = firstOrder + 0.1; // Fractional order to insert between existing orders
         
         console.log('🔗 ASSIGNING NEW ORDER:', {
           secondTaskName: secondTask.name,
           oldOrder: secondTask.order,
+          firstOrderParsed: firstOrder,
           newOrder: newOrderForSecondTask
         });
         
@@ -1911,11 +1914,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
                               const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
                               
-                              const newOrderForSecondTask = (firstTask.order || 0) + 0.1;
+                              // Convert orders to numbers for calculation
+                              const firstOrder = typeof firstTask.order === 'string' ? parseFloat(firstTask.order) : (firstTask.order || 0);
+                              const newOrderForSecondTask = firstOrder + 0.1;
                               
                               console.log('🔗 CHECKBOX UNLINK ORDER PRESERVATION:', {
                                 firstTask: firstTask.name,
                                 firstOrder: firstTask.order,
+                                firstOrderParsed: firstOrder,
                                 secondTask: secondTask.name, 
                                 secondOrder: secondTask.order,
                                 newOrder: newOrderForSecondTask
