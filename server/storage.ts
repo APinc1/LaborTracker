@@ -537,6 +537,36 @@ export class MemStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<void> {
+    // Get all locations for this project
+    const projectLocations = Array.from(this.locations.values()).filter(loc => loc.projectId === id);
+    
+    // Delete all related data for each location
+    for (const location of projectLocations) {
+      // Delete employee assignments for tasks in this location  
+      const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === location.id.toString());
+      for (const task of locationTasks) {
+        // Delete assignments for this task
+        const taskAssignments = Array.from(this.employeeAssignments.entries()).filter(([_, assignment]) => assignment.taskId === task.id);
+        taskAssignments.forEach(([id]) => this.employeeAssignments.delete(id));
+      }
+      
+      // Delete tasks in this location
+      const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === location.id.toString()).map(([id]) => id);
+      taskIds.forEach(id => this.tasks.delete(id));
+      
+      // Delete budget line items for this location
+      const budgetIds = Array.from(this.budgetLineItems.entries()).filter(([_, budget]) => budget.locationId === location.id).map(([id]) => id);
+      budgetIds.forEach(id => this.budgetLineItems.delete(id));
+      
+      // Delete location budgets for this location
+      const locationBudgetIds = Array.from(this.locationBudgets.entries()).filter(([_, budget]) => budget.locationId === location.id).map(([id]) => id);
+      locationBudgetIds.forEach(id => this.locationBudgets.delete(id));
+      
+      // Delete the location itself
+      this.locations.delete(location.id);
+    }
+    
+    // Finally delete the project
     this.projects.delete(id);
   }
 
@@ -635,19 +665,52 @@ export class MemStorage implements IStorage {
   }
 
   async deleteLocation(id: string | number): Promise<void> {
+    let locationToDelete: Location | undefined;
+    let locationDbId: number;
+    
     if (typeof id === 'string') {
-      // Find and delete by locationId field
+      // Find by locationId field
       for (const [key, loc] of this.locations.entries()) {
         if (loc.locationId === id) {
-          this.locations.delete(key);
-          return;
+          locationToDelete = loc;
+          locationDbId = key;
+          break;
         }
       }
-      throw new Error('Location not found');
+      if (!locationToDelete) {
+        throw new Error('Location not found');
+      }
     } else {
-      // Delete by numeric id
-      this.locations.delete(id);
+      // Find by numeric id
+      locationToDelete = this.locations.get(id);
+      locationDbId = id;
+      if (!locationToDelete) {
+        throw new Error('Location not found');
+      }
     }
+    
+    // Delete employee assignments for tasks in this location
+    const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === locationToDelete!.id.toString());
+    for (const task of locationTasks) {
+      // Delete assignments for this task
+      const taskAssignments = Array.from(this.employeeAssignments.entries()).filter(([_, assignment]) => assignment.taskId === task.id);
+      taskAssignments.forEach(([id]) => this.employeeAssignments.delete(id));
+    }
+    
+    // Delete tasks in this location
+    const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === locationToDelete!.id.toString()).map(([id]) => id);
+    taskIds.forEach(id => this.tasks.delete(id));
+    
+    // Delete budget line items for this location
+    const budgetIds = Array.from(this.budgetLineItems.entries()).filter(([_, budget]) => budget.locationId === locationToDelete!.id).map(([id]) => id);
+    budgetIds.forEach(id => this.budgetLineItems.delete(id));
+    
+    // Delete location budgets for this location
+    const locationBudgetIds = Array.from(this.locationBudgets.entries()).filter(([_, budget]) => budget.locationId === locationToDelete!.id).map(([id]) => id);
+    locationBudgetIds.forEach(id => this.locationBudgets.delete(id));
+    
+    // Finally delete the location
+    this.locations.delete(locationDbId);
   }
 
   // Location budget methods
@@ -1299,6 +1362,31 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<void> {
+    // Get all locations for this project
+    const projectLocations = await this.db.select().from(locations).where(eq(locations.projectId, id));
+    
+    // Delete all related data for each location
+    for (const location of projectLocations) {
+      // Delete employee assignments for tasks in this location
+      const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, location.id));
+      for (const task of locationTasks) {
+        await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
+      }
+      
+      // Delete tasks in this location
+      await this.db.delete(tasks).where(eq(tasks.locationId, location.id));
+      
+      // Delete budget line items for this location
+      await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, location.id));
+      
+      // Delete location budgets for this location
+      await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, location.id));
+    }
+    
+    // Delete all locations for this project
+    await this.db.delete(locations).where(eq(locations.projectId, id));
+    
+    // Finally delete the project
     await this.db.delete(projects).where(eq(projects.id, id));
   }
 
@@ -1353,6 +1441,22 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteLocation(id: number): Promise<void> {
+    // Delete employee assignments for tasks in this location
+    const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, id));
+    for (const task of locationTasks) {
+      await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
+    }
+    
+    // Delete tasks in this location
+    await this.db.delete(tasks).where(eq(tasks.locationId, id));
+    
+    // Delete budget line items for this location
+    await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, id));
+    
+    // Delete location budgets for this location
+    await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, id));
+    
+    // Finally delete the location
     await this.db.delete(locations).where(eq(locations.id, id));
   }
 

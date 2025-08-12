@@ -382,6 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const location = await storage.updateLocation(req.params.id, validated);
       res.json(location);
     } catch (error) {
+      console.error('Location update error:', error);
       res.status(400).json({ error: 'Invalid location data' });
     }
   });
@@ -392,6 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteLocation(req.params.id);
       res.status(204).send();
     } catch (error) {
+      console.error('Location deletion error:', error);
       res.status(500).json({ error: 'Failed to delete location' });
     }
   });
