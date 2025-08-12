@@ -321,7 +321,7 @@ export default function EnhancedAssignmentModal({
           <div className="text-sm text-gray-500">Date: {taskDate}</div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Assigned Hours Section */}
           <div>
             <Label className="text-sm font-medium">Assigned Hours</Label>
