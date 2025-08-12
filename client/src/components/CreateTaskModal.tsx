@@ -947,7 +947,7 @@ export default function CreateTaskModal({
                 Project *
               </label>
               <Select 
-                value={selectedProject?.toString() || ""} 
+                value={selectedProject?.toString()} 
                 onValueChange={(value) => {
                   const projectId = value ? parseInt(value) : undefined;
                   setSelectedProject(projectId);
@@ -972,7 +972,7 @@ export default function CreateTaskModal({
                 Location *
               </label>
               <Select 
-                value={selectedLocation?.toString() || ""} 
+                value={selectedLocation?.toString()} 
                 onValueChange={(value) => {
                   const locationId = value ? parseInt(value) : undefined;
                   setSelectedLocation(locationId);
