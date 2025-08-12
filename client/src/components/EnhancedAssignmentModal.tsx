@@ -316,12 +316,12 @@ export default function EnhancedAssignmentModal({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[95vh] h-[750px] overflow-y-auto">
-        <DialogHeader className="pb-2">
+        <DialogHeader>
           <DialogTitle>Assign Employees to {taskName}</DialogTitle>
           <div className="text-sm text-gray-500">Date: {taskDate}</div>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {/* Assigned Hours Section */}
           <div>
             <Label className="text-sm font-medium">Assigned Hours</Label>
