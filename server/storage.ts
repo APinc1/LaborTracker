@@ -1383,32 +1383,45 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<void> {
+    console.log(`🗑️ CASCADE DELETE: Starting deletion of project ${id}`);
+    
     // Get all locations for this project
     const projectLocations = await this.db.select().from(locations).where(eq(locations.projectId, id));
+    console.log(`🗑️ CASCADE DELETE: Found ${projectLocations.length} locations to delete`);
     
     // Delete all related data for each location
     for (const location of projectLocations) {
+      console.log(`🗑️ CASCADE DELETE: Processing location ${location.locationId} (DB ID: ${location.id})`);
+      
       // Delete employee assignments for tasks in this location
-      const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, location.id));
+      const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, location.locationId));
+      console.log(`🗑️ CASCADE DELETE: Found ${locationTasks.length} tasks in location ${location.locationId}`);
+      
       for (const task of locationTasks) {
-        await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
+        const deletedAssignments = await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
+        console.log(`🗑️ CASCADE DELETE: Deleted assignments for task ${task.id}`);
       }
       
       // Delete tasks in this location
-      await this.db.delete(tasks).where(eq(tasks.locationId, location.id));
+      const deletedTasks = await this.db.delete(tasks).where(eq(tasks.locationId, location.locationId));
+      console.log(`🗑️ CASCADE DELETE: Deleted tasks for location ${location.locationId}`);
       
       // Delete budget line items for this location
-      await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, location.id));
+      const deletedBudgets = await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, location.id));
+      console.log(`🗑️ CASCADE DELETE: Deleted budget items for location ${location.id}`);
       
       // Delete location budgets for this location
-      await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, location.id));
+      const deletedLocationBudgets = await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, location.id));
+      console.log(`🗑️ CASCADE DELETE: Deleted location budgets for location ${location.id}`);
     }
     
     // Delete all locations for this project
-    await this.db.delete(locations).where(eq(locations.projectId, id));
+    const deletedLocations = await this.db.delete(locations).where(eq(locations.projectId, id));
+    console.log(`🗑️ CASCADE DELETE: Deleted locations for project ${id}`);
     
     // Finally delete the project
-    await this.db.delete(projects).where(eq(projects.id, id));
+    const deletedProject = await this.db.delete(projects).where(eq(projects.id, id));
+    console.log(`🗑️ CASCADE DELETE: Deleted project ${id}`);
   }
 
   // Budget methods
