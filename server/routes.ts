@@ -196,11 +196,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/projects/:id', async (req, res) => {
     try {
       const storage = await getStorage();
+      console.log('Project update request body:', req.body);
       const validated = insertProjectSchema.partial().parse(req.body);
+      console.log('Validated project data:', validated);
       const project = await storage.updateProject(parseInt(req.params.id), validated);
       res.json(project);
     } catch (error) {
-      res.status(400).json({ error: 'Invalid project data' });
+      console.error('Project update error:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Invalid project data' });
+      }
     }
   });
 

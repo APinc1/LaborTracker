@@ -135,10 +135,23 @@ export default function ProjectManagement() {
   });
 
   const onSubmit = (data: any) => {
+    console.log('Form submission data:', data);
+    console.log('Form errors:', form.formState.errors);
+    
+    const processedData = {
+      ...data,
+      startDate: data.startDate || null,
+      endDate: data.endDate || null,
+      defaultSuperintendent: data.defaultSuperintendent || null,
+      defaultProjectManager: data.defaultProjectManager || null,
+    };
+    
+    console.log('Processed data to send:', processedData);
+    
     if (editingProject) {
-      updateProjectMutation.mutate({ id: editingProject.id, data });
+      updateProjectMutation.mutate({ id: editingProject.id, data: processedData });
     } else {
-      createProjectMutation.mutate(data);
+      createProjectMutation.mutate(processedData);
     }
   };
 
