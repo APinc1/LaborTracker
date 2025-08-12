@@ -315,7 +315,7 @@ export default function EnhancedAssignmentModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] h-[600px] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[95vh] h-[750px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign Employees to {taskName}</DialogTitle>
           <div className="text-sm text-gray-500">Date: {taskDate}</div>
