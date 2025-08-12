@@ -123,7 +123,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
             Active Projects
           </h3>
           <div className="space-y-2">
-            {(projects as any[]).slice(0, 3).map((project: any) => (
+            {(projects as any[]).map((project: any) => (
               <ProtectedNavLink 
                 key={project.id}
                 href={`/projects/${project.id}`}
