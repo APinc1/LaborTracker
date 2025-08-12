@@ -112,6 +112,13 @@ export default function EnhancedAssignmentModal({
     staleTime: 30000,
   });
 
+  // Fetch project data to get default superintendent
+  const { data: currentProject } = useQuery({
+    queryKey: ["/api/projects", currentTask?.projectId],
+    enabled: !!currentTask?.projectId,
+    staleTime: 30000,
+  });
+
   // Filter users for superintendent dropdown
   const superintendents = (users as any[]).filter((user: any) => user.role === 'Superintendent');
 
@@ -152,11 +159,16 @@ export default function EnhancedAssignmentModal({
       setEmployeeHours(individualHours);
     }
 
-    // Load superintendent from current task
-    if (isOpen && currentTask && currentTask.superintendentId) {
-      setSelectedSuperintendentId(currentTask.superintendentId.toString());
+    // Load superintendent from current task, or default from project
+    if (isOpen) {
+      if (currentTask && currentTask.superintendentId) {
+        setSelectedSuperintendentId(currentTask.superintendentId.toString());
+      } else if (currentProject && currentProject.defaultSuperintendentId) {
+        // Default to project-level superintendent if task doesn't have one assigned
+        setSelectedSuperintendentId(currentProject.defaultSuperintendentId.toString());
+      }
     }
-  }, [isOpen, existingAssignments, employees, crews, currentTask]);
+  }, [isOpen, existingAssignments, employees, crews, currentTask, currentProject]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {

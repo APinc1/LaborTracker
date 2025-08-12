@@ -134,7 +134,9 @@ export const employeeAssignments = pgTable("employee_assignments", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertProjectSchema = createInsertSchema(projects).omit({ id: true, createdAt: true }).extend({
   startDate: z.string().optional().nullable(),
-  endDate: z.string().optional().nullable()
+  endDate: z.string().optional().nullable(),
+  defaultSuperintendent: z.number().optional().nullable(),
+  defaultProjectManager: z.number().optional().nullable()
 });
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true });
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true }).extend({

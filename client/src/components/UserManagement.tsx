@@ -385,12 +385,12 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>All Users</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="max-h-96 overflow-y-auto">
           {isLoading ? (
             <div className="text-center py-4">Loading users...</div>
           ) : (
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-white z-10">
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Username</TableHead>
