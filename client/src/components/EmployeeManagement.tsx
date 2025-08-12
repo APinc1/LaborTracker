@@ -681,7 +681,7 @@ export default function EmployeeManagement() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Apprentice Level</FormLabel>
-                                <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value ? String(field.value) : ""}>
+                                <Select onValueChange={(value) => field.onChange(parseInt(value))} value={field.value ? String(field.value) : undefined}>
                                   <FormControl>
                                     <SelectTrigger>
                                       <SelectValue placeholder="Select level" />
@@ -704,7 +704,7 @@ export default function EmployeeManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Crew *</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value?.toString() || ""}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value ? field.value.toString() : undefined}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select crew" />
