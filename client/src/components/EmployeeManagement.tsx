@@ -501,12 +501,15 @@ export default function EmployeeManagement() {
 
   const filteredAvailableEmployees = employees
     .filter((emp: any) => !emp.crewId)
-    .filter((emp: any) => 
-      availableEmployeeSearch === "" || 
-      emp.name.toLowerCase().includes(availableEmployeeSearch.toLowerCase()) ||
-      emp.teamMemberId.toLowerCase().includes(availableEmployeeSearch.toLowerCase()) ||
-      emp.primaryTrade.toLowerCase().includes(availableEmployeeSearch.toLowerCase())
-    );
+    .filter((emp: any) => {
+      if (availableEmployeeSearch === "") return true;
+      const searchTerm = availableEmployeeSearch.toLowerCase();
+      return (
+        (emp.name || "").toLowerCase().includes(searchTerm) ||
+        (emp.teamMemberId || "").toLowerCase().includes(searchTerm) ||
+        (emp.primaryTrade || "").toLowerCase().includes(searchTerm)
+      );
+    });
 
   const getEmployeeTypeVariant = (type: string) => {
     switch (type) {
