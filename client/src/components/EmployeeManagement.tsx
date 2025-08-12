@@ -467,7 +467,7 @@ export default function EmployeeManagement() {
                           name="phone"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone *</FormLabel>
+                              <FormLabel>Phone</FormLabel>
                               <FormControl>
                                 <Input placeholder="(555) 123-4567" {...field} />
                               </FormControl>
@@ -751,7 +751,6 @@ export default function EmployeeManagement() {
           </div>
         </div>
       </header>
-
       {/* Create User Dialog */}
       <Dialog open={isCreateUserOpen} onOpenChange={(open) => {
         if (!open) {
@@ -825,7 +824,6 @@ export default function EmployeeManagement() {
           </Form>
         </DialogContent>
       </Dialog>
-
       <main className="p-6">
         {activeTab === "employees" ? (
           <Card>
@@ -1039,7 +1037,6 @@ export default function EmployeeManagement() {
           </Card>
         )}
       </main>
-
       {/* Delete Employee Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>
