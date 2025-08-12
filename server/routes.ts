@@ -514,11 +514,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/employees/:id', async (req, res) => {
     try {
+      console.log('Deleting employee with ID:', req.params.id);
       const storage = await getStorage();
       await storage.deleteEmployee(parseInt(req.params.id));
+      console.log('Employee deleted successfully');
       res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to delete employee' });
+    } catch (error: any) {
+      console.error('Employee deletion error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete employee' });
     }
   });
 

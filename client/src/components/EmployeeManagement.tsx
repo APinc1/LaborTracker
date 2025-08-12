@@ -13,6 +13,7 @@ import { Plus, Edit, Trash2, User, Users, Phone, Mail } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +51,8 @@ export default function EmployeeManagement() {
   const [activeTab, setActiveTab] = useState<"employees" | "crews">("employees");
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false);
   const [selectedEmployeeForUser, setSelectedEmployeeForUser] = useState<any>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
@@ -125,14 +128,26 @@ export default function EmployeeManagement() {
 
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (id: number) => {
-      await apiRequest('DELETE', `/api/employees/${id}`);
+      const response = await apiRequest(`/api/employees/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete employee');
+      }
+      return response;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
       toast({ title: "Success", description: "Employee deleted successfully" });
+      setDeleteConfirmOpen(false);
+      setEmployeeToDelete(null);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete employee", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error('Employee deletion error:', error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setDeleteConfirmOpen(false);
+      setEmployeeToDelete(null);
     },
   });
 
@@ -317,9 +332,14 @@ export default function EmployeeManagement() {
     });
   };
 
-  const handleDeleteEmployee = (id: number) => {
-    if (confirm('Are you sure you want to delete this employee?')) {
-      deleteEmployeeMutation.mutate(id);
+  const handleDeleteEmployee = (employee: any) => {
+    setEmployeeToDelete(employee);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteEmployee = () => {
+    if (employeeToDelete) {
+      deleteEmployeeMutation.mutate(employeeToDelete.id);
     }
   };
 
@@ -927,7 +947,7 @@ export default function EmployeeManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteEmployee(employee.id)}
+                                onClick={() => handleDeleteEmployee(employee)}
                                 className="text-red-500 hover:text-red-700"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1019,6 +1039,28 @@ export default function EmployeeManagement() {
           </Card>
         )}
       </main>
+
+      {/* Delete Employee Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {employeeToDelete?.name}? This action cannot be undone and will remove all associated data including task assignments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmOpen(false)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteEmployee}
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={deleteEmployeeMutation.isPending}
+            >
+              {deleteEmployeeMutation.isPending ? "Deleting..." : "Delete Employee"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
