@@ -11,6 +11,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -54,6 +64,7 @@ type UserFormData = z.infer<typeof userSchema>;
 export default function UserManagement() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: users = [], isLoading } = useQuery({
@@ -67,7 +78,6 @@ export default function UserManagement() {
       name: "",
       email: "",
       phone: "",
-      role: undefined as any,
     },
   });
 
@@ -87,7 +97,12 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
       setEditingUser(null);
-      form.reset();
+      form.reset({
+        username: "",
+        name: "",
+        email: "",
+        phone: "",
+      });
       toast({
         title: "Success",
         description: "User created successfully",
@@ -118,7 +133,12 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setIsCreateDialogOpen(false);
       setEditingUser(null);
-      form.reset();
+      form.reset({
+        username: "",
+        name: "",
+        email: "",
+        phone: "",
+      });
       toast({
         title: "Success",
         description: "User updated successfully",
@@ -180,9 +200,14 @@ export default function UserManagement() {
     setIsCreateDialogOpen(true);
   };
 
-  const handleDelete = (userId: number) => {
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      deleteUserMutation.mutate(userId);
+  const handleDelete = (user: any) => {
+    setUserToDelete(user);
+  };
+
+  const confirmDelete = () => {
+    if (userToDelete) {
+      deleteUserMutation.mutate(userToDelete.id);
+      setUserToDelete(null);
     }
   };
 
@@ -200,7 +225,12 @@ export default function UserManagement() {
             <Button
               onClick={() => {
                 setEditingUser(null);
-                form.reset();
+                form.reset({
+                  username: "",
+                  name: "",
+                  email: "",
+                  phone: "",
+                });
               }}
               className="pl-[16px] pr-[16px] ml-[10px] mr-[10px] mt-[12px] mb-[12px]"
             >
@@ -312,7 +342,12 @@ export default function UserManagement() {
                     onClick={() => {
                       setIsCreateDialogOpen(false);
                       setEditingUser(null);
-                      form.reset();
+                      form.reset({
+                        username: "",
+                        name: "",
+                        email: "",
+                        phone: "",
+                      });
                     }}
                   >
                     Cancel
@@ -389,7 +424,7 @@ export default function UserManagement() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(user.id)}
+                          onClick={() => handleDelete(user)}
                           disabled={deleteUserMutation.isPending}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -403,6 +438,26 @@ export default function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete User Confirmation Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{userToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setUserToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
