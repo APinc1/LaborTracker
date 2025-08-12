@@ -46,7 +46,7 @@ const userSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
-  role: z.enum(["Admin", "Superintendent", "Project Manager", "Foreman", "Employee"]),
+  role: z.enum(["Admin", "Superintendent", "Project Manager", "Foreman", "Field Employee"]),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -67,7 +67,7 @@ export default function UserManagement() {
       name: "",
       email: "",
       phone: "",
-      role: "Foreman",
+      role: undefined as any,
     },
   });
 
@@ -285,7 +285,7 @@ export default function UserManagement() {
                   name="role"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role</FormLabel>
+                      <FormLabel>Role *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -297,7 +297,7 @@ export default function UserManagement() {
                           <SelectItem value="Superintendent">Superintendent</SelectItem>
                           <SelectItem value="Project Manager">Project Manager</SelectItem>
                           <SelectItem value="Foreman">Foreman</SelectItem>
-                          <SelectItem value="Employee">Employee</SelectItem>
+                          <SelectItem value="Field Employee">Field Employee</SelectItem>
                           <SelectItem value="Employee">Employee</SelectItem>
                         </SelectContent>
                       </Select>
