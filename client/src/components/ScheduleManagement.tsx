@@ -161,6 +161,11 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    staleTime: 30000,
+  });
+
   // Fetch all budget items for remaining hours calculation
   const { data: allBudgetItems = [] } = useQuery({
     queryKey: ["/api/budget/all", selectedProject],
@@ -471,46 +476,69 @@ export default function ScheduleManagement() {
     };
   };
 
-  // Format detailed assignment display for task cards
+  // Format detailed assignment display for task cards with superintendent
   const formatDetailedAssignmentDisplay = (task: any) => {
     const assignedEmployees = getAssignedEmployees(task);
-    if (assignedEmployees.length === 0) return <span className="text-gray-500">Unassigned</span>;
+    const personnelElements = [];
     
-    // Sort employees: foremen first, drivers last, others in between
-    const sortedEmployees = [...assignedEmployees].sort((a: any, b: any) => {
-      if (a.isForeman && !b.isForeman) return -1;
-      if (!a.isForeman && b.isForeman) return 1;
-      if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
-      if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
-      return 0;
-    });
+    // Add superintendent first if exists
+    if (task.superintendentId) {
+      const superintendent = users.find((u: any) => u.id === task.superintendentId);
+      if (superintendent) {
+        personnelElements.push(
+          <div key={`super-${task.superintendentId}`} className="text-sm font-bold">
+            {superintendent.name} (Super)
+          </div>
+        );
+      }
+    }
+    
+    // Add assigned employees
+    if (assignedEmployees.length > 0) {
+      // Sort employees: foremen first, drivers last, others in between
+      const sortedEmployees = [...assignedEmployees].sort((a: any, b: any) => {
+        if (a.isForeman && !b.isForeman) return -1;
+        if (!a.isForeman && b.isForeman) return 1;
+        if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
+        if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
+        return 0;
+      });
 
-    return (
+      const employeeElements = sortedEmployees.map((employee: any, index: number) => {
+        const isDriver = employee.primaryTrade === 'Driver';
+        const isForeman = employee.isForeman;
+        const hours = parseFloat(employee.assignedHours);
+        const showHours = hours !== 8;
+        
+        let displayText = employee.name;
+        if (isForeman) {
+          displayText += ' (Foreman)';
+        } else if (isDriver) {
+          displayText += ' (Driver)';
+        }
+        if (showHours) {
+          displayText += ` (${hours}h)`;
+        }
+        
+        return (
+          <div 
+            key={employee.id} 
+            className={`text-sm ${isForeman ? 'font-bold' : ''}`}
+          >
+            {displayText}
+          </div>
+        );
+      });
+      
+      personnelElements.push(...employeeElements);
+    }
+    
+    return personnelElements.length > 0 ? (
       <div className="space-y-1">
-        {sortedEmployees.map((employee: any, index: number) => {
-          const isDriver = employee.primaryTrade === 'Driver';
-          const isForeman = employee.isForeman;
-          const hours = parseFloat(employee.assignedHours);
-          const showHours = hours !== 8;
-          
-          let displayText = employee.name;
-          if (isDriver) {
-            displayText += ' (Driver)';
-          }
-          if (showHours) {
-            displayText += ` (${hours}h)`;
-          }
-          
-          return (
-            <div 
-              key={employee.id} 
-              className={`text-sm ${isForeman ? 'font-bold' : ''}`}
-            >
-              {displayText}
-            </div>
-          );
-        })}
+        {personnelElements}
       </div>
+    ) : (
+      <span className="text-gray-500">Unassigned</span>
     );
   };
 

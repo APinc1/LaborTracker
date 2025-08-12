@@ -54,6 +54,7 @@ interface SortableTaskItemProps {
   onAssignTask?: (task: any) => void;
   employees: any[];
   assignments: any[];
+  users: any[];
   remainingHours?: number;
   remainingHoursColor?: string;
 }
@@ -94,7 +95,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -185,44 +186,65 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     }).filter(Boolean);
   };
 
-  // Format assigned employees display
+  // Format assigned employees display with superintendent
   const formatAssignedEmployees = (assignedEmployees: any[]) => {
-    if (assignedEmployees.length === 0) return null;
+    const personnelElements = [];
     
-    // Sort employees: foremen first, drivers last, others in between
-    const sortedEmployees = [...assignedEmployees].sort((a, b) => {
-      if (a.isForeman && !b.isForeman) return -1;
-      if (!a.isForeman && b.isForeman) return 1;
-      if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
-      if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
-      return 0;
-    });
+    // Add superintendent first if exists
+    if (task.superintendentId) {
+      const superintendent = users.find(u => u.id === task.superintendentId);
+      if (superintendent) {
+        personnelElements.push(
+          <div key={`super-${task.superintendentId}`} className="text-xs font-bold">
+            {superintendent.name} (Super)
+          </div>
+        );
+      }
+    }
+    
+    // Add assigned employees
+    if (assignedEmployees.length > 0) {
+      // Sort employees: foremen first, drivers last, others in between
+      const sortedEmployees = [...assignedEmployees].sort((a, b) => {
+        if (a.isForeman && !b.isForeman) return -1;
+        if (!a.isForeman && b.isForeman) return 1;
+        if (a.primaryTrade === 'Driver' && b.primaryTrade !== 'Driver') return 1;
+        if (a.primaryTrade !== 'Driver' && b.primaryTrade === 'Driver') return -1;
+        return 0;
+      });
 
-    return sortedEmployees.map((employee, index) => {
-      const hours = parseFloat(employee.assignedHours);
-      const isDriver = employee.primaryTrade === 'Driver';
-      const isForeman = employee.isForeman;
-      const showHours = hours !== 8;
+      const employeeElements = sortedEmployees.map((employee, index) => {
+        const hours = parseFloat(employee.assignedHours);
+        const isDriver = employee.primaryTrade === 'Driver';
+        const isForeman = employee.isForeman;
+        const showHours = hours !== 8;
+        
+        let displayText = employee.name;
+        if (isForeman) {
+          displayText += ' (Foreman)';
+        } else if (isDriver) {
+          displayText += ' (Driver)';
+        }
+        if (showHours) {
+          displayText += ` (${hours}h)`;
+        }
+        
+        return (
+          <div 
+            key={employee.id} 
+            className={`text-xs ${isForeman ? 'font-bold' : ''} ${
+              personnelElements.length === 0 && index === 0 ? '' : 'mt-1'
+            }`}
+          >
+            {displayText}
+          </div>
+        );
+      });
       
-      let displayText = employee.name;
-      if (isDriver) {
-        displayText += ' (Driver)';
-      }
-      if (showHours) {
-        displayText += ` (${hours}h)`;
-      }
-      
-      return (
-        <div 
-          key={employee.id} 
-          className={`text-xs ${isForeman ? 'font-bold' : ''} ${
-            index === 0 ? '' : 'mt-1'
-          }`}
-        >
-          {displayText}
-        </div>
-      );
-    });
+      personnelElements.push(...employeeElements);
+    }
+    
+    return personnelElements.length > 0 ? personnelElements : null;
   };
 
   const assignedEmployees = getAssignedEmployees(task);
@@ -547,6 +569,11 @@ export default function DraggableTaskList({
 
   const { data: assignments = [] } = useQuery({
     queryKey: ["/api/assignments"],
+    staleTime: 30000,
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
     staleTime: 30000,
   });
 
@@ -1344,6 +1371,7 @@ export default function DraggableTaskList({
                 onAssignTask={onAssignTask}
                 employees={employees as any[]}
                 assignments={assignments as any[]}
+                users={users as any[]}
                 remainingHours={(() => {
                   const result = calculateRemainingHours(task, sortedTasks, budgetItems as any[], assignments as any[]);
                   return result?.remainingHours;

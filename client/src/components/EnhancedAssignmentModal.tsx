@@ -36,6 +36,7 @@ export default function EnhancedAssignmentModal({
   const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
+  const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -52,6 +53,7 @@ export default function EnhancedAssignmentModal({
       setEditingEmployeeId(null);
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
+      setSelectedSuperintendentId(null);
     }
   }, [isOpen, taskId]);
 
@@ -91,12 +93,27 @@ export default function EnhancedAssignmentModal({
     staleTime: 30000,
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    staleTime: 30000,
+  });
+
   // Fetch existing assignments for this task
   const { data: existingAssignments = [] } = useQuery({
     queryKey: ["/api/tasks", taskId, "assignments"],
     enabled: !!taskId,
     staleTime: 30000,
   });
+
+  // Fetch current task details to get superintendent
+  const { data: currentTask } = useQuery({
+    queryKey: ["/api/tasks", taskId],
+    enabled: !!taskId,
+    staleTime: 30000,
+  });
+
+  // Filter users for superintendent dropdown
+  const superintendents = (users as any[]).filter((user: any) => user.role === 'Superintendent');
 
   // Load existing assignments when modal opens
   useEffect(() => {
@@ -134,7 +151,12 @@ export default function EnhancedAssignmentModal({
       setDefaultHours(firstAssignmentHours);
       setEmployeeHours(individualHours);
     }
-  }, [isOpen, existingAssignments, employees, crews]);
+
+    // Load superintendent from current task
+    if (isOpen && currentTask && currentTask.superintendentId) {
+      setSelectedSuperintendentId(currentTask.superintendentId.toString());
+    }
+  }, [isOpen, existingAssignments, employees, crews, currentTask]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
@@ -264,7 +286,23 @@ export default function EnhancedAssignmentModal({
         })
       );
 
-      return Promise.all(promises);
+      const results = await Promise.all(promises);
+
+      // Update task with superintendent if selected
+      if (selectedSuperintendentId !== null && currentTask) {
+        const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+        
+        // Only update if superintendent has changed
+        if (currentTask.superintendentId !== superintendentIdToUpdate) {
+          await apiRequest(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
@@ -273,7 +311,7 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       
-      toast({ title: "Success", description: "Assignments updated successfully" });
+      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
     onError: () => {
@@ -322,6 +360,28 @@ export default function EnhancedAssignmentModal({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Superintendent Selection */}
+          <div>
+            <Label className="text-sm font-medium">Superintendent</Label>
+            <div className="text-xs text-gray-600 mb-2">Select superintendent for this task</div>
+            <div className="relative">
+              <select
+                value={selectedSuperintendentId || "none"}
+                onChange={(e) => setSelectedSuperintendentId(e.target.value === "none" ? null : e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="none">None</option>
+                {superintendents.map((user: any) => (
+                  <option key={user.id} value={user.id.toString()}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Assigned Hours Section */}
           <div>
             <Label className="text-sm font-medium">Assigned Hours</Label>

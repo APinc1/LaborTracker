@@ -93,6 +93,11 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    staleTime: 30000,
+  });
+
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
     staleTime: 30000,
@@ -429,14 +434,24 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Assigned Employees - Only show when toggle is enabled */}
-          {showAssignmentToggle && taskAssignments.length > 0 && (
+          {/* Superintendent and Assigned Employees - Only show when toggle is enabled */}
+          {showAssignmentToggle && (task.superintendentId || taskAssignments.length > 0) && (
             <div className="space-y-1">
               <div className="flex items-center space-x-2 text-sm text-gray-600">
                 <Users className="w-4 h-4" />
-                <span>Employees Assigned:</span>
+                <span>Personnel:</span>
               </div>
               <div className="ml-6 space-y-1">
+                {/* Superintendent */}
+                {task.superintendentId && (
+                  <div className="text-xs">
+                    <span className="font-bold text-gray-800">
+                      {(users as any[]).find(u => u.id === task.superintendentId)?.name || 'Superintendent'} (Super)
+                    </span>
+                  </div>
+                )}
+                
+                {/* Assigned Employees */}
                 {taskAssignments.map((assignment: any) => {
                   const employee = getEmployeeInfo(assignment.employeeId);
                   if (!employee) return null;
@@ -449,6 +464,7 @@ export default function Dashboard() {
                     <div key={assignment.id} className="text-xs">
                       <span className={isForeman ? 'font-bold text-gray-800' : 'text-gray-600'}>
                         {employee.name}
+                        {isForeman && ' (Foreman)'}
                         {isDriver && ' (Driver)'}
                         {assignedHours !== 8 && ` (${assignedHours}h)`}
                       </span>
