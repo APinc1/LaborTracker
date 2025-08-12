@@ -115,7 +115,7 @@ export const tasks = pgTable("tasks", {
   workDescription: text("work_description"),
   notes: text("notes"),
   status: text("status").notNull().default("upcoming"), // upcoming, in_progress, complete
-  order: integer("order").notNull().default(0),
+  order: decimal("order", { precision: 10, scale: 2 }).notNull().default("0"),
   dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
   linkedTaskGroup: text("linked_task_group"), // Tasks with same group ID occur on same date
 });
