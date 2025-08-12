@@ -980,7 +980,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Trigger cascading for all subsequent tasks
         const allTasks = [...(existingTasks as any[])];
         
-        // Update the unlinked tasks
+        // Update the unlinked tasks with new order values
         bothTasks.forEach(updatedTask => {
           const existingIndex = allTasks.findIndex(t => 
             (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
@@ -989,8 +989,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             allTasks[existingIndex] = {
               ...allTasks[existingIndex],
               linkedTaskGroup: null,
-              dependentOnPrevious: updatedTask.dependentOnPrevious
-              // CRITICAL: Keep original order and dates for now
+              dependentOnPrevious: updatedTask.dependentOnPrevious,
+              order: updatedTask.order // CRITICAL: Apply the new order value
             };
           }
         });
@@ -1006,7 +1006,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           return !originalTask || 
                  originalTask.taskDate !== task.taskDate ||
                  originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-                 originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+                 originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+                 originalTask.order !== task.order; // CRITICAL: Include order changes
         });
         
         console.log('🔗 Two-task unlink with cascading:', finalTasksToUpdate.map(t => ({ 
