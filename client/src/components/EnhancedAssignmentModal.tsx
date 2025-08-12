@@ -174,20 +174,37 @@ export default function EnhancedAssignmentModal({
     if (isOpen) {
       console.log('Setting superintendent - Task superintendent:', currentTask?.superintendentId);
       console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
+      console.log('Available superintendents:', superintendents);
       
       if (currentTask && currentTask.superintendentId) {
         console.log('Using task superintendent:', currentTask.superintendentId);
         setSelectedSuperintendentId(currentTask.superintendentId.toString());
       } else if (currentProject && currentProject.defaultSuperintendent) {
         console.log('Using project default superintendent:', currentProject.defaultSuperintendent);
-        // Default to project-level superintendent if task doesn't have one assigned
-        setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
+        
+        // Check if defaultSuperintendent is a name (string) or ID (number)
+        if (typeof currentProject.defaultSuperintendent === 'string') {
+          // Find user by name
+          const superintendentUser = superintendents.find((user: any) => 
+            user.name === currentProject.defaultSuperintendent
+          );
+          if (superintendentUser) {
+            console.log('Found superintendent by name:', superintendentUser);
+            setSelectedSuperintendentId(superintendentUser.id.toString());
+          } else {
+            console.log('Superintendent name not found in users list');
+            setSelectedSuperintendentId(null);
+          }
+        } else {
+          // It's already an ID
+          setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
+        }
       } else {
         console.log('No superintendent found, setting to null');
         setSelectedSuperintendentId(null);
       }
     }
-  }, [isOpen, existingAssignments, employees, crews, currentTask, currentLocation, currentProject]);
+  }, [isOpen, existingAssignments, employees, crews, currentTask, currentLocation, currentProject, superintendents]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
