@@ -328,7 +328,7 @@ export default function EmployeeManagement() {
     
     const processedData = {
       ...data,
-      crewId: data.crewId ? parseInt(data.crewId) : null,
+      crewId: data.crewId && data.crewId !== "none" ? parseInt(data.crewId) : null,
       apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
       isForeman: data.employeeType === "Core" ? Boolean(data.isForeman) : false,
       isUnion: Boolean(data.isUnion),
@@ -383,7 +383,7 @@ export default function EmployeeManagement() {
       name: employee.name,
       email: employee.email || '',
       phone: employee.phone || '',
-      crewId: employee.crewId ? employee.crewId.toString() : undefined,
+      crewId: employee.crewId ? employee.crewId.toString() : "none",
       employeeType: employee.employeeType,
       apprenticeLevel: employee.apprenticeLevel,
       isForeman: Boolean(employee.isForeman),
@@ -421,7 +421,7 @@ export default function EmployeeManagement() {
       name: '',
       email: '',
       phone: '',
-      crewId: undefined,
+      crewId: "none",
       employeeType: 'Core',
       apprenticeLevel: null,
       isForeman: false,
@@ -439,7 +439,7 @@ export default function EmployeeManagement() {
       name: '',
       email: '',
       phone: '',
-      crewId: undefined,
+      crewId: "none",
       employeeType: 'Core',
       apprenticeLevel: null,
       isForeman: false,
@@ -716,10 +716,10 @@ export default function EmployeeManagement() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Crew *</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value ? field.value.toString() : undefined}>
+                              <Select onValueChange={field.onChange} value={field.value ? field.value.toString() : "none"}>
                                 <FormControl>
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Select crew" />
+                                    <SelectValue placeholder={field.value === "none" ? "No Crew" : "Select crew"} />
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
