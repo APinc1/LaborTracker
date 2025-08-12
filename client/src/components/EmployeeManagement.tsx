@@ -59,7 +59,7 @@ export default function EmployeeManagement() {
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
     staleTime: 30000,
-  });
+  }) as { data: any[], isLoading: boolean };
 
   // Create dynamic validation schema that checks for unique team member IDs
   const createEmployeeFormSchema = (existingEmployees: any[], editingId?: number) => {
@@ -78,7 +78,7 @@ export default function EmployeeManagement() {
   const { data: crews = [], isLoading: crewsLoading } = useQuery({
     queryKey: ["/api/crews"],
     staleTime: 30000,
-  });
+  }) as { data: any[], isLoading: boolean };
 
   const createEmployeeMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -1150,22 +1150,34 @@ export default function EmployeeManagement() {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              {crewMembers.slice(0, 3).map((member: any) => (
-                                <div key={member.id} className="flex items-center space-x-2">
-                                  <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
-                                    <User className="text-subtle text-xs" />
+                              {crewMembers.map((member: any) => {
+                                const getMemberRole = (employee: any) => {
+                                  if (employee.isForeman) return "Foreman";
+                                  if (employee.primaryTrade === "Driver") return "Driver";
+                                  return null;
+                                };
+                                
+                                const memberRole = getMemberRole(member);
+                                
+                                return (
+                                  <div key={member.id} className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2 flex-1">
+                                      <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                                        <User className="text-subtle text-xs" />
+                                      </div>
+                                      <span className="text-sm text-content">{member.name}</span>
+                                    </div>
+                                    {memberRole && (
+                                      <Badge 
+                                        variant={memberRole === "Foreman" ? "default" : "secondary"} 
+                                        className="text-xs ml-2"
+                                      >
+                                        {memberRole}
+                                      </Badge>
+                                    )}
                                   </div>
-                                  <span className="text-sm text-content">{member.name}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {member.employeeType}
-                                  </Badge>
-                                </div>
-                              ))}
-                              {crewMembers.length > 3 && (
-                                <p className="text-sm text-muted">
-                                  +{crewMembers.length - 3} more
-                                </p>
-                              )}
+                                );
+                              })}
                             </div>
                           </div>
                         </CardContent>
@@ -1227,7 +1239,13 @@ export default function EmployeeManagement() {
                               <p className="font-medium">{member.name}</p>
                               <p className="text-sm text-gray-500">{member.teamMemberId} • {member.primaryTrade}</p>
                             </div>
-                            <Badge variant="outline">{member.employeeType}</Badge>
+                            {member.isForeman ? (
+                              <Badge variant="default">Foreman</Badge>
+                            ) : member.primaryTrade === "Driver" ? (
+                              <Badge variant="secondary">Driver</Badge>
+                            ) : (
+                              <Badge variant="outline">{member.employeeType}</Badge>
+                            )}
                           </div>
                           <Button
                             variant="ghost"
@@ -1262,7 +1280,13 @@ export default function EmployeeManagement() {
                               <p className="font-medium">{employee.name}</p>
                               <p className="text-sm text-gray-500">{employee.teamMemberId} • {employee.primaryTrade}</p>
                             </div>
-                            <Badge variant="outline">{employee.employeeType}</Badge>
+                            {employee.isForeman ? (
+                              <Badge variant="default">Foreman</Badge>
+                            ) : employee.primaryTrade === "Driver" ? (
+                              <Badge variant="secondary">Driver</Badge>
+                            ) : (
+                              <Badge variant="outline">{employee.employeeType}</Badge>
+                            )}
                           </div>
                           <Button
                             variant="ghost"
