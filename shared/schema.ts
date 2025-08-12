@@ -143,7 +143,9 @@ export const insertLocationSchema = createInsertSchema(locations).omit({ id: tru
 });
 export const insertLocationBudgetSchema = createInsertSchema(locationBudgets).omit({ id: true });
 export const insertCrewSchema = createInsertSchema(crews).omit({ id: true });
-export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true });
+export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: true }).extend({
+  phone: z.string().optional().nullable(),
+});
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
   locationId: z.union([z.string(), z.number()]).transform(val => String(val)),
   order: z.union([z.string(), z.number()]).transform(val => String(val))

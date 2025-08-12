@@ -496,12 +496,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/employees/:id', async (req, res) => {
     try {
+      console.log('Updating employee with data:', req.body);
       const storage = await getStorage();
       const validated = insertEmployeeSchema.partial().parse(req.body);
+      console.log('Validated employee update data:', validated);
       const employee = await storage.updateEmployee(parseInt(req.params.id), validated);
       res.json(employee);
-    } catch (error) {
-      res.status(400).json({ error: 'Invalid employee data' });
+    } catch (error: any) {
+      console.error('Employee update error:', error);
+      if (error.name === 'ZodError') {
+        res.status(400).json({ error: 'Invalid employee data', details: error.errors });
+      } else {
+        res.status(400).json({ error: error.message || 'Invalid employee data' });
+      }
     }
   });
 

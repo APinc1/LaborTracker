@@ -24,7 +24,7 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   teamMemberId: z.string().min(1, "Team Member ID is required"),
   name: z.string().min(1, "Full name is required"),
   email: z.string().email("Valid email is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  phone: z.string().optional(), // Phone is now optional
   employeeType: z.string().min(1, "Employee type is required"),
   crewId: z.string().min(1, "Crew selection is required"),
   primaryTrade: z.string().min(1, "Primary trade is required"),
@@ -101,7 +101,14 @@ export default function EmployeeManagement() {
 
   const updateEmployeeMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await apiRequest('PUT', `/api/employees/${id}`, data);
+      const response = await apiRequest(`/api/employees/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details ? `Validation errors: ${JSON.stringify(errorData.details)}` : errorData.error || 'Failed to update employee');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -110,8 +117,9 @@ export default function EmployeeManagement() {
       setEditingEmployee(null);
       employeeForm.reset();
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update employee", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error('Employee update error:', error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
