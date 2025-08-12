@@ -506,10 +506,6 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center space-x-4">
             <ExportButtons />
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Task
-            </Button>
           </div>
         </div>
       </header>
