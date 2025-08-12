@@ -1308,6 +1308,12 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteUser(id: number): Promise<boolean> {
+    // First, unlink any employees that reference this user
+    await this.db.update(employees)
+      .set({ userId: null })
+      .where(eq(employees.userId, id));
+    
+    // Now delete the user
     const result = await this.db.delete(users).where(eq(users.id, id));
     return true;
   }

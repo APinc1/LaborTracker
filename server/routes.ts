@@ -60,6 +60,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(user);
     } catch (error: any) {
       console.error('Error creating user:', error);
+      
+      // Handle specific database constraint errors
+      if (error.code === '23505') { // Unique constraint violation
+        if (error.constraint_name === 'users_email_unique') {
+          return res.status(400).json({ error: 'A user with this email already exists' });
+        }
+        if (error.constraint_name === 'users_username_unique') {
+          return res.status(400).json({ error: 'A user with this username already exists' });
+        }
+      }
+      
       res.status(500).json({ error: 'Failed to create user' });
     }
   });
@@ -91,6 +102,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error('Error deleting user:', error);
+      
+      // Handle specific database constraint errors
+      if (error.code === '23503') { // Foreign key constraint violation
+        return res.status(400).json({ error: 'Cannot delete user: user is linked to an employee record' });
+      }
+      
       res.status(500).json({ error: 'Failed to delete user' });
     }
   });
