@@ -1323,6 +1323,11 @@ class DatabaseStorage implements IStorage {
       .set({ defaultProjectManager: null })
       .where(eq(projects.defaultProjectManager, id));
     
+    // Unlink any tasks that reference this user as superintendent
+    await this.db.update(tasks)
+      .set({ superintendentId: null })
+      .where(eq(tasks.superintendentId, id));
+    
     // Now delete the user
     const result = await this.db.delete(users).where(eq(users.id, id));
     return true;
@@ -1567,6 +1572,11 @@ class DatabaseStorage implements IStorage {
   async deleteEmployee(id: number): Promise<void> {
     // First, delete any employee assignments that reference this employee
     await this.db.delete(employeeAssignments).where(eq(employeeAssignments.employeeId, id));
+    
+    // Unlink any tasks that reference this employee as foreman
+    await this.db.update(tasks)
+      .set({ foremanId: null })
+      .where(eq(tasks.foremanId, id));
     
     // Now delete the employee
     await this.db.delete(employees).where(eq(employees.id, id));
