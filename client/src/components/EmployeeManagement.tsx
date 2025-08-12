@@ -55,6 +55,7 @@ export default function EmployeeManagement() {
   const [employeeToDelete, setEmployeeToDelete] = useState<any>(null);
   const [editingCrewMembers, setEditingCrewMembers] = useState<any>(null);
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
+  const [availableEmployeeSearch, setAvailableEmployeeSearch] = useState("");
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
@@ -451,6 +452,7 @@ export default function EmployeeManagement() {
 
   const handleEditCrewMembers = (crew: any) => {
     setEditingCrewMembers(crew);
+    setAvailableEmployeeSearch("");
     setIsEditMembersOpen(true);
   };
 
@@ -483,6 +485,28 @@ export default function EmployeeManagement() {
       toast({ title: "Error", description: "Failed to add employee to crew", variant: "destructive" });
     }
   };
+
+  const getEmployeeRoleBadge = (employee: any) => {
+    if (employee.isForeman) {
+      return <Badge variant="default" className="text-xs">Foreman</Badge>;
+    }
+    if (employee.primaryTrade === "Driver") {
+      return <Badge variant="secondary" className="text-xs">Driver</Badge>;
+    }
+    if (employee.employeeType === "Apprentice") {
+      return <Badge variant="outline" className="text-xs">Apprentice</Badge>;
+    }
+    return null;
+  };
+
+  const filteredAvailableEmployees = employees
+    .filter((emp: any) => !emp.crewId)
+    .filter((emp: any) => 
+      availableEmployeeSearch === "" || 
+      emp.name.toLowerCase().includes(availableEmployeeSearch.toLowerCase()) ||
+      emp.teamMemberId.toLowerCase().includes(availableEmployeeSearch.toLowerCase()) ||
+      emp.primaryTrade.toLowerCase().includes(availableEmployeeSearch.toLowerCase())
+    );
 
   const getEmployeeTypeVariant = (type: string) => {
     switch (type) {
@@ -1239,13 +1263,7 @@ export default function EmployeeManagement() {
                               <p className="font-medium">{member.name}</p>
                               <p className="text-sm text-gray-500">{member.teamMemberId} • {member.primaryTrade}</p>
                             </div>
-                            {member.isForeman ? (
-                              <Badge variant="default">Foreman</Badge>
-                            ) : member.primaryTrade === "Driver" ? (
-                              <Badge variant="secondary">Driver</Badge>
-                            ) : (
-                              <Badge variant="outline">{member.employeeType}</Badge>
-                            )}
+                            {getEmployeeRoleBadge(member)}
                           </div>
                           <Button
                             variant="ghost"
@@ -1263,14 +1281,25 @@ export default function EmployeeManagement() {
 
               {/* Available Employees */}
               <div>
-                <h3 className="text-lg font-medium mb-3">Available Employees</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-medium">Available Employees</h3>
+                  <div className="w-64">
+                    <Input
+                      type="text"
+                      placeholder="Search employees..."
+                      value={availableEmployeeSearch}
+                      onChange={(e) => setAvailableEmployeeSearch(e.target.value)}
+                      className="text-sm"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  {employees.filter((emp: any) => !emp.crewId).length === 0 ? (
-                    <p className="text-gray-500 italic">No unassigned employees available.</p>
+                  {filteredAvailableEmployees.length === 0 ? (
+                    <p className="text-gray-500 italic">
+                      {availableEmployeeSearch ? "No employees match your search." : "No unassigned employees available."}
+                    </p>
                   ) : (
-                    employees
-                      .filter((emp: any) => !emp.crewId)
-                      .map((employee: any) => (
+                    filteredAvailableEmployees.map((employee: any) => (
                         <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
@@ -1280,13 +1309,7 @@ export default function EmployeeManagement() {
                               <p className="font-medium">{employee.name}</p>
                               <p className="text-sm text-gray-500">{employee.teamMemberId} • {employee.primaryTrade}</p>
                             </div>
-                            {employee.isForeman ? (
-                              <Badge variant="default">Foreman</Badge>
-                            ) : employee.primaryTrade === "Driver" ? (
-                              <Badge variant="secondary">Driver</Badge>
-                            ) : (
-                              <Badge variant="outline">{employee.employeeType}</Badge>
-                            )}
+                            {getEmployeeRoleBadge(employee)}
                           </div>
                           <Button
                             variant="ghost"
