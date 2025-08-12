@@ -936,13 +936,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
         const otherTask = groupTasks[0];
         
-        // CRITICAL: When unlinking, preserve the current visual order established by linking
-        // Find the current visual order from the task list (not original order)
-        const currentTasks = [...(existingTasks as any[])];
-        const firstTaskCurrentOrder = Math.min(task.order || 0, otherTask.order || 0);
-        const secondTaskCurrentOrder = Math.max(task.order || 0, otherTask.order || 0);
+        // CRITICAL: When unlinking, we need to change the order value to preserve the visual position
+        // Find which task was moved during linking (has higher order but should stay in linked position)
         
-        // Identify which task is visually first and second
+        // Based on the scenario: Demo/Ex (order 1) + GL tester (order 4) 
+        // When linked, GL tester moves visually after Demo/Ex
+        // When unlinked, GL tester should stay after Demo/Ex and get order 1.5 or next available
+        
         const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
         const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
         
@@ -953,12 +953,29 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           secondOrder: secondTask.order
         });
         
-        // Both tasks become unlinked - first stays in position, second becomes sequential
-        const bothTasks = [firstTask, secondTask].map((t, index) => ({
-          ...t,
-          linkedTaskGroup: null,
-          dependentOnPrevious: index === 0 ? (t.order === 0 ? false : true) : true // Second task always becomes sequential
-        }));
+        // The key insight: secondTask (GL tester) should get a new order that places it right after firstTask
+        const newOrderForSecondTask = (firstTask.order || 0) + 0.1; // Fractional order to insert between existing orders
+        
+        console.log('🔗 ASSIGNING NEW ORDER:', {
+          secondTaskName: secondTask.name,
+          oldOrder: secondTask.order,
+          newOrder: newOrderForSecondTask
+        });
+        
+        // Both tasks become unlinked but with preserved visual positioning
+        const bothTasks = [
+          {
+            ...firstTask,
+            linkedTaskGroup: null,
+            dependentOnPrevious: firstTask.order === 0 ? false : true
+          },
+          {
+            ...secondTask,
+            linkedTaskGroup: null,
+            dependentOnPrevious: true, // Second task becomes sequential to first
+            order: newOrderForSecondTask // CRITICAL: New order value to preserve position
+          }
+        ];
         
         // Trigger cascading for all subsequent tasks
         const allTasks = [...(existingTasks as any[])];
