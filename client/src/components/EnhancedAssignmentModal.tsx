@@ -112,12 +112,23 @@ export default function EnhancedAssignmentModal({
     staleTime: 30000,
   });
 
-  // Fetch project data to get default superintendent
-  const { data: currentProject } = useQuery({
-    queryKey: ["/api/projects", currentTask?.projectId],
-    enabled: !!currentTask?.projectId,
+  // Fetch location data to get project info
+  const { data: currentLocation } = useQuery({
+    queryKey: ["/api/locations", currentTask?.locationId],
+    enabled: !!currentTask?.locationId,
     staleTime: 30000,
   });
+
+  // Fetch project data using location's projectId
+  const { data: currentProject } = useQuery({
+    queryKey: ["/api/projects", currentLocation?.projectId],
+    enabled: !!currentLocation?.projectId,
+    staleTime: 30000,
+  });
+
+  console.log('Assignment Modal - Current Task:', currentTask);
+  console.log('Assignment Modal - Current Location:', currentLocation);
+  console.log('Assignment Modal - Current Project:', currentProject);
 
   // Filter users for superintendent dropdown
   const superintendents = (users as any[]).filter((user: any) => user.role === 'Superintendent');
@@ -161,14 +172,22 @@ export default function EnhancedAssignmentModal({
 
     // Load superintendent from current task, or default from project
     if (isOpen) {
+      console.log('Setting superintendent - Task superintendent:', currentTask?.superintendentId);
+      console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
+      
       if (currentTask && currentTask.superintendentId) {
+        console.log('Using task superintendent:', currentTask.superintendentId);
         setSelectedSuperintendentId(currentTask.superintendentId.toString());
       } else if (currentProject && currentProject.defaultSuperintendent) {
+        console.log('Using project default superintendent:', currentProject.defaultSuperintendent);
         // Default to project-level superintendent if task doesn't have one assigned
         setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
+      } else {
+        console.log('No superintendent found, setting to null');
+        setSelectedSuperintendentId(null);
       }
     }
-  }, [isOpen, existingAssignments, employees, crews, currentTask, currentProject]);
+  }, [isOpen, existingAssignments, employees, crews, currentTask, currentLocation, currentProject]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
