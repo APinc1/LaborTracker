@@ -99,7 +99,33 @@ export default function ScheduleManagement() {
 
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/projects", selectedProject, "locations"],
-    enabled: !!selectedProject && selectedProject !== "ALL_PROJECTS",
+    queryFn: async () => {
+      if (selectedProject === "ALL_PROJECTS") {
+        // When viewing all projects, get locations from all projects
+        const locationArrays = await Promise.all(
+          projects.map(async (project: any) => {
+            try {
+              const response = await fetch(`/api/projects/${project.id}/locations`);
+              if (response.ok) {
+                return await response.json();
+              }
+            } catch (error) {
+              console.error(`Failed to fetch locations for project ${project.id}:`, error);
+            }
+            return [];
+          })
+        );
+        return locationArrays.flat();
+      } else {
+        // When viewing a specific project, use the project-specific endpoint
+        const response = await fetch(`/api/projects/${selectedProject}/locations`);
+        if (response.ok) {
+          return await response.json();
+        }
+        return [];
+      }
+    },
+    enabled: !!selectedProject && projects.length > 0,
     staleTime: 30000,
   });
 
