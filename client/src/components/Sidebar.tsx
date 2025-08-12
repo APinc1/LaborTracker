@@ -94,34 +94,36 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
         </div>
       </div>
       {/* Navigation */}
-      <ScrollArea className="flex-1 sidebar-scrollbar">
-        <nav className="p-4 space-y-2">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <ProtectedNavLink key={item.key} href={item.href} onNavigate={protectedNavigate}>
-                <Button
-                  variant={isActive(item.key) ? "default" : "ghost"}
-                  className={`w-full justify-start space-x-3 ${
-                    isActive(item.key)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-blue-100"
-                  }`}
-                  onClick={() => setActiveTab(item.key)}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </Button>
-              </ProtectedNavLink>
-            );
-          })}
-        </nav>
+      <nav className="p-4 space-y-2">
+        {navigation.map((item) => {
+          const Icon = item.icon;
+          return (
+            <ProtectedNavLink key={item.key} href={item.href} onNavigate={protectedNavigate}>
+              <Button
+                variant={isActive(item.key) ? "default" : "ghost"}
+                className={`w-full justify-start space-x-3 ${
+                  isActive(item.key)
+                    ? "bg-primary text-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-blue-100"
+                }`}
+                onClick={() => setActiveTab(item.key)}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.name}</span>
+              </Button>
+            </ProtectedNavLink>
+          );
+        })}
+      </nav>
 
-        {/* Current Projects */}
-        <div className="p-4 border-t border-sidebar-border">
-          <h3 className="text-muted-foreground text-sm font-medium mb-3">
+      {/* Current Projects - Scrollable */}
+      <div className="flex-1 border-t border-sidebar-border flex flex-col">
+        <div className="p-4 pb-2">
+          <h3 className="text-muted-foreground text-sm font-medium">
             Active Projects
           </h3>
+        </div>
+        <ScrollArea className="flex-1 px-4 pb-4">
           <div className="space-y-2">
             {(projects as any[]).map((project: any) => (
               <ProtectedNavLink 
@@ -141,8 +143,8 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
               </ProtectedNavLink>
             ))}
           </div>
-        </div>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
       {/* User Profile */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="flex items-center space-x-3">
