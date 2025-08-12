@@ -1559,6 +1559,13 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteCrew(id: number): Promise<void> {
+    // Check if any employees are assigned to this crew
+    const employeesInCrew = await this.db.select().from(employees).where(eq(employees.crewId, id));
+    
+    if (employeesInCrew.length > 0) {
+      throw new Error(`Cannot delete crew. ${employeesInCrew.length} employee(s) are still assigned to this crew. Please reassign or remove them first.`);
+    }
+    
     await this.db.delete(crews).where(eq(crews.id, id));
   }
 

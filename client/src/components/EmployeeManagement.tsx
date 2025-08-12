@@ -56,6 +56,8 @@ export default function EmployeeManagement() {
   const [editingCrewMembers, setEditingCrewMembers] = useState<any>(null);
   const [isEditMembersOpen, setIsEditMembersOpen] = useState(false);
   const [availableEmployeeSearch, setAvailableEmployeeSearch] = useState("");
+  const [crewToDelete, setCrewToDelete] = useState<number | null>(null);
+  const [deleteCrewConfirmOpen, setDeleteCrewConfirmOpen] = useState(false);
 
   const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
@@ -242,9 +244,14 @@ export default function EmployeeManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/crews"] });
       toast({ title: "Success", description: "Crew deleted successfully" });
+      setDeleteCrewConfirmOpen(false);
+      setCrewToDelete(null);
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to delete crew", variant: "destructive" });
+    onError: (error: Error) => {
+      console.error('Crew deletion error:', error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setDeleteCrewConfirmOpen(false);
+      setCrewToDelete(null);
     },
   });
 
@@ -445,8 +452,13 @@ export default function EmployeeManagement() {
   };
 
   const handleDeleteCrew = (id: number) => {
-    if (confirm('Are you sure you want to delete this crew?')) {
-      deleteCrewMutation.mutate(id);
+    setCrewToDelete(id);
+    setDeleteCrewConfirmOpen(true);
+  };
+
+  const confirmDeleteCrew = () => {
+    if (crewToDelete) {
+      deleteCrewMutation.mutate(crewToDelete);
     }
   };
 
@@ -1337,6 +1349,26 @@ export default function EmployeeManagement() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Crew Deletion Confirmation Dialog */}
+      <AlertDialog open={deleteCrewConfirmOpen} onOpenChange={setDeleteCrewConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this crew? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteCrewConfirmOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCrew}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
