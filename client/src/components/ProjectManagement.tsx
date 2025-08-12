@@ -37,6 +37,10 @@ export default function ProjectManagement() {
     staleTime: 30000,
   });
 
+  // Filter users by role for dropdowns
+  const superintendents = users.filter((user: any) => user.role === 'Superintendent');
+  const projectManagers = users.filter((user: any) => user.role === 'Project Manager');
+
   const createProjectMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch('/api/projects', {
@@ -277,7 +281,7 @@ export default function ProjectManagement() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {users.filter((user: any) => user.role === 'Superintendent' || user.role === 'Admin').map((user: any) => (
+                              {superintendents.map((user: any) => (
                                 <SelectItem key={user.id} value={user.id.toString()}>
                                   {user.name}
                                 </SelectItem>
@@ -302,7 +306,7 @@ export default function ProjectManagement() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value="none">None</SelectItem>
-                              {users.filter((user: any) => user.role === 'Project Manager' || user.role === 'Admin').map((user: any) => (
+                              {projectManagers.map((user: any) => (
                                 <SelectItem key={user.id} value={user.id.toString()}>
                                   {user.name}
                                 </SelectItem>
