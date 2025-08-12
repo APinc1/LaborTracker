@@ -117,36 +117,38 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
       </nav>
 
       {/* Current Projects - Scrollable */}
-      <div className="flex-1 border-t border-sidebar-border flex flex-col">
-        <div className="p-4 pb-2">
+      <div className="flex-1 border-t border-sidebar-border flex flex-col min-h-0">
+        <div className="p-4 pb-2 flex-shrink-0">
           <h3 className="text-muted-foreground text-sm font-medium">
             Active Projects
           </h3>
         </div>
-        <ScrollArea className="flex-1 px-4 pb-4">
-          <div className="space-y-2">
-            {(projects as any[]).map((project: any) => (
-              <ProtectedNavLink 
-                key={project.id}
-                href={`/projects/${project.id}`}
-                onNavigate={protectedNavigate}
-              >
-                <div className="flex items-center space-x-3 p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
-                  <div className="w-3 h-3 bg-accent rounded-full"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{project.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {project.projectId}
-                    </p>
+        <div className="flex-1 overflow-hidden">
+          <ScrollArea className="h-full px-4 pb-4">
+            <div className="space-y-2">
+              {(projects as any[]).map((project: any) => (
+                <ProtectedNavLink 
+                  key={project.id}
+                  href={`/projects/${project.id}`}
+                  onNavigate={protectedNavigate}
+                >
+                  <div className="flex items-center space-x-3 p-2 rounded hover:bg-blue-100 cursor-pointer transition-colors">
+                    <div className="w-3 h-3 bg-accent rounded-full"></div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{project.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {project.projectId}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </ProtectedNavLink>
-            ))}
-          </div>
-        </ScrollArea>
+                </ProtectedNavLink>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
       {/* User Profile */}
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-sidebar-border flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-sidebar-accent rounded-full flex items-center justify-center">
             <User className="text-sidebar-foreground" />
