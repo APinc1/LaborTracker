@@ -914,6 +914,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       );
       
       console.log('🔗 Found group tasks:', groupTasks.length, groupTasks.map(t => t.name));
+      console.log('🔗 UNLINKING DEBUG:', { 
+        groupTasksLength: groupTasks.length, 
+        skipUnlinkDialog, 
+        taskName: task.name,
+        taskOrder: task.order 
+      });
       
       if (groupTasks.length >= 2 && !skipUnlinkDialog) {
         // Multi-task group (3+ tasks) - show unlink dialog (unless user already chose to skip it)
