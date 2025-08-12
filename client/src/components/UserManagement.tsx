@@ -176,6 +176,7 @@ export default function UserManagement() {
                 setEditingUser(null);
                 form.reset();
               }}
+              className="pl-[16px] pr-[16px] ml-[0px] mr-[0px] mt-[12px] mb-[12px]"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add User
