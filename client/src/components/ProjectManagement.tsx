@@ -144,17 +144,16 @@ export default function ProjectManagement() {
 
   const handleEdit = (project: any) => {
     setEditingProject(project);
-    // Find the user IDs for the names (since the API returns names, but we need IDs for the form)
-    const superintendent = users.find((user: any) => user.name === project.defaultSuperintendent);
-    const projectManager = users.find((user: any) => user.name === project.defaultProjectManager);
+    console.log('Editing project:', project);
+    console.log('Available users:', users);
     
     form.reset({
       projectId: project.projectId,
       name: project.name,
       startDate: project.startDate || '',
       endDate: project.endDate || '',
-      defaultSuperintendent: superintendent?.id || undefined,
-      defaultProjectManager: projectManager?.id || undefined,
+      defaultSuperintendent: project.defaultSuperintendent || undefined,
+      defaultProjectManager: project.defaultProjectManager || undefined,
     });
   };
 
@@ -381,13 +380,17 @@ export default function ProjectManagement() {
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <User className="w-4 h-4" />
                     <span>
-                      Super: {project.defaultSuperintendent || 'Unassigned'}
+                      Super: {project.defaultSuperintendent 
+                        ? (users as any[]).find(u => u.id === project.defaultSuperintendent)?.name || `ID: ${project.defaultSuperintendent}`
+                        : 'Unassigned'}
                     </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm text-gray-600">
                     <User className="w-4 h-4" />
                     <span>
-                      PM: {project.defaultProjectManager || 'Unassigned'}
+                      PM: {project.defaultProjectManager 
+                        ? (users as any[]).find(u => u.id === project.defaultProjectManager)?.name || `ID: ${project.defaultProjectManager}`
+                        : 'Unassigned'}
                     </span>
                   </div>
                 </div>
