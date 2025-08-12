@@ -471,8 +471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       await storage.deleteCrew(parseInt(req.params.id));
       res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to delete crew' });
+    } catch (error: any) {
+      console.error('Crew deletion error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete crew' });
     }
   });
 
