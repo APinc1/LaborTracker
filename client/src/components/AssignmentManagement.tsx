@@ -680,7 +680,7 @@ export default function AssignmentManagement() {
                             onChange={(e) => {
                               field.onChange(e);
                               // Clear task selection when date changes to force reselection
-                              form.setValue('taskId', '');
+                              form.setValue('taskId', undefined);
                             }}
                           />
                         </FormControl>
@@ -696,7 +696,7 @@ export default function AssignmentManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Task *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select task" />
