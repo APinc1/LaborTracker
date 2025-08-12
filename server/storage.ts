@@ -40,8 +40,8 @@ export interface IStorage {
   getAllLocations(): Promise<Location[]>;
   getLocation(id: string | number): Promise<Location | undefined>;
   createLocation(location: InsertLocation): Promise<Location>;
-  updateLocation(id: number, location: Partial<InsertLocation>): Promise<Location>;
-  deleteLocation(id: number): Promise<void>;
+  updateLocation(id: string | number, location: Partial<InsertLocation>): Promise<Location>;
+  deleteLocation(id: string | number): Promise<void>;
   
   // Location budget methods
   getLocationBudgets(locationId: number): Promise<LocationBudget[]>;
@@ -1435,29 +1435,63 @@ class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async updateLocation(id: number, updateLocation: Partial<InsertLocation>): Promise<Location> {
-    const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, id)).returning();
+  async updateLocation(id: string | number, updateLocation: Partial<InsertLocation>): Promise<Location> {
+    let locationDbId: number;
+    
+    if (typeof id === 'string') {
+      // Find by locationId field first
+      const locationResult = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      if (locationResult.length === 0) {
+        throw new Error('Location not found');
+      }
+      locationDbId = locationResult[0].id;
+    } else {
+      locationDbId = id;
+    }
+    
+    const result = await this.db.update(locations).set(updateLocation).where(eq(locations.id, locationDbId)).returning();
     return result[0];
   }
 
-  async deleteLocation(id: number): Promise<void> {
+  async deleteLocation(id: string | number): Promise<void> {
+    let locationToDelete: Location | undefined;
+    let locationDbId: number;
+    
+    if (typeof id === 'string') {
+      // Find by locationId field first
+      const locationResult = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      if (locationResult.length === 0) {
+        throw new Error('Location not found');
+      }
+      locationToDelete = locationResult[0];
+      locationDbId = locationToDelete.id;
+    } else {
+      // Find by numeric database id
+      const locationResult = await this.db.select().from(locations).where(eq(locations.id, id));
+      if (locationResult.length === 0) {
+        throw new Error('Location not found');
+      }
+      locationToDelete = locationResult[0];
+      locationDbId = id;
+    }
+    
     // Delete employee assignments for tasks in this location
-    const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, id));
+    const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, locationDbId.toString()));
     for (const task of locationTasks) {
       await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
     }
     
     // Delete tasks in this location
-    await this.db.delete(tasks).where(eq(tasks.locationId, id));
+    await this.db.delete(tasks).where(eq(tasks.locationId, locationDbId.toString()));
     
     // Delete budget line items for this location
-    await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, id));
+    await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, locationDbId));
     
     // Delete location budgets for this location
-    await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, id));
+    await this.db.delete(locationBudgets).where(eq(locationBudgets.locationId, locationDbId));
     
     // Finally delete the location
-    await this.db.delete(locations).where(eq(locations.id, id));
+    await this.db.delete(locations).where(eq(locations.id, locationDbId));
   }
 
   // Location budget methods
