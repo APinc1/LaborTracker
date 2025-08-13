@@ -224,12 +224,16 @@ export default function ScheduleManagement() {
     
     // Filter by project if a specific project is selected
     if (selectedProject && selectedProject !== "ALL_PROJECTS") {
-      const projectLocations = locations.map((loc: any) => loc.locationId);
-      filteredTasks = filteredTasks.filter((task: any) => projectLocations.includes(task.locationId));
+      const projectLocationIds = locations.map((loc: any) => loc.id);
+      filteredTasks = filteredTasks.filter((task: any) => projectLocationIds.includes(task.locationId));
       
       // Filter by location if a specific location is selected within the project
       if (selectedLocation && selectedLocation !== "ALL_LOCATIONS") {
-        filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocation);
+        // selectedLocation is a locationId string, need to find the corresponding database ID
+        const selectedLocationObject = locations.find((loc: any) => loc.locationId === selectedLocation);
+        if (selectedLocationObject) {
+          filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocationObject.id);
+        }
       }
     }
     // If "ALL_PROJECTS" is selected, show all tasks without filtering
@@ -320,20 +324,22 @@ export default function ScheduleManagement() {
 
   // Get project name from task
   const getProjectName = (task: any) => {
-    // First, try to find the location by locationId
-    const location = locations.find((loc: any) => loc.locationId === task.locationId);
-    if (!location) return 'Unknown Project';
+    if (!task.locationId) return "Unknown Project";
+    // After migration: task.locationId is now the database ID (integer), not the locationId string
+    const location = locations.find((loc: any) => loc.id === task.locationId);
+    if (!location) return "Unknown Project";
     
-    // Then find the project by the location's projectId
-    const project = projects.find((p: any) => p.id === location.projectId);
-    return project?.name || 'Unknown Project';
+    // Find project by matching the database ID
+    const project = projects.find((proj: any) => proj.id === location.projectId);
+    return project?.name || "Unknown Project";
   };
 
   // Get location name from task
   const getLocationName = (task: any) => {
-    // Find the location by locationId in the locations data
-    const location = locations.find((loc: any) => loc.locationId === task.locationId);
-    return location?.name || 'Unknown Location';
+    if (!task.locationId) return "Unknown Location";
+    // After migration: task.locationId is now the database ID (integer), not the locationId string
+    const location = locations.find((loc: any) => loc.id === task.locationId);
+    return location?.name || "Unknown Location";
   };
 
   // Format assignment display with proper formatting
