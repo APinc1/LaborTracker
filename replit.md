@@ -21,7 +21,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 ### Technical Implementations
 - **Frontend**: React 18 with TypeScript, Vite for builds, TanStack Query for state management, Wouter for routing, and React Hook Form with Zod for form validation.
 - **Backend**: Express.js with TypeScript, utilizing a RESTful API design with CRUD operations.
-- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Successfully migrated from in-memory to persistent storage using postgres-js driver with SSL connection.
+- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Successfully migrated from in-memory to persistent storage using postgres-js driver with SSL connection. Completed major migration (August 2025) from string-based locationId to foreign key relationships for improved data integrity.
 - **Real-time**: WebSocket server for live updates and notifications across clients.
 - **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization.
 - **Data Flow**: Client requests via React Query, processed by Express routes, interacting with the database via Drizzle ORM, with WebSocket broadcasting changes.
