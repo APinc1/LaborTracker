@@ -216,6 +216,7 @@ export function reorderTasksWithDependencies(
 export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string): any[] {
   console.log('🔄 REALIGN DEPENDENT TASKS AFTER: Starting targeted date realignment');
   console.log('Modified task ID:', modifiedTaskId);
+  console.log('All task IDs in list:', tasks.map(t => ({ name: t.name, id: t.taskId || t.id, order: t.order })));
   
   // Sort tasks by their logical order
   const logicallyOrderedTasks = [...tasks].sort((a, b) => {

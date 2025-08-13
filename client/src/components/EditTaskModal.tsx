@@ -1623,6 +1623,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('Sequential cascading complete');
       }
       
+      // CRITICAL: Apply targeted realignment if dependency status changed
+      if (dependencyChanged) {
+        console.log('🔄 DEPENDENCY CHANGED - applying targeted realignment');
+        console.log('Modified task:', task.taskId || task.id, 'dependentOnPrevious:', processedData.dependentOnPrevious);
+        allUpdatedTasks = realignDependentTasksAfter(allUpdatedTasks, task.taskId || task.id);
+      }
+      
       // Filter to only tasks that actually changed
       const tasksToUpdate = allUpdatedTasks.filter(updatedTask => {
         const originalTask = locationTasks.find(orig => 
