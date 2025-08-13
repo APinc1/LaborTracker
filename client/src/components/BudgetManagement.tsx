@@ -91,7 +91,7 @@ export default function BudgetManagement() {
       
       // Calculate using the new formulas
       const convertedQty = unconvertedQty * conversionFactor;
-      const calculatedUnitTotal = convertedQty * unitCost;  // Unit total = QTY × unit cost
+      const calculatedUnitTotal = unconvertedQty * unitCost;  // Unit total = QTY × unit cost (using unconvertedQty as specified)
       const calculatedLaborCost = hours * 90;               // Labor cost = hours × 90
       const calculatedBilling = calculatedUnitTotal;        // Billings = unit total
       
@@ -1665,9 +1665,15 @@ export default function BudgetManagement() {
                                         const newConvertedQty = newQty * conversionFactor;
                                         const px = parseFloat(getInputValue(item.id, 'productionRate', item.productionRate) || '0');
                                         const newHours = newConvertedQty * px;
+                                        const unitCost = parseFloat(item.unitCost || '0');
+                                        const newUnitTotal = newQty * unitCost; // Unit total = QTY × unit cost
+                                        const newLaborCost = newHours * 90; // Labor cost = hours × $90
                                         
                                         setInputValue(item.id, 'convertedQty', newConvertedQty.toFixed(2));
                                         setInputValue(item.id, 'hours', newHours.toFixed(2));
+                                        setInputValue(item.id, 'unitTotal', newUnitTotal.toFixed(2));
+                                        setInputValue(item.id, 'laborCost', newLaborCost.toFixed(2));
+                                        setInputValue(item.id, 'billing', newUnitTotal.toFixed(2)); // Billings = unit total
                                         
                                         // If this is a child item, update parent quantities and hours
                                         if (isChildItem(item)) {
@@ -1711,7 +1717,7 @@ export default function BudgetManagement() {
                                   {formatCurrency(item.unitCost)}
                                 </td>
                                 <td className="text-right px-4 py-3">
-                                  {formatCurrency(item.unitTotal)}
+                                  {formatCurrency(getInputValue(item.id, 'unitTotal', item.unitTotal))}
                                 </td>
                                 <td className="px-4 py-3">{item.convertedUnitOfMeasure || '-'}</td>
                                 <td className="text-right px-4 py-3">
@@ -1874,7 +1880,7 @@ export default function BudgetManagement() {
                                   )}
                                 </td>
                                 <td className="text-right px-4 py-3">
-                                  {formatCurrency(item.laborCost || 0)}
+                                  {formatCurrency(getInputValue(item.id, 'laborCost', item.laborCost || '0'))}
                                 </td>
                                 <td className="text-right px-4 py-3">
                                   {formatCurrency(item.equipmentCost || 0)}
@@ -1895,7 +1901,7 @@ export default function BudgetManagement() {
                                   {formatCurrency(item.budgetTotal || 0)}
                                 </td>
                                 <td className="text-right px-4 py-3">
-                                  {formatCurrency(item.billing || 0)}
+                                  {formatCurrency(getInputValue(item.id, 'billing', item.billing || '0'))}
                                 </td>
                                 {isEditMode && (
                                   <td className={`sticky right-0 z-10 border-l border-gray-200 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`}>
