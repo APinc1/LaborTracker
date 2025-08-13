@@ -1477,148 +1477,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         // For "unsequential_shift_others" action, shift subsequent sequential tasks based on the changed task's new date
         if (dateChangeAction === 'unsequential_shift_others') {
-          console.log('Handling unsequential_shift_others action - task is now non-sequential but should shift following sequential tasks');
+          console.log('🔧 Handling unsequential_shift_others action - using targeted realignment');
           
           // CRITICAL: If this task is in a linked group, update ALL tasks in the linked group to the new date first
           if (processedData.linkedTaskGroup) {
             console.log('Task is in linked group - updating all linked tasks to new date:', processedData.taskDate);
             
-            const linkedTasks = allUpdatedTasks.filter(t => 
-              t.linkedTaskGroup === processedData.linkedTaskGroup
-            );
-            
-            linkedTasks.forEach(linkedTask => {
-              const linkedTaskIndex = allUpdatedTasks.findIndex(t => (t.taskId || t.id) === (linkedTask.taskId || linkedTask.id));
-              if (linkedTaskIndex >= 0) {
-                console.log('Updating linked task:', linkedTask.name, 'from:', linkedTask.taskDate, 'to:', processedData.taskDate);
-                allUpdatedTasks[linkedTaskIndex] = {
-                  ...allUpdatedTasks[linkedTaskIndex],
-                  taskDate: processedData.taskDate // All linked tasks must have same date
-                };
+            allUpdatedTasks = allUpdatedTasks.map(t => {
+              if (t.linkedTaskGroup === processedData.linkedTaskGroup) {
+                console.log('Updating linked task:', t.name, 'from:', t.taskDate, 'to:', processedData.taskDate);
+                return { ...t, taskDate: processedData.taskDate };
               }
+              return t;
             });
           }
           
-          // Find all tasks that come after this task (or the linked group) in the original order
-          const originalTaskOrder = task.order || 0;
-          
-          // If in a linked group, find the maximum order among all linked tasks
-          let maxOrderInGroup = originalTaskOrder;
-          if (processedData.linkedTaskGroup) {
-            const linkedTasks = allUpdatedTasks.filter(t => 
-              t.linkedTaskGroup === processedData.linkedTaskGroup
-            );
-            maxOrderInGroup = Math.max(...linkedTasks.map(t => t.order || 0));
-            console.log('Linked group max order:', maxOrderInGroup);
-          }
-          
-          // Get all tasks after this task/group, sorted by order
-          const allSubsequentTasks = allUpdatedTasks.filter(t => {
-            const taskOrder = t.order || 0;
-            // Filter tasks that come after the entire linked group (or just the task if not linked)
-            // AND exclude tasks that are in the same linked group
-            return taskOrder > maxOrderInGroup && 
-                   (!processedData.linkedTaskGroup || t.linkedTaskGroup !== processedData.linkedTaskGroup);
-          }).sort((a, b) => (a.order || 0) - (b.order || 0));
-          
-          // Collect ALL sequential tasks, regardless of linked groups in between
-          const subsequentTasks: any[] = [];
-          for (const subsequentTask of allSubsequentTasks) {
-            if (subsequentTask.dependentOnPrevious) {
-              subsequentTasks.push(subsequentTask);
-            } else if (!subsequentTask.linkedTaskGroup) {
-              // Stop only when we hit an unsequential task that's NOT in a linked group
-              console.log('Stopping at unsequential non-linked task:', subsequentTask.name, 'order:', subsequentTask.order);
-              break;
-            }
-            // Skip unsequential linked tasks but continue looking for sequential tasks beyond them
-          }
-          
-          console.log('Found', subsequentTasks.length, 'subsequent sequential tasks to shift');
-          console.log('Original task order:', originalTaskOrder, 'New date:', processedData.taskDate);
-          console.log('Subsequent tasks to shift:', subsequentTasks.map(t => ({ name: t.name, order: t.order, dependentOnPrevious: t.dependentOnPrevious })));
-          
-          if (subsequentTasks.length > 0) {
-            let currentDate = processedData.taskDate; // Start from the changed task's new date
-            
-            subsequentTasks.forEach(subsequentTask => {
-              // Calculate next working day from the current baseline
-              const baseDate = new Date(currentDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              // Update the task in the array
-              const originalIndex = allUpdatedTasks.findIndex((t: any) => 
-                (t.taskId || t.id) === (subsequentTask.taskId || subsequentTask.id)
-              );
-              
-              if (originalIndex >= 0) {
-                console.log('Shifting sequential task:', subsequentTask.name, 'from:', subsequentTask.taskDate, 'to:', newDate);
-                
-                allUpdatedTasks[originalIndex] = {
-                  ...allUpdatedTasks[originalIndex],
-                  taskDate: newDate
-                };
-                
-                // If this task is linked, update all tasks in its linked group 
-                if (subsequentTask.linkedTaskGroup) {
-                  const linkedGroupDate = newDate;
-                  allUpdatedTasks = allUpdatedTasks.map(t => {
-                    if (t.linkedTaskGroup === subsequentTask.linkedTaskGroup) {
-                      console.log('Syncing linked task:', t.name, 'to:', linkedGroupDate);
-                      return { ...t, taskDate: linkedGroupDate };
-                    }
-                    return t;
-                  });
-                  // Update currentDate to the linked group date for subsequent calculations
-                  currentDate = linkedGroupDate;
-                } else {
-                  currentDate = newDate; // Update baseline for next task
-                }
-              }
-            });
-            
-            // After shifting all sequential tasks, continue shifting any remaining sequential tasks after linked groups
-            const remainingTasks = allSubsequentTasks.filter(t => {
-              const taskOrder = t.order || 0;
-              const lastShiftedOrder = subsequentTasks.length > 0 ? Math.max(...subsequentTasks.map(st => st.order || 0)) : originalTaskOrder;
-              return taskOrder > lastShiftedOrder && t.dependentOnPrevious;
-            });
-            
-            console.log('Found', remainingTasks.length, 'additional sequential tasks after linked groups');
-            
-            remainingTasks.forEach(remainingTask => {
-              // Calculate next working day from the current baseline
-              const baseDate = new Date(currentDate + 'T00:00:00');
-              const nextDate = new Date(baseDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              // Skip weekends
-              while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
-                nextDate.setDate(nextDate.getDate() + 1);
-              }
-              const newDate = nextDate.toISOString().split('T')[0];
-              
-              const originalIndex = allUpdatedTasks.findIndex((t: any) => 
-                (t.taskId || t.id) === (remainingTask.taskId || remainingTask.id)
-              );
-              
-              if (originalIndex >= 0) {
-                console.log('Shifting remaining sequential task:', remainingTask.name, 'from:', remainingTask.taskDate, 'to:', newDate);
-                
-                allUpdatedTasks[originalIndex] = {
-                  ...allUpdatedTasks[originalIndex],
-                  taskDate: newDate
-                };
-                
-                currentDate = newDate; // Update baseline for next task
-              }
-            });
-          }
+          // Use the targeted realignment function to handle all subsequent task shifting
+          console.log('🔄 Applying targeted realignment for unsequential_shift_others');
+          console.log('Tasks before targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
+          allUpdatedTasks = realignDependentTasksAfter(allUpdatedTasks, task.taskId || task.id);
+          console.log('Tasks after targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
         } else {
           // For other actions (sequential, unsequential_move_only), use the existing cascading logic
           // This is the original logic for normal sequential dependency processing
@@ -1637,12 +1515,15 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       }
       
       // CRITICAL: Apply targeted realignment if dependency status changed
-      if (dependencyChanged) {
+      // BUT ONLY if we didn't already handle it in the manual shifting logic above
+      if (dependencyChanged && dateChangeAction !== 'unsequential_shift_others') {
         console.log('🔄 DEPENDENCY CHANGED - applying targeted realignment');
         console.log('Modified task:', task.taskId || task.id, 'dependentOnPrevious:', processedData.dependentOnPrevious);
         console.log('Tasks before targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
         allUpdatedTasks = realignDependentTasksAfter(allUpdatedTasks, task.taskId || task.id);
         console.log('Tasks after targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
+      } else if (dependencyChanged && dateChangeAction === 'unsequential_shift_others') {
+        console.log('🔄 DEPENDENCY CHANGED but already handled by targeted realignment logic above');
       }
       
       // Filter to only tasks that actually changed
