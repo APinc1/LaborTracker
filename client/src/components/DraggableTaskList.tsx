@@ -823,19 +823,24 @@ export default function DraggableTaskList({
       newIndex
     });
     
-    // Check if there are any completed tasks before or at the target position
-    const completedTasksAtOrBeforeTarget = sortedTasks.slice(0, newIndex + 1).filter(t => getTaskStatus(t, assignments as any[]) === 'complete');
+    // Only prevent moving upcoming tasks directly before a completed task
+    const draggedTaskStatus = getTaskStatus(draggedTask, assignments as any[]);
+    const targetTaskStatus = newIndex < sortedTasks.length ? getTaskStatus(sortedTasks[newIndex], assignments as any[]) : null;
     
-    console.log('🔍 COMPLETED TASKS CHECK:', {
-      completedTasksAtOrBeforeTarget: completedTasksAtOrBeforeTarget.map(t => ({ name: t.name, status: getTaskStatus(t, assignments as any[]) })),
-      count: completedTasksAtOrBeforeTarget.length
+    console.log('🔍 DRAG VALIDATION:', {
+      draggedTask: draggedTask.name,
+      draggedStatus: draggedTaskStatus,
+      targetIndex: newIndex,
+      targetTask: newIndex < sortedTasks.length ? sortedTasks[newIndex].name : 'end of list',
+      targetStatus: targetTaskStatus
     });
-    
-    if (completedTasksAtOrBeforeTarget.length > 0 && getTaskStatus(draggedTask, assignments as any[]) !== 'complete') {
-      console.log('🚫 DRAG END: Cannot drag task before completed tasks');
+
+    // Only prevent if we're moving an upcoming task directly before a completed task
+    if (draggedTaskStatus !== 'complete' && targetTaskStatus === 'complete' && newIndex < sortedTasks.length) {
+      console.log('🚫 DRAG END: Cannot drag upcoming task directly before completed task');
       toast({
         title: "Invalid Move",
-        description: "Cannot move tasks before completed tasks",
+        description: "Cannot move upcoming tasks directly before completed tasks",
         variant: "destructive"
       });
       return;
