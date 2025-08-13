@@ -55,7 +55,7 @@ export const parseSW62ExcelRow = (row: any[], locationId: number): BudgetLineIte
   // Calculate unit total if not provided
   const unitTotal = row[SW62_COLUMN_MAPPING.unitTotal] ? 
     parseFloat(row[SW62_COLUMN_MAPPING.unitTotal].toString()) : 
-    unconvertedQty * unitCost;
+    convertedQty * unitCost;
 
   // Calculate hours if not provided
   const hours = row[SW62_COLUMN_MAPPING.hours] ? 
@@ -65,7 +65,7 @@ export const parseSW62ExcelRow = (row: any[], locationId: number): BudgetLineIte
   // Calculate labor cost if not provided
   const laborCost = row[SW62_COLUMN_MAPPING.laborCost] ? 
     parseFloat(row[SW62_COLUMN_MAPPING.laborCost].toString()) : 
-    hours * 80; // $80/hour
+    hours * 90; // $90/hour
 
   // Parse other costs
   const equipmentCost = parseFloat(row[SW62_COLUMN_MAPPING.equipmentCost]?.toString() || "0");
