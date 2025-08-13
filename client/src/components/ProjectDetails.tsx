@@ -431,9 +431,20 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             <div className="space-y-2">
                               <div className="flex items-center justify-between text-sm">
                                 <span className="text-gray-600">Progress</span>
-                                <span className="text-gray-800 font-medium">0%</span>
+                                <span className="text-gray-800 font-medium">
+                                  {(() => {
+                                    const tasks = locationTaskQueries.data?.[location.locationId] || [];
+                                    const completedTasks = tasks.filter((task: any) => task.status === 'complete').length;
+                                    const progressPercentage = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+                                    return `${progressPercentage}%`;
+                                  })()}
+                                </span>
                               </div>
-                              <Progress value={0} className="h-2" />
+                              <Progress value={(() => {
+                                const tasks = locationTaskQueries.data?.[location.locationId] || [];
+                                const completedTasks = tasks.filter((task: any) => task.status === 'complete').length;
+                                return tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
+                              })()} className="h-2" />
                               <p className="text-xs text-gray-500">Based on completed tasks</p>
                             </div>
 

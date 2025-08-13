@@ -377,8 +377,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   const remainingHours = totalBudgetHours - totalActualHours;
 
-  // Calculate progress
-  const completedTasks = tasks.filter((task: any) => task.actualHours).length;
+  // Calculate progress based on task status (matching server logic)
+  const completedTasks = tasks.filter((task: any) => task.status === 'complete').length;
   const progressPercentage = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
 
   // Helper function to get user-friendly cost code display names
