@@ -1052,8 +1052,8 @@ export default function AssignmentManagement() {
                       const employeesWithAvailability = (employees as any[]).map(calculateEmployeeAvailability);
                       
                       const filteredEmployees = employeesWithAvailability.filter((employee: any) =>
-                        employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
-                        employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
+                        (employee.name || '').toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+                        (employee.teamMemberId || '').toLowerCase().includes(employeeSearchTerm.toLowerCase())
                       );
                       
                       const selectedEmployees = employeesWithAvailability.filter((emp: any) => 
