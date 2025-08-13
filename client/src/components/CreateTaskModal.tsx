@@ -136,17 +136,16 @@ export default function CreateTaskModal({
   } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
 
-  // Fetch projects for selection
+  // Fetch projects for selection - always fetch
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
-    enabled: isOpen,
     staleTime: 30000,
   });
 
-  // Fetch locations for selected project
+  // Fetch locations for selected project - always fetch when selectedProject exists
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/projects", selectedProject, "locations"],
-    enabled: !!selectedProject && isOpen,
+    enabled: !!selectedProject,
     staleTime: 30000,
   });
 

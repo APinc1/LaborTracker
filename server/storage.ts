@@ -1001,7 +1001,7 @@ class DatabaseStorage implements IStorage {
         max: 2, // Small pool to allow concurrent requests
         idle_timeout: 20,
         connect_timeout: 10,
-        statement_timeout: 15000, // 15 second statement timeout
+        statement_timeout: 30000, // 30 second statement timeout
         max_lifetime: 60 * 15, // 15 minute connection lifetime
         prepare: false, // Disable prepared statements
         debug: false,
