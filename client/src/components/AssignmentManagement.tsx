@@ -45,6 +45,7 @@ export default function AssignmentManagement() {
   const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
+  const actualHoursInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
     queryKey: ["/api/assignments/date", selectedDate],
@@ -500,6 +501,34 @@ export default function AssignmentManagement() {
       ...prev,
       [assignmentId]: hours
     }));
+    setHasUnsavedChanges(true);
+  };
+
+  // Function to handle Enter key navigation between actual hours inputs
+  const handleActualHoursKeyDown = (e: React.KeyboardEvent, currentAssignmentId: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // Get all assignment IDs in order
+      const assignmentIds = filteredAssignments.map((assignment: any) => assignment.id);
+      const currentIndex = assignmentIds.indexOf(currentAssignmentId);
+      
+      if (currentIndex < assignmentIds.length - 1) {
+        // Move to next input
+        const nextAssignmentId = assignmentIds[currentIndex + 1];
+        const nextInput = actualHoursInputRefs.current[nextAssignmentId];
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select(); // Select all text for quick editing
+        }
+      } else {
+        // If at the last input, blur to trigger any validation/save
+        const currentInput = actualHoursInputRefs.current[currentAssignmentId];
+        if (currentInput) {
+          currentInput.blur();
+        }
+      }
+    }
   };
 
   const getEmployee = (employeeId: number) => {
@@ -1565,6 +1594,7 @@ export default function AssignmentManagement() {
                             <TableCell>
                               {bulkEditMode ? (
                                 <Input
+                                  ref={(el) => actualHoursInputRefs.current[assignment.id] = el}
                                   type="number"
                                   step="0.1"
                                   min="0"
@@ -1572,6 +1602,7 @@ export default function AssignmentManagement() {
                                   placeholder={assignment.actualHours?.toString() || "0"}
                                   value={editingActualHours[assignment.id] || assignment.actualHours?.toString() || ''}
                                   onChange={(e) => updateActualHours(assignment.id, e.target.value)}
+                                  onKeyDown={(e) => handleActualHoursKeyDown(e, assignment.id)}
                                   className="w-20 h-8"
                                 />
                               ) : assignment.actualHours ? (
