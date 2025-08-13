@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -1426,7 +1426,7 @@ class DatabaseStorage implements IStorage {
 
   // Budget methods
   async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
-    return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.locationId, locationId));
+    return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.locationId, locationId)).orderBy(asc(budgetLineItems.lineItemNumber));
   }
 
   async createBudgetLineItem(insertBudgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem> {

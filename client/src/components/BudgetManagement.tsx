@@ -83,6 +83,18 @@ export default function BudgetManagement() {
 
   const handleInlineUpdate = useCallback(async (itemId: number, updatedItem: any) => {
     try {
+      // Apply budget calculations before saving
+      const unconvertedQty = parseFloat(updatedItem.unconvertedQty || "0");
+      const unitCost = parseFloat(updatedItem.unitCost || "0");
+      const conversionFactor = parseFloat(updatedItem.conversionFactor || "1");
+      const hours = parseFloat(updatedItem.hours || "0");
+      
+      // Calculate using the new formulas
+      const convertedQty = unconvertedQty * conversionFactor;
+      const calculatedUnitTotal = convertedQty * unitCost;  // Unit total = QTY × unit cost
+      const calculatedLaborCost = hours * 90;               // Labor cost = hours × 90
+      const calculatedBilling = calculatedUnitTotal;        // Billings = unit total
+      
       // Clean up the data to ensure proper string formatting for decimal fields
       const cleanedItem = {
         ...updatedItem,
@@ -90,19 +102,19 @@ export default function BudgetManagement() {
         productionRate: updatedItem.productionRate?.toString() || '0',
         hours: updatedItem.hours?.toString() || '0',
         unconvertedQty: updatedItem.unconvertedQty?.toString() || '0',
-        convertedQty: updatedItem.convertedQty?.toString() || '0',
+        convertedQty: convertedQty.toString(),
         unitCost: updatedItem.unitCost?.toString() || '0',
-        unitTotal: updatedItem.unitTotal?.toString() || '0',
+        unitTotal: calculatedUnitTotal.toFixed(2),           // Apply new calculation
         budgetTotal: updatedItem.budgetTotal?.toString() || '0',
         conversionFactor: updatedItem.conversionFactor?.toString() || '1',
-        // Remove undefined/null values
-        ...(updatedItem.laborCost !== undefined && { laborCost: updatedItem.laborCost.toString() }),
+        laborCost: calculatedLaborCost.toFixed(2),           // Apply new calculation
+        billing: calculatedBilling.toFixed(2),               // Apply new calculation
+        // Remove undefined/null values for other fields
         ...(updatedItem.equipmentCost !== undefined && { equipmentCost: updatedItem.equipmentCost.toString() }),
         ...(updatedItem.truckingCost !== undefined && { truckingCost: updatedItem.truckingCost.toString() }),
         ...(updatedItem.dumpFeesCost !== undefined && { dumpFeesCost: updatedItem.dumpFeesCost.toString() }),
         ...(updatedItem.materialCost !== undefined && { materialCost: updatedItem.materialCost.toString() }),
         ...(updatedItem.subcontractorCost !== undefined && { subcontractorCost: updatedItem.subcontractorCost.toString() }),
-        ...(updatedItem.billing !== undefined && { billing: updatedItem.billing.toString() }),
         ...(updatedItem.actualQty !== undefined && { actualQty: updatedItem.actualQty.toString() }),
       };
       
