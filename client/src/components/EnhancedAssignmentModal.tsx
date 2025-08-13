@@ -127,9 +127,14 @@ export default function EnhancedAssignmentModal({
     staleTime: 30000,
   });
 
-  console.log('Assignment Modal - Current Task:', currentTask);
-  console.log('Assignment Modal - Current Location:', currentLocation);
-  console.log('Assignment Modal - Current Project:', currentProject);
+  // Only log once when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Assignment Modal - Current Task:', currentTask);
+      console.log('Assignment Modal - Current Location:', currentLocation);
+      console.log('Assignment Modal - Current Project:', currentProject);
+    }
+  }, [isOpen]);
 
   // Filter users for superintendent dropdown
   const superintendents = (users as any[]).filter((user: any) => user.role === 'Superintendent');
@@ -167,11 +172,11 @@ export default function EnhancedAssignmentModal({
           }
         });
 
-        console.log('Loading existing assignments:', {
-          existingEmployeeIds,
-          individualHours,
-          assignedCrews
-        });
+        // console.log('Loading existing assignments:', {
+        //   existingEmployeeIds,
+        //   individualHours,
+        //   assignedCrews
+        // });
 
         setSelectedEmployeeIds(existingEmployeeIds);
         setSelectedCrews(assignedCrews);
@@ -182,16 +187,16 @@ export default function EnhancedAssignmentModal({
 
     // Load superintendent from current task, or default from project (only on first open)
     if (isOpen) {
-      console.log('Setting superintendent - Task superintendent:', currentTask?.superintendentId);
-      console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
-      console.log('Current selected superintendent:', selectedSuperintendentId);
+      // console.log('Setting superintendent - Task superintendent:', currentTask?.superintendentId);
+      // console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
+      // console.log('Current selected superintendent:', selectedSuperintendentId);
       
       if (currentTask && currentTask.superintendentId) {
-        console.log('Using task superintendent:', currentTask.superintendentId);
+        // console.log('Using task superintendent:', currentTask.superintendentId);
         setSelectedSuperintendentId(currentTask.superintendentId.toString());
       } else if (selectedSuperintendentId === null && currentProject && currentProject.defaultSuperintendent) {
         // Only set default if no superintendent is currently selected
-        console.log('No superintendent selected, using project default:', currentProject.defaultSuperintendent);
+        // console.log('No superintendent selected, using project default:', currentProject.defaultSuperintendent);
         
         // Check if defaultSuperintendent is a name (string) or ID (number)
         if (typeof currentProject.defaultSuperintendent === 'string') {
@@ -200,20 +205,20 @@ export default function EnhancedAssignmentModal({
             user.name === currentProject.defaultSuperintendent
           );
           if (superintendentUser) {
-            console.log('Found superintendent by name:', superintendentUser);
+            // console.log('Found superintendent by name:', superintendentUser);
             setSelectedSuperintendentId(superintendentUser.id.toString());
           } else {
-            console.log('Superintendent name not found in users list');
+            // console.log('Superintendent name not found in users list');
           }
         } else {
           // It's already an ID
           setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
         }
       } else if (!currentTask?.superintendentId && selectedSuperintendentId !== null) {
-        console.log('Keeping user-selected superintendent:', selectedSuperintendentId);
+        // console.log('Keeping user-selected superintendent:', selectedSuperintendentId);
       }
     }
-  }, [isOpen, existingAssignments, employees, crews, currentTask, currentLocation, currentProject, superintendents, selectedSuperintendentId]);
+  }, [isOpen, existingAssignments.length, employees.length, crews.length, currentTask?.id, currentLocation?.id, currentProject?.id]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
