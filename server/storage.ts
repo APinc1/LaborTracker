@@ -63,7 +63,7 @@ export interface IStorage {
   createUserFromEmployee(employeeId: number, username: string, role: string): Promise<{ user: User; employee: Employee }>;
   
   // Task methods
-  getTasks(locationId: string | number): Promise<Task[]>;
+  getTasks(locationId: number): Promise<Task[]>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
@@ -320,7 +320,7 @@ export class MemStorage implements IStorage {
 
     const formTask = await this.createTask({
       taskId: `${northSection.locationId}_Form_Day1`,
-      locationId: northSection.locationId,
+      locationId: northSection.id,
       taskType: "Form",
       name: "Form Day 1 of 3",
       taskDate: today,
@@ -341,7 +341,7 @@ export class MemStorage implements IStorage {
 
     const demoTask = await this.createTask({
       taskId: `${eastWing.locationId}_Demo_Day1`,
-      locationId: eastWing.locationId,
+      locationId: eastWing.id,
       taskType: "Demo/Ex",
       name: "Demo/Ex Base Grade",
       taskDate: today,
@@ -363,7 +363,7 @@ export class MemStorage implements IStorage {
 
     const pourTask = await this.createTask({
       taskId: `${northSection.locationId}_Pour_Day1`,
-      locationId: northSection.locationId,
+      locationId: northSection.id,
       taskType: "Pour",
       name: "Pour Concrete",
       taskDate: tomorrow,
@@ -543,7 +543,7 @@ export class MemStorage implements IStorage {
     // Delete all related data for each location
     for (const location of projectLocations) {
       // Delete employee assignments for tasks in this location  
-      const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === location.id.toString());
+      const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === location.id);
       for (const task of locationTasks) {
         // Delete assignments for this task
         const taskAssignments = Array.from(this.employeeAssignments.entries()).filter(([_, assignment]) => assignment.taskId === task.id);
@@ -551,7 +551,7 @@ export class MemStorage implements IStorage {
       }
       
       // Delete tasks in this location
-      const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === location.id.toString()).map(([id]) => id);
+      const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === location.id).map(([id]) => id);
       taskIds.forEach(id => this.tasks.delete(id));
       
       // Delete budget line items for this location
@@ -690,7 +690,7 @@ export class MemStorage implements IStorage {
     }
     
     // Delete employee assignments for tasks in this location
-    const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === locationToDelete!.id.toString());
+    const locationTasks = Array.from(this.tasks.values()).filter(task => task.locationId === locationToDelete!.id);
     for (const task of locationTasks) {
       // Delete assignments for this task
       const taskAssignments = Array.from(this.employeeAssignments.entries()).filter(([_, assignment]) => assignment.taskId === task.id);
@@ -698,7 +698,7 @@ export class MemStorage implements IStorage {
     }
     
     // Delete tasks in this location
-    const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === locationToDelete!.id.toString()).map(([id]) => id);
+    const taskIds = Array.from(this.tasks.entries()).filter(([_, task]) => task.locationId === locationToDelete!.id).map(([id]) => id);
     taskIds.forEach(id => this.tasks.delete(id));
     
     // Delete budget line items for this location
@@ -863,9 +863,9 @@ export class MemStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: string | number): Promise<Task[]> {
+  async getTasks(locationId: number): Promise<Task[]> {
     return Array.from(this.tasks.values()).filter(task => {
-      return String(task.locationId) === String(locationId);
+      return task.locationId === locationId;
     });
   }
 
@@ -1510,13 +1510,13 @@ class DatabaseStorage implements IStorage {
     }
     
     // Delete employee assignments for tasks in this location
-    const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, locationDbId.toString()));
+    const locationTasks = await this.db.select().from(tasks).where(eq(tasks.locationId, locationDbId));
     for (const task of locationTasks) {
       await this.db.delete(employeeAssignments).where(eq(employeeAssignments.taskId, task.id));
     }
     
     // Delete tasks in this location
-    await this.db.delete(tasks).where(eq(tasks.locationId, locationDbId.toString()));
+    await this.db.delete(tasks).where(eq(tasks.locationId, locationDbId));
     
     // Delete budget line items for this location
     await this.db.delete(budgetLineItems).where(eq(budgetLineItems.locationId, locationDbId));
@@ -1624,8 +1624,8 @@ class DatabaseStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: string | number): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(eq(tasks.locationId, String(locationId)));
+  async getTasks(locationId: number): Promise<Task[]> {
+    return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
   }
 
   async getTask(id: number): Promise<Task | undefined> {

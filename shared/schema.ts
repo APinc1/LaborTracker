@@ -99,7 +99,7 @@ export const employees = pgTable("employees", {
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   taskId: text("task_id").notNull().unique(),
-  locationId: text("location_id").notNull(),
+  locationId: integer("location_id").references(() => locations.id, { onDelete: "cascade" }).notNull(),
   taskType: text("task_type").notNull(),
   name: text("name").notNull(),
   taskDate: date("task_date").notNull(),
@@ -151,7 +151,12 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
   isUnion: z.boolean().optional().default(false),
 });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
-  locationId: z.union([z.string(), z.number()]).transform(val => String(val)),
+  taskDate: z.string(),
+  startDate: z.string(),
+  finishDate: z.string(),
+  locationId: z.number(),
+  superintendentId: z.number().optional().nullable(),
+  foremanId: z.number().optional().nullable(),
   order: z.union([z.string(), z.number()]).transform(val => String(val))
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true });

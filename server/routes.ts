@@ -422,11 +422,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Location tasks route
+  // Location tasks route  
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
-      const tasks = await storage.getTasks(req.params.locationId);
+      const locationParam = req.params.locationId;
+      
+      // Convert location identifier to database ID
+      let locationDbId: number;
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure number - use as database ID
+        locationDbId = parseInt(locationParam);
+      } else {
+        // It's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      }
+      
+      const tasks = await storage.getTasks(locationDbId);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -582,7 +598,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
-      const tasks = await storage.getTasks(req.params.locationId);
+      const locationParam = req.params.locationId;
+      
+      // Convert location identifier to database ID
+      let locationDbId: number;
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure number - use as database ID
+        locationDbId = parseInt(locationParam);
+      } else {
+        // It's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      }
+      
+      const tasks = await storage.getTasks(locationDbId);
       res.json(tasks);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch tasks' });
@@ -615,15 +647,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
+      // Convert locationId parameter to database ID
+      const locationParam = req.params.locationId;
+      let locationDbId: number;
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure number - use as database ID
+        locationDbId = parseInt(locationParam);
+      } else {
+        // It's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      }
+      
       const validated = insertTaskSchema.parse({
         ...req.body,
-        locationId: req.params.locationId
+        locationId: locationDbId
       });
       
       // CRITICAL: Check if this will be the first task and enforce unsequential status
       // Only enforce for the very first task when no tasks exist at all AND order is 0
-      const existingTasks = await storage.getTasks(req.params.locationId);
-      const isActualFirstTask = existingTasks.length === 0 && (validated.order === 0 || validated.order === undefined);
+      const existingTasks = await storage.getTasks(locationDbId);
+      const isActualFirstTask = existingTasks.length === 0 && (parseFloat(validated.order as string) === 0 || validated.order === undefined);
       
       if (isActualFirstTask && validated.dependentOnPrevious) {
         console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
@@ -666,7 +713,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentTask = await storage.getTask(parseInt(req.params.id));
       if (currentTask && validated.dependentOnPrevious === true) {
         const allTasks = await storage.getTasks(currentTask.locationId);
-        const sortedTasks = allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const sortedTasks = allTasks.sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
         
         // Only enforce if this is clearly a direct edit attempt (not a drag operation)
@@ -803,7 +850,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const dateA = new Date(a.taskDate).getTime();
           const dateB = new Date(b.taskDate).getTime();
           if (dateA !== dateB) return dateA - dateB;
-          return (a.order || 0) - (b.order || 0);
+          return (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0);
         });
         
         // Apply enhanced sequential realignment using the comprehensive function
@@ -811,7 +858,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { realignDependentTasks } = await import('../shared/taskUtils.js');
         
         // Sort tasks by order for proper sequential processing
-        const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         const realignedTasks = realignDependentTasks(tasksToProcess);
         
         // Find tasks that need date updates
