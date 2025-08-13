@@ -680,7 +680,11 @@ export class MemStorage implements IStorage {
     }
     
     if (!existing) throw new Error('Location not found');
-    const updated = { ...existing, ...updateLocation };
+    const updated = { 
+      ...existing, 
+      ...updateLocation,
+      startDate: updateLocation.startDate ?? existing.startDate 
+    };
     this.locations.set(locationKey!, updated);
     return updated;
   }
@@ -732,7 +736,7 @@ export class MemStorage implements IStorage {
     locationBudgetIds.forEach(id => this.locationBudgets.delete(id));
     
     // Finally delete the location
-    this.locations.delete(locationDbId);
+    this.locations.delete(locationDbId!);
   }
 
   // Location budget methods
@@ -996,7 +1000,8 @@ class DatabaseStorage implements IStorage {
         ssl: 'require',
         max: 10,
         idle_timeout: 20,
-        connect_timeout: 10,
+        connect_timeout: 30,
+        statement_timeout: 30000, // 30 seconds
       });
       
       this.db = drizzlePostgres(client, {
@@ -1548,7 +1553,7 @@ class DatabaseStorage implements IStorage {
         throw new Error('Location not found');
       }
       locationToDelete = locationResult[0];
-      locationDbId = locationToDelete.id;
+      locationDbId = locationToDelete?.id || 0;
     } else {
       // Find by numeric database id
       const locationResult = await this.db.select().from(locations).where(eq(locations.id, id));
@@ -1675,7 +1680,17 @@ class DatabaseStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: number): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
+    try {
+      return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
+    } catch (error: any) {
+      console.error(`Error fetching tasks for location ${locationId}:`, error.message);
+      // If it's a timeout error, return empty array to prevent app crash
+      if (error.code === '57014') {
+        console.warn(`Database timeout for location ${locationId}, returning empty array`);
+        return [];
+      }
+      throw error;
+    }
   }
 
   async getTask(id: number): Promise<Task | undefined> {
