@@ -633,8 +633,8 @@ export default function AssignmentManagement() {
     return true;
   });
 
-  const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name).filter(name => name && name.trim() !== '')));
-  const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType).filter(type => type && type.trim() !== '')));
+  const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name)));
+  const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
 
   if (assignmentsLoading) {
     return (
@@ -666,8 +666,8 @@ export default function AssignmentManagement() {
                 setHasUnsavedChanges(false);
                 // Reset form to default values
                 form.reset({
-                  taskId: undefined,
-                  employeeId: undefined,
+                  taskId: '',
+                  employeeId: '',
                   assignmentDate: selectedDate,
                   assignedHours: '8',
                   actualHours: null,
@@ -685,10 +685,10 @@ export default function AssignmentManagement() {
                 {editingAssignment && (
                   <div className="mt-2 pb-4 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800">
-                      {(employees as any[])?.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.name || 'Unknown Employee'}
+                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.name || 'Unknown Employee'}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {(employees as any[])?.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.teamMemberId || 'N/A'}
+                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.teamMemberId || 'N/A'}
                     </p>
                   </div>
                 )}
@@ -1052,8 +1052,8 @@ export default function AssignmentManagement() {
                       const employeesWithAvailability = (employees as any[]).map(calculateEmployeeAvailability);
                       
                       const filteredEmployees = employeesWithAvailability.filter((employee: any) =>
-                        (employee.name || '').toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
-                        (employee.teamMemberId || '').toLowerCase().includes(employeeSearchTerm.toLowerCase())
+                        employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+                        employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
                       );
                       
                       const selectedEmployees = employeesWithAvailability.filter((emp: any) => 
@@ -1364,7 +1364,7 @@ export default function AssignmentManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All crews</SelectItem>
-                      {uniqueCrews.filter(crewName => crewName && crewName.trim() !== '').map((crewName) => (
+                      {uniqueCrews.map((crewName) => (
                         <SelectItem key={crewName} value={crewName}>
                           {crewName}
                         </SelectItem>
@@ -1380,7 +1380,7 @@ export default function AssignmentManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All types</SelectItem>
-                      {uniqueEmployeeTypes.filter(type => type && type.trim() !== '').map((type) => (
+                      {uniqueEmployeeTypes.map((type) => (
                         <SelectItem key={type} value={type}>
                           {type}
                         </SelectItem>

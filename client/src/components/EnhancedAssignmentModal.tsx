@@ -256,8 +256,8 @@ export default function EnhancedAssignmentModal({
   const employeesWithAvailability = (employees as any[]).map(calculateEmployeeAvailability);
   
   const filteredEmployees = employeesWithAvailability.filter((employee: any) =>
-    (employee.name || '').toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
-    (employee.teamMemberId || '').toLowerCase().includes(employeeSearchTerm.toLowerCase())
+    employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||
+    employee.teamMemberId.toLowerCase().includes(employeeSearchTerm.toLowerCase())
   );
 
   const selectedEmployees = employeesWithAvailability.filter((emp: any) => 
@@ -297,7 +297,7 @@ export default function EnhancedAssignmentModal({
   const crewsWithAvailability = (crews as any[]).map(calculateCrewAvailability);
   
   const filteredCrews = crewsWithAvailability.filter((crew: any) =>
-    (crew.name || '').toLowerCase().includes(crewSearchTerm.toLowerCase())
+    crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
   // Clear existing assignments

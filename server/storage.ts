@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -39,7 +39,6 @@ export interface IStorage {
   getLocations(projectId: number): Promise<Location[]>;
   getAllLocations(): Promise<Location[]>;
   getLocation(id: string | number): Promise<Location | undefined>;
-  getLocationsByIds(ids: (string | number)[]): Promise<Location[]>;
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: string | number, location: Partial<InsertLocation>): Promise<Location>;
   deleteLocation(id: string | number): Promise<void>;
@@ -336,7 +335,7 @@ export class MemStorage implements IStorage {
       finishTime: "17:00",
       workDescription: "Set up concrete forms for bridge deck section. Ensure proper alignment and elevation.",
       notes: "Weather conditions good, expect normal progress",
-      order: "0",
+      order: 0,
       dependentOnPrevious: true
     });
 
@@ -358,7 +357,7 @@ export class MemStorage implements IStorage {
       workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
       notes: "Coordinate with utilities for underground clearance",
       status: "in_progress",
-      order: "0",
+      order: 0,
       dependentOnPrevious: false  // CRITICAL: First task must always be unsequential
     });
 
@@ -379,7 +378,7 @@ export class MemStorage implements IStorage {
       finishTime: "15:00",
       workDescription: "Pour concrete for bridge deck section",
       notes: "Concrete delivery scheduled for 7:00 AM",
-      order: "2",
+      order: 2,
       dependentOnPrevious: true
     });
 
@@ -430,10 +429,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null,
-      passwordResetToken: insertUser.passwordResetToken ?? null,
-      passwordResetExpires: insertUser.passwordResetExpires ?? null,
-      isPasswordSet: insertUser.isPasswordSet ?? null
+      phone: insertUser.phone ?? null
     };
     this.users.set(id, user);
     return user;
@@ -522,8 +518,8 @@ export class MemStorage implements IStorage {
       id, 
       createdAt: new Date(),
       // Ensure null values are preserved for optional fields
-      startDate: insertProject.startDate ?? null,
-      endDate: insertProject.endDate ?? null,
+      startDate: insertProject.startDate === null ? null : insertProject.startDate || null,
+      endDate: insertProject.endDate === null ? null : insertProject.endDate,
       defaultSuperintendent: insertProject.defaultSuperintendent ?? null,
       defaultProjectManager: insertProject.defaultProjectManager ?? null
     };
@@ -587,7 +583,6 @@ export class MemStorage implements IStorage {
       actualQty: insertBudgetLineItem.actualQty ?? null,
       convertedQty: insertBudgetLineItem.convertedQty ?? null,
       convertedUnitOfMeasure: insertBudgetLineItem.convertedUnitOfMeasure ?? null,
-      conversionFactor: insertBudgetLineItem.conversionFactor ?? null,
       productionRate: insertBudgetLineItem.productionRate ?? null,
       hours: insertBudgetLineItem.hours ?? null,
       billing: insertBudgetLineItem.billing ?? null,
@@ -632,25 +627,12 @@ export class MemStorage implements IStorage {
     return this.locations.get(id);
   }
 
-  async getLocationsByIds(ids: (string | number)[]): Promise<Location[]> {
-    const results: Location[] = [];
-    for (const id of ids) {
-      const location = await this.getLocation(id);
-      if (location) results.push(location);
-    }
-    return results;
-  }
-
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
     const id = this.currentLocationId++;
     const location: Location = { 
       ...insertLocation, 
       id,
-      startDate: insertLocation.startDate ?? "",
       endDate: insertLocation.endDate ?? null,
-      description: insertLocation.description ?? null,
-      estimatedCost: insertLocation.estimatedCost ?? null,
-      actualCost: insertLocation.actualCost ?? null,
       isComplete: insertLocation.isComplete ?? null
     };
     this.locations.set(id, location);
@@ -663,28 +645,21 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      const locationsArray = Array.from(this.locations.entries());
-      for (const [key, loc] of locationsArray) {
+      for (const [key, loc] of this.locations.entries()) {
         if (loc.locationId === id) {
           existing = loc;
           locationKey = key;
           break;
         }
       }
-      if (!existing) throw new Error('Location not found');
     } else {
       // Find by numeric id
       existing = this.locations.get(id);
       locationKey = id;
-      if (!existing) throw new Error('Location not found');
     }
     
     if (!existing) throw new Error('Location not found');
-    const updated = { 
-      ...existing, 
-      ...updateLocation,
-      startDate: updateLocation.startDate ?? existing.startDate 
-    };
+    const updated = { ...existing, ...updateLocation };
     this.locations.set(locationKey!, updated);
     return updated;
   }
@@ -695,8 +670,7 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      const locationsArray = Array.from(this.locations.entries());
-      for (const [key, loc] of locationsArray) {
+      for (const [key, loc] of this.locations.entries()) {
         if (loc.locationId === id) {
           locationToDelete = loc;
           locationDbId = key;
@@ -736,7 +710,7 @@ export class MemStorage implements IStorage {
     locationBudgetIds.forEach(id => this.locationBudgets.delete(id));
     
     // Finally delete the location
-    this.locations.delete(locationDbId!);
+    this.locations.delete(locationDbId);
   }
 
   // Location budget methods
@@ -749,7 +723,9 @@ export class MemStorage implements IStorage {
     const locationBudget: LocationBudget = { 
       ...insertLocationBudget, 
       id,
-      notes: insertLocationBudget.notes ?? null
+      adjustedQty: insertLocationBudget.adjustedQty ?? null,
+      adjustedHours: insertLocationBudget.adjustedHours ?? null,
+      actualQty: insertLocationBudget.actualQty ?? null
     };
     this.locationBudgets.set(id, locationBudget);
     return locationBudget;
@@ -804,13 +780,7 @@ export class MemStorage implements IStorage {
       email: insertEmployee.email ?? null,
       phone: insertEmployee.phone ?? null,
       crewId: insertEmployee.crewId ?? null,
-      apprenticeLevel: insertEmployee.apprenticeLevel ?? null,
-      isForeman: insertEmployee.isForeman ?? null,
-      isUnion: insertEmployee.isUnion ?? false,
-      primaryTrade: insertEmployee.primaryTrade ?? null,
-      secondaryTrade: insertEmployee.secondaryTrade ?? null,
-      tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
-      userId: insertEmployee.userId ?? null
+      isForeman: insertEmployee.isForeman ?? null
     };
     this.employees.set(id, employee);
     return employee;
@@ -995,22 +965,12 @@ class DatabaseStorage implements IStorage {
     console.log("Initializing Supabase PostgreSQL connection...");
     
     try {
-      // Use postgres-js with balanced settings for Supabase
+      // Use postgres-js for better Supabase compatibility
       const client = postgres(connectionString, {
         ssl: 'require',
-        max: 2, // Small pool to allow concurrent requests
+        max: 10,
         idle_timeout: 20,
         connect_timeout: 10,
-        statement_timeout: 30000, // 30 second statement timeout
-        max_lifetime: 60 * 15, // 15 minute connection lifetime
-        prepare: false, // Disable prepared statements
-        debug: false,
-        transform: {
-          undefined: null
-        },
-        connection: {
-          application_name: 'replit_construction_app'
-        }
       });
       
       this.db = drizzlePostgres(client, {
@@ -1493,39 +1453,20 @@ class DatabaseStorage implements IStorage {
   }
 
   async getLocation(id: string | number): Promise<Location | undefined> {
+    console.log(`🔎 DatabaseStorage.getLocation called with:`, id, `(type: ${typeof id})`);
     if (typeof id === 'string') {
+      // Search by locationId string
+      console.log(`🔍 Searching by locationId string: "${id}"`);
       const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      console.log(`📊 String search result:`, result.length, 'found');
       return result[0];
     } else {
+      // Search by database ID number
+      console.log(`🔍 Searching by database ID: ${id}`);
       const result = await this.db.select().from(locations).where(eq(locations.id, id));
+      console.log(`📊 ID search result:`, result.length, 'found', result[0] ? `- Location: ${result[0].name}` : '');
       return result[0];
     }
-  }
-
-  async getLocationsByIds(ids: (string | number)[]): Promise<Location[]> {
-    if (ids.length === 0) return [];
-    
-    // Separate string and number IDs for efficient bulk queries
-    const stringIds = ids.filter(id => typeof id === 'string') as string[];
-    const numberIds = ids.filter(id => typeof id === 'number') as number[];
-    
-    const results: Location[] = [];
-    
-    if (stringIds.length > 0) {
-      const stringResults = await this.db.select().from(locations).where(
-        stringIds.length === 1 ? eq(locations.locationId, stringIds[0]) : inArray(locations.locationId, stringIds)
-      );
-      results.push(...stringResults);
-    }
-    
-    if (numberIds.length > 0) {
-      const numberResults = await this.db.select().from(locations).where(
-        numberIds.length === 1 ? eq(locations.id, numberIds[0]) : inArray(locations.id, numberIds)
-      );
-      results.push(...numberResults);
-    }
-    
-    return results;
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -1562,7 +1503,7 @@ class DatabaseStorage implements IStorage {
         throw new Error('Location not found');
       }
       locationToDelete = locationResult[0];
-      locationDbId = locationToDelete?.id || 0;
+      locationDbId = locationToDelete.id;
     } else {
       // Find by numeric database id
       const locationResult = await this.db.select().from(locations).where(eq(locations.id, id));
@@ -1689,17 +1630,7 @@ class DatabaseStorage implements IStorage {
 
   // Task methods
   async getTasks(locationId: number): Promise<Task[]> {
-    try {
-      return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
-    } catch (error: any) {
-      console.error(`Error fetching tasks for location ${locationId}:`, error.message);
-      // If it's a timeout error, return empty array to prevent app crash
-      if (error.code === '57014') {
-        console.warn(`Database timeout for location ${locationId}, returning empty array`);
-        return [];
-      }
-      throw error;
-    }
+    return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
   }
 
   async getTask(id: number): Promise<Task | undefined> {
@@ -1775,7 +1706,7 @@ async function initializeStorage(): Promise<IStorage> {
     console.log(`✓ Successfully connected to PostgreSQL database! Found ${users.length} users.`);
     return dbStorage;
     
-  } catch (error: any) {
+  } catch (error) {
     console.error("✗ Failed to connect to Supabase database:", error.message);
     console.log("📦 Falling back to in-memory storage with sample data");
     console.log("🔧 To troubleshoot:");

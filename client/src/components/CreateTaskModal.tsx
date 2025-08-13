@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -109,24 +109,6 @@ export default function CreateTaskModal({
   const [selectedProject, setSelectedProject] = useState<number | undefined>(initialProject);
   const [selectedLocation, setSelectedLocation] = useState<number | undefined>(initialLocation);
   
-  // Debug logging to see what props we receive
-  console.log('CreateTaskModal props:', { 
-    isOpen, 
-    initialProject, 
-    initialLocation, 
-    selectedProject, 
-    selectedLocation 
-  });
-
-  // Update state when props change
-  useEffect(() => {
-    if (isOpen) {
-      console.log('Modal opened - updating from props:', { initialProject, initialLocation });
-      setSelectedProject(initialProject);
-      setSelectedLocation(initialLocation);
-    }
-  }, [isOpen, initialProject, initialLocation]);
-  
   // Date selection dialog states
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
   const [linkingOptions, setLinkingOptions] = useState<{
@@ -136,29 +118,22 @@ export default function CreateTaskModal({
   } | null>(null);
   const [pendingFormData, setPendingFormData] = useState<any>(null);
 
-  // Fetch projects for selection - always fetch
+  // Fetch projects for selection
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
+    enabled: isOpen,
     staleTime: 30000,
   });
 
-  // Fetch locations for selected project - always fetch when selectedProject exists
+  // Fetch locations for selected project
   const { data: locations = [] } = useQuery({
     queryKey: ["/api/projects", selectedProject, "locations"],
-    enabled: !!selectedProject,
+    enabled: !!selectedProject && isOpen,
     staleTime: 30000,
   });
 
   // Get selected location details
   const selectedLocationData = selectedLocation ? (locations as any[]).find((loc: any) => loc.id === selectedLocation) : null;
-  
-  // Debug logging for location data
-  console.log('Location data:', { 
-    selectedLocation, 
-    locations: locations?.length || 0, 
-    selectedLocationData,
-    locationIds: (locations as any[]).map(l => ({ id: l.id, name: l.name }))
-  });
 
   // Fetch existing tasks for linking - use locationId string format for API
   const { data: existingTasks = [] } = useQuery({
@@ -179,10 +154,9 @@ export default function CreateTaskModal({
       console.log('Creating task with position:', data.newTask.name, 'order:', data.newTask.order);
       console.log('Updating', data.updatedTasks.length, 'existing tasks');
       
-      // locationIdString and projectIdForTask are already determined in the validation section above
-      console.log('Using location ID:', locationIdString);
-      
-      const createResponse = await apiRequest(`/api/locations/${encodeURIComponent(locationIdString)}/tasks`, {
+      // First create the new task - use locationId string for API endpoint
+      const locationIdString = selectedLocationData?.locationId; // This is the string ID like "PRJ-2024-002_EastWing"
+      const createResponse = await apiRequest(`/api/locations/${locationIdString}/tasks`, {
         method: 'POST',
         body: JSON.stringify(data.newTask),
         headers: { 'Content-Type': 'application/json' }
@@ -404,9 +378,9 @@ export default function CreateTaskModal({
     });
 
     const newTask = {
-      taskId: `${locationIdString}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
-      locationId: locationIdString,
-      projectId: projectIdForTask,
+      taskId: `${selectedLocationData?.locationId}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
+      locationId: selectedLocationData?.locationId,
+      projectId: selectedLocationData?.projectId,
       name: data.name,
       taskType: data.taskType,
       costCode,
@@ -584,57 +558,6 @@ export default function CreateTaskModal({
   };
 
   const onSubmit = (data: any) => {
-    console.log('Form submitted with data:', data);
-    console.log('Task will be dependent on previous?', data.dependentOnPrevious);
-    console.log('Insert position:', data.insertPosition);
-    console.log('Existing tasks count:', existingTasks.length);
-    
-    // For location validation, check if we have either selectedLocationData OR both initialProject and initialLocation
-    const hasValidLocation = selectedLocationData || (initialProject && initialLocation);
-    
-    if (!hasValidLocation) {
-      console.error('Location validation failed:', {
-        selectedLocation,
-        selectedLocationData,
-        locations: locations?.length,
-        initialLocation,
-        initialProject,
-        hasValidLocation
-      });
-      toast({ title: "Error", description: "Please select a location", variant: "destructive" });
-      return;
-    }
-
-    // If we don't have selectedLocationData but have initialLocation, we need to construct the location info
-    let locationIdString: string;
-    let projectIdForTask: number;
-    
-    if (selectedLocationData?.locationId) {
-      locationIdString = selectedLocationData.locationId;
-      projectIdForTask = selectedLocationData.projectId;
-    } else if (initialProject && initialLocation) {
-      // We're being called from a location page but the locations query hasn't loaded yet
-      // Wait for locations to load, or if they're still loading, show better error
-      if (locations.length === 0) {
-        toast({ title: "Info", description: "Loading location data, please wait a moment and try again", variant: "default" });
-        return;
-      }
-      
-      // Find the location data from the loaded locations
-      const foundLocation = (locations as any[]).find((loc: any) => loc.id === initialLocation);
-      if (foundLocation) {
-        locationIdString = foundLocation.locationId;
-        projectIdForTask = foundLocation.projectId;
-        console.log('Found location from loaded data:', foundLocation);
-      } else {
-        toast({ title: "Error", description: "Could not find location data", variant: "destructive" });
-        return;
-      }
-    } else {
-      toast({ title: "Error", description: "Selected location does not have a valid ID", variant: "destructive" });
-      return;
-    }
-
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     
@@ -724,7 +647,6 @@ export default function CreateTaskModal({
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
           // Calculate next date after last task
           const lastTask = sortedTasks[sortedTasks.length - 1];
-          console.log('Calculating date after last task:', lastTask.name, lastTask.taskDate);
           const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
           const nextDate = new Date(lastDate);
           nextDate.setDate(nextDate.getDate() + 1);
@@ -733,10 +655,8 @@ export default function CreateTaskModal({
             nextDate.setDate(nextDate.getDate() + 1);
           }
           taskDate = nextDate.toISOString().split('T')[0];
-          console.log('Sequential task date calculated as:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
-          console.log('Non-sequential task using date:', taskDate, '(from form or fallback)');
         }
       } else if (data.insertPosition.startsWith('after-')) {
         // Insert after specific task
@@ -851,11 +771,10 @@ export default function CreateTaskModal({
     }
 
     // Create the new task
-    console.log('Creating task with final date:', taskDate);
     const newTask = {
-      taskId: `${locationIdString}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
-      locationId: locationIdString,
-      projectId: projectIdForTask,
+      taskId: `${selectedLocationData?.locationId}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
+      locationId: selectedLocationData?.locationId,
+      projectId: selectedLocationData?.projectId,
       name: data.name,
       taskType: data.taskType,
       taskDate: taskDate,

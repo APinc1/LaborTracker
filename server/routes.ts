@@ -645,18 +645,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks/date-range/:startDate/:endDate', async (req, res) => {
     try {
-      const { startDate, endDate } = req.params;
-      
-      // Validate date parameters
-      if (!startDate || !endDate) {
-        return res.status(400).json({ error: 'Missing date parameters' });
-      }
-      
       const storage = await getStorage();
-      const tasks = await storage.getTasksByDateRange(startDate, endDate);
+      const tasks = await storage.getTasksByDateRange(req.params.startDate, req.params.endDate);
       res.json(tasks);
-    } catch (error: any) {
-      console.error('Error fetching tasks by date range:', error.message);
+    } catch (error) {
       res.status(500).json({ error: 'Failed to fetch tasks' });
     }
   });
@@ -713,11 +705,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(task);
     } catch (error: any) {
-      console.error('Task creation error:', error);
+      console.error('Task validation error:', error);
       if (error.issues) {
         console.error('Validation issues:', error.issues);
       }
-      res.status(400).json({ error: 'Failed to create task', details: error.message });
+      res.status(400).json({ error: 'Invalid task data', details: error.message });
     }
   });
 
