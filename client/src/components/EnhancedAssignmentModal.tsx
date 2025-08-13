@@ -61,10 +61,11 @@ export default function EnhancedAssignmentModal({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (employeeDropdownRef.current && !employeeDropdownRef.current.contains(event.target as Node)) {
-        setShowEmployeeDropdown(false);
+        // Add a small delay to prevent immediate closing when clicking items
+        setTimeout(() => setShowEmployeeDropdown(false), 100);
       }
       if (crewDropdownRef.current && !crewDropdownRef.current.contains(event.target as Node)) {
-        setShowCrewDropdown(false);
+        setTimeout(() => setShowCrewDropdown(false), 100);
       }
     };
 
@@ -884,20 +885,29 @@ export default function EnhancedAssignmentModal({
                           className={cardStyle}
                           onClick={() => {
                             const employeeId = employee.id.toString();
+                            console.log('Employee clicked:', employee.name, 'ID:', employeeId);
+                            console.log('Currently selected:', selectedEmployeeIds);
+                            console.log('Is selected:', isSelected);
+                            
                             if (isSelected) {
                               const newIds = selectedEmployeeIds.filter(id => id !== employeeId);
+                              console.log('Removing employee, new IDs:', newIds);
                               setSelectedEmployeeIds(newIds);
                               // Remove individual hours
                               const { [employeeId]: removed, ...remainingHours } = employeeHours;
                               setEmployeeHours(remainingHours);
                             } else {
                               const newIds = [...selectedEmployeeIds, employeeId];
+                              console.log('Adding employee, new IDs:', newIds);
                               setSelectedEmployeeIds(newIds);
                               // Add default hours if not set
                               if (!employeeHours[employeeId]) {
                                 setEmployeeHours(prev => ({ ...prev, [employeeId]: defaultHours }));
                               }
                             }
+                            
+                            // Keep dropdown open for easier multi-selection
+                            // Don't close the dropdown automatically
                           }}
                         >
                           <div className="flex items-center gap-3">
