@@ -818,7 +818,9 @@ export default function Dashboard() {
                 const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
                 // Calculate progress based on completed tasks vs total tasks for selected day
                 const locationTasks = selectedDateData.selectedTasks.filter((task: any) => task.locationId === location.id);
-                const completedTasks = locationTasks.filter((task: any) => task.status === 'Completed').length;
+                const completedTasks = locationTasks.filter((task: any) => 
+                  task.status === 'complete' || task.status === 'Completed' || task.status === 'completed'
+                ).length;
                 const totalTasks = locationTasks.length;
                 const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
                 
