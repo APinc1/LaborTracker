@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte, asc } from "drizzle-orm";
+import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -39,6 +39,7 @@ export interface IStorage {
   getLocations(projectId: number): Promise<Location[]>;
   getAllLocations(): Promise<Location[]>;
   getLocation(id: string | number): Promise<Location | undefined>;
+  getLocationsByIds(ids: (string | number)[]): Promise<Location[]>;
   createLocation(location: InsertLocation): Promise<Location>;
   updateLocation(id: string | number, location: Partial<InsertLocation>): Promise<Location>;
   deleteLocation(id: string | number): Promise<void>;
@@ -625,6 +626,15 @@ export class MemStorage implements IStorage {
       return Array.from(this.locations.values()).find(loc => loc.locationId === id);
     }
     return this.locations.get(id);
+  }
+
+  async getLocationsByIds(ids: (string | number)[]): Promise<Location[]> {
+    const results: Location[] = [];
+    for (const id of ids) {
+      const location = await this.getLocation(id);
+      if (location) results.push(location);
+    }
+    return results;
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
@@ -1453,20 +1463,39 @@ class DatabaseStorage implements IStorage {
   }
 
   async getLocation(id: string | number): Promise<Location | undefined> {
-    console.log(`🔎 DatabaseStorage.getLocation called with:`, id, `(type: ${typeof id})`);
     if (typeof id === 'string') {
-      // Search by locationId string
-      console.log(`🔍 Searching by locationId string: "${id}"`);
       const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
-      console.log(`📊 String search result:`, result.length, 'found');
       return result[0];
     } else {
-      // Search by database ID number
-      console.log(`🔍 Searching by database ID: ${id}`);
       const result = await this.db.select().from(locations).where(eq(locations.id, id));
-      console.log(`📊 ID search result:`, result.length, 'found', result[0] ? `- Location: ${result[0].name}` : '');
       return result[0];
     }
+  }
+
+  async getLocationsByIds(ids: (string | number)[]): Promise<Location[]> {
+    if (ids.length === 0) return [];
+    
+    // Separate string and number IDs for efficient bulk queries
+    const stringIds = ids.filter(id => typeof id === 'string') as string[];
+    const numberIds = ids.filter(id => typeof id === 'number') as number[];
+    
+    const results: Location[] = [];
+    
+    if (stringIds.length > 0) {
+      const stringResults = await this.db.select().from(locations).where(
+        stringIds.length === 1 ? eq(locations.locationId, stringIds[0]) : inArray(locations.locationId, stringIds)
+      );
+      results.push(...stringResults);
+    }
+    
+    if (numberIds.length > 0) {
+      const numberResults = await this.db.select().from(locations).where(
+        numberIds.length === 1 ? eq(locations.id, numberIds[0]) : inArray(locations.id, numberIds)
+      );
+      results.push(...numberResults);
+    }
+    
+    return results;
   }
 
   async createLocation(insertLocation: InsertLocation): Promise<Location> {
