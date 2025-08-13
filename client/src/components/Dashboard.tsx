@@ -174,7 +174,11 @@ export default function Dashboard() {
     return (projects as any[])[location.projectId - 1];
   };
 
-  const getLocation = (locationId: string) => {
+  const getLocation = (locationId: string | number) => {
+    // Handle both string locationId and numeric database ID
+    if (typeof locationId === 'number') {
+      return (locations as any[]).find((location: any) => location.id === locationId);
+    }
     return (locations as any[]).find((location: any) => location.locationId === locationId);
   };
 
@@ -223,25 +227,19 @@ export default function Dashboard() {
   // Helper functions to get enhanced task information
   const getProjectName = (task: any) => {
     if (!task.locationId) return "Unknown Project";
-    const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
+    // After migration: task.locationId is now the database ID (integer), not the locationId string
+    const location = (locations as any[]).find((loc: any) => loc.id === task.locationId);
     if (!location) return "Unknown Project";
-    // Fix: locations have numeric projectId (1, 2) but projects have string projectId ("PRJ-2024-001")
-    // We need to match by the database ID, not the project string ID
-    const project = (projects as any[]).find((proj: any) => {
-      // Try to match by database ID - projects are ordered, so index + 1 should match
-      const projectIndex = (projects as any[]).findIndex(p => p.projectId === proj.projectId);
-      return (projectIndex + 1) === location.projectId;
-    });
     
-    // If that doesn't work, try a direct lookup by assuming the numeric ID maps to array position
-    const fallbackProject = (projects as any[])[location.projectId - 1];
-    
-    return project?.name || fallbackProject?.name || "Unknown Project";
+    // Find project by matching the database ID
+    const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
+    return project?.name || "Unknown Project";
   };
 
   const getLocationName = (task: any) => {
     if (!task.locationId) return "Unknown Location";
-    const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
+    // After migration: task.locationId is now the database ID (integer), not the locationId string
+    const location = (locations as any[]).find((loc: any) => loc.id === task.locationId);
     return location?.name || "Unknown Location";
   };
 
@@ -293,8 +291,12 @@ export default function Dashboard() {
     // Get budget data for this location
     const locationBudget = budgetDataByLocation[locationId] || [];
     
-    // Get all tasks for this location across all dates
-    const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === locationId);
+    // Find the location object to get its database ID
+    const location = (locations as any[]).find((loc: any) => loc.locationId === locationId);
+    if (!location) return {};
+    
+    // Get all tasks for this location using the database ID
+    const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === location.id);
     
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
