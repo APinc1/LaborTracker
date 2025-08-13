@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,24 @@ export default function CreateTaskModal({
   const [selectedProject, setSelectedProject] = useState<number | undefined>(initialProject);
   const [selectedLocation, setSelectedLocation] = useState<number | undefined>(initialLocation);
   
+  // Debug logging to see what props we receive
+  console.log('CreateTaskModal props:', { 
+    isOpen, 
+    initialProject, 
+    initialLocation, 
+    selectedProject, 
+    selectedLocation 
+  });
+
+  // Update state when props change
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Modal opened - updating from props:', { initialProject, initialLocation });
+      setSelectedProject(initialProject);
+      setSelectedLocation(initialLocation);
+    }
+  }, [isOpen, initialProject, initialLocation]);
+  
   // Date selection dialog states
   const [showLinkDateDialog, setShowLinkDateDialog] = useState(false);
   const [linkingOptions, setLinkingOptions] = useState<{
@@ -134,6 +152,14 @@ export default function CreateTaskModal({
 
   // Get selected location details
   const selectedLocationData = selectedLocation ? (locations as any[]).find((loc: any) => loc.id === selectedLocation) : null;
+  
+  // Debug logging for location data
+  console.log('Location data:', { 
+    selectedLocation, 
+    locations: locations?.length || 0, 
+    selectedLocationData,
+    locationIds: (locations as any[]).map(l => ({ id: l.id, name: l.name }))
+  });
 
   // Fetch existing tasks for linking - use locationId string format for API
   const { data: existingTasks = [] } = useQuery({
@@ -569,6 +595,13 @@ export default function CreateTaskModal({
     console.log('Form submitted with data:', data);
     
     if (!selectedLocationData) {
+      console.error('Location validation failed:', {
+        selectedLocation,
+        selectedLocationData,
+        locations: locations?.length,
+        initialLocation,
+        initialProject
+      });
       toast({ title: "Error", description: "Please select a location", variant: "destructive" });
       return;
     }

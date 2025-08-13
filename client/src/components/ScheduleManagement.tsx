@@ -936,6 +936,8 @@ export default function ScheduleManagement() {
       <CreateTaskModal
         isOpen={isCreateTaskModalOpen}
         onClose={() => setIsCreateTaskModalOpen(false)}
+        selectedProject={selectedProject !== "ALL_PROJECTS" ? parseInt(selectedProject) : undefined}
+        selectedLocation={selectedLocation !== "ALL_LOCATIONS" ? parseInt(selectedLocation) : undefined}
       />
       
       {editingTask && (
