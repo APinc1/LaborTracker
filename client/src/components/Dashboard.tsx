@@ -28,9 +28,9 @@ export default function Dashboard() {
   const today = new Date();
   const todayFormatted = format(today, "yyyy-MM-dd");
 
-  // Get all tasks to find dates with scheduled work
+  // Get all tasks to find dates with scheduled work - reduced range for faster loading
   const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
-    queryKey: ["/api/tasks/date-range", format(subDays(today, 7), "yyyy-MM-dd"), format(addDays(today, 14), "yyyy-MM-dd")],
+    queryKey: ["/api/tasks/date-range", format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
     staleTime: 30000,
   });
 
@@ -83,8 +83,20 @@ export default function Dashboard() {
     enabled: !!(allTasks as any[]).length,
   });
 
+  // Only fetch assignments for the relevant date range to improve performance
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
-    queryKey: ["/api/assignments"],
+    queryKey: ["/api/assignments/date-range", format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
+    queryFn: async () => {
+      const startDate = format(subDays(today, 3), "yyyy-MM-dd");
+      const endDate = format(addDays(today, 7), "yyyy-MM-dd");
+      const response = await fetch(`/api/assignments/date-range/${startDate}/${endDate}`);
+      if (!response.ok) {
+        // Fallback to all assignments if date range endpoint doesn't exist
+        const fallbackResponse = await fetch('/api/assignments');
+        return fallbackResponse.json();
+      }
+      return response.json();
+    },
     staleTime: 30000,
   });
 
@@ -268,21 +280,44 @@ export default function Dashboard() {
   };
 
   // Get budget data for specific location
+  // Only fetch budget data for locations that have tasks in the selected time period
+  // This dramatically reduces the number of concurrent API calls
+  const locationsWithTasks = [...new Set([
+    ...todayTasks.map((task: any) => task.locationId),
+    ...previousDayTasks.map((task: any) => task.locationId),
+    ...nextDayTasks.map((task: any) => task.locationId)
+  ].filter(Boolean))];
+
   const { data: budgetDataByLocation = {} } = useQuery({
-    queryKey: ["/api/budget", locations],
+    queryKey: ["/api/budget", locationsWithTasks],
     queryFn: async () => {
-      const budgetPromises = (locations as any[]).map(async (location: any) => {
-        const response = await fetch(`/api/locations/${location.locationId}/budget`);
-        const budgetItems = await response.json();
-        return { locationId: location.locationId, budgetItems };
+      // Only fetch budget data for locations that actually have tasks
+      const relevantLocations = (locations as any[]).filter((location: any) => 
+        locationsWithTasks.includes(location.locationId)
+      );
+      
+      if (relevantLocations.length === 0) return {};
+      
+      const budgetPromises = relevantLocations.map(async (location: any) => {
+        try {
+          const response = await fetch(`/api/locations/${location.locationId}/budget`);
+          const budgetItems = await response.json();
+          return { locationId: location.locationId, budgetItems };
+        } catch (error) {
+          console.warn(`Failed to fetch budget for location ${location.locationId}:`, error);
+          return { locationId: location.locationId, budgetItems: [] };
+        }
       });
+      
       const results = await Promise.all(budgetPromises);
       return results.reduce((acc: any, { locationId, budgetItems }) => {
         acc[locationId] = budgetItems;
         return acc;
       }, {});
     },
-    enabled: (locations as any[]).length > 0,
+    enabled: (locations as any[]).length > 0 && 
+             (todayTasks.length > 0 || previousDayTasks.length > 0 || nextDayTasks.length > 0) &&
+             !todayLoading && !previousLoading && !nextLoading,
     staleTime: 60000,
   });
 
