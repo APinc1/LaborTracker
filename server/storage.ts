@@ -671,10 +671,12 @@ export class MemStorage implements IStorage {
           break;
         }
       }
+      if (!existing) throw new Error('Location not found');
     } else {
       // Find by numeric id
       existing = this.locations.get(id);
       locationKey = id;
+      if (!existing) throw new Error('Location not found');
     }
     
     if (!existing) throw new Error('Location not found');
@@ -1749,7 +1751,7 @@ async function initializeStorage(): Promise<IStorage> {
     console.log(`✓ Successfully connected to PostgreSQL database! Found ${users.length} users.`);
     return dbStorage;
     
-  } catch (error) {
+  } catch (error: any) {
     console.error("✗ Failed to connect to Supabase database:", error.message);
     console.log("📦 Falling back to in-memory storage with sample data");
     console.log("🔧 To troubleshoot:");

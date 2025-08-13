@@ -156,7 +156,15 @@ export default function CreateTaskModal({
       
       // First create the new task - use locationId string for API endpoint
       const locationIdString = selectedLocationData?.locationId; // This is the string ID like "PRJ-2024-002_EastWing"
-      const createResponse = await apiRequest(`/api/locations/${locationIdString}/tasks`, {
+      
+      // Validate that we have a valid location ID
+      if (!locationIdString) {
+        throw new Error('Location ID is required but was not found. Please select a valid location.');
+      }
+      
+      console.log('Using location ID:', locationIdString);
+      
+      const createResponse = await apiRequest(`/api/locations/${encodeURIComponent(locationIdString)}/tasks`, {
         method: 'POST',
         body: JSON.stringify(data.newTask),
         headers: { 'Content-Type': 'application/json' }
@@ -558,6 +566,18 @@ export default function CreateTaskModal({
   };
 
   const onSubmit = (data: any) => {
+    console.log('Form submitted with data:', data);
+    
+    if (!selectedLocationData) {
+      toast({ title: "Error", description: "Please select a location", variant: "destructive" });
+      return;
+    }
+
+    if (!selectedLocationData.locationId) {
+      toast({ title: "Error", description: "Selected location does not have a valid ID", variant: "destructive" });
+      return;
+    }
+
     // Get cost code from task type
     const costCode = TASK_TYPE_TO_COST_CODE[data.taskType as keyof typeof TASK_TYPE_TO_COST_CODE] || data.taskType;
     

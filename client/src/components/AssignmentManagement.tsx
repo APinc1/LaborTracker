@@ -633,8 +633,8 @@ export default function AssignmentManagement() {
     return true;
   });
 
-  const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name)));
-  const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
+  const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name).filter(name => name && name.trim() !== '')));
+  const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType).filter(type => type && type.trim() !== '')));
 
   if (assignmentsLoading) {
     return (
