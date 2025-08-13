@@ -74,13 +74,13 @@ export default function Dashboard() {
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
     staleTime: 30000,
-    enabled: !!allTasks.length,
+    enabled: !!(allTasks as any[]).length,
   });
 
   const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", nextDayFormatted, nextDayFormatted],
     staleTime: 30000,
-    enabled: !!allTasks.length,
+    enabled: !!(allTasks as any[]).length,
   });
 
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
@@ -810,13 +810,14 @@ export default function Dashboard() {
                 .filter((location: any) => {
                   // Only show locations that have tasks scheduled on the selected day
                   const selectedTasks = selectedDateData.selectedTasks;
-                  return selectedTasks.some((task: any) => task.locationId === location.locationId);
+                  // After migration: tasks use location.id (database ID) instead of location.locationId (string)
+                  return selectedTasks.some((task: any) => task.locationId === location.id);
                 })
                 .map((location: any) => {
-                // Fix: use fallback project lookup by array index since projectId types don't match
-                const project = (projects as any[])[location.projectId - 1];
+                // Find project by matching the database ID
+                const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
                 // Calculate progress based on completed tasks vs total tasks for selected day
-                const locationTasks = selectedDateData.selectedTasks.filter((task: any) => task.locationId === location.locationId);
+                const locationTasks = selectedDateData.selectedTasks.filter((task: any) => task.locationId === location.id);
                 const completedTasks = locationTasks.filter((task: any) => task.status === 'Completed').length;
                 const totalTasks = locationTasks.length;
                 const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
