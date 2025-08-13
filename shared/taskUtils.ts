@@ -241,11 +241,14 @@ export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string)
   const updatedTasks = [...logicallyOrderedTasks];
   
   // Only process tasks AFTER the modified task
+  console.log(`🎯 Will process tasks from index ${modifiedTaskIndex + 1} to ${updatedTasks.length - 1}`);
+  
+  let actualChanges = 0;
   for (let i = modifiedTaskIndex + 1; i < updatedTasks.length; i++) {
     const currentTask = updatedTasks[i];
     const previousTask = updatedTasks[i - 1];
     
-    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
+    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (order: ${currentTask.order}, sequential: ${currentTask.dependentOnPrevious})`);
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
@@ -259,9 +262,18 @@ export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string)
         ...currentTask,
         taskDate: newDateString
       };
+      actualChanges++;
     } else {
       console.log(`⏭️ SKIPPING: "${currentTask.name}" is not sequential, keeping date ${currentTask.taskDate}`);
     }
+  }
+  
+  console.log(`🔄 TARGETED REALIGNMENT COMPLETE: Made ${actualChanges} changes to tasks after modified task`);
+  
+  // Important: DO NOT modify tasks BEFORE the modified task
+  console.log('🚫 Tasks BEFORE modified task should remain unchanged:');
+  for (let i = 0; i < modifiedTaskIndex; i++) {
+    console.log(`  ${i}: "${updatedTasks[i].name}" keeping date ${updatedTasks[i].taskDate}`);
   }
   
   // Return tasks in their original input order with updated dates

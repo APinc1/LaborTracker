@@ -1640,7 +1640,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       if (dependencyChanged) {
         console.log('🔄 DEPENDENCY CHANGED - applying targeted realignment');
         console.log('Modified task:', task.taskId || task.id, 'dependentOnPrevious:', processedData.dependentOnPrevious);
+        console.log('Tasks before targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
         allUpdatedTasks = realignDependentTasksAfter(allUpdatedTasks, task.taskId || task.id);
+        console.log('Tasks after targeted realignment:', allUpdatedTasks.map(t => ({ name: t.name, date: t.taskDate, order: t.order })));
       }
       
       // Filter to only tasks that actually changed

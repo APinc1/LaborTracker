@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { reorderTasksWithDependencies, realignDependentTasks } from '@shared/taskUtils';
+import { reorderTasksWithDependencies, realignDependentTasks, realignDependentTasksAfter } from '@shared/taskUtils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -742,9 +742,9 @@ export default function DraggableTaskList({
         return task;
       });
       
-      // CRITICAL: Apply sequential realignment to update downstream tasks
+      // CRITICAL: Apply targeted realignment to update downstream tasks
       console.log('🔄 REALIGNING: Sequential tasks after linking');
-      const realignedTasks = realignDependentTasks(allTasks);
+      const realignedTasks = realignDependentTasksAfter(allTasks, draggedTask.taskId || draggedTask.id);
       
       // Find tasks that actually changed
       const tasksToUpdate = realignedTasks.filter(task => {
