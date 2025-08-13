@@ -135,39 +135,48 @@ export default function EnhancedAssignmentModal({
 
   // Load existing assignments when modal opens
   useEffect(() => {
-    if (isOpen && existingAssignments.length > 0 && employees.length > 0) {
-      const existingEmployeeIds = existingAssignments.map((assignment: any) => {
-        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-        return employee?.id.toString();
-      }).filter(Boolean);
+    if (isOpen && employees.length > 0) {
+      // Always load existing assignments if they exist
+      if (existingAssignments.length > 0) {
+        const existingEmployeeIds = existingAssignments.map((assignment: any) => {
+          const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+          return employee?.id.toString();
+        }).filter(Boolean);
 
-      // Load hours from first assignment for default, and individual hours for each employee
-      const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
-      const individualHours: Record<string, string> = {};
-      existingAssignments.forEach((assignment: any) => {
-        const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
-        if (employee) {
-          individualHours[employee.id.toString()] = assignment.assignedHours?.toString() || '8';
-        }
-      });
+        // Load hours from first assignment for default, and individual hours for each employee
+        const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
+        const individualHours: Record<string, string> = {};
+        existingAssignments.forEach((assignment: any) => {
+          const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
+          if (employee) {
+            individualHours[employee.id.toString()] = assignment.assignedHours?.toString() || '8';
+          }
+        });
 
-      // Check for fully assigned crews
-      const assignedCrews: string[] = [];
-      (crews as any[]).forEach(crew => {
-        const crewMembers = (employees as any[]).filter(emp => emp.crewId === crew.id);
-        const assignedMembers = crewMembers.filter(member => 
-          existingEmployeeIds.includes(member.id.toString())
-        );
-        
-        if (crewMembers.length > 0 && assignedMembers.length === crewMembers.length) {
-          assignedCrews.push(crew.id.toString());
-        }
-      });
+        // Check for fully assigned crews
+        const assignedCrews: string[] = [];
+        (crews as any[]).forEach(crew => {
+          const crewMembers = (employees as any[]).filter(emp => emp.crewId === crew.id);
+          const assignedMembers = crewMembers.filter(member => 
+            existingEmployeeIds.includes(member.id.toString())
+          );
+          
+          if (crewMembers.length > 0 && assignedMembers.length === crewMembers.length) {
+            assignedCrews.push(crew.id.toString());
+          }
+        });
 
-      setSelectedEmployeeIds(existingEmployeeIds);
-      setSelectedCrews(assignedCrews);
-      setDefaultHours(firstAssignmentHours);
-      setEmployeeHours(individualHours);
+        console.log('Loading existing assignments:', {
+          existingEmployeeIds,
+          individualHours,
+          assignedCrews
+        });
+
+        setSelectedEmployeeIds(existingEmployeeIds);
+        setSelectedCrews(assignedCrews);
+        setDefaultHours(firstAssignmentHours);
+        setEmployeeHours(individualHours);
+      }
     }
 
     // Load superintendent from current task, or default from project (only on first open)
@@ -303,12 +312,12 @@ export default function EnhancedAssignmentModal({
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      // Clear existing assignments first
+      // Always clear existing assignments first to avoid conflicts
       if (existingAssignments.length > 0) {
         await clearExistingAssignmentsMutation.mutateAsync();
       }
       
-      // Create new assignments
+      // Create new assignments for all selected employees
       const assignments = selectedEmployeeIds.map(employeeIdStr => {
         const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
         if (!employee) return null;
@@ -322,6 +331,9 @@ export default function EnhancedAssignmentModal({
           actualHours: null
         };
       }).filter(Boolean);
+
+      console.log('Creating assignments for employees:', selectedEmployeeIds);
+      console.log('Assignment data:', assignments);
 
       if (assignments.length === 0) return [];
 
@@ -405,7 +417,14 @@ export default function EnhancedAssignmentModal({
       <DialogContent className="max-w-2xl max-h-[95vh] h-[750px] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Assign Employees to {taskName}</DialogTitle>
-          <div className="text-sm text-gray-500">Date: {taskDate}</div>
+          <div className="text-sm text-gray-500">
+            Date: {taskDate}
+            {existingAssignments.length > 0 && (
+              <div className="text-blue-600 mt-1">
+                Click on employees below to add them to this task, or modify existing assignments
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -691,7 +710,14 @@ export default function EnhancedAssignmentModal({
               {selectedEmployees.length > 0 && (
                 <div className="mb-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-600">{selectedEmployees.length} employee(s) selected</span>
+                    <span className="text-sm text-gray-600">
+                      {selectedEmployees.length} employee(s) selected 
+                      {existingAssignments.length > 0 && (
+                        <span className="text-blue-600 ml-1">
+                          (editing existing assignments)
+                        </span>
+                      )}
+                    </span>
                     <Button
                       type="button"
                       variant="ghost"
