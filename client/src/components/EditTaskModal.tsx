@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, getTaskStatus } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, realignDependentTasksAfter, getTaskStatus } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -535,10 +535,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       });
       
-      // Sort by order and apply realignment
+      // Sort by order and apply targeted realignment (only tasks after the edited one)
       allTasksWithUpdates.sort((a, b) => (a.order || 0) - (b.order || 0));
       console.log('🔄 REALIGNING: Sequential tasks after simple linking');
-      const realignedTasks = realignDependentTasks(allTasksWithUpdates);
+      const realignedTasks = realignDependentTasksAfter(allTasksWithUpdates, task.taskId || task.id);
       
       // Find all tasks that changed (linking + realignment)
       const finalTasksToUpdate = realignedTasks.filter(task => {
@@ -680,9 +680,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       // Sort by order to process sequential dependencies
       sortedAllTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
       
-      // CRITICAL: Use proper realignDependentTasks function for weekday-aware sequential calculations
+      // CRITICAL: Use targeted realignment to only shift tasks after the modified one
       console.log('🔄 REALIGNING: Sequential tasks after linking in EditTaskModal');
-      const realignedTasks = realignDependentTasks(sortedAllTasks);
+      const realignedTasks = realignDependentTasksAfter(sortedAllTasks, task.taskId || task.id);
       
       // Update the sorted tasks with realigned dates
       realignedTasks.forEach((realignedTask, index) => {

@@ -211,6 +211,70 @@ export function reorderTasksWithDependencies(
 }
 
 /**
+ * Re-align only tasks that come AFTER a specific modified task
+ */
+export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string): any[] {
+  console.log('🔄 REALIGN DEPENDENT TASKS AFTER: Starting targeted date realignment');
+  console.log('Modified task ID:', modifiedTaskId);
+  
+  // Sort tasks by their logical order
+  const logicallyOrderedTasks = [...tasks].sort((a, b) => {
+    const orderA = a.order ?? 999;
+    const orderB = b.order ?? 999;
+    return orderA - orderB;
+  });
+  
+  // Find the modified task index
+  const modifiedTaskIndex = logicallyOrderedTasks.findIndex(task => 
+    (task.taskId || task.id) === modifiedTaskId
+  );
+  
+  if (modifiedTaskIndex === -1) {
+    console.log('🚫 Modified task not found, using full realignment');
+    return realignDependentTasks(tasks);
+  }
+  
+  console.log(`🎯 Found modified task at index ${modifiedTaskIndex}: "${logicallyOrderedTasks[modifiedTaskIndex].name}"`);
+  console.log('Will only shift tasks after this one that are dependent');
+  
+  const updatedTasks = [...logicallyOrderedTasks];
+  
+  // Only process tasks AFTER the modified task
+  for (let i = modifiedTaskIndex + 1; i < updatedTasks.length; i++) {
+    const currentTask = updatedTasks[i];
+    const previousTask = updatedTasks[i - 1];
+    
+    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
+    
+    // Only re-align if current task is dependent on previous
+    if (currentTask.dependentOnPrevious) {
+      const previousDate = parseDateString(previousTask.taskDate);
+      const nextWeekday = getNextWeekday(previousDate);
+      const newDateString = formatDateToString(nextWeekday);
+      
+      console.log(`✅ SEQUENTIAL UPDATE (AFTER): "${currentTask.name}" ${currentTask.taskDate} → ${newDateString} (after "${previousTask.name}" on ${previousTask.taskDate})`);
+      
+      updatedTasks[i] = {
+        ...currentTask,
+        taskDate: newDateString
+      };
+    } else {
+      console.log(`⏭️ SKIPPING: "${currentTask.name}" is not sequential, keeping date ${currentTask.taskDate}`);
+    }
+  }
+  
+  // Return tasks in their original input order with updated dates
+  const resultTasks = tasks.map(originalTask => {
+    const updatedTask = updatedTasks.find(ut => 
+      (ut.taskId || ut.id) === (originalTask.taskId || originalTask.id)
+    );
+    return updatedTask || originalTask;
+  });
+  
+  return resultTasks;
+}
+
+/**
  * Re-align dependent tasks to follow previous task by one weekday
  */
 export function realignDependentTasks(tasks: any[]): any[] {
