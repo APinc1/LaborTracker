@@ -336,7 +336,7 @@ export class MemStorage implements IStorage {
       finishTime: "17:00",
       workDescription: "Set up concrete forms for bridge deck section. Ensure proper alignment and elevation.",
       notes: "Weather conditions good, expect normal progress",
-      order: 0,
+      order: "0",
       dependentOnPrevious: true
     });
 
@@ -358,7 +358,7 @@ export class MemStorage implements IStorage {
       workDescription: "Demolish existing concrete and prepare base grade for new foundation.",
       notes: "Coordinate with utilities for underground clearance",
       status: "in_progress",
-      order: 0,
+      order: "0",
       dependentOnPrevious: false  // CRITICAL: First task must always be unsequential
     });
 
@@ -379,7 +379,7 @@ export class MemStorage implements IStorage {
       finishTime: "15:00",
       workDescription: "Pour concrete for bridge deck section",
       notes: "Concrete delivery scheduled for 7:00 AM",
-      order: 2,
+      order: "2",
       dependentOnPrevious: true
     });
 
@@ -430,7 +430,10 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
-      phone: insertUser.phone ?? null
+      phone: insertUser.phone ?? null,
+      passwordResetToken: insertUser.passwordResetToken ?? null,
+      passwordResetExpires: insertUser.passwordResetExpires ?? null,
+      isPasswordSet: insertUser.isPasswordSet ?? null
     };
     this.users.set(id, user);
     return user;
@@ -519,8 +522,8 @@ export class MemStorage implements IStorage {
       id, 
       createdAt: new Date(),
       // Ensure null values are preserved for optional fields
-      startDate: insertProject.startDate === null ? null : insertProject.startDate || null,
-      endDate: insertProject.endDate === null ? null : insertProject.endDate,
+      startDate: insertProject.startDate ?? null,
+      endDate: insertProject.endDate ?? null,
       defaultSuperintendent: insertProject.defaultSuperintendent ?? null,
       defaultProjectManager: insertProject.defaultProjectManager ?? null
     };
@@ -584,6 +587,7 @@ export class MemStorage implements IStorage {
       actualQty: insertBudgetLineItem.actualQty ?? null,
       convertedQty: insertBudgetLineItem.convertedQty ?? null,
       convertedUnitOfMeasure: insertBudgetLineItem.convertedUnitOfMeasure ?? null,
+      conversionFactor: insertBudgetLineItem.conversionFactor ?? null,
       productionRate: insertBudgetLineItem.productionRate ?? null,
       hours: insertBudgetLineItem.hours ?? null,
       billing: insertBudgetLineItem.billing ?? null,
@@ -642,7 +646,11 @@ export class MemStorage implements IStorage {
     const location: Location = { 
       ...insertLocation, 
       id,
+      startDate: insertLocation.startDate ?? "",
       endDate: insertLocation.endDate ?? null,
+      description: insertLocation.description ?? null,
+      estimatedCost: insertLocation.estimatedCost ?? null,
+      actualCost: insertLocation.actualCost ?? null,
       isComplete: insertLocation.isComplete ?? null
     };
     this.locations.set(id, location);
@@ -655,7 +663,8 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      for (const [key, loc] of this.locations.entries()) {
+      const locationsArray = Array.from(this.locations.entries());
+      for (const [key, loc] of locationsArray) {
         if (loc.locationId === id) {
           existing = loc;
           locationKey = key;
@@ -680,7 +689,8 @@ export class MemStorage implements IStorage {
     
     if (typeof id === 'string') {
       // Find by locationId field
-      for (const [key, loc] of this.locations.entries()) {
+      const locationsArray = Array.from(this.locations.entries());
+      for (const [key, loc] of locationsArray) {
         if (loc.locationId === id) {
           locationToDelete = loc;
           locationDbId = key;
@@ -733,9 +743,7 @@ export class MemStorage implements IStorage {
     const locationBudget: LocationBudget = { 
       ...insertLocationBudget, 
       id,
-      adjustedQty: insertLocationBudget.adjustedQty ?? null,
-      adjustedHours: insertLocationBudget.adjustedHours ?? null,
-      actualQty: insertLocationBudget.actualQty ?? null
+      notes: insertLocationBudget.notes ?? null
     };
     this.locationBudgets.set(id, locationBudget);
     return locationBudget;
@@ -790,7 +798,13 @@ export class MemStorage implements IStorage {
       email: insertEmployee.email ?? null,
       phone: insertEmployee.phone ?? null,
       crewId: insertEmployee.crewId ?? null,
-      isForeman: insertEmployee.isForeman ?? null
+      apprenticeLevel: insertEmployee.apprenticeLevel ?? null,
+      isForeman: insertEmployee.isForeman ?? null,
+      isUnion: insertEmployee.isUnion ?? false,
+      primaryTrade: insertEmployee.primaryTrade ?? null,
+      secondaryTrade: insertEmployee.secondaryTrade ?? null,
+      tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
+      userId: insertEmployee.userId ?? null
     };
     this.employees.set(id, employee);
     return employee;
