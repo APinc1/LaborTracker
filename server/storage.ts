@@ -995,15 +995,19 @@ class DatabaseStorage implements IStorage {
     console.log("Initializing Supabase PostgreSQL connection...");
     
     try {
-      // Use postgres-js for better Supabase compatibility with optimized connection pool
+      // Use postgres-js with ultra-conservative settings for Supabase stability
       const client = postgres(connectionString, {
         ssl: 'require',
-        max: 3, // Reduced from 10 to prevent connection overload
-        idle_timeout: 10,
-        connect_timeout: 10,
-        max_lifetime: 60 * 30, // 30 minute connection lifetime
-        prepare: false, // Disable prepared statements for better performance
-        debug: false
+        max: 1, // Single connection to prevent overload
+        idle_timeout: 5,
+        connect_timeout: 5,
+        statement_timeout: 10000, // 10 second statement timeout
+        max_lifetime: 60 * 10, // 10 minute connection lifetime
+        prepare: false, // Disable prepared statements
+        debug: false,
+        connection: {
+          application_name: 'replit_construction_app'
+        }
       });
       
       this.db = drizzlePostgres(client, {
