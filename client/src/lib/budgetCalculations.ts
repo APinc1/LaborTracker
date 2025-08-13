@@ -60,8 +60,8 @@ export const calculateBudgetFormulas = (item: Partial<BudgetLineItem>): BudgetLi
   
   // Formula calculations
   const convertedQty = unconvertedQty * conversionFactor;
-  const unitTotal = convertedQty * unitCost;
-  const hours = convertedQty * productionRate; // Default: Hours = converted qty * PX
+  const unitTotal = unconvertedQty * unitCost; // Unit total = QTY × unit cost (using unconvertedQty as specified)
+  const hours = convertedQty * productionRate; // Hours = converted qty * PX
   const laborCost = hours * 90; // $90 per hour
   
   const equipmentCost = parseFloat(item.equipmentCost || "0");

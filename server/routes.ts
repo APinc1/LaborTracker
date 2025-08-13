@@ -343,12 +343,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/locations/:id', async (req, res) => {
     try {
       const storage = await getStorage();
-      const location = await storage.getLocation(req.params.id);
+      console.log(`🔍 Location GET: locationParam = "${req.params.id}"`);
+      
+      // Convert to number if it's a numeric string
+      const locationId = /^\d+$/.test(req.params.id) ? parseInt(req.params.id) : req.params.id;
+      console.log(`📊 Location GET: Using ID ${locationId} (type: ${typeof locationId})`);
+      
+      const location = await storage.getLocation(locationId);
+      console.log(`🔎 Location GET: Found location:`, location ? 'YES' : 'NO');
+      
       if (!location) {
         return res.status(404).json({ error: 'Location not found' });
       }
       res.json(location);
     } catch (error) {
+      console.error('Location GET error:', error);
       res.status(500).json({ error: 'Failed to fetch location' });
     }
   });

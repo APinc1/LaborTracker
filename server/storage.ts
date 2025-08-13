@@ -1453,13 +1453,18 @@ class DatabaseStorage implements IStorage {
   }
 
   async getLocation(id: string | number): Promise<Location | undefined> {
+    console.log(`🔎 DatabaseStorage.getLocation called with:`, id, `(type: ${typeof id})`);
     if (typeof id === 'string') {
       // Search by locationId string
+      console.log(`🔍 Searching by locationId string: "${id}"`);
       const result = await this.db.select().from(locations).where(eq(locations.locationId, id));
+      console.log(`📊 String search result:`, result.length, 'found');
       return result[0];
     } else {
       // Search by database ID number
+      console.log(`🔍 Searching by database ID: ${id}`);
       const result = await this.db.select().from(locations).where(eq(locations.id, id));
+      console.log(`📊 ID search result:`, result.length, 'found', result[0] ? `- Location: ${result[0].name}` : '');
       return result[0];
     }
   }
