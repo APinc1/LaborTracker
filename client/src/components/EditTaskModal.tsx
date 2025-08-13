@@ -756,6 +756,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     const dateChanged = data.taskDate !== task.taskDate;
     const dependencyChanged = data.dependentOnPrevious !== task.dependentOnPrevious;
     
+    console.log('🔍 CHANGE DETECTION:', {
+      taskId: task.taskId || task.id,
+      taskName: task.name,
+      dateChanged,
+      dependencyChanged,
+      oldDate: task.taskDate,
+      newDate: data.taskDate,
+      oldDependency: task.dependentOnPrevious,
+      newDependency: data.dependentOnPrevious
+    });
+    
     // Handle linking changes
     let linkingChanged = data.linkToExistingTask !== !!task.linkedTaskGroup;
     
@@ -850,8 +861,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             // CRITICAL: Sort by original order (NOT by date) to maintain visual positions
             allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
             
-            // Use the shared utility to realign dependent tasks
-            const realignedTasks = realignDependentTasks(allTasks);
+            // Use targeted realignment to only shift tasks after the modified one
+            console.log('🔧 Using targeted realignment for linking task updates');
+            const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
             
             // Find all tasks that changed (either from linking or date realignment)
             const finalTasksToUpdate = realignedTasks.filter(task => {
@@ -1004,8 +1016,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
         });
         
-        // Use shared utility to realign all dependent tasks
-        const realignedTasks = realignDependentTasks(allTasks);
+        // Use targeted realignment to only shift tasks after the modified one
+        console.log('🔧 Using targeted realignment for two-task unlink');
+        const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
         
         // Find tasks that changed
         const finalTasksToUpdate = realignedTasks.filter(task => {
@@ -1967,8 +1980,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 }
                               });
                               
-                              // Use shared utility to realign all dependent tasks
-                              const realignedTasks = realignDependentTasks(allTasks);
+                              // Use targeted realignment to only shift tasks after the modified one
+                              console.log('🔧 Using targeted realignment for checkbox unlink');
+                              const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
                               
                               // Find tasks that changed
                               const finalTasksToUpdate = realignedTasks.filter(task => {
