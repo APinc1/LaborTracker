@@ -1000,8 +1000,7 @@ class DatabaseStorage implements IStorage {
         ssl: 'require',
         max: 10,
         idle_timeout: 20,
-        connect_timeout: 30,
-        statement_timeout: 30000, // 30 seconds
+        connect_timeout: 30
       });
       
       this.db = drizzlePostgres(client, {

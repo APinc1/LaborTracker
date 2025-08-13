@@ -586,6 +586,9 @@ export default function CreateTaskModal({
 
   const onSubmit = (data: any) => {
     console.log('Form submitted with data:', data);
+    console.log('Task will be dependent on previous?', data.dependentOnPrevious);
+    console.log('Insert position:', data.insertPosition);
+    console.log('Existing tasks count:', existingTasks.length);
     
     // For location validation, check if we have either selectedLocationData OR both initialProject and initialLocation
     const hasValidLocation = selectedLocationData || (initialProject && initialLocation);
@@ -722,6 +725,7 @@ export default function CreateTaskModal({
         if (data.dependentOnPrevious && sortedTasks.length > 0) {
           // Calculate next date after last task
           const lastTask = sortedTasks[sortedTasks.length - 1];
+          console.log('Calculating date after last task:', lastTask.name, lastTask.taskDate);
           const lastDate = new Date(lastTask.taskDate + 'T00:00:00');
           const nextDate = new Date(lastDate);
           nextDate.setDate(nextDate.getDate() + 1);
@@ -730,8 +734,10 @@ export default function CreateTaskModal({
             nextDate.setDate(nextDate.getDate() + 1);
           }
           taskDate = nextDate.toISOString().split('T')[0];
+          console.log('Sequential task date calculated as:', taskDate);
         } else {
           taskDate = data.taskDate || new Date().toISOString().split('T')[0];
+          console.log('Non-sequential task using date:', taskDate, '(from form or fallback)');
         }
       } else if (data.insertPosition.startsWith('after-')) {
         // Insert after specific task
@@ -846,6 +852,7 @@ export default function CreateTaskModal({
     }
 
     // Create the new task
+    console.log('Creating task with final date:', taskDate);
     const newTask = {
       taskId: `${locationIdString}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
       locationId: locationIdString,
