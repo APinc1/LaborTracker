@@ -1191,7 +1191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || user.password !== currentPassword) {
         console.log('Password verification failed:', { 
           userExists: !!user,
-          passwordMatch: user ? user.password === currentPassword : false
+          passwordMatch: user ? user.password === currentPassword : false,
+          actualPassword: user ? user.password : 'no user',
+          providedPassword: currentPassword
         });
         return res.status(401).json({ error: 'Invalid current password' });
       }
