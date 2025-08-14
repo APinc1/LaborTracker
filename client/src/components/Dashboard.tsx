@@ -341,7 +341,7 @@ export default function Dashboard() {
       if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING') {
         return 'Demo/Ex + Base/Grading';
       }
-      return costCode.trim();
+      return trimmed; // Return uppercase normalized version
     };
     
     // Add budget hours from budget line items
