@@ -42,11 +42,27 @@ export default function ChangePassword({ user, onPasswordChanged, onLogout, isFi
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-      const response = await apiRequest('POST', '/api/auth/change-password', {
+      console.log('Password change request data:', {
         userId: user.id,
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
+        currentPassword: '***',
+        newPassword: '***'
       });
+      
+      const response = await apiRequest('/api/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: user.id,
+          currentPassword: data.currentPassword,
+          newPassword: data.newPassword,
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('Password change error response:', errorData);
+        throw new Error('Failed to change password');
+      }
+      
       return response.json();
     },
     onSuccess: () => {
