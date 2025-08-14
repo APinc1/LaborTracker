@@ -25,7 +25,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 - **Real-time**: WebSocket server for live updates and notifications across clients.
 - **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization. Fixed frontend login API request format issue.
 - **Data Flow**: Client requests via React Query, processed by Express routes, interacting with the database via Drizzle ORM, with WebSocket broadcasting changes.
-- **Deployment**: Production-ready with `/healthz` endpoint, server timeouts (65s headers, 60s requests), request timeout protection (25s), deferred initialization, and environment variable configuration.
+- **Deployment**: Production-ready with `/healthz` endpoint, server timeouts (20s headers, 15s requests), request timeout protection (25s), deferred initialization, and environment variable configuration. **Server-Timing headers** (August 2025) implemented with on-headers package for reliable performance monitoring showing queue, validation, database, and serialization timings. **Compression optimized** to skip small POST responses while maintaining performance for GET requests.
 
 ### Feature Specifications
 - **Core Entities**: Manages Projects, Budget Line Items, Locations, Employees, Tasks, and Crews.

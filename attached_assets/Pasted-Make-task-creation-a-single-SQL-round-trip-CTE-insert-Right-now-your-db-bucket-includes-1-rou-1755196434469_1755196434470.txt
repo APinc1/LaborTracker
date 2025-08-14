@@ -1,0 +1,101 @@
+Make task creation a single SQL round trip (CTE insert)
+
+Right now your “db” bucket includes:
+
+1 round trip to fetch max(order) + max(finish_date) (good we merged them), plus
+
+1 round trip for the INSERT.
+
+Combine both into one statement using a CTE and return the new id. That halves DB RTT immediately.
+
+Drizzle (raw SQL) example:
+
+// inside the handler, using drizzle's sql tagged template:
+import { sql as raw } from "drizzle-orm";
+
+const payload = {
+  locationId,
+  name: candidate.name,
+  order: candidate.order ?? null,        // nullable -> auto-compute if null
+  startDate: candidate.startDate,
+  finishDate: candidate.finishDate,
+  taskType: candidate.taskType,
+  costCode: candidate.costCode,
+  dependent: !!req.body.dependentOnPrevious
+};
+
+const [row] = await db.execute(raw/*sql*/`
+WITH agg AS (
+  SELECT
+    COALESCE(MAX(t."order"), -1) + 1     AS next_order,
+    MAX(t.finish_date)                   AS last_finish
+  FROM tasks t
+  WHERE t.location_id = ${payload.locationId}
+),
+ins AS (
+  INSERT INTO tasks (
+    location_id, name, "order", start_date, finish_date, task_type, cost_code
+  )
+  SELECT
+    ${payload.locationId},
+    ${payload.name},
+    COALESCE(${payload.order}::int, (SELECT next_order FROM agg)),
+    ${payload.startDate}::date,
+    ${payload.finishDate}::date,
+    ${payload.taskType},
+    ${payload.costCode}
+  RETURNING id
+)
+SELECT id FROM ins;
+`);
+const newId = row?.id;
+
+
+If you truly must compute “next weekday after last_finish when dependentOnPrevious”, you can push that into SQL too:
+
+CASE
+  WHEN ${payload.dependent} AND (SELECT last_finish FROM agg) IS NOT NULL THEN
+    CASE EXTRACT(DOW FROM (SELECT last_finish FROM agg))
+      WHEN 6 THEN (SELECT last_finish FROM agg)::date + INTERVAL '2 day' -- Sat→Mon
+      WHEN 0 THEN (SELECT last_finish FROM agg)::date + INTERVAL '1 day' -- Sun→Mon
+      ELSE (SELECT last_finish FROM agg)::date
+    END
+  ELSE ${payload.startDate}::date
+END
+
+
+…but even without that, the big win is 1 round trip total.
+
+3) Verify no hidden per-request connection setup
+
+Ensure you are not running await sql\SET statement_timeout...`` on every request. Do it once at boot; with transaction pooling those settings aren’t sticky—so skip them entirely, and enforce timeouts via application logic.
+
+Keep one shared client:
+
+Confirm only a single postgres(...) init in logs on boot.
+
+Pool max: 8–10, prepare:false, ssl:'require', idle_timeout: 20.
+
+4) Keep writes lean
+
+You already return {id} only—good.
+
+Keep compression off for POST (already suggested).
+
+JSON body limit 128kb.
+
+5) Sanity test (after the CTE change)
+
+Run three times and share:
+
+# Expect TOTAL ~120–170ms if regions unchanged; ~70–120ms if co-located
+curl -s -w "TOTAL:%{time_total}s TTFB:%{time_starttransfer}s\n" \
+  -H 'content-type: application/json' \
+  -X POST "$URL/api/locations/78/tasks" \
+  --data '{"name":"fast","startDate":"2025-08-14","finishDate":"2025-08-14"}' -o /dev/null
+
+# Server-Timing should show db;dur ~ (1 RTT), validate near 0–3ms
+curl -i -X POST "$URL/api/locations/78/tasks" \
+  -H 'content-type: application/json' \
+  --data '{"name":"fast2","startDate":"2025-08-14","finishDate":"2025-08-14"}' \
+  | grep -i server-timing

@@ -735,30 +735,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = req.body ?? {};
       const todayISO = new Date().toISOString().slice(0,10);
 
-      // Single round-trip to get both values
-      mark('d0');
-      const { lastOrder, lastFinish } = await storage.getLasts(locationId);
-      mark('d1');
-
-      // Compute order
-      const order = body.order != null ? Number(body.order) : (lastOrder ?? 0);
-
       // Compute start/finish (respect weekday rule only if dependentOnPrevious)
       let startDate = body.startDate ?? todayISO;
       let finishDate = body.finishDate ?? startDate;
-      if (body.dependentOnPrevious && lastFinish) {
-        const nextStart = nextWeekday(new Date(lastFinish));
-        const s = nextStart.toISOString().slice(0,10);
-        startDate = s;
-        finishDate = s; // 1-day tasks
-      }
 
       // Validate (sync)
       mark('v0');
       const candidate = {
         name: String(body.name || 'Task'),
         locationId,
-        order: order.toString(),
+        order: body.order ? body.order.toString() : "0", // "0" will auto-compute in CTE
         startDate: body.startDate || startDate || todayISO,
         finishDate: body.finishDate || finishDate || todayISO,
         taskDate: body.taskDate || startDate || todayISO,
@@ -777,10 +763,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid task data', issues: parsed.error.issues });
       }
 
-      // Insert (DB is already sub-ms)
-      mark('d2');
+      // Single round-trip insert with CTE
+      mark('d0');
       const created = await storage.createTask(parsed.data);
-      mark('d3');
+      mark('d1');
 
       // Minimal response
       mark('s0');

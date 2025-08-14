@@ -71,7 +71,7 @@ export interface IStorage {
   getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]>;
   
   // Optimized task helper methods
-  getLasts(locationId: number): Promise<{ lastOrder: number|null, lastFinish: string|null }>;
+  createTaskOptimized(task: InsertTask): Promise<{ id: number }>;
   resolveLocationIdBySlug(locationParam: string): Promise<number | null>;
   
   // Employee assignment methods
@@ -1739,18 +1739,41 @@ class DatabaseStorage implements IStorage {
     );
   }
 
-  // Optimized single-query helper for task creation
-  async getLasts(locationId: number): Promise<{ lastOrder: number|null, lastFinish: string|null }> {
+  // Single round-trip task creation with CTE
+  async createTaskOptimized(task: InsertTask): Promise<{ id: number }> {
     const db = await this.db;
-    const [row] = await db
-      .select({
-        lastOrder: sql<number>`count(*)`,
-        lastFinish: sql<string>`max(${tasks.finishDate})`
-      })
-      .from(tasks)
-      .where(eq(tasks.locationId, locationId))
-      .limit(1);
-    return { lastOrder: row?.lastOrder ?? 0, lastFinish: row?.lastFinish ?? null };
+    
+    const [row] = await db.execute(sql`
+      WITH agg AS (
+        SELECT
+          COALESCE(COUNT(*), 0) AS next_order,
+          MAX(finish_date) AS last_finish
+        FROM tasks
+        WHERE location_id = ${task.locationId}
+      )
+      INSERT INTO tasks (
+        location_id, name, "order", start_date, finish_date, 
+        task_date, task_id, task_type, cost_code, status, 
+        dependent_on_previous, scheduled_hours
+      )
+      SELECT
+        ${task.locationId},
+        ${task.name},
+        COALESCE(${task.order}::text, (SELECT next_order::text FROM agg)),
+        ${task.startDate}::date,
+        ${task.finishDate}::date,
+        ${task.taskDate}::date,
+        ${task.taskId},
+        ${task.taskType},
+        ${task.costCode},
+        ${task.status},
+        ${task.dependentOnPrevious},
+        ${task.scheduledHours}
+      FROM agg
+      RETURNING id
+    `);
+    
+    return { id: row?.id as number };
   }
 
   async resolveLocationIdBySlug(locationParam: string): Promise<number | null> {
