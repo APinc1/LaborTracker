@@ -85,6 +85,34 @@ app.use((req, res, next) => {
     log(`serving on port ${PORT}`);
   });
 
+  // Warm the connection pool after server is ready (give DB time to connect)
+  setTimeout(async () => {
+    try {
+      const { storage } = await import('./storage.js');
+      
+      // Only warm if using real database (not memory storage)
+      if (storage.constructor.name === 'DatabaseStorage') {
+        // Prime connection pool with a few connections
+        const warmPromises = Array.from({ length: 3 }, () => 
+          storage.getTasks(78).catch(() => {}) // Use existing method, ignore errors
+        );
+        await Promise.allSettled(warmPromises);
+        console.log('🔥 Database pool warmed');
+      }
+    } catch (e) {
+      // Silent warmup failure is acceptable
+    }
+  }, 2000); // 2 second delay
+
+  // Keep pool warm with periodic ping
+  setInterval(() => {
+    import('./storage.js').then(async ({ storage }) => {
+      if (storage.constructor.name === 'DatabaseStorage') {
+        storage.getTasks(78).catch(() => {}); // Silent ping
+      }
+    });
+  }, 120_000); // 2 minutes (gentler)
+
   // Graceful shutdown for production deployment
   process.on('SIGTERM', async () => {
     console.log('🔄 SIGTERM received, shutting down gracefully');

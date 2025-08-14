@@ -157,7 +157,14 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
   locationId: z.number(),
   superintendentId: z.number().optional().nullable(),
   foremanId: z.number().optional().nullable(),
-  order: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+  order: z
+    .union([
+      z.number().int().nonnegative(),
+      z.string().regex(/^\d+$/).transform(Number),
+      z.null(),
+      z.undefined()
+    ])
+    .optional(),
   taskId: z.string().optional(),
   taskType: z.string().optional(),
   costCode: z.string().optional()

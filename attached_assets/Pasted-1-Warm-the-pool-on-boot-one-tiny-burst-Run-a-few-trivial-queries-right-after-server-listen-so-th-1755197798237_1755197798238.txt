@@ -1,0 +1,97 @@
+1) Warm the pool on boot (one tiny burst)
+
+Run a few trivial queries right after server.listen so the first user never pays the cost.
+
+// after server.listen(...)
+(async () => {
+  try {
+    // open N connections and prime them
+    await Promise.all(
+      Array.from({ length: 6 }, () => sql`select 1`)
+    );
+
+    // prime real query shapes you’ll use (read + write)
+    await sql`select max("order"), max(finish_date) from tasks where location_id = ${78}`;
+    await sql`select 1`; // no-op to keep a few connections around
+    console.log("[warmup] db pool primed");
+  } catch (e) {
+    console.warn("[warmup] skipped:", e);
+  }
+})();
+
+2) Keep the pool warm (tiny periodic ping)
+
+Prevents idle pool teardown + TLS renegotiation on sleepy deployments.
+
+setInterval(() => { sql`select 1`.catch(()=>{}); }, 60_000); // 1 min
+
+
+(If your platform auto-scales down, set to 2–5 min to be gentler.)
+
+3) Make deletes single-round-trip & batchable
+
+If your first delete touched many rows (or triggered FKs/triggers), the cold path shows. Use a single statement for multi-delete to avoid per-row overhead and extra RTT:
+
+// delete many by ids in one query
+await db.execute(raw/*sql*/`
+  DELETE FROM tasks
+  WHERE id = ANY(${raw<number[]> (ids)})
+`);
+
+
+If you always delete by location_id, a targeted delete is even cheaper:
+
+DELETE FROM tasks WHERE location_id = $1;
+
+
+And, where appropriate, ensure FKs that should cascade actually use
+ON DELETE CASCADE (saves extra lookups).
+
+4) Keep POST/DELETE ultra-lean
+
+You already return { id } / 204 No Content — perfect.
+
+Keep compression off for writes.
+
+Avoid any synchronous work (fs, large JSON transforms) in delete handlers.
+
+5) (Optional) Pre-create one connection per pool slot
+
+If you want zero first-hit cost, open max connections up front:
+
+const max = 8; // match your postgres.js { max }
+await Promise.all(Array.from({ length: max }, () => sql`select 1`));
+
+Zod order schema (so SQL can auto-compute)
+
+Let the client omit order; coerce strings → numbers; accept null/undefined:
+
+const orderSchema = z
+  .union([
+    z.number().int().nonnegative(),
+    z.string().regex(/^\d+$/).transform(Number),
+    z.null(),
+    z.undefined()
+  ])
+  .optional();
+
+export const insertTaskSchema = createInsertSchema(tasks).extend({
+  order: orderSchema
+});
+
+
+With your CTE using COALESCE(${order}::int, (SELECT next_order FROM agg)), this cleanly maps:
+
+omitted/null → auto-compute
+
+number/string digits → use provided
+
+TL;DR
+
+First op slow = cold pool + cold caches; warm them (boot burst + minute ping).
+
+Batch deletes in one SQL; use ON DELETE CASCADE where it matches your model.
+
+Keep write handlers tiny; your single-trip CTE already nailed the big win.
+
+Relax order schema so SQL can auto-compute.
