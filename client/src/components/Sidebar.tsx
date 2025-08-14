@@ -126,7 +126,9 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
         <div className="flex-1 overflow-hidden">
           <ScrollArea className="h-full px-4 pb-4">
             <div className="space-y-2">
-              {(projects as any[]).map((project: any) => (
+              {(projects as any[])
+                .sort((a: any, b: any) => a.name.localeCompare(b.name))
+                .map((project: any) => (
                 <ProtectedNavLink 
                   key={project.id}
                   href={`/projects/${project.id}`}
