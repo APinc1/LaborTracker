@@ -152,12 +152,15 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
 });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
   taskDate: z.string(),
-  startDate: z.string(),
-  finishDate: z.string(),
+  startDate: z.string().optional(),
+  finishDate: z.string().optional(),
   locationId: z.number(),
   superintendentId: z.number().optional().nullable(),
   foremanId: z.number().optional().nullable(),
-  order: z.union([z.string(), z.number()]).transform(val => String(val))
+  order: z.union([z.string(), z.number()]).transform(val => String(val)).optional(),
+  taskId: z.string().optional(),
+  taskType: z.string().optional(),
+  costCode: z.string().optional()
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true });
 

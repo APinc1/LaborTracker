@@ -671,23 +671,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      // Generate required default values
+      // Get existing tasks to determine order
+      const existingTasks = await storage.getTasks(locationDbId);
+      const nextOrder = existingTasks.length;
+      
+      // Auto-generate missing fields based on user selections
       const taskData = {
         ...req.body,
         locationId: locationDbId,
         taskId: req.body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         taskType: req.body.taskType || req.body.name || 'General',
-        startDate: req.body.startDate || req.body.taskDate,
-        finishDate: req.body.finishDate || req.body.taskDate,
         costCode: req.body.costCode || 'GEN',
-        order: req.body.order || '0'
+        order: req.body.order !== undefined ? req.body.order : nextOrder.toString()
       };
+
+      // Handle sequential date calculation
+      if (req.body.dependentOnPrevious && existingTasks.length > 0) {
+        // Find the last task's finish date
+        const sortedTasks = existingTasks.sort((a, b) => parseFloat(a.order) - parseFloat(b.order));
+        const lastTask = sortedTasks[sortedTasks.length - 1];
+        const lastFinishDate = new Date(lastTask.finishDate);
+        const nextStartDate = new Date(lastFinishDate);
+        nextStartDate.setDate(nextStartDate.getDate() + 1);
+        
+        taskData.startDate = req.body.startDate || nextStartDate.toISOString().split('T')[0];
+        taskData.finishDate = req.body.finishDate || taskData.startDate;
+      } else {
+        taskData.startDate = req.body.startDate || req.body.taskDate;
+        taskData.finishDate = req.body.finishDate || req.body.taskDate;
+      }
       
       const validated = insertTaskSchema.parse(taskData);
       
       // CRITICAL: Check if this will be the first task and enforce unsequential status
       // Only enforce for the very first task when no tasks exist at all AND order is 0
-      const existingTasks = await storage.getTasks(locationDbId);
       const isActualFirstTask = existingTasks.length === 0 && (parseFloat(validated.order as string) === 0 || validated.order === undefined);
       
       if (isActualFirstTask && validated.dependentOnPrevious) {
