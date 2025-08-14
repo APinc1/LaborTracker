@@ -743,8 +743,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       mark('v0');
       const candidate = {
         name: String(body.name || 'Task'),
-        locationId,
-        order: body.order ? body.order.toString() : "0", // "0" will auto-compute in CTE
         startDate: body.startDate || startDate || todayISO,
         finishDate: body.finishDate || finishDate || todayISO,
         taskDate: body.taskDate || startDate || todayISO,
@@ -752,20 +750,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskType: body.taskType || body.name || 'General',
         costCode: body.costCode || 'GEN',
         status: body.status || 'upcoming',
-        dependentOnPrevious: body.dependentOnPrevious || false,
         scheduledHours: body.scheduledHours || '0.00'
       };
-      const parsed = insertTaskSchema.safeParse(candidate);
       mark('v1');
-      
-      if (!parsed.success) {
-        console.error('Validation failed:', parsed.error.issues);
-        return res.status(400).json({ error: 'Invalid task data', issues: parsed.error.issues });
-      }
 
-      // Single round-trip insert with CTE
+      // Single round-trip insert with CTE (no validation needed - SQL handles it)
       mark('d0');
-      const created = await storage.createTask(parsed.data);
+      const created = await storage.createTaskOptimized(locationId, candidate, body.dependentOnPrevious || false);
       mark('d1');
 
       // Minimal response

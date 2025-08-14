@@ -71,7 +71,7 @@ export interface IStorage {
   getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]>;
   
   // Optimized task helper methods
-  createTaskOptimized(task: InsertTask): Promise<{ id: number }>;
+  createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious?: boolean): Promise<{ id: number }>;
   resolveLocationIdBySlug(locationParam: string): Promise<number | null>;
   
   // Employee assignment methods
@@ -1740,37 +1740,58 @@ class DatabaseStorage implements IStorage {
   }
 
   // Single round-trip task creation with CTE
-  async createTaskOptimized(task: InsertTask): Promise<{ id: number }> {
+  async createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious: boolean = false): Promise<{ id: number }> {
     const db = await this.db;
     
     const [row] = await db.execute(sql`
       WITH agg AS (
         SELECT
-          COALESCE(COUNT(*), 0) AS next_order,
+          COALESCE(MAX("order"), -1) + 1 AS next_order,
           MAX(finish_date) AS last_finish
         FROM tasks
-        WHERE location_id = ${task.locationId}
+        WHERE location_id = ${locationId}
+      ),
+      ins AS (
+        INSERT INTO tasks (
+          location_id, name, "order", start_date, finish_date, task_date,
+          task_id, task_type, cost_code, status, dependent_on_previous, scheduled_hours
+        )
+        SELECT
+          ${locationId},
+          ${candidate.name},
+          (SELECT next_order FROM agg),
+          (
+            CASE
+              WHEN ${dependentOnPrevious} AND (SELECT last_finish FROM agg) IS NOT NULL THEN
+                CASE EXTRACT(DOW FROM (SELECT last_finish FROM agg))
+                  WHEN 6 THEN (SELECT last_finish FROM agg)::date + INTERVAL '2 day'
+                  WHEN 0 THEN (SELECT last_finish FROM agg)::date + INTERVAL '1 day'
+                  ELSE (SELECT last_finish FROM agg)::date + INTERVAL '1 day'
+                END
+              ELSE ${candidate.startDate}::date
+            END
+          ),
+          (
+            CASE
+              WHEN ${dependentOnPrevious} AND (SELECT last_finish FROM agg) IS NOT NULL THEN
+                CASE EXTRACT(DOW FROM (SELECT last_finish FROM agg))
+                  WHEN 6 THEN (SELECT last_finish FROM agg)::date + INTERVAL '2 day'
+                  WHEN 0 THEN (SELECT last_finish FROM agg)::date + INTERVAL '1 day'
+                  ELSE (SELECT last_finish FROM agg)::date + INTERVAL '1 day'
+                END
+              ELSE ${candidate.finishDate}::date
+            END
+          ),
+          ${candidate.taskDate}::date,
+          ${candidate.taskId},
+          ${candidate.taskType},
+          ${candidate.costCode},
+          ${candidate.status},
+          ${dependentOnPrevious},
+          ${candidate.scheduledHours}
+        RETURNING id
       )
-      INSERT INTO tasks (
-        location_id, name, "order", start_date, finish_date, 
-        task_date, task_id, task_type, cost_code, status, 
-        dependent_on_previous, scheduled_hours
-      )
-      SELECT
-        ${task.locationId},
-        ${task.name},
-        COALESCE(${task.order}::text, (SELECT next_order::text FROM agg)),
-        ${task.startDate}::date,
-        ${task.finishDate}::date,
-        ${task.taskDate}::date,
-        ${task.taskId},
-        ${task.taskType},
-        ${task.costCode},
-        ${task.status},
-        ${task.dependentOnPrevious},
-        ${task.scheduledHours}
-      FROM agg
-      RETURNING id
+      SELECT id FROM ins
     `);
     
     return { id: row?.id as number };
