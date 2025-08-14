@@ -734,6 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('Creating task for location:', locParam, 'with data:', req.body);
+      console.log('🔍 DEBUG linkedTaskGroup field:', body.linkedTaskGroup);
 
       // Build minimal candidate payload
       const body = req.body ?? {};
