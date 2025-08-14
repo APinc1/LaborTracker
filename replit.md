@@ -21,10 +21,11 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 ### Technical Implementations
 - **Frontend**: React 18 with TypeScript, Vite for builds, TanStack Query for state management, Wouter for routing, and React Hook Form with Zod for form validation.
 - **Backend**: Express.js with TypeScript, utilizing a RESTful API design with CRUD operations.
-- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Successfully migrated from in-memory to persistent storage using postgres-js driver with SSL connection. Completed major migration (August 2025) from string-based locationId to foreign key relationships for improved data integrity.
+- **Database**: Supabase PostgreSQL via Drizzle ORM for type-safe operations. Successfully migrated from in-memory to persistent storage using postgres-js driver with SSL connection. Completed major migration (August 2025) from string-based locationId to foreign key relationships for improved data integrity. **Deployment optimized** (August 2025) with singleton connection pattern, PgBouncer transaction pooling compatibility (prepare: false), connection limits (max: 5), and graceful shutdown handling.
 - **Real-time**: WebSocket server for live updates and notifications across clients.
-- **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization.
+- **Authentication**: Session-based authentication with PostgreSQL session storage, supporting user roles (Admin, Superintendent, Project Manager, Foreman) and role-based access control. Includes first-login password change and bidirectional employee-user synchronization. Fixed frontend login API request format issue.
 - **Data Flow**: Client requests via React Query, processed by Express routes, interacting with the database via Drizzle ORM, with WebSocket broadcasting changes.
+- **Deployment**: Production-ready with `/healthz` endpoint, server timeouts (65s headers, 60s requests), request timeout protection (25s), deferred initialization, and environment variable configuration.
 
 ### Feature Specifications
 - **Core Entities**: Manages Projects, Budget Line Items, Locations, Employees, Tasks, and Crews.
@@ -41,6 +42,14 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 - **Modular Design**: Separation of concerns with distinct management interfaces for different aspects of project management.
 - **Resilient Storage**: Dual-mode storage with automatic fallback for reliability.
 - **Data Validation**: Zod schemas for comprehensive runtime validation.
+
+## Deployment Configuration
+
+**Database**: Configured for Supabase transaction pooler (port 6543) with SSL required, optimized for PgBouncer compatibility.
+**Healthcheck**: `/healthz` endpoint for fast deployment verification.
+**Environment**: Supports PORT variable with 5000 fallback, DATABASE_URL required.
+**Timeouts**: 25-second request protection prevents platform timeouts.
+**Build**: `npm run build && npm run start` for production deployment.
 
 ## External Dependencies
 

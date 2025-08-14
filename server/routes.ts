@@ -8,6 +8,16 @@ import {
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 
+// Timeout wrapper for long requests to prevent deployment timeouts
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 25000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => 
+      setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
@@ -40,11 +50,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users', async (req, res) => {
     try {
       const storage = await getStorage();
-      const users = await storage.getUsers();
+      const users = await withTimeout(storage.getUsers(), 20000);
       res.json(users);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-      res.status(500).json({ error: 'Failed to fetch users' });
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch users' });
+      }
     }
   });
 

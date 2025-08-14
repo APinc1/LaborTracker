@@ -1,0 +1,122 @@
+Fix deployed app crashing/timeouts (Node + Express + Drizzle + Supabase)
+
+Symptoms: App worked in dev; after Deploy it crashes or fails healthcheck. Uses Supabase Postgres. Likely long startup/migrations, DB connection issues with PgBouncer, or slow endpoints causing healthcheck timeouts.
+
+Requirements / Acceptance
+
+Deployment boots cleanly and responds 200 on /healthz within 10 seconds.
+
+No runtime migrations on boot.
+
+DB connects reliably to Supabase via PgBouncer with settings compatible with transaction pooling.
+
+Process memory stays stable; no connection leaks.
+
+Long requests don’t trip platform timeouts.
+
+Do this exactly
+
+Healthcheck + fast start
+
+Add a fast route and use it as the deployment healthcheck:
+
+app.get('/healthz', (_req, res) => res.status(200).send('ok'));
+
+
+Ensure the server starts quickly; defer any heavy work (caching, warmups) until after server.listen.
+
+Supabase connection (postgres.js + Drizzle)
+
+Use the transaction pooler (port 6543) or disable prepared statements if you must use transaction pooling. Transaction pooling does not support prepared statements.
+
+Configure postgres.js like this:
+
+import http from 'http';
+import express from 'express';
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+
+const app = express();
+const server = http.createServer(app);
+
+const sql = postgres(process.env.DATABASE_URL!, {
+  // Required for PgBouncer transaction pooling:
+  prepare: false,
+  // Keep resource usage low on Replit:
+  max: 5,
+  idle_timeout: 5,          // seconds
+  connect_timeout: 10,      // seconds
+  ssl: 'require'
+});
+
+export const db = drizzle(sql);
+
+
+Set DATABASE_URL to the transaction pooler:
+
+postgresql://<user>:<pass>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+
+
+If you prefer the session pooler (port 5432), you can keep prepared statements on, but it uses more resources. Pick one strategy and make the code match.
+
+Do NOT run migrations at runtime
+
+Remove any migrate() or drizzle-kit push calls in server startup.
+
+Move migrations to the Build or PreDeploy step:
+
+npx drizzle-kit migrate
+
+
+App start should only import the already-migrated schema and run.
+
+Server timeouts & keep-alive
+
+Prevent Replit healthchecks from failing due to slow endpoints:
+
+server.headersTimeout = 65000;   // Node 18+ default is 60s; make it a bit higher
+server.requestTimeout = 60000;   // keep it <= platform limit
+
+
+Ensure routes that can be slow are paginated and return under ~20–25s.
+
+Environment & start command
+
+Verify PORT is respected:
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Listening on ${PORT}`));
+
+
+Start command should be your production build, not ts-node:
+
+npm run build && node dist/server.js
+
+
+Memory/connection hygiene
+
+Use a single DB client instance (no per-request postgres() calls).
+
+On shutdown, close gracefully:
+
+process.on('SIGTERM', async () => { await sql.end({ timeout: 5 }); process.exit(0); });
+
+
+Session store / WebSockets (if used)
+
+If using connect-pg-simple or WebSockets, ensure they reuse the same postgres.js client and do not open extra pools.
+
+Confirm cookie/session secrets are set as env vars and not regenerated on each boot.
+
+Logging
+
+Log early in start-up for faster diagnosis:
+
+console.log('Booting…');
+console.log('Using Supabase pooler:', process.env.DATABASE_URL?.includes(':6543') ? 'transaction' : 'session');
+
+After changes
+
+Redeploy with healthcheck path /healthz.
+
+Verify boot < 10s, healthcheck passes, and no repeating crashes in logs.

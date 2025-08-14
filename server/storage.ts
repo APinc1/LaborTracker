@@ -953,49 +953,76 @@ export class MemStorage implements IStorage {
   }
 }
 
+// Global database connection - singleton pattern for deployment
+let globalSql: any = null;
+let globalDb: any = null;
+
+function initializeDatabase() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL environment variable is required");
+  }
+  
+  if (globalSql && globalDb) {
+    console.log("♻️ Reusing existing database connection");
+    return globalDb;
+  }
+  
+  console.log("🔗 Initializing Supabase PostgreSQL connection...");
+  
+  try {
+    // Optimized for Supabase PgBouncer transaction pooling
+    globalSql = postgres(process.env.DATABASE_URL, {
+      // Required for PgBouncer transaction pooling:
+      prepare: false,
+      // Keep resource usage low for deployment:
+      max: 5,
+      idle_timeout: 5,          // seconds
+      connect_timeout: 10,      // seconds
+      ssl: 'require'
+    });
+    
+    globalDb = drizzlePostgres(globalSql, {
+      schema: {
+        users,
+        projects,
+        budgetLineItems,
+        locations,
+        locationBudgets,
+        crews,
+        employees,
+        tasks,
+        employeeAssignments,
+      },
+    });
+    
+    console.log("✅ PostgreSQL client initialized successfully");
+    return globalDb;
+    
+  } catch (error) {
+    console.error("❌ Failed to initialize PostgreSQL client:", error);
+    throw error;
+  }
+}
+
+// Graceful cleanup function
+export function closeDatabase() {
+  if (globalSql) {
+    return globalSql.end({ timeout: 5 });
+  }
+}
+
 class DatabaseStorage implements IStorage {
   private db: any;
 
   constructor() {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL environment variable is required");
-    }
+    this.db = initializeDatabase();
     
-    let connectionString = process.env.DATABASE_URL;
-    console.log("Initializing Supabase PostgreSQL connection...");
-    
-    try {
-      // Use postgres-js for better Supabase compatibility
-      const client = postgres(connectionString, {
-        ssl: 'require',
-        max: 10,
-        idle_timeout: 20,
-        connect_timeout: 10,
+    // Defer sample data initialization to not block startup
+    process.nextTick(() => {
+      this.initializeSampleData().catch(error => {
+        console.warn("⚠️ Sample data initialization failed:", error);
       });
-      
-      this.db = drizzlePostgres(client, {
-        schema: {
-          users,
-          projects,
-          budgetLineItems,
-          locations,
-          locationBudgets,
-          crews,
-          employees,
-          tasks,
-          employeeAssignments,
-        },
-      });
-      
-      console.log("PostgreSQL client initialized successfully");
-      
-    } catch (error) {
-      console.error("Failed to initialize PostgreSQL client:", error);
-      throw error;
-    }
-    
-    // Initialize with sample data if database is empty
-    this.initializeSampleData();
+    });
   }
 
   private async initializeSampleData() {
