@@ -149,7 +149,8 @@ export default function Dashboard() {
   };
 
   const getEmployeeHours = (employeeId: number) => {
-    return (assignments as any[])
+    // Use the filtered assignments for the selected date instead of all assignments
+    return selectedDateData.filteredAssignments
       .filter((assignment: any) => assignment.employeeId === employeeId)
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
