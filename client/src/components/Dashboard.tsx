@@ -281,27 +281,31 @@ export default function Dashboard() {
 
   // Get budget data for specific location
   // Only fetch budget data for locations that have tasks in the selected time period
-  // This dramatically reduces the number of concurrent API calls
-  const locationsWithTasks = [...new Set([
+  // Fix: Use database IDs for proper filtering
+  const locationDbIdsWithTasks = [...new Set([
     ...todayTasks.map((task: any) => task.locationId),
     ...previousDayTasks.map((task: any) => task.locationId),
     ...nextDayTasks.map((task: any) => task.locationId)
   ].filter(Boolean))];
 
   const { data: budgetDataByLocation = {} } = useQuery({
-    queryKey: ["/api/budget", locationsWithTasks],
+    queryKey: ["/api/budget", locationDbIdsWithTasks.join(',')],
     queryFn: async () => {
       // Only fetch budget data for locations that actually have tasks
       const relevantLocations = (locations as any[]).filter((location: any) => 
-        locationsWithTasks.includes(location.locationId)
+        locationDbIdsWithTasks.includes(location.id) // Fix: use database ID for matching
       );
+      
+      console.log('🔍 Dashboard budget fetch - relevant locations:', relevantLocations.map(l => l.locationId));
       
       if (relevantLocations.length === 0) return {};
       
       const budgetPromises = relevantLocations.map(async (location: any) => {
         try {
+          console.log(`📊 Dashboard fetching budget for: ${location.locationId}`);
           const response = await fetch(`/api/locations/${location.locationId}/budget`);
           const budgetItems = await response.json();
+          console.log(`✅ Dashboard budget loaded for ${location.locationId}:`, budgetItems.length, 'items');
           return { locationId: location.locationId, budgetItems };
         } catch (error) {
           console.warn(`Failed to fetch budget for location ${location.locationId}:`, error);
@@ -310,10 +314,13 @@ export default function Dashboard() {
       });
       
       const results = await Promise.all(budgetPromises);
-      return results.reduce((acc: any, { locationId, budgetItems }) => {
+      const budgetData = results.reduce((acc: any, { locationId, budgetItems }) => {
         acc[locationId] = budgetItems;
         return acc;
       }, {});
+      
+      console.log('📋 Dashboard all budget data loaded:', Object.keys(budgetData));
+      return budgetData;
     },
     enabled: (locations as any[]).length > 0 && 
              (todayTasks.length > 0 || previousDayTasks.length > 0 || nextDayTasks.length > 0) &&
@@ -349,7 +356,7 @@ export default function Dashboard() {
     // Add budget hours from budget line items
     locationBudget.forEach((budgetItem: any) => {
       const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
-      const totalHours = budgetItem.totalHours || budgetItem.hours || budgetItem.quantity;
+      const totalHours = budgetItem.hours || budgetItem.totalHours || budgetItem.quantity; // Fix: use correct field name
       
       if (costCode && costCode.trim()) {
         const normalizedCostCode = normalizeCostCode(costCode);
@@ -879,27 +886,57 @@ export default function Dashboard() {
                     </div>
                     <Progress value={progressPercentage} className="mb-3" />
                     
-                    {/* Cost Code Hours Status */}
+                    {/* Cost Code Progress Bars */}
                     {Object.keys(costCodeData).length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Cost Code Hours</h5>
-                        <div className="space-y-2">
-                          {Object.entries(costCodeData).map(([costCode, data]) => {
-                            const status = getRemainingHoursStatus(data.actualHours, data.budgetHours);
-                            return (
-                              <div key={costCode} className={`flex items-center justify-between p-2 rounded ${status.bgColor}`}>
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="outline" className="text-xs">{costCode}</Badge>
-                                  <span className="text-sm text-gray-600">
-                                    {data.actualHours.toFixed(1)}h / {data.budgetHours.toFixed(1)}h
-                                  </span>
+                        <h5 className="text-sm font-medium text-gray-700 mb-2">Cost Code Progress</h5>
+                        <div className="space-y-3">
+                          {Object.entries(costCodeData)
+                            .filter(([_, data]) => data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0)
+                            .sort(([_, a], [__, b]) => b.budgetHours - a.budgetHours) // Sort by budget hours descending
+                            .map(([costCode, data]) => {
+                              const remainingHours = Math.max(0, data.budgetHours - data.actualHours);
+                              const overageHours = Math.max(0, data.actualHours - data.budgetHours);
+                              const progressPercentage = data.budgetHours > 0 ? Math.min(100, (data.actualHours / data.budgetHours) * 100) : 0;
+                              
+                              // Color coding based on remaining hours percentage
+                              let progressColor = 'bg-green-500'; // Default green
+                              if (data.budgetHours > 0) {
+                                const remainingPercentage = (remainingHours / data.budgetHours) * 100;
+                                if (remainingPercentage <= 0) {
+                                  progressColor = 'bg-red-500'; // Red if over budget
+                                } else if (remainingPercentage <= 15) {
+                                  progressColor = 'bg-yellow-500'; // Yellow if 15% or less remaining
+                                }
+                              }
+                              
+                              return (
+                                <div key={costCode} className="space-y-1">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-medium text-gray-700">{costCode}</span>
+                                    <span className="text-gray-600">
+                                      {data.actualHours.toFixed(1)}h / {data.budgetHours.toFixed(1)}h
+                                      {overageHours > 0 && (
+                                        <span className="text-red-600 ml-1">
+                                          (+{overageHours.toFixed(1)}h)
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                      className={`h-2 rounded-full transition-all duration-300 ${progressColor}`}
+                                      style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                                    />
+                                  </div>
+                                  {remainingHours > 0 && (
+                                    <div className="text-xs text-gray-500">
+                                      {remainingHours.toFixed(1)}h remaining
+                                    </div>
+                                  )}
                                 </div>
-                                <span className={`text-xs font-medium ${status.color}`}>
-                                  {status.status}
-                                </span>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
                       </div>
                     )}

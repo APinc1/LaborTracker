@@ -591,7 +591,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                     <span>Cost Code Progress</span>
                                   </div>
                                   <div className="space-y-2">
-                                    {costCodeBreakdown.slice(0, 4).map((costCode) => (
+                                    {costCodeBreakdown.map((costCode) => (
                                       <div key={costCode.costCode} className="space-y-1">
                                         <div className="flex items-center justify-between text-xs">
                                           <span className="font-medium text-gray-700">{costCode.costCode}</span>
@@ -617,11 +617,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                         )}
                                       </div>
                                     ))}
-                                    {costCodeBreakdown.length > 4 && (
-                                      <div className="text-xs text-gray-500 text-center pt-1">
-                                        +{costCodeBreakdown.length - 4} more cost codes
-                                      </div>
-                                    )}
+
                                   </div>
                                 </div>
                               );
