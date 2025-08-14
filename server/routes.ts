@@ -8,6 +8,7 @@ import {
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 import { timing, validateLimit } from "./middleware/timing";
+import { nextWeekday } from "./lib/dates";
 
 // Aggressive timeout for better performance
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -704,115 +705,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const createTaskHandler = async (req: any, res: any, next: any) => {
     const mark = res.locals.mark;
     try {
-      mark('v0'); // Start validation
       const storage = await getStorage();
       
-      // Validate locationId parameter
-      const locationParam = req.params.locationId;
-      if (!locationParam || locationParam === 'undefined' || locationParam.trim() === '') {
-        console.error('Task creation failed: Invalid locationId parameter:', locationParam);
-        return res.status(400).json({ error: 'Valid location ID is required' });
-      }
+      // Resolve locationId without extra fetches
+      const locParam = req.params.locationId;
+      let locationId: number;
       
-      console.log('Creating task for location:', locationParam, 'with data:', req.body);
-      
-      // Convert locationId parameter to database ID
-      let locationDbId: number;
-      if (/^\d+$/.test(locationParam)) {
-        // It's a pure number - use as database ID
-        locationDbId = parseInt(locationParam);
+      if (/^\d+$/.test(locParam)) {
+        locationId = Number(locParam);
       } else {
-        // It's a locationId string - find the location by locationId
-        const location = await storage.getLocation(locationParam);
-        if (!location) {
-          console.error('Location not found for locationId:', locationParam);
+        const resolvedId = await storage.resolveLocationIdBySlug(locParam);
+        if (!resolvedId) {
           return res.status(404).json({ error: 'Location not found' });
         }
-        locationDbId = location.id;
+        locationId = resolvedId;
       }
-      
-      // Get existing tasks to determine order (optimized)
-      const existingTasks = await storage.getTasks(locationDbId);
-      const nextOrder = existingTasks.length;
-      
-      // Auto-generate missing fields based on user selections  
-      const taskData = {
-        ...req.body,
-        locationId: locationDbId,
-        taskId: req.body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        taskType: req.body.taskType || req.body.name || 'General',
-        costCode: req.body.costCode || 'GEN',
-        taskDate: req.body.taskDate || req.body.startDate || req.body.finishDate || new Date().toISOString().split('T')[0],
-        order: req.body.order !== undefined ? req.body.order : nextOrder.toString()
-      };
 
-      // Handle sequential date calculation
-      if (req.body.dependentOnPrevious && existingTasks.length > 0) {
-        // Find the last task's finish date
-        const sortedTasks = existingTasks.sort((a, b) => parseFloat(a.order) - parseFloat(b.order));
-        const lastTask = sortedTasks[sortedTasks.length - 1];
-        const lastFinishDate = new Date(lastTask.finishDate);
-        const nextStartDate = new Date(lastFinishDate);
-        nextStartDate.setDate(nextStartDate.getDate() + 1);
-        
-        taskData.startDate = req.body.startDate || nextStartDate.toISOString().split('T')[0];
-        taskData.finishDate = req.body.finishDate || taskData.startDate;
-      } else {
-        taskData.startDate = req.body.startDate || req.body.taskDate;
-        taskData.finishDate = req.body.finishDate || req.body.taskDate;
+      console.log('Creating task for location:', locParam, 'with data:', req.body);
+
+      // Build minimal candidate payload
+      const body = req.body ?? {};
+      const nowISO = new Date().toISOString().slice(0,10);
+
+      // O(1) reads to compute derived fields
+      mark('d0');
+      const [lastOrder, lastFinishISO] = await Promise.all([
+        body.order != null ? Promise.resolve(null) : storage.getLastOrder(locationId),
+        body.dependentOnPrevious ? storage.getLastFinishDate(locationId) : Promise.resolve(null),
+      ]);
+      mark('d1');
+
+      // Compute order
+      const order = body.order != null ? Number(body.order) : (lastOrder == null ? 0 : lastOrder + 1);
+
+      // Compute start/finish (respect weekday rule only if dependentOnPrevious)
+      let startDate = body.startDate ?? nowISO;
+      let finishDate = body.finishDate ?? startDate;
+      if (body.dependentOnPrevious && lastFinishISO) {
+        const nextStart = nextWeekday(new Date(lastFinishISO));
+        const s = nextStart.toISOString().slice(0,10);
+        startDate = s;
+        finishDate = s; // 1-day tasks
       }
+
+      // Validate (sync)
+      mark('v0');
+      const candidate = { 
+        name: String(body.name ?? 'Task'),
+        locationId,
+        order: order.toString(),
+        startDate,
+        finishDate,
+        taskDate: body.taskDate || startDate,
+        taskId: body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        taskType: body.taskType ?? body.name ?? 'General',
+        costCode: body.costCode ?? 'GEN',
+        status: body.status ?? 'upcoming',
+        dependentOnPrevious: body.dependentOnPrevious ?? false,
+        scheduledHours: body.scheduledHours ?? '0.00'
+      };
+      const parsed = insertTaskSchema.safeParse(candidate);
+      mark('v1');
       
-      // Validate the task data using schema (sync validation)
-      const parseResult = insertTaskSchema.safeParse(taskData);
-      mark('v1'); // End validation
-      
-      if (!parseResult.success) {
-        console.error('Validation failed:', parseResult.error.issues);
-        return res.status(400).json({ error: 'Invalid task data', issues: parseResult.error.issues });
+      if (!parsed.success) {
+        console.error('Validation failed:', parsed.error.issues);
+        return res.status(400).json({ error: 'Invalid task data', issues: parsed.error.issues });
       }
-      
-      const validated = parseResult.data;
-      
-      // CRITICAL: Check if this will be the first task and enforce unsequential status
-      // Only enforce for the very first task when no tasks exist at all AND order is 0
-      const isActualFirstTask = existingTasks.length === 0 && (parseFloat(validated.order as string) === 0 || validated.order === undefined);
-      
-      if (isActualFirstTask && validated.dependentOnPrevious) {
-        console.log('ENFORCING FIRST TASK RULE for new task:', validated.name);
-        validated.dependentOnPrevious = false;
-      }
-      
-      mark('d0'); // Start database operation
-      const task = await storage.createTask(validated);
-      mark('d1'); // End database operation
-      
-      // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
-      if (validated.linkedTaskGroup && req.body.linkedTaskId) {
-        try {
-          const existingTask = await storage.getTask(parseInt(req.body.linkedTaskId));
-          if (existingTask && !existingTask.linkedTaskGroup) {
-            await storage.updateTask(parseInt(req.body.linkedTaskId), {
-              linkedTaskGroup: validated.linkedTaskGroup
-            });
-          }
-        } catch (updateError) {
-          console.error('Failed to update linked task group:', updateError);
-          // Continue with task creation even if linking fails
-        }
-      }
-      
-      mark('s0'); // Start serialization
-      res.status(201).json({ id: task.id }); // Minimal response as requested
-      mark('s1'); // End serialization
-    } catch (error: any) {
-      console.error('Task creation error:', error);
+
+      // Insert (DB is already sub-ms)
+      mark('d2');
+      const created = await storage.createTask(parsed.data);
+      mark('d3');
+
+      // Minimal response
+      mark('s0');
+      res.status(201).json({ id: created.id });
+      mark('s1');
+    } catch (e: any) {
+      console.error('Task creation error:', e);
       
       // Handle DB constraint errors
-      if (error.code === '23505') {
+      if (e.code === '23505') {
         return res.status(409).json({ error: 'Duplicate task name in location' });
       }
       
-      res.status(500).json({ error: 'Task creation failed', details: error.message });
+      res.status(500).json({ error: 'Task creation failed', details: e.message });
     }
   };
 

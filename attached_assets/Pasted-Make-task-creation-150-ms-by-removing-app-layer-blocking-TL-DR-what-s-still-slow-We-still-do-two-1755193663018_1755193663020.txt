@@ -1,0 +1,212 @@
+Make task creation <150 ms by removing app-layer blocking
+TL;DR (what’s still slow)
+
+We still do two heavy things on the request path:
+
+getLocation() and fetching all existing tasks to compute order and sequential dates.
+
+Some remaining synchronous work around validation/timing headers.
+
+DB is fast; the event-loop lag (~208 ms p95) is from our own CPU work on each request.
+
+1) Stop loading all tasks; compute order and dates with tiny queries
+1a) Storage: add constant-time helpers
+
+Create two single-row queries; these replace getTasks(locationId) in the hot path.
+
+// server/storage.ts (or wherever Drizzle is used)
+import { sql as raw } from 'drizzle-orm';
+import { db } from './db';
+import { tasks } from './schema';
+
+// Last order for a location (null if none)
+export async function getLastOrder(locationId: number): Promise<number | null> {
+  const [row] = await db
+    .select({ last: raw<number>`max(${tasks.order})` })
+    .from(tasks)
+    .where(eq(tasks.locationId, locationId))
+    .limit(1);
+  return row?.last ?? null;
+}
+
+// Last finish_date for a location (null if none)
+export async function getLastFinishDate(locationId: number): Promise<string | null> {
+  const [row] = await db
+    .select({ last: raw<string>`max(${tasks.finishDate})` })
+    .from(tasks)
+    .where(eq(tasks.locationId, locationId))
+    .limit(1);
+  return row?.last ?? null;
+}
+
+
+These are O(1), index-backed reads (no large result sets, no JSON marshalling cost).
+
+1b) Tiny weekday helper (pure & fast)
+// server/lib/dates.ts
+export function nextWeekday(d: Date): Date {
+  const day = d.getDay();             // 0=Sun … 6=Sat
+  if (day === 6) d.setDate(d.getDate() + 2);    // Sat -> Mon
+  else if (day === 0) d.setDate(d.getDate() + 1); // Sun -> Mon
+  return d;
+}
+
+1c) Route: replace “load all tasks” with the two O(1) queries
+// server/routes.ts  (inside POST /api/locations/:id/tasks)
+import { getLastOrder, getLastFinishDate } from './storage';
+import { nextWeekday } from './lib/dates';
+
+app.post('/api/locations/:loc/tasks', async (req, res, next) => {
+  const mark = res.locals.mark;
+  try {
+    // Resolve locationId without extra fetches
+    const locParam = req.params.loc;
+    const locationId = /^\d+$/.test(locParam) ? Number(locParam) : await storage.resolveLocationIdBySlug(locParam);
+    if (!locationId) return res.status(404).json({ error: 'Location not found' });
+
+    // Build minimal candidate payload
+    const body = req.body ?? {};
+    const nowISO = new Date().toISOString().slice(0,10);
+
+    // O(1) reads to compute derived fields
+    mark('d0');
+    const [lastOrder, lastFinishISO] = await Promise.all([
+      body.order != null ? Promise.resolve(null) : getLastOrder(locationId),
+      body.dependentOnPrevious ? getLastFinishDate(locationId) : Promise.resolve(null),
+    ]);
+    mark('d1');
+
+    // Compute order
+    const order = body.order != null ? Number(body.order) : (lastOrder == null ? 0 : lastOrder + 1);
+
+    // Compute start/finish (respect weekday rule only if dependentOnPrevious)
+    let startDate = body.startDate ?? nowISO;
+    let finishDate = body.finishDate ?? startDate;
+    if (body.dependentOnPrevious && lastFinishISO) {
+      const nextStart = nextWeekday(new Date(lastFinishISO));
+      const s = nextStart.toISOString().slice(0,10);
+      startDate = s;
+      finishDate = s; // 1-day tasks
+    }
+
+    // Validate (sync)
+    mark('v0');
+    const candidate = { 
+      name: String(body.name ?? 'Task'),
+      locationId,
+      order,
+      startDate,
+      finishDate,
+      taskType: body.taskType ?? body.name ?? 'General',
+      costCode: body.costCode ?? 'GEN'
+    };
+    const parsed = insertTaskSchema.safeParse(candidate);
+    mark('v1');
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid task data', issues: parsed.error.issues });
+
+    // Insert (DB is already sub-ms)
+    mark('d2');
+    const created = await storage.createTask(parsed.data);
+    mark('d3');
+
+    // Minimal response
+    mark('s1');
+    return res.status(201).json({ id: created.id });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+Why it’s faster: We eliminated the expensive getTasks(locationId) and any per-request array/JSON work. Two constant-time aggregates + tiny date math is cheap.
+
+2) Fix the Server-Timing header and keep it cheap
+
+The header wasn’t visible because it was set after finish. Put it in a res.on('finish') before sending the body, and compute durations only from saved numbers (no JSON stringify in the hook).
+
+// server/middleware/timing.ts
+import { performance } from 'node:perf_hooks';
+
+export function timing() {
+  return (req, res, next) => {
+    const t0 = performance.now();
+    const marks: Record<string, number> = { t0 };
+    res.locals.mark = (k: string) => { marks[k] = performance.now(); };
+
+    res.on('finish', () => {
+      // guard: don’t mutate headers if already sent
+      try {
+        const dur = (a: string, b: string) => (marks[b] && marks[a]) ? (marks[b] - marks[a]) : 0;
+        // segments: v = validation, d = db, s = serialize
+        const validate = dur('v0', 'v1');
+        const db = (dur('d0','d1') + dur('d2','d3'));
+        const serialize = dur('s0','s1');
+        // Set once; ok even after status is written
+        res.setHeader('Server-Timing',
+          `validate;dur=${validate.toFixed(1)}, db;dur=${db.toFixed(1)}, serialize;dur=${serialize.toFixed(1)}`);
+      } catch {}
+    });
+
+    next();
+  };
+}
+
+
+Then you’ll see:
+
+curl -i -X POST "$URL/api/locations/78/tasks" \
+  -H 'content-type: application/json' \
+  --data '{"name":"t","order":1,"startDate":"2025-08-14","finishDate":"2025-08-14"}' \
+  | grep -i server-timing
+
+3) Keep validation truly sync & precompiled
+
+Ensure any regexes or schemas are module-scoped (compiled once).
+
+No async refine. Push uniqueness/shape constraints into the DB (unique indexes) and translate 23505 to 409.
+
+4) Prevent micro-stampedes on writes only
+
+You already added a validator limiter. Keep it to 2 or 3 for POST/PATCH routes only. Reads can stay at 4.
+
+5) Make sure prod runs compiled JS (not tsx/ts-node)
+
+If Deploy still uses tsx/ts-node, switch to build+run to avoid runtime transpile/SourceMap overhead:
+
+package.json
+
+{
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server/index.js"
+  }
+}
+
+
+And ensure Deploy runs npm run build && npm run start.
+
+6) Sanity checks (run 3× and paste numbers)
+# Should be <150–180ms total on deployed env
+curl -s -w "TOTAL:%{time_total}s TTFB:%{time_starttransfer}s\n" \
+  "$URL/api/locations/78/tasks" -o /dev/null
+
+curl -s -w "TOTAL:%{time_total}s TTFB:%{time_starttransfer}s\n" \
+  -H 'content-type: application/json' \
+  -X POST "$URL/api/locations/78/tasks" \
+  --data '{"name":"fast","startDate":"2025-08-14","finishDate":"2025-08-14"}' -o /dev/null
+
+# Confirm header segments
+curl -i -X POST "$URL/api/locations/78/tasks" \
+  -H 'content-type: application/json' \
+  --data '{"name":"fast2","startDate":"2025-08-14","finishDate":"2025-08-14"}' \
+  | grep -i server-timing
+
+Why this should beat 200 ms
+
+Zero “load-all-tasks” work on create: two constant-time aggregates replace big arrays.
+
+No async validation; DB constraints enforce invariants.
+
+Compiled JS removes dev-tooling overhead.
+
+Accurate Server-Timing shows exactly where the time goes, so we can keep trimming if needed.

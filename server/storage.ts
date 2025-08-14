@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte, asc, gt } from "drizzle-orm";
+import { eq, and, gte, lte, asc, gt, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -69,6 +69,11 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
   getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]>;
+  
+  // Optimized task helper methods
+  getLastOrder(locationId: number): Promise<number | null>;
+  getLastFinishDate(locationId: number): Promise<string | null>;
+  resolveLocationIdBySlug(locationParam: string): Promise<number | null>;
   
   // Employee assignment methods
   getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]>;
@@ -1733,6 +1738,39 @@ class DatabaseStorage implements IStorage {
         lte(tasks.taskDate, endDate)
       )
     );
+  }
+
+  // Optimized constant-time helpers for task creation
+  async getLastOrder(locationId: number): Promise<number | null> {
+    const db = await this.db;
+    // Get count to determine the next order  
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(tasks)
+      .where(eq(tasks.locationId, locationId));
+    
+    return countResult?.count ? countResult.count : 0;
+  }
+
+  async getLastFinishDate(locationId: number): Promise<string | null> {
+    const db = await this.db;
+    const result = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.locationId, locationId))
+      .orderBy(desc(tasks.finishDate))
+      .limit(1);
+    
+    return result.length > 0 ? result[0].finishDate : null;
+  }
+
+  async resolveLocationIdBySlug(locationParam: string): Promise<number | null> {
+    const db = await this.db;
+    const location = await db.select({ id: locations.id })
+      .from(locations)
+      .where(eq(locations.locationId, locationParam))
+      .limit(1);
+    return location[0]?.id || null;
   }
 
   // Employee assignment methods
