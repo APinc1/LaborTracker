@@ -804,20 +804,20 @@ export default function CreateTaskModal({
     if (insertIndex === 0) {
       // First position - use order before first task or 0.00
       orderValue = sortedTasks.length > 0 ? 
-        String(Math.max(0, (parseFloat(sortedTasks[0].order as string || "1.00") - 1.00))).padEnd(4, '0') : 
+        Math.max(0, (parseFloat(sortedTasks[0].order as string || "1.00") - 1.00)).toFixed(2) : 
         "0.00";
       console.log('🔧 DEBUG: First position order:', orderValue);
     } else if (insertIndex >= sortedTasks.length) {
       // Last position - use order after last task
       orderValue = sortedTasks.length > 0 ? 
-        String((parseFloat(sortedTasks[sortedTasks.length - 1].order as string || "0.00") + 1.00)).padEnd(4, '0') : 
+        (parseFloat(sortedTasks[sortedTasks.length - 1].order as string || "0.00") + 1.00).toFixed(2) : 
         "1.00";
       console.log('🔧 DEBUG: Last position order:', orderValue);
     } else {
       // Middle position - calculate order between adjacent tasks
       const prevOrder = parseFloat(sortedTasks[insertIndex - 1]?.order as string || "0.00");
       const nextOrder = parseFloat(sortedTasks[insertIndex]?.order as string || "2.00");
-      orderValue = String((prevOrder + nextOrder) / 2).padEnd(4, '0');
+      orderValue = ((prevOrder + nextOrder) / 2).toFixed(2);
       console.log('🔧 DEBUG: Middle position order:', {
         prevTask: sortedTasks[insertIndex - 1]?.name,
         prevOrder,
