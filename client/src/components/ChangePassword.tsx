@@ -88,30 +88,25 @@ export default function ChangePassword({ user, onPasswordChanged, isFirstLogin =
               <Lock className="w-6 h-6 text-amber-600" />
             </div>
           </div>
-          <CardTitle className="text-2xl">Set Your Password</CardTitle>
+          <CardTitle className="text-2xl">
+            {isFirstLogin ? "Set Your Password" : "Change Password"}
+          </CardTitle>
+          <p className="text-gray-600">
+            {isFirstLogin 
+              ? `Welcome, ${user.name}! Please change your password to continue.`
+              : "Please enter your current password and choose a new one."
+            }
+          </p>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-center space-x-2 text-amber-800">
-              <AlertCircle className="w-5 h-5" />
-              <p className="text-sm">
+          {isFirstLogin && (
+            <Alert className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
                 For security, you must change your password from the default before accessing the system.
-              </p>
-            </div>
-          </div>
-
-          <div className="mb-4 text-center">
-            <Button
-              variant="ghost"
-              onClick={() => {
-                localStorage.clear();
-                window.location.reload();
-              }}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
-              Back to Login
-            </Button>
-          </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
