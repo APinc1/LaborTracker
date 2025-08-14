@@ -18,14 +18,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 }
 
-// Balanced timeout for simple operations
+// Conservative timeout for database operations
 function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 10000); // 10 seconds for reliability
+  return withTimeout(promise, 30000); // 30 seconds - database queries are fast but connection can be slow
 }
 
 // Quick timeout for very simple queries
 function withQuickTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 8000); // 8 second timeout
+  return withTimeout(promise, 20000); // 20 second timeout for simple operations
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -680,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const storage = await getStorage();
-      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 15000);
+      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 30000);
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching tasks by date range:', error);

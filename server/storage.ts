@@ -996,7 +996,7 @@ function initializeDatabase() {
       // Required for PgBouncer transaction pooling:
       prepare: false,
       // Ultra-optimized connection pool for maximum speed:
-      max: 3,                   // Multiple connections for reliability
+      max: 5,                   // More connections for better performance
       idle_timeout: 30,         // Keep connection alive longer
       connect_timeout: 10,      // 10 second connection timeout
       statement_timeout: 30000, // 30 second query timeout
