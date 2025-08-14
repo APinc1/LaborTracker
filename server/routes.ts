@@ -755,7 +755,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         costCode: body.costCode || 'GEN',
         status: body.status || 'upcoming',
         scheduledHours: body.scheduledHours || '0.00',
-        order: body.order || '999.00'
+        order: body.order || '999.00',
+        linkedTaskGroup: body.linkedTaskGroup || null
       };
       mark('v1');
 
