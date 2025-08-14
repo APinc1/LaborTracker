@@ -48,39 +48,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     staleTime: 30000,
   });
 
-  // Fetch budget data for all locations
-  const locationBudgetQueries = useQuery({
-    queryKey: ["/api/projects", projectId, "all-location-budgets", locations.map(l => l.locationId).join(',')],
-    queryFn: async () => {
-      console.log('🔍 Fetching budget data for locations:', locations.map(l => l.locationId));
-      if (!locations.length) return {};
-      
-      const budgetPromises = locations.map(async (location: any) => {
-        try {
-          console.log(`📊 Fetching budget for location: ${location.locationId}`);
-          const response = await fetch(`/api/locations/${location.locationId}/budget`);
-          if (!response.ok) return { locationId: location.locationId, budget: [] };
-          const budget = await response.json();
-          console.log(`✅ Budget loaded for ${location.locationId}:`, budget.length, 'items');
-          return { locationId: location.locationId, budget };
-        } catch (error) {
-          console.error(`Failed to fetch budget for location ${location.locationId}:`, error);
-          return { locationId: location.locationId, budget: [] };
-        }
-      });
-      
-      const results = await Promise.all(budgetPromises);
-      const budgetData = results.reduce((acc: any, result) => {
-        acc[result.locationId] = result.budget;
-        return acc;
-      }, {});
-      
-      console.log('📋 All budget data loaded:', budgetData);
-      return budgetData;
-    },
-    enabled: locations.length > 0,
-    staleTime: 30000,
-  });
+
 
   // Fetch tasks for all locations to calculate accurate date ranges
   const locationTaskQueries = useQuery({
@@ -134,76 +102,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     };
   };
 
-  // Calculate cost code breakdown for a location
-  const getLocationCostCodeBreakdown = (locationId: string) => {
-    const budget = locationBudgetQueries.data?.[locationId] || [];
-    const tasks = locationTaskQueries.data?.[locationId] || [];
-    
-    // Group budget hours by cost code
-    const costCodeBudget: { [costCode: string]: number } = {};
-    budget.forEach((item: any) => {
-      // Only include parent items (line numbers without dots) to avoid double counting
-      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
-      const isStandalone = !item.lineItemNumber || item.lineItemNumber === '';
-      
-      if (isParent || isStandalone) {
-        const costCode = item.costCode || 'Other';
-        const hours = parseFloat(item.hours) || 0;
-        costCodeBudget[costCode] = (costCodeBudget[costCode] || 0) + hours;
-      }
-    });
-    
-    // Group actual hours by cost code from assignments
-    const locationTaskIds = tasks.map((task: any) => task.id);
-    const locationAssignments = assignments.filter((assignment: any) => 
-      locationTaskIds.includes(assignment.taskId)
-    );
-    
-    const costCodeActual: { [costCode: string]: number } = {};
-    locationAssignments.forEach((assignment: any) => {
-      const task = tasks.find((t: any) => t.id === assignment.taskId);
-      if (task) {
-        const costCode = task.costCode || 'Other';
-        const actualHours = parseFloat(assignment.actualHours) || 0;
-        costCodeActual[costCode] = (costCodeActual[costCode] || 0) + actualHours;
-      }
-    });
-    
-    // Combine all cost codes
-    const allCostCodes = new Set([...Object.keys(costCodeBudget), ...Object.keys(costCodeActual)]);
-    
-    const costCodeBreakdown = Array.from(allCostCodes).map(costCode => {
-      const budgetHours = costCodeBudget[costCode] || 0;
-      const actualHours = costCodeActual[costCode] || 0;
-      const remainingHours = Math.max(0, budgetHours - actualHours);
-      const overageHours = Math.max(0, actualHours - budgetHours);
-      const progressPercentage = budgetHours > 0 ? Math.min(100, (actualHours / budgetHours) * 100) : 0;
-      
-      // Color coding based on remaining hours percentage
-      let progressColor = 'bg-green-500'; // Default green
-      if (budgetHours > 0) {
-        const remainingPercentage = (remainingHours / budgetHours) * 100;
-        if (remainingPercentage <= 0) {
-          progressColor = 'bg-red-500'; // Red if over budget
-        } else if (remainingPercentage <= 15) {
-          progressColor = 'bg-yellow-500'; // Yellow if 15% or less remaining
-        }
-      }
-      
-      return {
-        costCode,
-        budgetHours,
-        actualHours,
-        remainingHours,
-        overageHours,
-        progressPercentage,
-        progressColor
-      };
-    }).filter(item => item.budgetHours > 0 || item.actualHours > 0) // Only show cost codes with data
-     .sort((a, b) => b.budgetHours - a.budgetHours); // Sort by budget hours descending
-    
-    return costCodeBreakdown;
-  };
+
 
   // Add location mutation
   const addLocationMutation = useMutation({
@@ -559,69 +458,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               <p className="text-xs text-gray-500">Based on completed tasks</p>
                             </div>
 
-                            {/* Cost Code Progress Bars */}
-                            {(() => {
-                              const budgetLoading = locationBudgetQueries.isLoading;
-                              const taskLoading = locationTaskQueries.isLoading;
-                              
-                              if (budgetLoading || taskLoading) {
-                                return (
-                                  <div className="flex items-center gap-1 text-sm text-gray-400">
-                                    <Clock className="w-4 h-4 animate-spin" />
-                                    <span>Loading cost codes...</span>
-                                  </div>
-                                );
-                              }
-                              
-                              const costCodeBreakdown = getLocationCostCodeBreakdown(location.locationId);
-                              
-                              if (costCodeBreakdown.length === 0) {
-                                return (
-                                  <div className="flex items-center gap-1 text-sm text-gray-400">
-                                    <Clock className="w-4 h-4" />
-                                    <span>No cost code data</span>
-                                  </div>
-                                );
-                              }
-                              
-                              return (
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                                    <Clock className="w-4 h-4" />
-                                    <span>Cost Code Progress</span>
-                                  </div>
-                                  <div className="space-y-2">
-                                    {costCodeBreakdown.map((costCode) => (
-                                      <div key={costCode.costCode} className="space-y-1">
-                                        <div className="flex items-center justify-between text-xs">
-                                          <span className="font-medium text-gray-700">{costCode.costCode}</span>
-                                          <span className="text-gray-600">
-                                            {costCode.actualHours.toFixed(1)}h / {costCode.budgetHours.toFixed(1)}h
-                                            {costCode.overageHours > 0 && (
-                                              <span className="text-red-600 ml-1">
-                                                (+{costCode.overageHours.toFixed(1)}h)
-                                              </span>
-                                            )}
-                                          </span>
-                                        </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                          <div 
-                                            className={`h-2 rounded-full transition-all duration-300 ${costCode.progressColor}`}
-                                            style={{ width: `${Math.min(100, costCode.progressPercentage)}%` }}
-                                          />
-                                        </div>
-                                        {costCode.remainingHours > 0 && (
-                                          <div className="text-xs text-gray-500">
-                                            {costCode.remainingHours.toFixed(1)}h remaining
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
 
-                                  </div>
-                                </div>
-                              );
-                            })()}
 
                             {/* Budget Info */}
                             {location.budgetAllocated && (
