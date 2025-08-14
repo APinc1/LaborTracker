@@ -343,6 +343,10 @@ export default function Dashboard() {
           trimmed.includes('DEMO/EX') || trimmed.includes('BASE/GRADING')) {
         return 'DEMO/EX + BASE/GRADING';
       }
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR') {
+        return 'GENERAL LABOR';
+      }
       return trimmed; // Return uppercase normalized version
     };
     
