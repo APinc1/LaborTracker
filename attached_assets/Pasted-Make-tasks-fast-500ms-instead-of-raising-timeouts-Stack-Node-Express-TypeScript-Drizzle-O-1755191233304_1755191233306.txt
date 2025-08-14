@@ -1,0 +1,168 @@
+Make /tasks fast (<500ms) instead of raising timeouts
+
+Stack: Node (Express + TypeScript), Drizzle ORM, postgres (postgres.js), Supabase Postgres via PgBouncer.
+
+Acceptance
+
+/api/locations/:id/tasks returns in <500ms p95 with 725 total tasks.
+
+No query takes >2s; app timeout stays at 10–15s.
+
+One shared DB client (no per-request pools).
+
+Healthcheck /healthz returns in <100ms.
+
+0) Verify DB pooler + client config
+
+Use transaction pooler (6543) with postgres.js and disable prepared statements (required with PgBouncer Tx pooling). Keep pool small to prevent thrashing.
+
+// db.ts
+import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+
+export const sql = postgres(process.env.DATABASE_URL!, {
+  prepare: false,     // <-- REQUIRED with PgBouncer Tx pooler
+  max: 5,             // small pool is fine here
+  idle_timeout: 5,    // seconds
+  connect_timeout: 10,
+  ssl: 'require'
+});
+
+export const db = drizzle(sql);
+
+
+DATABASE_URL should be:
+
+postgresql://USER:PASS@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
+
+1) Remove the sort cast so Postgres can use an index
+
+Current query sorts with ORDER BY "order"::numeric, which kills index usage. Make "order" an integer (or numeric) column natively and index it.
+
+Migration (SQL)
+-- If "order" is text, migrate it
+ALTER TABLE tasks
+  ADD COLUMN order_int integer;
+
+UPDATE tasks
+SET order_int = NULLIF(order, '')::integer;  -- adjust if data can be non-numeric
+
+ALTER TABLE tasks
+  ALTER COLUMN order_int SET NOT NULL;
+
+-- Optional: drop old column and rename
+ALTER TABLE tasks DROP COLUMN "order";
+ALTER TABLE tasks RENAME COLUMN order_int TO "order";
+
+-- Composite index for your hot path
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tasks_location_order
+ON tasks (location_id, "order");
+
+
+If you can’t drop/rename now, at least create idx_tasks_location_order on the real typed column you will sort by and change the query to use it.
+
+2) Shape the query (keyset pagination + projection)
+
+Don’t fetch SELECT *. Only the fields the UI needs, paginate, and use keyset (cursor) pagination, not OFFSET, for stable speed.
+
+Drizzle example (TypeScript)
+// storage.ts
+import { eq, and, gt } from 'drizzle-orm';
+import { tasks } from '../db/schema';
+
+// GET /api/locations/:id/tasks?limit=50&after=<order_cursor>
+export async function getTasksByLocation(locationId: number, limit = 50, after?: number) {
+  const where = after != null
+    ? and(eq(tasks.locationId, locationId), gt(tasks.order, after))
+    : eq(tasks.locationId, locationId);
+
+  const rows = await db.select({
+      id: tasks.id,
+      name: tasks.name,
+      order: tasks.order,
+      // include only fields the UI renders
+    })
+    .from(tasks)
+    .where(where)
+    .orderBy(tasks.order)        // no casts
+    .limit(limit);
+
+  return rows;
+}
+
+
+On the client, pass after as the last seen order for infinite scroll / “Load more.”
+
+3) Stop doing heavy COUNT(*) on hot requests
+
+If you’re calling COUNT(*) every time to show “total,” remove it from the hot path.
+
+Compute counts only when needed or move them to a separate, cached endpoint.
+
+If you truly need an always-on count for large tables, consider pg_class.reltuples estimate, but with 725 rows you can also just avoid counting at all.
+
+4) Trim payload & JSON overhead
+
+Return lean objects (no nested heavy relations on the same call).
+
+Enable gzip/deflate once; avoid double-compression via proxies:
+
+import compression from 'compression';
+app.use(compression()); // before routes
+
+
+Set sane limits:
+
+app.use(express.json({ limit: '256kb' }));
+
+5) App timeout stays modest; DB has its own fast guard
+
+Keep app-level timeouts ≈10–15s (not 30s). Instead, apply a database statement timeout so slow queries fail fast and get fixed:
+
+-- At connection/session level (run once per connection)
+SET LOCAL statement_timeout = '8000ms';
+
+
+With postgres.js, you can run this right after creating the client:
+
+await sql`SET statement_timeout = 8000`;
+
+6) Verify N+1 and “one pool per request” aren’t happening
+
+Ensure you do not create postgres() inside each request handler.
+
+Reuse the singleton sql/db.
+
+If you fetch related objects, batch them (one query with IN), not per row.
+
+7) Add a 100ms healthcheck and keep-alive
+app.get('/healthz', (_req, res) => res.status(200).send('ok'));
+
+import http from 'http';
+const server = http.createServer(app);
+server.requestTimeout = 15000;
+server.headersTimeout = 20000;
+
+8) Quick verification checklist
+
+Run:
+
+EXPLAIN ANALYZE
+SELECT id, name, "order"
+FROM tasks
+WHERE location_id = $1
+ORDER BY "order"
+LIMIT 50;
+
+
+Expect Index Scan on idx_tasks_location_order.
+
+Hit
+
+curl -s -w "Time: %{time_total}s\n" \
+  "http://localhost:${PORT}/api/locations/78/tasks?limit=50" | tail -n1
+
+
+Expect <0.5s.
+
+Confirm only a single Node DB client is created (add a one-time log when instantiating).

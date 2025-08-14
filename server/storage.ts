@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte, asc } from "drizzle-orm";
+import { eq, and, gte, lte, asc, gt } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -995,12 +995,12 @@ function initializeDatabase() {
     globalSql = postgres(process.env.DATABASE_URL, {
       // Required for PgBouncer transaction pooling:
       prepare: false,
-      // Ultra-optimized connection pool for maximum speed:
-      max: 5,                   // More connections for better performance
-      idle_timeout: 30,         // Keep connection alive longer
+      // Optimized for PgBouncer transaction pooling:
+      max: 5,                   // Small pool to prevent thrashing
+      idle_timeout: 5,          // 5 seconds idle timeout
       connect_timeout: 10,      // 10 second connection timeout
-      statement_timeout: 30000, // 30 second query timeout
-      query_timeout: 30000,     // 30 second query timeout
+      statement_timeout: 8000,  // 8 second query timeout - fail fast
+      query_timeout: 8000,      // 8 second query timeout
       ssl: { rejectUnauthorized: false }, // Better SSL config
       transform: {
         undefined: null // Convert undefined to null
@@ -1675,8 +1675,38 @@ class DatabaseStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: number): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(eq(tasks.locationId, locationId));
+  async getTasks(locationId: number, limit: number = 50, after?: string): Promise<Task[]> {
+    // Optimized query: only select needed fields, use keyset pagination, proper ordering
+    const whereCondition = after 
+      ? and(eq(tasks.locationId, locationId), gt(tasks.order, after))
+      : eq(tasks.locationId, locationId);
+
+    return await this.db.select({
+      id: tasks.id,
+      taskId: tasks.taskId,
+      locationId: tasks.locationId,
+      taskType: tasks.taskType,
+      name: tasks.name,
+      taskDate: tasks.taskDate,
+      startDate: tasks.startDate,
+      finishDate: tasks.finishDate,
+      costCode: tasks.costCode,
+      superintendentId: tasks.superintendentId,
+      foremanId: tasks.foremanId,
+      scheduledHours: tasks.scheduledHours,
+      actualHours: tasks.actualHours,
+      startTime: tasks.startTime,
+      finishTime: tasks.finishTime,
+      workDescription: tasks.workDescription,
+      notes: tasks.notes,
+      status: tasks.status,
+      order: tasks.order,
+      dependentOnPrevious: tasks.dependentOnPrevious,
+      linkedTaskGroup: tasks.linkedTaskGroup
+    }).from(tasks)
+      .where(whereCondition)
+      .orderBy(tasks.order) // Remove ::numeric cast for better performance
+      .limit(limit);
   }
 
   async getTask(id: number): Promise<Task | undefined> {

@@ -18,14 +18,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 }
 
-// Conservative timeout for database operations
+// Fast timeout for database operations - fail fast and fix slow queries
 function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 30000); // 30 seconds - database queries are fast but connection can be slow
+  return withTimeout(promise, 8000); // 8 seconds - queries should be fast
 }
 
-// Quick timeout for very simple queries
+// Quick timeout for simple queries
 function withQuickTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 20000); // 20 second timeout for simple operations
+  return withTimeout(promise, 5000); // 5 second timeout for simple operations
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -639,8 +639,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      // Get tasks with balanced timeout for reliability
-      const tasks = await withFastTimeout(storage.getTasks(locationDbId));
+      // Get pagination params
+      const limit = parseInt(req.query.limit as string) || 50;
+      const after = req.query.after as string;
+      
+      // Get tasks with optimized pagination and timeout
+      const tasks = await withFastTimeout(storage.getTasks(locationDbId, limit, after));
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching location tasks:', error);
@@ -675,12 +679,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = req.params;
       
       // Validate date parameters
-      if (!startDate || !endDate || startDate === '' || endDate === '') {
-        return res.status(400).json({ error: 'Start date and end date are required' });
+      if (!startDate || !endDate || startDate === '' || endDate === '' || startDate === 'undefined' || endDate === 'undefined') {
+        return res.status(400).json({ error: 'Start date and end date are required and must be valid' });
       }
       
       const storage = await getStorage();
-      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 30000);
+      const tasks = await withQuickTimeout(storage.getTasksByDateRange(startDate, endDate));
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching tasks by date range:', error);

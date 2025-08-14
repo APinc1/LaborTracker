@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import compression from "compression";
 import http from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -16,7 +17,9 @@ server.requestTimeout = 60000;   // keep it <= platform limit
 // Add healthcheck endpoint FIRST for fast startup
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
-app.use(express.json());
+// Enable compression middleware for better performance
+app.use(compression());
+app.use(express.json({ limit: '256kb' })); // Set reasonable payload limits
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
