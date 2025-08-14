@@ -974,12 +974,11 @@ export default function CreateTaskModal({
       );
     });
 
-    console.log('🔧 DEBUG: About to send newTask to server:', {
-      name: newTask.name,
-      order: newTask.order,
-      insertIndex,
-      fullTask: newTask
-    });
+    console.log('🔧 DEBUG: About to send newTask to server:');
+    console.log('🔧 DEBUG: Task name:', newTask.name);
+    console.log('🔧 DEBUG: Task order:', newTask.order);
+    console.log('🔧 DEBUG: Insert index:', insertIndex);
+    console.log('🔧 DEBUG: Full task object:', newTask);
     
     createTaskMutation.mutate({
       newTask,
