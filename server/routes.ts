@@ -18,14 +18,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 }
 
-// Fast timeout for database operations - fail fast and fix slow queries
+// Fast timeout for database operations - reasonable timeout for complex queries
 function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 8000); // 8 seconds - queries should be fast
+  return withTimeout(promise, 20000); // 20 seconds - allow time for complex queries with larger pool
 }
 
 // Quick timeout for simple queries
 function withQuickTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 5000); // 5 second timeout for simple operations
+  return withTimeout(promise, 15000); // 15 second timeout for simple operations
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {

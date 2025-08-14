@@ -995,12 +995,10 @@ function initializeDatabase() {
     globalSql = postgres(process.env.DATABASE_URL, {
       // Required for PgBouncer transaction pooling:
       prepare: false,
-      // Optimized for PgBouncer transaction pooling:
-      max: 5,                   // Small pool to prevent thrashing
-      idle_timeout: 5,          // 5 seconds idle timeout
-      connect_timeout: 10,      // 10 second connection timeout
-      statement_timeout: 8000,  // 8 second query timeout - fail fast
-      query_timeout: 8000,      // 8 second query timeout
+      // Increased pool size to handle concurrent requests:
+      max: 15,                  // Increased from 5 to handle multiple concurrent requests
+      idle_timeout: 20,         // Increased to 20 seconds to prevent premature cleanup
+      connect_timeout: 30,      // Increased connection timeout
       ssl: { rejectUnauthorized: false }, // Better SSL config
       transform: {
         undefined: null // Convert undefined to null
