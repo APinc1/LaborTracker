@@ -1091,19 +1091,46 @@ export default function CreateTaskModal({
 
                           const insertionOptions = [];
                           
-                          // Add "At the beginning" option
-                          insertionOptions.push(
-                            <SelectItem key="beginning" value="beginning">At the beginning</SelectItem>
-                          );
+                          // Find most recent completed task to enforce business rule
+                          let mostRecentCompletedTaskIndex = -1;
+                          for (let i = sortedTasks.length - 1; i >= 0; i--) {
+                            const taskAssignments = assignments.filter((assignment: any) => 
+                              assignment.taskId === (sortedTasks[i].taskId || sortedTasks[i].id)
+                            );
+                            const hasAssignments = taskAssignments.length > 0;
+                            const actualHours = taskAssignments.reduce((sum: number, assignment: any) => 
+                              sum + parseFloat(assignment.actualHours || "0"), 0
+                            );
+                            const isCompleted = hasAssignments && actualHours > 0;
+                            
+                            if (isCompleted) {
+                              mostRecentCompletedTaskIndex = i;
+                              break;
+                            }
+                          }
                           
-                          // Add option to insert after each existing task (including completed ones)
-                          sortedTasks.forEach((task: any) => {
+                          // Add "At the beginning" option only if no completed tasks exist
+                          if (mostRecentCompletedTaskIndex === -1) {
+                            insertionOptions.push(
+                              <SelectItem key="beginning" value="beginning">At the beginning</SelectItem>
+                            );
+                          }
+                          
+                          // Add option to insert after each existing task (with restrictions)
+                          sortedTasks.forEach((task: any, index: number) => {
                             // Get task status for display
                             const taskAssignments = assignments.filter((assignment: any) => 
                               assignment.taskId === (task.id || task.taskId)
                             );
                             const taskStatus = getTaskStatus(task, taskAssignments);
                             const statusIndicator = taskStatus === 'complete' ? ' ✓' : '';
+                            
+                            // Business rule: Only allow insertion after most recent completed task or any incomplete task
+                            // Reject: insertion before most recent completed task
+                            if (mostRecentCompletedTaskIndex !== -1 && index < mostRecentCompletedTaskIndex) {
+                              // Skip this option - can't insert before most recent completed task
+                              return;
+                            }
                             
                             insertionOptions.push(
                               <SelectItem 
