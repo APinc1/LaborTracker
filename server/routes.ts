@@ -671,10 +671,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      const validated = insertTaskSchema.parse({
+      // Generate required default values
+      const taskData = {
         ...req.body,
-        locationId: locationDbId
-      });
+        locationId: locationDbId,
+        taskId: req.body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        taskType: req.body.taskType || req.body.name || 'General',
+        startDate: req.body.startDate || req.body.taskDate,
+        finishDate: req.body.finishDate || req.body.taskDate,
+        costCode: req.body.costCode || 'GEN',
+        order: req.body.order || '0'
+      };
+      
+      const validated = insertTaskSchema.parse(taskData);
       
       // CRITICAL: Check if this will be the first task and enforce unsequential status
       // Only enforce for the very first task when no tasks exist at all AND order is 0
