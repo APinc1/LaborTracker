@@ -996,11 +996,11 @@ function initializeDatabase() {
       // Required for PgBouncer transaction pooling:
       prepare: false,
       // Ultra-optimized connection pool for maximum speed:
-      max: 1,                   // Single connection for fastest response
+      max: 3,                   // Multiple connections for reliability
       idle_timeout: 30,         // Keep connection alive longer
-      connect_timeout: 3,       // Ultra-fast connection timeout
-      statement_timeout: 5000,  // 5 second query timeout
-      query_timeout: 5000,      // 5 second query timeout
+      connect_timeout: 10,      // 10 second connection timeout
+      statement_timeout: 15000, // 15 second query timeout
+      query_timeout: 15000,     // 15 second query timeout
       ssl: { rejectUnauthorized: false }, // Better SSL config
       transform: {
         undefined: null // Convert undefined to null

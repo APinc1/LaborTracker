@@ -18,14 +18,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 }
 
-// Ultra-fast timeout for simple operations
+// Balanced timeout for simple operations
 function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 2000); // Reduced to 2 seconds
+  return withTimeout(promise, 5000); // 5 seconds for reliability
 }
 
-// Super-fast timeout for critical queries
-function withSuperFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 1000); // 1 second timeout
+// Quick timeout for very simple queries
+function withQuickTimeout<T>(promise: Promise<T>): Promise<T> {
+  return withTimeout(promise, 3000); // 3 second timeout
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -468,7 +468,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/crews', async (req, res) => {
     try {
       const storage = await getStorage();
-      const crews = await withSuperFastTimeout(storage.getCrews());
+      const crews = await withQuickTimeout(storage.getCrews());
       res.json(crews);
     } catch (error: any) {
       console.error('Error fetching crews:', error);
@@ -517,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/employees', async (req, res) => {
     try {
       const storage = await getStorage();
-      const employees = await withSuperFastTimeout(storage.getEmployees());
+      const employees = await withQuickTimeout(storage.getEmployees());
       res.json(employees);
     } catch (error: any) {
       console.error('Error fetching employees:', error);
@@ -639,8 +639,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      // Get tasks with super-fast timeout to prevent long loading
-      const tasks = await withSuperFastTimeout(storage.getTasks(locationDbId));
+      // Get tasks with balanced timeout for reliability
+      const tasks = await withFastTimeout(storage.getTasks(locationDbId));
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching location tasks:', error);
@@ -680,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const storage = await getStorage();
-      const tasks = await withFastTimeout(storage.getTasksByDateRange(startDate, endDate));
+      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 10000);
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching tasks by date range:', error);
@@ -1049,12 +1049,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       console.log('Creating assignment:', req.body);
       const validated = insertEmployeeAssignmentSchema.parse(req.body);
-      const assignment = await storage.createEmployeeAssignment(validated);
+      const assignment = await withFastTimeout(storage.createEmployeeAssignment(validated));
       console.log('Assignment created:', assignment);
       res.status(201).json(assignment);
     } catch (error: any) {
       console.error('Assignment creation error:', error);
-      res.status(400).json({ error: 'Invalid assignment data', details: error.message });
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Assignment save timeout - please try again' });
+      } else {
+        res.status(400).json({ error: 'Invalid assignment data', details: error.message });
+      }
     }
   });
 
