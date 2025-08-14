@@ -50,15 +50,18 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
   // Fetch budget data for all locations
   const locationBudgetQueries = useQuery({
-    queryKey: ["/api/projects", projectId, "all-location-budgets"],
+    queryKey: ["/api/projects", projectId, "all-location-budgets", locations.map(l => l.locationId).join(',')],
     queryFn: async () => {
+      console.log('🔍 Fetching budget data for locations:', locations.map(l => l.locationId));
       if (!locations.length) return {};
       
       const budgetPromises = locations.map(async (location: any) => {
         try {
+          console.log(`📊 Fetching budget for location: ${location.locationId}`);
           const response = await fetch(`/api/locations/${location.locationId}/budget`);
           if (!response.ok) return { locationId: location.locationId, budget: [] };
           const budget = await response.json();
+          console.log(`✅ Budget loaded for ${location.locationId}:`, budget.length, 'items');
           return { locationId: location.locationId, budget };
         } catch (error) {
           console.error(`Failed to fetch budget for location ${location.locationId}:`, error);
@@ -67,10 +70,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       });
       
       const results = await Promise.all(budgetPromises);
-      return results.reduce((acc: any, result) => {
+      const budgetData = results.reduce((acc: any, result) => {
         acc[result.locationId] = result.budget;
         return acc;
       }, {});
+      
+      console.log('📋 All budget data loaded:', budgetData);
+      return budgetData;
     },
     enabled: locations.length > 0,
     staleTime: 30000,
@@ -133,6 +139,12 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     const budget = locationBudgetQueries.data?.[locationId] || [];
     const tasks = locationTaskQueries.data?.[locationId] || [];
     
+    console.log(`🔍 Calculating hours for location ${locationId}:`, {
+      budgetItems: budget.length,
+      tasks: tasks.length,
+      budgetData: budget.slice(0, 2) // Show first 2 items for debugging
+    });
+    
     // Calculate total budget hours
     const totalBudgetHours = budget.reduce((total: number, item: any) => {
       // Only include parent items (line numbers without dots) to avoid double counting
@@ -140,7 +152,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       const isStandalone = !item.lineItemNumber || item.lineItemNumber === '';
       
       if (isParent || isStandalone) {
-        return total + (parseFloat(item.hours) || 0);
+        const hours = parseFloat(item.hours) || 0;
+        console.log(`💰 Adding budget hours: ${hours} from item:`, item.lineItemNumber || 'no-line-number');
+        return total + hours;
       }
       return total;
     }, 0);
@@ -160,11 +174,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       return total + (parseFloat(assignment.assignedHours) || 0);
     }, 0);
     
-    return {
+    const result = {
       budgetHours: totalBudgetHours,
       actualHours: totalActualHours,
       scheduledHours: totalScheduledHours
     };
+    
+    console.log(`📊 Hours calculation result for ${locationId}:`, result);
+    
+    return result;
   };
 
   // Add location mutation
@@ -523,8 +541,36 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
                             {/* Hours Information */}
                             {(() => {
+                              // Debug info
+                              const budgetData = locationBudgetQueries.data;
+                              const taskData = locationTaskQueries.data;
+                              const budgetLoading = locationBudgetQueries.isLoading;
+                              const taskLoading = locationTaskQueries.isLoading;
+                              
+                              console.log(`🐛 Location card debug for ${location.locationId}:`, {
+                                budgetLoading,
+                                taskLoading,
+                                hasBudgetData: !!budgetData?.[location.locationId],
+                                budgetCount: budgetData?.[location.locationId]?.length || 0,
+                                hasTaskData: !!taskData?.[location.locationId],
+                                taskCount: taskData?.[location.locationId]?.length || 0
+                              });
+                              
+                              if (budgetLoading || taskLoading) {
+                                return (
+                                  <div className="flex items-center gap-1 text-sm text-gray-400">
+                                    <Clock className="w-4 h-4 animate-spin" />
+                                    <span>Loading hours...</span>
+                                  </div>
+                                );
+                              }
+                              
                               const hours = getLocationHours(location.locationId);
-                              if (hours.budgetHours > 0 || hours.actualHours > 0 || hours.scheduledHours > 0) {
+                              
+                              // Always show budget hours if available, even if 0
+                              const budgetExists = budgetData?.[location.locationId]?.length > 0;
+                              
+                              if (budgetExists || hours.actualHours > 0 || hours.scheduledHours > 0) {
                                 return (
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-1 text-sm text-gray-600">
@@ -544,7 +590,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                   </div>
                                 );
                               }
-                              return null;
+                              
+                              return (
+                                <div className="flex items-center gap-1 text-sm text-gray-400">
+                                  <Clock className="w-4 h-4" />
+                                  <span>No budget data</span>
+                                </div>
+                              );
                             })()}
 
                             {/* Budget Info */}
