@@ -1741,14 +1741,14 @@ async function initializeStorage(): Promise<IStorage> {
     console.log("Attempting to connect to Supabase PostgreSQL database...");
     const dbStorage = new DatabaseStorage();
     
-    // Test the connection with a simple query
+    // Test the connection with a fast query
     console.log("Testing database connection...");
-    const users = await dbStorage.getUsers();
-    console.log(`✓ Successfully connected to PostgreSQL database! Found ${users.length} users.`);
+    await dbStorage.db.execute('SELECT 1');
+    console.log(`✓ Successfully connected to PostgreSQL database!`);
     return dbStorage;
     
-  } catch (error) {
-    console.error("✗ Failed to connect to Supabase database:", error.message);
+  } catch (error: any) {
+    console.error("✗ Failed to connect to Supabase database:", error?.message || error);
     console.log("📦 Falling back to in-memory storage with sample data");
     console.log("🔧 To troubleshoot:");
     console.log("   1. Verify DATABASE_URL is correct");
