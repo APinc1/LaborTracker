@@ -607,7 +607,7 @@ export default function DraggableTaskList({
     // Add linked groups as units (positioned by their shared date)
     linkedGroups.forEach(groupTasks => {
       const sortedGroupTasks = [...groupTasks].sort((a, b) => {
-        return (a.order ?? 999) - (b.order ?? 999);
+        return (parseFloat(a.order) || 999) - (parseFloat(b.order) || 999);
       });
       
       const groupDate = new Date(groupTasks[0].taskDate).getTime();
@@ -616,7 +616,7 @@ export default function DraggableTaskList({
         type: 'group',
         linkedTaskGroup: groupTasks[0].linkedTaskGroup,
         sortDate: groupDate,
-        sortOrder: Math.min(...groupTasks.map(t => t.order ?? 999)), // Use earliest order for fallback
+        sortOrder: Math.min(...groupTasks.map(t => parseFloat(t.order) || 999)), // Use earliest order for fallback
         tasks: sortedGroupTasks
       });
     });
@@ -627,7 +627,7 @@ export default function DraggableTaskList({
         type: 'single',
         task: task,
         sortDate: new Date(task.taskDate).getTime(),
-        sortOrder: task.order ?? 999,
+        sortOrder: parseFloat(task.order) || 999,
         tasks: [task]
       });
     });
