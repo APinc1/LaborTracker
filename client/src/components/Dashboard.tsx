@@ -673,7 +673,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto h-[500px] overflow-y-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
