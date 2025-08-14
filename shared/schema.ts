@@ -159,8 +159,11 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
   foremanId: z.number().optional().nullable(),
   order: z
     .union([
-      z.number().int().nonnegative(),
-      z.string().regex(/^\d+$/).transform(Number),
+      z.number().nonnegative(),
+      z.string().transform(val => {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? 0 : parsed;
+      }),
       z.null(),
       z.undefined()
     ])
