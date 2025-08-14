@@ -1034,7 +1034,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const storage = await getStorage();
       console.log('Creating assignment:', req.body);
-      const validated = insertEmployeeAssignmentSchema.parse(req.body);
+      
+      // Auto-generate assignmentId if not provided
+      const assignmentData = {
+        ...req.body,
+        assignmentId: req.body.assignmentId || `${req.body.taskId}_${req.body.employeeId}`,
+      };
+      
+      const validated = insertEmployeeAssignmentSchema.parse(assignmentData);
       const assignment = await withFastTimeout(storage.createEmployeeAssignment(validated));
       console.log('Assignment created:', assignment);
       res.status(201).json(assignment);

@@ -172,7 +172,9 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
   taskType: z.string().optional(),
   costCode: z.string().optional()
 });
-export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true });
+export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true }).extend({
+  assignmentId: z.string().optional(),
+});
 
 // Types
 export type User = typeof users.$inferSelect;
