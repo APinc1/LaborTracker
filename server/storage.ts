@@ -73,6 +73,7 @@ export interface IStorage {
   // Optimized task helper methods
   createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious?: boolean): Promise<{ id: number }>;
   resolveLocationIdBySlug(locationParam: string): Promise<number | null>;
+  getAllEmployeeAssignmentsWithDetails(): Promise<any[]>;
   
   // Employee assignment methods
   getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]>;
@@ -1813,6 +1814,29 @@ class DatabaseStorage implements IStorage {
 
   async getAllEmployeeAssignments(): Promise<EmployeeAssignment[]> {
     return await this.db.select().from(employeeAssignments);
+  }
+
+  async getAllEmployeeAssignmentsWithDetails(): Promise<any[]> {
+    const result = await this.db
+      .select({
+        id: employeeAssignments.id,
+        assignmentId: employeeAssignments.assignmentId,
+        taskId: employeeAssignments.taskId,
+        employeeId: employeeAssignments.employeeId,
+        assignmentDate: employeeAssignments.assignmentDate,
+        assignedHours: employeeAssignments.assignedHours,
+        actualHours: employeeAssignments.actualHours,
+        taskName: tasks.name,
+        locationName: locations.name,
+        projectName: projects.name,
+      })
+      .from(employeeAssignments)
+      .leftJoin(tasks, eq(employeeAssignments.taskId, tasks.id))
+      .leftJoin(locations, eq(tasks.locationId, locations.id))
+      .leftJoin(projects, eq(locations.projectId, projects.id))
+      .limit(1000); // Add reasonable limit to prevent excessive data transfer
+    
+    return result;
   }
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {

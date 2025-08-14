@@ -971,50 +971,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/assignments', async (req, res) => {
     try {
       const storage = await getStorage();
+      // Add cache headers to reduce repeated calls
+      res.set({
+        'Cache-Control': 'public, max-age=30',
+        'ETag': `assignments-${Date.now()}`
+      });
+      
       const assignments = await storage.getAllEmployeeAssignments();
-      
-      // Enhance assignments with task, location, and project data
-      const enhancedAssignments = await Promise.all(
-        assignments.map(async (assignment) => {
-          try {
-            // Get task details
-            const task = await storage.getTask(assignment.taskId);
-            if (!task) {
-              return {
-                ...assignment,
-                taskName: 'Unknown Task',
-                locationName: 'Unknown Location',
-                projectName: 'Unknown Project'
-              };
-            }
-            
-            // Get location details
-            const location = await storage.getLocation(task.locationId);
-            const locationName = location?.name || 'Unknown Location';
-            
-            // Get project details
-            const project = location ? await storage.getProject(location.projectId) : null;
-            const projectName = project?.name || 'Unknown Project';
-            
-            return {
-              ...assignment,
-              taskName: task.name,
-              locationName,
-              projectName
-            };
-          } catch (error) {
-            console.error(`Error enhancing assignment ${assignment.id}:`, error);
-            return {
-              ...assignment,
-              taskName: 'Unknown Task',
-              locationName: 'Unknown Location', 
-              projectName: 'Unknown Project'
-            };
-          }
-        })
-      );
-      
-      res.json(enhancedAssignments);
+      res.json(assignments);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch assignments' });
     }
