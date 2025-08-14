@@ -173,19 +173,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/projects', async (req, res) => {
     try {
       const storage = await getStorage();
+      console.log('Creating project:', req.body.projectId, req.body.name);
+      
       // Validate required fields first
       if (!req.body.projectId || !req.body.name) {
         return res.status(400).json({ error: 'Project ID and name are required' });
       }
       
-      // Check for duplicate project ID
-      const existingProjects = await storage.getProjects();
-      const duplicateProject = existingProjects.find(p => p.projectId === req.body.projectId);
-      if (duplicateProject) {
-        return res.status(400).json({ error: `Project ID "${req.body.projectId}" already exists` });
-      }
-      
-      // Prepare project data with defaults
+      // Prepare project data with defaults (skip duplicate check for speed - database will handle it)
       const projectData = {
         projectId: req.body.projectId,
         name: req.body.name,
@@ -195,10 +190,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         defaultProjectManager: req.body.defaultProjectManager || null
       };
       
-      const project = await storage.createProject(projectData);
+      const project = await withTimeout(storage.createProject(projectData), 10000);
+      console.log('Project created successfully:', project.id);
       res.status(201).json(project);
     } catch (error: any) {
       console.error('Error creating project:', error);
+      
+      // Handle database constraint errors for duplicates
+      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+        return res.status(400).json({ error: `Project ID "${req.body.projectId}" already exists` });
+      }
+      
+      if (error.message?.includes('timeout')) {
+        return res.status(408).json({ error: 'Request timeout - please try again' });
+      }
+      
       if (error.name === 'ZodError') {
         res.status(400).json({ error: 'Invalid project data', details: error.errors });
       } else {
@@ -707,8 +713,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      // Get existing tasks to determine order
-      const existingTasks = await storage.getTasks(locationDbId);
+      // Get existing tasks to determine order (optimized)
+      const existingTasks = await withTimeout(storage.getTasks(locationDbId), 5000);
       const nextOrder = existingTasks.length;
       
       // Auto-generate missing fields based on user selections  
@@ -749,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validated.dependentOnPrevious = false;
       }
       
-      const task = await storage.createTask(validated);
+      const task = await withTimeout(storage.createTask(validated), 8000);
       
       // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
       if (validated.linkedTaskGroup && req.body.linkedTaskId) {
