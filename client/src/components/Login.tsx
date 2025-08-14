@@ -33,16 +33,31 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: { username: string; password: string }) => {
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(data)
-      });
-      return response.json();
+      try {
+        console.log('Making login request with:', data);
+        const response = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        console.log('Login API response:', result);
+        return result;
+      } catch (error) {
+        console.error('Login API error:', error);
+        throw error;
+      }
     },
     onSuccess: (result) => {
-      onLoginSuccess(result.user, result.requirePasswordChange);
+      console.log('Login mutation success:', result);
+      if (result && result.user) {
+        onLoginSuccess(result.user, result.requirePasswordChange);
+      } else {
+        console.error('Invalid login response format:', result);
+        throw new Error('Invalid response format');
+      }
     },
     onError: (error: any) => {
+      console.error('Login mutation error:', error);
       toast({
         title: "Login Failed",
         description: error.message || "Invalid username or password",
