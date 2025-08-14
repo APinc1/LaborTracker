@@ -18,9 +18,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<
   ]);
 }
 
-// Fast timeout for simple operations
+// Ultra-fast timeout for simple operations
 function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
-  return withTimeout(promise, 3000);
+  return withTimeout(promise, 2000); // Reduced to 2 seconds
+}
+
+// Super-fast timeout for critical queries
+function withSuperFastTimeout<T>(promise: Promise<T>): Promise<T> {
+  return withTimeout(promise, 1000); // 1 second timeout
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -457,37 +462,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Location tasks route  
-  app.get('/api/locations/:locationId/tasks', async (req, res) => {
-    try {
-      const storage = await getStorage();
-      const locationParam = req.params.locationId;
-      
-      // Convert location identifier to database ID
-      let locationDbId: number;
-      if (/^\d+$/.test(locationParam)) {
-        // It's a pure number - use as database ID
-        locationDbId = parseInt(locationParam);
-      } else {
-        // It's a locationId string - find the location by locationId
-        const location = await storage.getLocation(locationParam);
-        if (!location) {
-          return res.status(404).json({ error: 'Location not found' });
-        }
-        locationDbId = location.id;
-      }
-      
-      const tasks = await storage.getTasks(locationDbId);
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch tasks' });
-    }
-  });
+
 
   // Crew routes
   app.get('/api/crews', async (req, res) => {
     try {
       const storage = await getStorage();
-      const crews = await withFastTimeout(storage.getCrews());
+      const crews = await withSuperFastTimeout(storage.getCrews());
       res.json(crews);
     } catch (error: any) {
       console.error('Error fetching crews:', error);
@@ -536,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/employees', async (req, res) => {
     try {
       const storage = await getStorage();
-      const employees = await withFastTimeout(storage.getEmployees());
+      const employees = await withSuperFastTimeout(storage.getEmployees());
       res.json(employees);
     } catch (error: any) {
       console.error('Error fetching employees:', error);
@@ -638,43 +619,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Task routes
+  // Task routes - OPTIMIZED with fast timeouts
   app.get('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
       const locationParam = req.params.locationId;
       
-      // Convert location identifier to database ID
+      // Convert location identifier to database ID with timeout
       let locationDbId: number;
       if (/^\d+$/.test(locationParam)) {
         // It's a pure number - use as database ID
         locationDbId = parseInt(locationParam);
       } else {
-        // It's a locationId string - find the location by locationId
-        const location = await storage.getLocation(locationParam);
+        // It's a locationId string - find the location by locationId with fast timeout
+        const location = await withFastTimeout(storage.getLocation(locationParam));
         if (!location) {
           return res.status(404).json({ error: 'Location not found' });
         }
         locationDbId = location.id;
       }
       
-      const tasks = await storage.getTasks(locationDbId);
+      // Get tasks with super-fast timeout to prevent long loading
+      const tasks = await withSuperFastTimeout(storage.getTasks(locationDbId));
       res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+    } catch (error: any) {
+      console.error('Error fetching location tasks:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Tasks loading timeout - please refresh' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch tasks' });
+      }
     }
   });
 
   app.get('/api/tasks/:id', async (req, res) => {
     try {
       const storage = await getStorage();
-      const task = await storage.getTask(parseInt(req.params.id));
+      const task = await withFastTimeout(storage.getTask(parseInt(req.params.id)));
       if (!task) {
         return res.status(404).json({ error: 'Task not found' });
       }
       res.json(task);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch task' });
+    } catch (error: any) {
+      console.error('Error fetching task:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch task' });
+      }
     }
   });
 
@@ -688,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const storage = await getStorage();
-      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 20000);
+      const tasks = await withFastTimeout(storage.getTasksByDateRange(startDate, endDate));
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching tasks by date range:', error);
