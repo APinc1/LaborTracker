@@ -70,7 +70,7 @@ app.use((req, res, next) => {
   }
 
   // Use PORT from environment or fallback to 5000
-  const PORT = process.env.PORT || 5000;
+  const PORT = parseInt(process.env.PORT || "5000", 10);
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Server listening on port ${PORT}`);
     log(`serving on port ${PORT}`);

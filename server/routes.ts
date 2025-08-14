@@ -659,19 +659,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/tasks/date-range/:startDate/:endDate', async (req, res) => {
     try {
+      const { startDate, endDate } = req.params;
+      
+      // Validate date parameters
+      if (!startDate || !endDate || startDate === '' || endDate === '') {
+        return res.status(400).json({ error: 'Start date and end date are required' });
+      }
+      
       const storage = await getStorage();
-      const tasks = await storage.getTasksByDateRange(req.params.startDate, req.params.endDate);
+      const tasks = await withTimeout(storage.getTasksByDateRange(startDate, endDate), 20000);
       res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+    } catch (error: any) {
+      console.error('Error fetching tasks by date range:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch tasks' });
+      }
     }
   });
 
   app.post('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
-      // Convert locationId parameter to database ID
+      
+      // Validate locationId parameter
       const locationParam = req.params.locationId;
+      if (!locationParam || locationParam === 'undefined' || locationParam.trim() === '') {
+        console.error('Task creation failed: Invalid locationId parameter:', locationParam);
+        return res.status(400).json({ error: 'Valid location ID is required' });
+      }
+      
+      console.log('Creating task for location:', locationParam, 'with data:', req.body);
+      
+      // Convert locationId parameter to database ID
       let locationDbId: number;
       if (/^\d+$/.test(locationParam)) {
         // It's a pure number - use as database ID
@@ -680,6 +701,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // It's a locationId string - find the location by locationId
         const location = await storage.getLocation(locationParam);
         if (!location) {
+          console.error('Location not found for locationId:', locationParam);
           return res.status(404).json({ error: 'Location not found' });
         }
         locationDbId = location.id;
@@ -689,13 +711,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingTasks = await storage.getTasks(locationDbId);
       const nextOrder = existingTasks.length;
       
-      // Auto-generate missing fields based on user selections
+      // Auto-generate missing fields based on user selections  
       const taskData = {
         ...req.body,
         locationId: locationDbId,
         taskId: req.body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         taskType: req.body.taskType || req.body.name || 'General',
         costCode: req.body.costCode || 'GEN',
+        taskDate: req.body.taskDate || req.body.startDate || req.body.finishDate || new Date().toISOString().split('T')[0],
         order: req.body.order !== undefined ? req.body.order : nextOrder.toString()
       };
 

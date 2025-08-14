@@ -445,7 +445,13 @@ export class MemStorage implements IStorage {
       delete userData.password;
     }
     
-    const updated = { ...existing, ...userData };
+    const updated = { 
+      ...existing, 
+      ...userData,
+      passwordResetToken: userData.passwordResetToken ?? existing.passwordResetToken ?? null,
+      passwordResetExpires: userData.passwordResetExpires ?? existing.passwordResetExpires ?? null,
+      isPasswordSet: userData.isPasswordSet ?? existing.isPasswordSet ?? null
+    };
     this.users.set(id, updated);
     
     // Sync with linked employee if exists
@@ -632,7 +638,11 @@ export class MemStorage implements IStorage {
     const location: Location = { 
       ...insertLocation, 
       id,
+      startDate: insertLocation.startDate ?? '',
       endDate: insertLocation.endDate ?? null,
+      description: insertLocation.description ?? null,
+      estimatedCost: insertLocation.estimatedCost ?? null,
+      actualCost: insertLocation.actualCost ?? null,
       isComplete: insertLocation.isComplete ?? null
     };
     this.locations.set(id, location);
@@ -659,7 +669,11 @@ export class MemStorage implements IStorage {
     }
     
     if (!existing) throw new Error('Location not found');
-    const updated = { ...existing, ...updateLocation };
+    const updated = { 
+      ...existing, 
+      ...updateLocation,
+      startDate: updateLocation.startDate ?? existing.startDate
+    };
     this.locations.set(locationKey!, updated);
     return updated;
   }
@@ -723,9 +737,7 @@ export class MemStorage implements IStorage {
     const locationBudget: LocationBudget = { 
       ...insertLocationBudget, 
       id,
-      adjustedQty: insertLocationBudget.adjustedQty ?? null,
-      adjustedHours: insertLocationBudget.adjustedHours ?? null,
-      actualQty: insertLocationBudget.actualQty ?? null
+      notes: insertLocationBudget.notes ?? null
     };
     this.locationBudgets.set(id, locationBudget);
     return locationBudget;
@@ -734,7 +746,11 @@ export class MemStorage implements IStorage {
   async updateLocationBudget(id: number, updateLocationBudget: Partial<InsertLocationBudget>): Promise<LocationBudget> {
     const existing = this.locationBudgets.get(id);
     if (!existing) throw new Error('Location budget not found');
-    const updated = { ...existing, ...updateLocationBudget };
+    const updated = { 
+      ...existing, 
+      ...updateLocationBudget,
+      conversionFactor: updateLocationBudget.conversionFactor ?? existing.conversionFactor ?? null
+    };
     this.locationBudgets.set(id, updated);
     return updated;
   }
@@ -780,7 +796,12 @@ export class MemStorage implements IStorage {
       email: insertEmployee.email ?? null,
       phone: insertEmployee.phone ?? null,
       crewId: insertEmployee.crewId ?? null,
-      isForeman: insertEmployee.isForeman ?? null
+      apprenticeLevel: insertEmployee.apprenticeLevel ?? null,
+      primaryTrade: insertEmployee.primaryTrade ?? null,
+      secondaryTrade: insertEmployee.secondaryTrade ?? null,
+      tertiaryTrade: insertEmployee.tertiaryTrade ?? null,
+      isForeman: insertEmployee.isForeman ?? null,
+      userId: insertEmployee.userId ?? null
     };
     this.employees.set(id, employee);
     return employee;
