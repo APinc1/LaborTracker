@@ -991,15 +991,20 @@ function initializeDatabase() {
   console.log("🔗 Initializing Supabase PostgreSQL connection...");
   
   try {
-    // Optimized for Supabase PgBouncer transaction pooling
+    // High-performance configuration for Supabase PgBouncer
     globalSql = postgres(process.env.DATABASE_URL, {
       // Required for PgBouncer transaction pooling:
       prepare: false,
-      // Keep resource usage low for deployment:
-      max: 5,
-      idle_timeout: 5,          // seconds
-      connect_timeout: 10,      // seconds
-      ssl: 'require'
+      // Aggressive connection pool settings for speed:
+      max: 2,                   // Lower connections but faster
+      idle_timeout: 20,         // Keep connections alive longer
+      connect_timeout: 5,       // Faster connection timeout
+      statement_timeout: 30000, // 30 second query timeout
+      query_timeout: 30000,     // 30 second query timeout
+      ssl: { rejectUnauthorized: false }, // Better SSL config
+      transform: {
+        undefined: null // Convert undefined to null
+      }
     });
     
     globalDb = drizzlePostgres(globalSql, {

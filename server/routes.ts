@@ -8,14 +8,19 @@ import {
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 
-// Timeout wrapper for long requests to prevent deployment timeouts
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 25000): Promise<T> {
+// Aggressive timeout for better performance
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) => 
       setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
     )
   ]);
+}
+
+// Fast timeout for simple operations
+function withFastTimeout<T>(promise: Promise<T>): Promise<T> {
+  return withTimeout(promise, 3000);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -50,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/users', async (req, res) => {
     try {
       const storage = await getStorage();
-      const users = await withTimeout(storage.getUsers(), 20000);
+      const users = await withFastTimeout(storage.getUsers());
       res.json(users);
     } catch (error: any) {
       console.error('Error fetching users:', error);
@@ -482,10 +487,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/crews', async (req, res) => {
     try {
       const storage = await getStorage();
-      const crews = await storage.getCrews();
+      const crews = await withFastTimeout(storage.getCrews());
       res.json(crews);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch crews' });
+    } catch (error: any) {
+      console.error('Error fetching crews:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch crews' });
+      }
     }
   });
 
@@ -526,10 +536,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/employees', async (req, res) => {
     try {
       const storage = await getStorage();
-      const employees = await storage.getEmployees();
+      const employees = await withFastTimeout(storage.getEmployees());
       res.json(employees);
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch employees' });
+    } catch (error: any) {
+      console.error('Error fetching employees:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch employees' });
+      }
     }
   });
 
@@ -907,8 +922,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('✅ No assignments found for this task');
       }
       
-      // Delete the task
-      await storage.deleteTask(taskId);
+      // Delete the task with timeout for better performance
+      await withTimeout(storage.deleteTask(taskId), 5000);
       
       // Process sequential cascading for remaining tasks (including newly unlinked ones)
       const remainingTasks = locationTasks.filter(t => t.id !== taskId);

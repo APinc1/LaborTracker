@@ -89,16 +89,20 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch employees
-  const { data: employees = [] } = useQuery({
+  // Fetch employees with loading state
+  const { data: employees = [], isLoading: employeesLoading } = useQuery({
     queryKey: ["/api/employees"],
     staleTime: 30000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
-  // Fetch crews
-  const { data: crews = [] } = useQuery({
+  // Fetch crews with loading state
+  const { data: crews = [], isLoading: crewsLoading } = useQuery({
     queryKey: ["/api/crews"],
     staleTime: 30000,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   // Fetch existing assignments for the task date to calculate availability
@@ -122,7 +126,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
 
   // Initialize selections with existing assignments
   React.useEffect(() => {
-    if (modalInitialized && employees.length > 0 && crews.length > 0) {
+    if (modalInitialized && !employeesLoading && !crewsLoading && employees.length > 0 && crews.length > 0) {
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -255,7 +259,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
     });
   };
 
-  const employeesWithAvailability = (employees as any[]).map((emp: any) => calculateEmployeeAvailability(emp.teamMemberId));
+  const employeesWithAvailability = employeesLoading ? [] : (employees as any[]).map((emp: any) => calculateEmployeeAvailability(emp.teamMemberId));
   const crewsWithAvailability = getCrewsWithAvailability();
 
   // Handle employee selection
