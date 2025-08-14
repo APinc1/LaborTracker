@@ -7,6 +7,7 @@ import {
   insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema 
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
+import { timing, validateLimit } from "./middleware/timing";
 
 // Aggressive timeout for better performance
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -696,8 +697,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/locations/:locationId/tasks', async (req, res) => {
+  app.post('/api/locations/:locationId/tasks', (req: any, res: any, next: any) => 
+    validateLimit.run(() => createTaskHandler(req, res, next))
+  );
+
+  const createTaskHandler = async (req: any, res: any, next: any) => {
+    const mark = res.locals.mark;
     try {
+      mark('v0'); // Start validation
       const storage = await getStorage();
       
       // Validate locationId parameter
@@ -725,7 +732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get existing tasks to determine order (optimized)
-      const existingTasks = await withTimeout(storage.getTasks(locationDbId), 5000);
+      const existingTasks = await storage.getTasks(locationDbId);
       const nextOrder = existingTasks.length;
       
       // Auto-generate missing fields based on user selections  
@@ -755,7 +762,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taskData.finishDate = req.body.finishDate || req.body.taskDate;
       }
       
-      const validated = insertTaskSchema.parse(taskData);
+      // Validate the task data using schema (sync validation)
+      const parseResult = insertTaskSchema.safeParse(taskData);
+      mark('v1'); // End validation
+      
+      if (!parseResult.success) {
+        console.error('Validation failed:', parseResult.error.issues);
+        return res.status(400).json({ error: 'Invalid task data', issues: parseResult.error.issues });
+      }
+      
+      const validated = parseResult.data;
       
       // CRITICAL: Check if this will be the first task and enforce unsequential status
       // Only enforce for the very first task when no tasks exist at all AND order is 0
@@ -766,7 +782,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validated.dependentOnPrevious = false;
       }
       
-      const task = await withTimeout(storage.createTask(validated), 8000);
+      mark('d0'); // Start database operation
+      const task = await storage.createTask(validated);
+      mark('d1'); // End database operation
       
       // If this task is being linked to an existing task, update the existing task's linkedTaskGroup
       if (validated.linkedTaskGroup && req.body.linkedTaskId) {
@@ -783,15 +801,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.status(201).json(task);
+      mark('s0'); // Start serialization
+      res.status(201).json({ id: task.id }); // Minimal response as requested
+      mark('s1'); // End serialization
     } catch (error: any) {
-      console.error('Task validation error:', error);
-      if (error.issues) {
-        console.error('Validation issues:', error.issues);
+      console.error('Task creation error:', error);
+      
+      // Handle DB constraint errors
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Duplicate task name in location' });
       }
-      res.status(400).json({ error: 'Invalid task data', details: error.message });
+      
+      res.status(500).json({ error: 'Task creation failed', details: error.message });
     }
-  });
+  };
 
   app.put('/api/tasks/:id', async (req, res) => {
     try {

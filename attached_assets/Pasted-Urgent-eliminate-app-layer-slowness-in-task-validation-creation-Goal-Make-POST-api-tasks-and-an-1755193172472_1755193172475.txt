@@ -1,0 +1,206 @@
+Urgent: eliminate app-layer slowness in task validation/creation
+
+Goal: Make POST /api/tasks (and any task-write endpoints) finish in <200 ms p95. Keep app timeouts modest (10–15 s) without 5–8 s stalls or 50 s outliers.
+
+1) Add lightweight request tracing (no heavy profilers in prod)
+
+Instrument the hot endpoints to see where time is spent: body-parse → validate → DB → serialize. Return these timings in a response header so we can see them from curl or the browser.
+
+// middleware/timing.ts
+export function timing() {
+  return async (req, res, next) => {
+    const marks: Record<string, number> = {};
+    const mark = (k: string) => (marks[k] = performance.now());
+
+    mark('t0');
+    res.locals.mark = mark;
+
+    res.on('finish', () => {
+      const t = (k: string) => (marks[k] - marks.t0).toFixed(1);
+      res.setHeader('Server-Timing',
+        `validate;dur=${t('v1')},db;dur=${t('d1')},serialize;dur=${t('s1')}`);
+    });
+    next();
+  };
+}
+
+
+Use it and add scoped marks inside the handler:
+
+app.post('/api/tasks', async (req, res, next) => {
+  const mark = res.locals.mark;
+  try {
+    // v: validation
+    mark('v0');
+    const parse = TaskSchema.safeParse(req.body); // Zod or Ajv (sync)
+    mark('v1');
+    if (!parse.success) return res.status(400).json({ error: parse.error.issues });
+
+    // d: db
+    mark('d0');
+    const task = await createTask(parse.data);  // DB write only
+    mark('d1');
+
+    // s: serialize
+    mark('s0');
+    res.status(201).json({ id: task.id });     // minimal response
+    mark('s1');
+  } catch (e) { next(e); }
+});
+
+
+Then run (3x each) and paste the headers back:
+
+curl -i -X POST "$URL/api/tasks" -H 'content-type: application/json' \
+  --data '{"name":"Test","locationId":78,"order":123}' 2>/dev/null | grep -i server-timing
+
+
+This will prove exactly which stage is slow (validation vs DB vs serialize).
+
+2) Make validation pure and synchronous (no await inside)
+
+If any of the following exist in validation, remove them or move to DB constraints:
+
+Async uniqueness checks (e.g., refine(async ...) that pings the DB or another API)
+
+Network calls (webhooks, storage, auth lookups)
+
+Heavy CPU (cryptography, bcrypt, big JSON schema compilation per request)
+
+Zod example (sync + precompiled)
+import { z } from 'zod';
+
+const nameRE = /^[\p{L}\p{N}\-_\s]{1,120}$/u; // compile once
+export const TaskSchema = z.object({
+  name: z.string().trim().regex(nameRE, 'Invalid name'),
+  locationId: z.number().int().positive(),
+  order: z.number().int().min(0)
+});
+
+Move invariants to the DB (and just catch violations)
+-- Fast invariants that shouldn’t be “validated” in app code:
+ALTER TABLE tasks
+  ADD CONSTRAINT tasks_unique_name_per_loc UNIQUE (location_id, name);
+
+-- Order typed + indexed (already done per your diagnostics)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_tasks_location_order
+  ON tasks (location_id, "order");
+
+// Catch & translate DB constraint errors into 409/400
+try { /* insert */ }
+catch (e: any) {
+  if (e.code === '23505') return res.status(409).json({ error: 'Duplicate task name in location' });
+  throw e;
+}
+
+3) Protect the event loop (no blocking work on request path)
+
+Search and eliminate common blockers inside the task endpoints:
+
+❌ bcrypt.hash() or high-cost crypto on every request
+→ If needed for users, ensure cost ≤ 10 and never inside task creation.
+
+❌ Synchronous filesystem (e.g., fs.readFileSync, xlsx parsing)
+→ Move to background job or do streaming async outside the hot path.
+
+❌ Huge object transforms / deep clones for response
+→ Return only the new id (or a minimal shape) and let client refetch.
+
+Quick guard to detect blocking: event-loop lag monitor
+
+import { monitorEventLoopDelay } from 'perf_hooks';
+const h = monitorEventLoopDelay({ resolution: 20 });
+h.enable();
+setInterval(() => {
+  const p95 = Math.round(h.percentile(95) / 1e6); // ms
+  if (p95 > 100) console.warn('[EL-LAG] p95', p95, 'ms');
+  h.reset();
+}, 5000);
+
+
+Paste us any [EL-LAG] warnings that appear during slow requests.
+
+4) Eliminate per-request queueing storms
+
+Even with a healthy pool you can stampede the server. Add request-path backpressure for writes (create/update) so only a couple validations run at once:
+
+// utils/pLimit.ts  (tiny in-memory semaphore)
+class Limit {
+  q: Array<() => void> = []; active = 0;
+  constructor(private readonly n: number) {}
+  async run<T>(fn: () => Promise<T>) {
+    if (this.active >= this.n) await new Promise<void>(r => this.q.push(r));
+    this.active++;
+    try { return await fn(); }
+    finally {
+      this.active--;
+      const next = this.q.shift(); if (next) next();
+    }
+  }
+}
+export const validateLimit = new Limit(2);  // at most 2 validations at once
+
+
+Use for write routes only:
+
+app.post('/api/tasks', (req,res,next) =>
+  validateLimit.run(() => createTaskHandler(req,res,next)));
+
+5) Tighten JSON/body and response work
+
+Keep JSON body limit modest:
+app.use(express.json({ limit: '128kb' }));
+
+Avoid sending the whole created record. Respond with 201 { id }.
+
+Don’t gzip responses for tiny payloads (<1–2 KB) on write endpoints; keep compression for large reads only.
+
+6) Keep timeouts reasonable but not the cause
+
+Node server timeouts:
+
+server.requestTimeout = 15000;
+server.headersTimeout = 20000;
+
+
+DB statement guard:
+
+await sql`SET statement_timeout = 5000`;
+await sql`SET idle_in_transaction_session_timeout = 3000`;
+
+
+These prevent 50 s tail latencies without masking a slow validator.
+
+7) If still slow, take a 30-second CPU profile safely
+
+(One-off on a staging/ephemeral deploy, not prod long-term.)
+
+# install once
+npm i -D 0x
+# run under traffic for ~30s
+npx 0x -- node dist/server.js
+# send the generated flamegraph HTML
+
+
+Or use:
+
+node --prof --prof_process dist/server.js
+
+
+and share the processed output.
+
+What to send back (so I can give exact diffs)
+
+3 samples of Server-Timing headers for:
+
+POST /api/tasks with a typical payload
+
+any other slow write endpoint
+
+Any [EL-LAG] warnings during those requests.
+
+The exact validation code for tasks (Zod/Ajv/Joi) and the handler body for POST /api/tasks.
+
+If you hit a DB constraint on duplicate/invalid data, paste the error payload you return to the client.
+
+If you ran a flamegraph, send the top few hot functions or the HTML.

@@ -3,6 +3,7 @@ import compression from "compression";
 import http from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { timing } from "./middleware/timing";
 
 console.log('🚀 Booting Construction Management System...');
 console.log('🔧 Using Supabase pooler:', process.env.DATABASE_URL?.includes(':6543') ? 'transaction' : 'session');
@@ -10,16 +11,19 @@ console.log('🔧 Using Supabase pooler:', process.env.DATABASE_URL?.includes(':
 const app = express();
 const server = http.createServer(app);
 
-// Configure server timeouts for deployment
-server.headersTimeout = 65000;   // Node 18+ default is 60s; make it a bit higher
-server.requestTimeout = 60000;   // keep it <= platform limit
+// Configure server timeouts for better performance
+server.headersTimeout = 20000;   // 20 seconds
+server.requestTimeout = 15000;   // 15 seconds
 
 // Add healthcheck endpoint FIRST for fast startup
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
+// Add timing middleware for performance monitoring
+app.use(timing());
+
 // Enable compression middleware for better performance
 app.use(compression());
-app.use(express.json({ limit: '256kb' })); // Set reasonable payload limits
+app.use(express.json({ limit: '128kb' })); // Reduce payload limit as requested
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {
