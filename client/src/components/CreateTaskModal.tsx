@@ -155,7 +155,14 @@ export default function CreateTaskModal({
       console.log('Updating', data.updatedTasks.length, 'existing tasks');
       
       // First create the new task - use locationId string for API endpoint
-      const locationIdString = selectedLocationData?.locationId; // This is the string ID like "PRJ-2024-002_EastWing"
+      const locationIdString = selectedLocationData?.locationId;
+      
+      // Validate locationIdString before making API call
+      if (!locationIdString || locationIdString === 'undefined') {
+        throw new Error('No valid location selected. Please select a location first.');
+      }
+      
+      console.log('Creating task for location:', locationIdString);
       const createResponse = await apiRequest(`/api/locations/${locationIdString}/tasks`, {
         method: 'POST',
         body: JSON.stringify(data.newTask),
