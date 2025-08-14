@@ -668,17 +668,9 @@ export default function CreateTaskModal({
       } else if (data.insertPosition.startsWith('after-')) {
         // Insert after specific task
         const afterTaskId = data.insertPosition.replace('after-', '');
-        console.log('🔧 DEBUG: Looking for task with ID:', afterTaskId);
-        console.log('🔧 DEBUG: Available tasks:', sortedTasks.map(t => ({
-          name: t.name, 
-          id: t.id, 
-          taskId: t.taskId, 
-          order: t.order
-        })));
         const afterTaskIndex = sortedTasks.findIndex(task => 
           (task.taskId || task.id).toString() === afterTaskId
         );
-        console.log('🔧 DEBUG: Found after task at index:', afterTaskIndex);
         
         if (afterTaskIndex >= 0) {
           const afterTask = sortedTasks[afterTaskIndex];
