@@ -1758,7 +1758,8 @@ class DatabaseStorage implements IStorage {
       ins AS (
         INSERT INTO tasks (
           location_id, name, "order", start_date, finish_date, task_date,
-          task_id, task_type, cost_code, status, dependent_on_previous, scheduled_hours
+          task_id, task_type, cost_code, status, dependent_on_previous, scheduled_hours,
+          linked_task_group
         )
         SELECT
           ${locationId},
@@ -1792,7 +1793,8 @@ class DatabaseStorage implements IStorage {
           ${candidate.costCode},
           ${candidate.status},
           ${dependentOnPrevious},
-          ${candidate.scheduledHours}
+          ${candidate.scheduledHours},
+          ${candidate.linkedTaskGroup}
         RETURNING id
       )
       SELECT id FROM ins
