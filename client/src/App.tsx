@@ -100,6 +100,7 @@ function App() {
             <ChangePassword 
               user={user} 
               onPasswordChanged={handlePasswordChanged} 
+              onLogout={handleLogout}
               isFirstLogin={true}
             />
           ) : (

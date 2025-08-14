@@ -24,10 +24,11 @@ const passwordChangeSchema = z.object({
 interface ChangePasswordProps {
   user: any;
   onPasswordChanged: () => void;
+  onLogout?: () => void;
   isFirstLogin?: boolean;
 }
 
-export default function ChangePassword({ user, onPasswordChanged, isFirstLogin = false }: ChangePasswordProps) {
+export default function ChangePassword({ user, onPasswordChanged, onLogout, isFirstLogin = false }: ChangePasswordProps) {
   const { toast } = useToast();
 
   const form = useForm({
@@ -170,6 +171,17 @@ export default function ChangePassword({ user, onPasswordChanged, isFirstLogin =
               >
                 {changePasswordMutation.isPending ? 'Changing Password...' : 'Change Password'}
               </Button>
+              
+              {onLogout && (
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={onLogout}
+                >
+                  Switch User
+                </Button>
+              )}
             </form>
           </Form>
         </CardContent>
