@@ -824,11 +824,8 @@ export default function CreateTaskModal({
     // Insert new task into the array
     updatedTasks.splice(insertIndex, 0, newTask);
 
-    // Update order values for all tasks
-    updatedTasks = updatedTasks.map((task, index) => ({
-      ...task,
-      order: index
-    }));
+    // DO NOT override the carefully calculated order values
+    // The newTask already has the correct orderValue calculated above
 
     // CRITICAL: Apply group-based sequential logic before date alignment
     console.log('Checking for linked task group:', linkedTaskGroup);

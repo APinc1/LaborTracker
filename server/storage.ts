@@ -1744,6 +1744,9 @@ class DatabaseStorage implements IStorage {
   async createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious: boolean = false): Promise<{ id: number }> {
     const db = await this.db;
     
+    // Use provided order if available, otherwise calculate next order
+    const orderValue = candidate.order ? parseFloat(candidate.order) : null;
+    
     const [row] = await db.execute(sql`
       WITH agg AS (
         SELECT
@@ -1760,7 +1763,7 @@ class DatabaseStorage implements IStorage {
         SELECT
           ${locationId},
           ${candidate.name},
-          (SELECT next_order FROM agg),
+          COALESCE(${orderValue}, (SELECT next_order FROM agg)),
           (
             CASE
               WHEN ${dependentOnPrevious} AND (SELECT last_finish FROM agg) IS NOT NULL THEN
