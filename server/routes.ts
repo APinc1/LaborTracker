@@ -646,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const after = req.query.after as string;
       
       // Get tasks with optimized pagination and timeout
-      const tasks = await withFastTimeout(storage.getTasks(locationDbId, limit, after));
+      const tasks = await withFastTimeout(storage.getTasks(locationDbId));
       res.json(tasks);
     } catch (error: any) {
       console.error('Error fetching location tasks:', error);
@@ -704,9 +704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/locations/:locationId/tasks', (req: any, res: any, next: any) => {
     res.locals.mark?.('q0');
-    validateLimit.run(() => {
+    validateLimit.run(async () => {
       res.locals.mark?.('q1');
-      createTaskHandler(req, res, next);
+      await createTaskHandler(req, res, next);
     });
   });
 
