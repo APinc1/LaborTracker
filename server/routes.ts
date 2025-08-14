@@ -698,13 +698,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/locations/:locationId/tasks', (req: any, res: any, next: any) => 
-    validateLimit.run(() => createTaskHandler(req, res, next))
-  );
+  app.post('/api/locations/:locationId/tasks', (req: any, res: any, next: any) => {
+    res.locals.mark?.('q0');
+    validateLimit.run(() => {
+      res.locals.mark?.('q1');
+      createTaskHandler(req, res, next);
+    });
+  });
 
   const createTaskHandler = async (req: any, res: any, next: any) => {
     const mark = res.locals.mark;
     try {
+      // Queue timing
+      mark('q0');
+      mark('q1');
+      
       const storage = await getStorage();
       
       // Resolve locationId without extra fetches
@@ -725,24 +733,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build minimal candidate payload
       const body = req.body ?? {};
-      const nowISO = new Date().toISOString().slice(0,10);
+      const todayISO = new Date().toISOString().slice(0,10);
 
-      // O(1) reads to compute derived fields
+      // Single round-trip to get both values
       mark('d0');
-      const [lastOrder, lastFinishISO] = await Promise.all([
-        body.order != null ? Promise.resolve(null) : storage.getLastOrder(locationId),
-        body.dependentOnPrevious ? storage.getLastFinishDate(locationId) : Promise.resolve(null),
-      ]);
+      const { lastOrder, lastFinish } = await storage.getLasts(locationId);
       mark('d1');
 
       // Compute order
-      const order = body.order != null ? Number(body.order) : (lastOrder == null ? 0 : lastOrder + 1);
+      const order = body.order != null ? Number(body.order) : (lastOrder ?? 0);
 
       // Compute start/finish (respect weekday rule only if dependentOnPrevious)
-      let startDate = body.startDate ?? nowISO;
+      let startDate = body.startDate ?? todayISO;
       let finishDate = body.finishDate ?? startDate;
-      if (body.dependentOnPrevious && lastFinishISO) {
-        const nextStart = nextWeekday(new Date(lastFinishISO));
+      if (body.dependentOnPrevious && lastFinish) {
+        const nextStart = nextWeekday(new Date(lastFinish));
         const s = nextStart.toISOString().slice(0,10);
         startDate = s;
         finishDate = s; // 1-day tasks
@@ -750,19 +755,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate (sync)
       mark('v0');
-      const candidate = { 
-        name: String(body.name ?? 'Task'),
+      const candidate = {
+        name: String(body.name || 'Task'),
         locationId,
         order: order.toString(),
-        startDate,
-        finishDate,
-        taskDate: body.taskDate || startDate,
+        startDate: body.startDate || startDate || todayISO,
+        finishDate: body.finishDate || finishDate || todayISO,
+        taskDate: body.taskDate || startDate || todayISO,
         taskId: body.taskId || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        taskType: body.taskType ?? body.name ?? 'General',
-        costCode: body.costCode ?? 'GEN',
-        status: body.status ?? 'upcoming',
-        dependentOnPrevious: body.dependentOnPrevious ?? false,
-        scheduledHours: body.scheduledHours ?? '0.00'
+        taskType: body.taskType || body.name || 'General',
+        costCode: body.costCode || 'GEN',
+        status: body.status || 'upcoming',
+        dependentOnPrevious: body.dependentOnPrevious || false,
+        scheduledHours: body.scheduledHours || '0.00'
       };
       const parsed = insertTaskSchema.safeParse(candidate);
       mark('v1');

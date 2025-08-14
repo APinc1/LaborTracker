@@ -1,24 +1,26 @@
 // middleware/timing.ts
 import { performance } from 'node:perf_hooks';
+import onHeaders from 'on-headers';
 
 export function timing() {
   return (req: any, res: any, next: any) => {
     const t0 = performance.now();
     const marks: Record<string, number> = { t0 };
+
+    // allow handlers to mark stages
     res.locals.mark = (k: string) => { marks[k] = performance.now(); };
 
-    res.on('finish', () => {
-      // guard: don't mutate headers if already sent
-      try {
-        const dur = (a: string, b: string) => (marks[b] && marks[a]) ? (marks[b] - marks[a]) : 0;
-        // segments: v = validation, d = db, s = serialize
-        const validate = dur('v0', 'v1');
-        const db = (dur('d0','d1') + dur('d2','d3'));
-        const serialize = dur('s0','s1');
-        // Set once; ok even after status is written
-        res.setHeader('Server-Timing',
-          `validate;dur=${validate.toFixed(1)}, db;dur=${db.toFixed(1)}, serialize;dur=${serialize.toFixed(1)}`);
-      } catch {}
+    // set headers just-in-time, before first byte is sent
+    onHeaders(res, () => {
+      const dur = (a: string, b: string) => (marks[b] && marks[a]) ? (marks[b] - marks[a]) : 0;
+      const validate = dur('v0','v1');
+      const db = dur('d0','d1') + dur('d2','d3');
+      const serialize = dur('s0','s1');
+      const queue = dur('q0','q1');
+
+      // NOTE: no JSON/stringify here—just numbers—to avoid adding work
+      res.setHeader('Server-Timing',
+        `queue;dur=${queue.toFixed(1)}, validate;dur=${validate.toFixed(1)}, db;dur=${db.toFixed(1)}, serialize;dur=${serialize.toFixed(1)}`);
     });
 
     next();

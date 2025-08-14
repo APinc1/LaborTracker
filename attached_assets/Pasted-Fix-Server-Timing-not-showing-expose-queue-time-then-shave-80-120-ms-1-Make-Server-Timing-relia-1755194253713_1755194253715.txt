@@ -1,0 +1,171 @@
+Fix Server-Timing not showing + expose queue time, then shave ~80–120 ms
+1) Make Server-Timing reliably appear (set it before headers are written)
+
+Use the tiny on-headers hook so we set the header right before Express writes the response.
+
+Install
+
+npm i on-headers
+
+
+server/middleware/timing.ts
+
+import { performance } from 'node:perf_hooks';
+import onHeaders from 'on-headers';
+
+export function timing() {
+  return (req, res, next) => {
+    const t0 = performance.now();
+    const marks: Record<string, number> = { t0 };
+
+    // allow handlers to mark stages
+    res.locals.mark = (k: string) => { marks[k] = performance.now(); };
+
+    // set headers just-in-time, before first byte is sent
+    onHeaders(res, () => {
+      const dur = (a: string, b: string) => (marks[b] && marks[a]) ? (marks[b] - marks[a]) : 0;
+      const validate = dur('v0','v1');
+      const db = dur('d0','d1') + dur('d2','d3');
+      const serialize = dur('s0','s1');
+      const queue = dur('q0','q1'); // see §2
+
+      // NOTE: no JSON/stringify here—just numbers—to avoid adding work
+      res.setHeader('Server-Timing',
+        `queue;dur=${queue.toFixed(1)}, validate;dur=${validate.toFixed(1)}, db;dur=${db.toFixed(1)}, serialize;dur=${serialize.toFixed(1)}`);
+    });
+
+    next();
+  };
+}
+
+
+server/index.ts (ensure this middleware is mounted before routes)
+
+import { timing } from './middleware/timing';
+app.use(timing());
+
+
+If you use CORS and want to read this header from fetch, add exposedHeaders: ['Server-Timing']. curl will show it without that.
+
+Verify
+
+curl -i -X POST "$URL/api/locations/78/tasks" \
+  -H 'content-type: application/json' \
+  --data '{"name":"t","startDate":"2025-08-14","finishDate":"2025-08-14"}' \
+  | grep -i server-timing
+
+2) Expose “queue wait” explicitly (so we know if a limiter/pool is the culprit)
+
+If you use any semaphore/backpressure, mark queue entry/exit.
+
+where you wrap the handler (writes only)
+
+// before waiting
+res.locals.mark?.('q0');
+await validateLimit.run(async () => {
+  res.locals.mark?.('q1'); // after waiting
+  // ... actual handler work continues here
+});
+
+
+If you don’t wrap with a limiter, still add:
+
+res.locals.mark?.('q0'); res.locals.mark?.('q1'); // zero queue by default
+
+3) Trim ~80–120 ms of app overhead
+3a) Skip compression for tiny POST responses
+
+Compression adds measurable latency for 10-byte bodies.
+
+// where you set up compression:
+import compression from 'compression';
+
+// Only compress GETs (read APIs); skip for writes/small bodies
+app.use(compression({
+  filter: (req, res) => req.method === 'GET'
+}));
+
+3b) Ensure prod build is running (no ts-node/tsx in Deploy)
+
+In package.json:
+
+{
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server/index.js"
+  }
+}
+
+
+Deploy command:
+
+npm run build && npm run start
+
+3c) Collapse the two “last” queries into one round-trip
+
+You reported 2–4 ms DB total already, but saving a network hop usually cuts ~10–20 ms tail.
+
+// storage.ts
+import { sql as raw } from 'drizzle-orm';
+
+export async function getLasts(locationId: number): Promise<{ lastOrder: number|null, lastFinish: string|null }> {
+  const [row] = await db
+    .select({
+      lastOrder: raw<number>`max(${tasks.order})`,
+      lastFinish: raw<string>`max(${tasks.finishDate})`
+    })
+    .from(tasks)
+    .where(eq(tasks.locationId, locationId))
+    .limit(1);
+  return { lastOrder: row?.lastOrder ?? null, lastFinish: row?.lastFinish ?? null };
+}
+
+
+And in the handler replace the two awaits with:
+
+res.locals.mark?.('d0');
+const { lastOrder, lastFinish } = await getLasts(locationId);
+res.locals.mark?.('d1');
+
+3d) Micro-optimise handler hot path
+
+Build the minimal candidate object (no spreading req.body, which can drag in unused fields).
+
+Avoid repeatedly calling new Date().toISOString()—compute once.
+
+Precompile any regex at module scope (no per-request compile).
+
+Example:
+
+const todayISO = new Date().toISOString().slice(0,10);
+const candidate = {
+  name: String(body.name || 'Task'),
+  locationId,
+  order,
+  startDate: body.startDate || computedStart || todayISO,
+  finishDate: body.finishDate || computedFinish || todayISO,
+  taskType: body.taskType || body.name || 'General',
+  costCode: body.costCode || 'GEN'
+};
+
+3e) Body parser limits
+
+Keep JSON parsing fast:
+
+app.use(express.json({ limit: '128kb' }));
+
+4) Re-measure (we want queue + validate + db + serialize totals)
+
+Run each 3× and share both the header and totals:
+
+# Server-Timing should now show
+curl -i -X POST "$URL/api/locations/78/tasks" \
+  -H 'content-type: application/json' \
+  --data '{"name":"fast","startDate":"2025-08-14","finishDate":"2025-08-14"}' \
+  | grep -i server-timing
+
+# Quick totals
+curl -s -w "TOTAL:%{time_total}s TTFB:%{time_starttransfer}s\n" \
+  -H 'content-type: application/json' \
+  -X POST "$URL/api/locations/78/tasks" \
+  --data '{"name":"fast2","startDate":"2025-08-14","finishDate":"2025-08-14"}' -o /dev/null

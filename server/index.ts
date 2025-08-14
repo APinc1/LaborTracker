@@ -21,9 +21,11 @@ app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 // Add timing middleware for performance monitoring
 app.use(timing());
 
-// Enable compression middleware for better performance
-app.use(compression());
-app.use(express.json({ limit: '128kb' })); // Reduce payload limit as requested
+// Only compress GETs (read APIs); skip for writes/small bodies
+app.use(compression({
+  filter: (req, res) => req.method === 'GET'
+}));
+app.use(express.json({ limit: '128kb' }));
 app.use(express.urlencoded({ extended: false }));
 
 app.use((req, res, next) => {

@@ -71,8 +71,7 @@ export interface IStorage {
   getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]>;
   
   // Optimized task helper methods
-  getLastOrder(locationId: number): Promise<number | null>;
-  getLastFinishDate(locationId: number): Promise<string | null>;
+  getLasts(locationId: number): Promise<{ lastOrder: number|null, lastFinish: string|null }>;
   resolveLocationIdBySlug(locationParam: string): Promise<number | null>;
   
   // Employee assignment methods
@@ -1740,28 +1739,18 @@ class DatabaseStorage implements IStorage {
     );
   }
 
-  // Optimized constant-time helpers for task creation
-  async getLastOrder(locationId: number): Promise<number | null> {
+  // Optimized single-query helper for task creation
+  async getLasts(locationId: number): Promise<{ lastOrder: number|null, lastFinish: string|null }> {
     const db = await this.db;
-    // Get count to determine the next order  
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(tasks)
-      .where(eq(tasks.locationId, locationId));
-    
-    return countResult?.count ? countResult.count : 0;
-  }
-
-  async getLastFinishDate(locationId: number): Promise<string | null> {
-    const db = await this.db;
-    const result = await db
-      .select()
+    const [row] = await db
+      .select({
+        lastOrder: sql<number>`count(*)`,
+        lastFinish: sql<string>`max(${tasks.finishDate})`
+      })
       .from(tasks)
       .where(eq(tasks.locationId, locationId))
-      .orderBy(desc(tasks.finishDate))
       .limit(1);
-    
-    return result.length > 0 ? result[0].finishDate : null;
+    return { lastOrder: row?.lastOrder ?? 0, lastFinish: row?.lastFinish ?? null };
   }
 
   async resolveLocationIdBySlug(locationParam: string): Promise<number | null> {
