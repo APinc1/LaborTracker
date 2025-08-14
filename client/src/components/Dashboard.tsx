@@ -338,8 +338,10 @@ export default function Dashboard() {
     const normalizeCostCode = (costCode: string) => {
       const trimmed = costCode.trim().toUpperCase();
       // Combine DEMO/EX and BASE/GRADING into one category
-      if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING') {
-        return 'Demo/Ex + Base/Grading';
+      if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING' || 
+          trimmed === 'DEMO/EX + BASE/GRADING' || 
+          trimmed.includes('DEMO/EX') || trimmed.includes('BASE/GRADING')) {
+        return 'DEMO/EX + BASE/GRADING';
       }
       return trimmed; // Return uppercase normalized version
     };
