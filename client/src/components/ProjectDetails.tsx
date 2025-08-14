@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +39,40 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
   const { data: locations = [], isLoading: locationsLoading } = useQuery({
     queryKey: ["/api/projects", projectId, "locations"],
+    staleTime: 30000,
+  });
+
+  // Fetch assignments for hours calculation
+  const { data: assignments = [] } = useQuery({
+    queryKey: ["/api/assignments"],
+    staleTime: 30000,
+  });
+
+  // Fetch budget data for all locations
+  const locationBudgetQueries = useQuery({
+    queryKey: ["/api/projects", projectId, "all-location-budgets"],
+    queryFn: async () => {
+      if (!locations.length) return {};
+      
+      const budgetPromises = locations.map(async (location: any) => {
+        try {
+          const response = await fetch(`/api/locations/${location.locationId}/budget`);
+          if (!response.ok) return { locationId: location.locationId, budget: [] };
+          const budget = await response.json();
+          return { locationId: location.locationId, budget };
+        } catch (error) {
+          console.error(`Failed to fetch budget for location ${location.locationId}:`, error);
+          return { locationId: location.locationId, budget: [] };
+        }
+      });
+      
+      const results = await Promise.all(budgetPromises);
+      return results.reduce((acc: any, result) => {
+        acc[result.locationId] = result.budget;
+        return acc;
+      }, {});
+    },
+    enabled: locations.length > 0,
     staleTime: 30000,
   });
 
@@ -91,6 +125,45 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     return {
       startDate: format(earliestTaskDate, 'MMM d, yyyy'),
       endDate: format(latestTaskDate, 'MMM d, yyyy')
+    };
+  };
+
+  // Calculate budget and actual hours for a location
+  const getLocationHours = (locationId: string) => {
+    const budget = locationBudgetQueries.data?.[locationId] || [];
+    const tasks = locationTaskQueries.data?.[locationId] || [];
+    
+    // Calculate total budget hours
+    const totalBudgetHours = budget.reduce((total: number, item: any) => {
+      // Only include parent items (line numbers without dots) to avoid double counting
+      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+      const isStandalone = !item.lineItemNumber || item.lineItemNumber === '';
+      
+      if (isParent || isStandalone) {
+        return total + (parseFloat(item.hours) || 0);
+      }
+      return total;
+    }, 0);
+    
+    // Calculate actual hours from assignments
+    const locationTaskIds = tasks.map((task: any) => task.id);
+    const locationAssignments = assignments.filter((assignment: any) => 
+      locationTaskIds.includes(assignment.taskId)
+    );
+    
+    const totalActualHours = locationAssignments.reduce((total: number, assignment: any) => {
+      return total + (parseFloat(assignment.actualHours) || 0);
+    }, 0);
+    
+    // Calculate scheduled hours from assignments
+    const totalScheduledHours = locationAssignments.reduce((total: number, assignment: any) => {
+      return total + (parseFloat(assignment.assignedHours) || 0);
+    }, 0);
+    
+    return {
+      budgetHours: totalBudgetHours,
+      actualHours: totalActualHours,
+      scheduledHours: totalScheduledHours
     };
   };
 
@@ -447,6 +520,32 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               })()} className="h-2" />
                               <p className="text-xs text-gray-500">Based on completed tasks</p>
                             </div>
+
+                            {/* Hours Information */}
+                            {(() => {
+                              const hours = getLocationHours(location.locationId);
+                              if (hours.budgetHours > 0 || hours.actualHours > 0 || hours.scheduledHours > 0) {
+                                return (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1 text-sm text-gray-600">
+                                      <Clock className="w-4 h-4" />
+                                      <span>Budget: {hours.budgetHours.toLocaleString()}h</span>
+                                    </div>
+                                    {hours.actualHours > 0 && (
+                                      <div className="flex items-center gap-1 text-sm text-green-600 ml-5">
+                                        <span>Actual: {hours.actualHours.toLocaleString()}h</span>
+                                      </div>
+                                    )}
+                                    {hours.scheduledHours > 0 && hours.actualHours === 0 && (
+                                      <div className="flex items-center gap-1 text-sm text-blue-600 ml-5">
+                                        <span>Scheduled: {hours.scheduledHours.toLocaleString()}h</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
 
                             {/* Budget Info */}
                             {location.budgetAllocated && (
