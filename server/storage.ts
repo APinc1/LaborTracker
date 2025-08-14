@@ -999,8 +999,8 @@ function initializeDatabase() {
       max: 3,                   // Multiple connections for reliability
       idle_timeout: 30,         // Keep connection alive longer
       connect_timeout: 10,      // 10 second connection timeout
-      statement_timeout: 15000, // 15 second query timeout
-      query_timeout: 15000,     // 15 second query timeout
+      statement_timeout: 30000, // 30 second query timeout
+      query_timeout: 30000,     // 30 second query timeout
       ssl: { rejectUnauthorized: false }, // Better SSL config
       transform: {
         undefined: null // Convert undefined to null
