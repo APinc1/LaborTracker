@@ -41,22 +41,11 @@ export default function ChangePassword({ user, onPasswordChanged, isFirstLogin =
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-      console.log('Changing password for user:', user);
-      console.log('User ID:', user?.id);
-      
-      if (!user || !user.id) {
-        throw new Error('User information is missing. Please try logging in again.');
-      }
-      
-      const requestData = {
+      const response = await apiRequest('POST', '/api/auth/change-password', {
         userId: user.id,
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
-      };
-      
-      console.log('Password change request data:', { ...requestData, currentPassword: '***', newPassword: '***' });
-      
-      const response = await apiRequest('POST', '/api/auth/change-password', requestData);
+      });
       return response.json();
     },
     onSuccess: () => {

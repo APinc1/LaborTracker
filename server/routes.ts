@@ -1174,38 +1174,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       const { userId, currentPassword, newPassword } = req.body;
       
-      console.log('Password change request:', { userId, currentPassword: '***', newPassword: '***' });
-      
       if (!userId || !currentPassword || !newPassword) {
-        console.log('Missing required fields:', { 
-          hasUserId: !!userId, 
-          hasCurrentPassword: !!currentPassword, 
-          hasNewPassword: !!newPassword 
-        });
         return res.status(400).json({ error: 'User ID, current password, and new password are required' });
       }
 
       const user = await storage.getUser(userId);
-      console.log('Found user:', user ? `${user.username} (ID: ${user.id})` : 'not found');
-      
       if (!user || user.password !== currentPassword) {
-        console.log('Password verification failed:', { 
-          userExists: !!user,
-          passwordMatch: user ? user.password === currentPassword : false
-        });
         return res.status(401).json({ error: 'Invalid current password' });
       }
 
-      console.log('Updating user password...');
       await storage.updateUser(userId, { 
         password: newPassword, 
         isPasswordSet: true 
       });
 
-      console.log('Password changed successfully for user:', user.username);
       res.json({ message: 'Password changed successfully' });
     } catch (error) {
-      console.error('Password change error:', error);
       res.status(500).json({ error: 'Failed to change password' });
     }
   });
