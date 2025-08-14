@@ -300,11 +300,20 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const actualHoursByCostCode = (tasks as any[]).reduce((acc: any, task: any) => {
     let taskCostCode = task.costCode || 'UNCATEGORIZED';
     
+    // Normalize cost codes to uppercase and clean up whitespace/line breaks
+    taskCostCode = taskCostCode.toUpperCase().replace(/[\r\n\s]+/g, ' ').trim();
+    
     // Combine Demo/Ex and Base/grading related cost codes
-    if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-        taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-        taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-      taskCostCode = 'Demo/ex + Base/grading';
+    if (taskCostCode.includes('DEMO') || taskCostCode.includes('EX') || 
+        taskCostCode.includes('BASE') || taskCostCode.includes('GRADING') ||
+        taskCostCode === 'DEMO/EX' || taskCostCode === 'DEMO/EX + BASE/GRADING' || 
+        taskCostCode === 'DEMO/EX+BASE/GRADING' || taskCostCode === 'DEMO EX BASE GRADING') {
+      taskCostCode = 'DEMO/EX';
+    }
+    
+    // Apply GNRL LBR normalization
+    if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR') {
+      taskCostCode = 'GNRL LBR';
     }
     
     // Find assignments for this task and sum actual hours
@@ -316,6 +325,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       return sum + (parseFloat(assignment.actualHours) || 0);
     }, 0);
     
+    console.log(`📊 Task ${task.name} (${task.costCode} -> ${taskCostCode}): ${taskActualHours}h actual from ${taskAssignments.length} assignments`);
+    
     acc[taskCostCode] = (acc[taskCostCode] || 0) + taskActualHours;
     return acc;
   }, {});
@@ -324,11 +335,19 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const costCodeSummaries = (budgetItems as any[]).reduce((acc: any, item: any) => {
     let costCode = item.costCode || 'UNCATEGORIZED';
     
+    // Normalize cost codes to uppercase and apply consistent naming
+    costCode = costCode.toUpperCase();
+    
     // Combine Demo/Ex and Base/grading related cost codes
-    if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || 
-        costCode === 'BASE/GRADING' || costCode === 'Base/Grading' || 
-        costCode === 'Demo/Ex + Base/Grading' || costCode === 'DEMO/EX + BASE/GRADING') {
-      costCode = 'Demo/ex + Base/grading';
+    if (costCode === 'DEMO/EX' || costCode === 'DEMO' || costCode === 'EX' ||
+        costCode === 'BASE/GRADING' || costCode === 'BASE' || costCode === 'GRADING' || 
+        costCode === 'DEMO/EX + BASE/GRADING' || costCode === 'DEMO/EX+BASE/GRADING') {
+      costCode = 'DEMO/EX';
+    }
+    
+    // Apply GNRL LBR normalization
+    if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR') {
+      costCode = 'GNRL LBR';
     }
     
     if (!acc[costCode]) {
@@ -376,8 +395,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   }, {});
 
   // Apply actual hours from assignments to cost code summaries
+  console.log('🔍 Available actual hours by cost code:', actualHoursByCostCode);
   Object.keys(costCodeSummaries).forEach(costCode => {
-    costCodeSummaries[costCode].totalActualHours = actualHoursByCostCode[costCode] || 0;
+    const actualHours = actualHoursByCostCode[costCode] || 0;
+    costCodeSummaries[costCode].totalActualHours = actualHours;
+    console.log(`📊 Cost code ${costCode}: Budget=${costCodeSummaries[costCode].totalBudgetHours}h, Actual=${actualHours}h`);
   });
 
   // Calculate total actual hours from all assignments
