@@ -83,20 +83,9 @@ export default function Dashboard() {
     enabled: !!(allTasks as any[]).length,
   });
 
-  // Only fetch assignments for the relevant date range to improve performance
+  // Fetch ALL assignments for accurate cost code calculations
   const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
-    queryKey: ["/api/assignments/date-range", format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
-    queryFn: async () => {
-      const startDate = format(subDays(today, 3), "yyyy-MM-dd");
-      const endDate = format(addDays(today, 7), "yyyy-MM-dd");
-      const response = await fetch(`/api/assignments/date-range/${startDate}/${endDate}`);
-      if (!response.ok) {
-        // Fallback to all assignments if date range endpoint doesn't exist
-        const fallbackResponse = await fetch('/api/assignments');
-        return fallbackResponse.json();
-      }
-      return response.json();
-    },
+    queryKey: ["/api/assignments"],
     staleTime: 30000,
   });
 
@@ -340,12 +329,7 @@ export default function Dashboard() {
     // Get all tasks for this location using the database ID
     const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === location.id);
     
-    console.log(`🔍 Dashboard cost code calculation for ${locationId}:`, {
-      budgetItems: locationBudget.length,
-      tasks: allLocationTasks.length,
-      totalAssignments: assignments.length,
-      locationDbId: location.id
-    });
+
     
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
@@ -395,13 +379,9 @@ export default function Dashboard() {
       // Get task assignments to calculate actual and scheduled hours
       const taskAssignments = (assignments as any[]).filter((assignment: any) => assignment.taskId === task.id);
       
-      console.log(`📋 Task ${task.id} (${task.costCode}) assignments:`, taskAssignments.length);
-      
       taskAssignments.forEach((assignment: any) => {
         const actualHours = parseFloat(assignment.actualHours) || 0;
         const scheduledHours = parseFloat(assignment.assignedHours) || 0;
-        
-        console.log(`  💼 Assignment ${assignment.id}: ${actualHours}h actual, ${scheduledHours}h scheduled`);
         
         costCodeData[normalizedTaskCostCode].actualHours += actualHours;
         costCodeData[normalizedTaskCostCode].scheduledHours += scheduledHours;
@@ -414,8 +394,6 @@ export default function Dashboard() {
         data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0
       )
     );
-    
-    console.log(`📊 Dashboard final cost code data for ${locationId}:`, filteredCostCodeData);
     
     return filteredCostCodeData;
   };
