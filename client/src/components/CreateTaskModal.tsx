@@ -777,6 +777,25 @@ export default function CreateTaskModal({
       }
     }
 
+    // Calculate proper decimal order value
+    let orderValue = "0.00";
+    if (insertIndex === 0) {
+      // First position - use order before first task or 0.00
+      orderValue = sortedTasks.length > 0 ? 
+        String(Math.max(0, (parseFloat(sortedTasks[0].order as string || "1.00") - 1.00))).padEnd(4, '0') : 
+        "0.00";
+    } else if (insertIndex >= sortedTasks.length) {
+      // Last position - use order after last task
+      orderValue = sortedTasks.length > 0 ? 
+        String((parseFloat(sortedTasks[sortedTasks.length - 1].order as string || "0.00") + 1.00)).padEnd(4, '0') : 
+        "1.00";
+    } else {
+      // Middle position - calculate order between adjacent tasks
+      const prevOrder = parseFloat(sortedTasks[insertIndex - 1]?.order as string || "0.00");
+      const nextOrder = parseFloat(sortedTasks[insertIndex]?.order as string || "2.00");
+      orderValue = String((prevOrder + nextOrder) / 2).padEnd(4, '0');
+    }
+
     // Create the new task
     const newTask = {
       taskId: `${selectedLocationData?.locationId}_${data.name.replace(/\s+/g, '_')}_${Date.now()}`,
@@ -799,7 +818,7 @@ export default function CreateTaskModal({
       foremanId: null,
       scheduledHours: "0.00",
       actualHours: data.status === 'complete' ? "0.00" : null,
-      order: insertIndex
+      order: orderValue
     };
 
     // Insert new task into the array
@@ -1021,18 +1040,21 @@ export default function CreateTaskModal({
                       </FormControl>
                       <SelectContent>
                         {(() => {
-                          // Sort existing tasks by order/date for display
+                          // Sort existing tasks by order/date for display - include ALL tasks (including completed)
                           const sortedTasks = (existingTasks as any[])
                             .sort((a: any, b: any) => {
+                              // Primary sort by order if both have it
                               if (a.order !== undefined && b.order !== undefined) {
-                                return a.order - b.order;
+                                return parseFloat(a.order as string || "0") - parseFloat(b.order as string || "0");
                               }
+                              // Tasks with order come before tasks without
                               if (a.order !== undefined && b.order === undefined) {
                                 return -1;
                               }
                               if (a.order === undefined && b.order !== undefined) {
                                 return 1;
                               }
+                              // Secondary sort by date, then by ID
                               const dateA = new Date(a.taskDate).getTime();
                               const dateB = new Date(b.taskDate).getTime();
                               if (dateA !== dateB) return dateA - dateB;
@@ -1046,14 +1068,21 @@ export default function CreateTaskModal({
                             <SelectItem key="beginning" value="beginning">At the beginning</SelectItem>
                           );
                           
-                          // Add option to insert after each existing task
+                          // Add option to insert after each existing task (including completed ones)
                           sortedTasks.forEach((task: any) => {
+                            // Get task status for display
+                            const taskAssignments = assignments.filter((assignment: any) => 
+                              assignment.taskId === (task.id || task.taskId)
+                            );
+                            const taskStatus = getTaskStatus(task, taskAssignments);
+                            const statusIndicator = taskStatus === 'complete' ? ' ✓' : '';
+                            
                             insertionOptions.push(
                               <SelectItem 
                                 key={task.id || task.taskId} 
                                 value={`after-${(task.taskId || task.id).toString()}`}
                               >
-                                After: {task.name} ({new Date(task.taskDate).toLocaleDateString('en-US')})
+                                After: {task.name}{statusIndicator} ({new Date(task.taskDate).toLocaleDateString('en-US')})
                               </SelectItem>
                             );
                           });
