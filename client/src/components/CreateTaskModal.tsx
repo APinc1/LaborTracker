@@ -668,12 +668,25 @@ export default function CreateTaskModal({
       } else if (data.insertPosition.startsWith('after-')) {
         // Insert after specific task
         const afterTaskId = data.insertPosition.replace('after-', '');
+        console.log('🔧 DEBUG: Looking for task with ID:', afterTaskId);
+        console.log('🔧 DEBUG: Available tasks:', sortedTasks.map(t => ({
+          name: t.name, 
+          id: t.id, 
+          taskId: t.taskId, 
+          order: t.order
+        })));
         const afterTaskIndex = sortedTasks.findIndex(task => 
           (task.taskId || task.id).toString() === afterTaskId
         );
+        console.log('🔧 DEBUG: Found after task at index:', afterTaskIndex);
         
         if (afterTaskIndex >= 0) {
           const afterTask = sortedTasks[afterTaskIndex];
+          console.log('🔧 DEBUG: After task details:', {
+            name: afterTask.name,
+            order: afterTask.order,
+            linkedTaskGroup: afterTask.linkedTaskGroup
+          });
           
           // If the "after" task is linked, find the end of its linked group
           if (afterTask.linkedTaskGroup) {
@@ -688,9 +701,11 @@ export default function CreateTaskModal({
               (t.taskId || t.id) === (lastLinkedTask.taskId || lastLinkedTask.id)
             );
             insertIndex = lastLinkedTaskIndex + 1;
+            console.log('🔧 DEBUG: Linked task insertIndex:', insertIndex);
           } else {
             // Regular task, insert immediately after it
             insertIndex = afterTaskIndex + 1;
+            console.log('🔧 DEBUG: Regular task insertIndex:', insertIndex);
           }
           
           const referenceTask = afterTask;
