@@ -1,0 +1,123 @@
+Diagnostics package to fix API slowness (Supabase + Node/Express + Drizzle/postgres.js)
+
+Please gather the following and paste the raw outputs back.
+
+A) App wiring & timeouts (code)
+
+db init (singleton)
+
+File: db.ts (or wherever you create the postgres.js client + drizzle).
+
+Include options: prepare, max, idle_timeout, connect_timeout, ssl.
+
+Show the exact DATABASE_URL port (5432 or 6543) minus credentials.
+
+server startup
+
+File: server.ts (or index.ts/js):
+
+server.requestTimeout and server.headersTimeout values.
+
+app.get('/healthz', ...) route.
+
+PORT usage + start command used in Deploy.
+
+hot endpoint(s)
+
+Files: route handler and storage function for:
+
+GET /api/locations/:id/tasks
+
+Any other slow ones (e.g., /api/budgets, /api/employees)
+
+Paste the exact Drizzle/SQL used (no SELECT * if possible).
+
+frontend fetch behavior
+
+React Query (or equivalent) config: staleTime, refetchOnWindowFocus, retry, and how many requests fire on initial load.
+
+B) Quick timings (from the deployed app)
+
+Run each 3 times and paste timing lines:
+
+curl -s -w "TOTAL:%{time_total}s CONNECT:%{time_connect}s TTFB:%{time_starttransfer}s\n" "$URL/healthz" -o /dev/null
+curl -s -w "TOTAL:%{time_total}s CONNECT:%{time_connect}s TTFB:%{time_starttransfer}s\n" "$URL/api/locations/78/tasks?limit=50" -o /dev/null
+curl -s -w "TOTAL:%{time_total}s CONNECT:%{time_connect}s TTFB:%{time_starttransfer}s\n" "$URL/api/employees" -o /dev/null
+
+
+Replace 78 with any location that’s representative.
+
+C) Database facts (run against Supabase)
+
+Paste the outputs (text), not screenshots.
+
+-- 1) What pooler are we hitting?
+SHOW server_version;
+SHOW statement_timeout;
+SELECT current_setting('application_name') AS app, inet_client_addr(), inet_client_port();
+
+-- 2) Table & indexes for tasks
+\d+ tasks;  -- or use: SELECT indexdef FROM pg_indexes WHERE tablename='tasks';
+
+-- 3) Query plan (make sure it uses the composite index)
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT id, name, "order"
+FROM tasks
+WHERE location_id = 78
+ORDER BY "order"
+LIMIT 50;
+
+-- 4) Activity snapshot (are connections piling up?)
+SELECT state, wait_event_type, wait_event, count(*)
+FROM pg_stat_activity
+WHERE application_name ILIKE '%postgres.js%'
+GROUP BY 1,2,3
+ORDER BY 4 DESC;
+
+-- 5) Locks (detect waits/deadlocks)
+SELECT relation::regclass AS rel, mode, granted, count(*)
+FROM pg_locks
+LEFT JOIN pg_class ON pg_locks.relation = pg_class.oid
+GROUP BY 1,2,3
+ORDER BY 4 DESC;
+
+-- 6) Table size
+SELECT pg_size_pretty(pg_total_relation_size('tasks')) AS tasks_total_size;
+
+D) Pool & concurrency behavior (Node)
+
+Confirm one client instance:
+
+Add console.log('[DB] client initialized') where postgres.js is created.
+Paste the logs from a fresh boot. It should print once.
+
+Show your pool settings in code (max, idle_timeout) and confirm no per-request postgres() calls:
+
+Grep results: grep -R "postgres(" -n src | cat
+
+In-flight limiter (if present): show the semaphore/backpressure code or confirm none exists.
+
+E) Slow-call sampling (server logs)
+
+Enable timestamped logs around a slow endpoint and paste 2–3 samples:
+
+app.get('/api/locations/:id/tasks', async (req, res, next) => {
+  const t0 = Date.now();
+  try {
+    const out = await getTasksByLocation(+req.params.id, 50, req.query.after ? +req.query.after : undefined);
+    const ms = Date.now() - t0;
+    console.log(`[SLOWTRACE] tasks ${req.params.id} took ${ms}ms, limit=50`);
+    res.json(out);
+  } catch (e) { console.error('[SLOWTRACE][ERR]', e); next(e); }
+});
+
+
+Also share Replit Deploy logs around a slow page load (30–60 seconds of logs).
+
+F) Versioning & resources
+
+Node version (node -v) used in Deploy.
+
+Instance resources (CPU/RAM class) for this deployment.
+
+Package versions: postgres, drizzle-orm, express, compression.
