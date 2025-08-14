@@ -545,15 +545,22 @@ export default function AssignmentManagement() {
   };
 
   const getProject = (task: any) => {
-    if (!task?.locationId) return null;
-    // Find location first, then get project from location
-    const location = (locations as any[]).find((loc: any) => loc.locationId === task.locationId);
-    if (!location?.projectId) return null;
+    if (!task?.locationId) {
+      return null;
+    }
+    // Find location first - task.locationId is the database ID, not the composite locationId
+    const location = (locations as any[]).find((loc: any) => loc.id === Number(task.locationId));
+    if (!location?.projectId) {
+      return null;
+    }
     return (projects as any[]).find((project: any) => project.id === location.projectId);
   };
 
-  const getLocation = (locationId: string) => {
-    return (locations as any[]).find((location: any) => location.locationId === locationId);
+  const getLocation = (locationId: string | number) => {
+    // locationId could be the database ID or the composite locationId
+    return (locations as any[]).find((location: any) => 
+      location.id === Number(locationId) || location.locationId === locationId
+    );
   };
 
   const getEmployeeStatus = (hours: number) => {
