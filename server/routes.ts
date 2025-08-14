@@ -676,13 +676,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/tasks/date-range/:startDate/:endDate', async (req, res) => {
+  app.get('/api/tasks/date-range/:startDate?/:endDate?', async (req, res) => {
     try {
       const { startDate, endDate } = req.params;
       
-      // Validate date parameters
-      if (!startDate || !endDate || startDate === '' || endDate === '' || startDate === 'undefined' || endDate === 'undefined') {
-        return res.status(400).json({ error: 'Start date and end date are required and must be valid' });
+      // Validate date parameters - return empty array for invalid dates instead of error
+      if (!startDate || !endDate || startDate === '' || endDate === '' || startDate === 'undefined' || endDate === 'undefined' || startDate === 'NaN' || endDate === 'NaN') {
+        console.log('Invalid date parameters received:', { startDate, endDate });
+        return res.json([]); // Return empty array instead of error
       }
       
       const storage = await getStorage();

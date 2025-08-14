@@ -44,6 +44,10 @@ interface DraggableTaskListProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   onTaskUpdate: () => void;
+  assignments?: any[];
+  employees?: any[];
+  users?: any[];
+  budgetItems?: any[];
 }
 
 interface SortableTaskItemProps {
@@ -416,17 +420,14 @@ export default function DraggableTaskList({
   onEditTask, 
   onDeleteTask,
   onAssignTask,
-  onTaskUpdate 
+  onTaskUpdate,
+  assignments = [],
+  employees = [],
+  users = [],
+  budgetItems = []
 }: DraggableTaskListProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Fetch budget items for remaining hours calculation
-  const { data: budgetItems = [] } = useQuery({
-    queryKey: ["/api/locations", locationId, "budget"],
-    enabled: !!locationId,
-    staleTime: 30000,
-  });
 
   // Helper function to get remaining hours color based on percentage
   const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
@@ -561,21 +562,7 @@ export default function DraggableTaskList({
     newPosition: -1
   });
 
-  // Fetch employees and assignments for task display
-  const { data: employees = [] } = useQuery({
-    queryKey: ["/api/employees"],
-    staleTime: 30000,
-  });
-
-  const { data: assignments = [] } = useQuery({
-    queryKey: ["/api/assignments"],
-    staleTime: 30000,
-  });
-
-  const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"],
-    staleTime: 30000,
-  });
+  // Data is now passed as props from parent component
 
   const sensors = useSensors(
     useSensor(PointerSensor),

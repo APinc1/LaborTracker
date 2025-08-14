@@ -229,6 +229,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     staleTime: 30000,
   });
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["/api/employees"],
+    staleTime: 30000,
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    staleTime: 30000,
+  });
+
   if (locationLoading) {
     return (
       <div className="flex-1 overflow-y-auto">
@@ -1308,6 +1318,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
+                assignments={assignments}
+                employees={employees}
+                users={users}
+                budgetItems={budgetItems}
               />
             )}
           </CardContent>
