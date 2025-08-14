@@ -1035,7 +1035,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       console.log('Creating assignment:', req.body);
       
-      // Auto-generate assignmentId if not provided
+      // Check if assignment already exists for this task and employee
+      const existingAssignments = await storage.getEmployeeAssignments(req.body.taskId);
+      const existingAssignment = existingAssignments.find(a => a.employeeId === req.body.employeeId);
+      
+      if (existingAssignment) {
+        // Update existing assignment instead of creating duplicate
+        console.log('Assignment already exists, updating:', existingAssignment.id);
+        const updated = await withFastTimeout(storage.updateEmployeeAssignment(existingAssignment.id, {
+          assignedHours: req.body.assignedHours,
+          assignmentDate: req.body.assignmentDate,
+          actualHours: req.body.actualHours || null
+        }));
+        console.log('Assignment updated:', updated);
+        return res.status(200).json(updated);
+      }
+      
+      // Create new assignment with unique ID
       const assignmentData = {
         ...req.body,
         assignmentId: req.body.assignmentId || `${req.body.taskId}_${req.body.employeeId}`,
@@ -1049,6 +1065,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Assignment creation error:', error);
       if (error.message?.includes('timeout')) {
         res.status(408).json({ error: 'Assignment save timeout - please try again' });
+      } else if (error.code === '23505') {
+        res.status(409).json({ error: 'Assignment already exists for this employee and task' });
       } else {
         res.status(400).json({ error: 'Invalid assignment data', details: error.message });
       }
@@ -1070,10 +1088,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/tasks/:taskId/assignments', async (req, res) => {
     try {
       const storage = await getStorage();
+      const taskId = parseInt(req.params.taskId);
+      
+      // Check if assignment already exists for this task and employee
+      const existingAssignments = await storage.getEmployeeAssignments(taskId);
+      const existingAssignment = existingAssignments.find(a => a.employeeId === req.body.employeeId);
+      
+      if (existingAssignment) {
+        // Update existing assignment
+        const updated = await withFastTimeout(storage.updateEmployeeAssignment(existingAssignment.id, {
+          assignedHours: String(req.body.assignedHours),
+          assignmentDate: req.body.assignmentDate,
+          actualHours: req.body.actualHours ? String(req.body.actualHours) : null
+        }));
+        return res.status(200).json(updated);
+      }
+      
       // Transform data for validation
       const dataToValidate = {
         ...req.body,
-        taskId: parseInt(req.params.taskId),
+        taskId,
+        assignmentId: `${taskId}_${req.body.employeeId}`,
         assignedHours: String(req.body.assignedHours),
         actualHours: req.body.actualHours ? String(req.body.actualHours) : null
       };
@@ -1083,7 +1118,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(assignment);
     } catch (error: any) {
       console.error('Task assignment creation error:', error);
-      res.status(400).json({ error: 'Invalid assignment data', details: error.message });
+      if (error.code === '23505') {
+        res.status(409).json({ error: 'Assignment already exists for this employee and task' });
+      } else {
+        res.status(400).json({ error: 'Invalid assignment data', details: error.message });
+      }
     }
   });
 
