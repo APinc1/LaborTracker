@@ -778,23 +778,41 @@ export default function CreateTaskModal({
     }
 
     // Calculate proper decimal order value
+    console.log('🔧 DEBUG: Order calculation inputs:', {
+      insertIndex,
+      sortedTasksLength: sortedTasks.length,
+      insertPosition: data.insertPosition,
+      sortedTaskOrders: sortedTasks.map(t => ({ name: t.name, order: t.order }))
+    });
+    
     let orderValue = "0.00";
     if (insertIndex === 0) {
       // First position - use order before first task or 0.00
       orderValue = sortedTasks.length > 0 ? 
         String(Math.max(0, (parseFloat(sortedTasks[0].order as string || "1.00") - 1.00))).padEnd(4, '0') : 
         "0.00";
+      console.log('🔧 DEBUG: First position order:', orderValue);
     } else if (insertIndex >= sortedTasks.length) {
       // Last position - use order after last task
       orderValue = sortedTasks.length > 0 ? 
         String((parseFloat(sortedTasks[sortedTasks.length - 1].order as string || "0.00") + 1.00)).padEnd(4, '0') : 
         "1.00";
+      console.log('🔧 DEBUG: Last position order:', orderValue);
     } else {
       // Middle position - calculate order between adjacent tasks
       const prevOrder = parseFloat(sortedTasks[insertIndex - 1]?.order as string || "0.00");
       const nextOrder = parseFloat(sortedTasks[insertIndex]?.order as string || "2.00");
       orderValue = String((prevOrder + nextOrder) / 2).padEnd(4, '0');
+      console.log('🔧 DEBUG: Middle position order:', {
+        prevTask: sortedTasks[insertIndex - 1]?.name,
+        prevOrder,
+        nextTask: sortedTasks[insertIndex]?.name,
+        nextOrder,
+        calculatedOrder: orderValue
+      });
     }
+    
+    console.log('🔧 DEBUG: Final calculated order value:', orderValue);
 
     // Create the new task
     const newTask = {
@@ -877,10 +895,10 @@ export default function CreateTaskModal({
         orderedTasks.push(...group.tasks);
       });
       
-      // Reassign orders
-      orderedTasks.forEach((task, index) => {
-        task.order = index;
-      });
+      // DO NOT reassign orders - preserve the calculated decimal orders
+      // orderedTasks.forEach((task, index) => {
+      //   task.order = index;
+      // });
       
       // Apply sequential logic group by group - PRESERVE EXISTING SEQUENTIAL STATUS FOR LINKED TASKS
       groups.forEach((group, groupIndex) => {
