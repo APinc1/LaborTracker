@@ -302,55 +302,39 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Clear existing assignments and superintendent
+  // Clear existing assignments (just like individual removal)
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      console.log('🧹 CLEARING ALL ASSIGNMENTS AND SUPERINTENDENT for task:', taskId);
+      console.log('🧹 CLEARING ALL ASSIGNMENTS for task:', taskId);
       
-      // Delete all assignments first
+      // Delete all assignments (exactly like individual removal)
       if ((existingAssignments as any[]).length > 0) {
         const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
           apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
         );
         await Promise.all(deletePromises);
         console.log('🗑️ Deleted all assignments');
+        return { deletedCount: (existingAssignments as any[]).length };
       } else {
         console.log('🗑️ No assignments to delete');
+        return { deletedCount: 0 };
       }
-      
-      // ALWAYS clear the superintendent from the task record (this is the key fix)
-      const taskUpdateResult = await apiRequest(`/api/tasks/${taskId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ superintendentId: null }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-      console.log('🗑️ Cleared superintendent from task record:', taskUpdateResult);
-      
-      return { success: true };
     },
-    onSuccess: () => {
-      console.log('✅ Successfully cleared all assignments and superintendent');
+    onSuccess: (data) => {
+      console.log('✅ Successfully cleared assignments:', data?.deletedCount || 0);
       
       // Clear local UI state immediately
       setSelectedEmployeeIds([]);
       setSelectedCrews([]);
       setEmployeeHours({});
       setEditingEmployeeId(null);
-      setSelectedSuperintendentId(null);
       
-      // Immediate cache invalidation with forced refetch
+      // Use the SAME cache strategy as individual assignment removal
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", "date-range"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
       
-      // Force immediate refetch of the specific task to update the card display
-      queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.refetchQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
-      
-      // Trigger the parent component's assignment update with aggressive cache busting
-      onAssignmentUpdate(Date.now() + Math.random());
+      // Trigger immediate refresh (same as individual removal)
+      onAssignmentUpdate(Date.now());
     }
   });
 
