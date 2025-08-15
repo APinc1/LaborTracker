@@ -321,8 +321,11 @@ export default function EnhancedAssignmentModal({
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
       // Always clear existing assignments first to avoid conflicts
-      if (existingAssignments.length > 0) {
-        await clearExistingAssignmentsMutation.mutateAsync();
+      if ((existingAssignments as any[]).length > 0) {
+        const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
+          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
+        );
+        await Promise.all(deletePromises);
       }
       
       // Create new assignments for all selected employees
