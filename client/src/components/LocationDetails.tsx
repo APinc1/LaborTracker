@@ -311,9 +311,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       taskCostCode = 'DEMO/EX';
     }
     
-    // Apply GNRL LBR normalization
-    if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR') {
-      taskCostCode = 'GNRL LBR';
+    // Apply GENERAL LABOR normalization
+    if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR' || taskCostCode === 'GENERAL') {
+      taskCostCode = 'GENERAL LABOR';
     }
     
     // Find assignments for this task and sum actual hours
@@ -345,9 +345,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       costCode = 'DEMO/EX';
     }
     
-    // Apply GNRL LBR normalization
-    if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR') {
-      costCode = 'GNRL LBR';
+    // Apply GENERAL LABOR normalization
+    if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
+      costCode = 'GENERAL LABOR';
     }
     
     if (!acc[costCode]) {

@@ -345,7 +345,7 @@ export default function Dashboard() {
         return 'DEMO/EX + BASE/GRADING';
       }
       // Normalize GNRL LBR to GENERAL LABOR
-      if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR') {
+      if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR' || trimmed === 'GENERAL') {
         return 'GENERAL LABOR';
       }
       return trimmed; // Return uppercase normalized version

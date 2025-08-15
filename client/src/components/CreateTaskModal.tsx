@@ -33,7 +33,7 @@ const TASK_TYPE_TO_COST_CODE = {
   "Pour": "CONCRETE",
   "Form + Pour": "CONCRETE",
   "Asphalt": "AC",
-  "General Labor": "GENERAL",
+  "General Labor": "GENERAL LABOR",
   "Landscaping": "LANDSCAPE", 
   "Utility Adjustment": "UTILITY ADJ",
   "Punchlist Demo": "PUNCHLIST DEMO",
