@@ -369,6 +369,8 @@ export default function EnhancedAssignmentModal({
       const currentSelectedEmployeeIds = [...selectedEmployeeIds];
       const currentSelectedSuperintendentId = selectedSuperintendentId;
       
+
+      
       // Create new assignments for all selected employees, excluding superintendent
       // Superintendents should only be assigned to the task's superintendentId field, not as assignments
       const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
@@ -406,10 +408,9 @@ export default function EnhancedAssignmentModal({
         results = await Promise.all(promises);
       }
 
-      // Update task with superintendent if selected
+      // Update task with superintendent if selected (including clearing superintendent)
       if (currentSelectedSuperintendentId !== null && currentTask) {
         const superintendentIdToUpdate = currentSelectedSuperintendentId === "none" ? null : parseInt(currentSelectedSuperintendentId);
-        
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
           await apiRequest(`/api/tasks/${taskId}`, {
@@ -425,10 +426,6 @@ export default function EnhancedAssignmentModal({
     },
     onSuccess: (data) => {
       const { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId } = data;
-      console.log('🎯 Assignment creation success - results:', results);
-      console.log('🎯 currentSelectedEmployeeIds at success:', currentSelectedEmployeeIds);
-      console.log('🎯 currentSelectedSuperintendentId at success:', currentSelectedSuperintendentId);
-      
       // Optimistic cache update for assignment creation - immediately add new assignments
       queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
         if (!oldData) return [];
@@ -436,14 +433,12 @@ export default function EnhancedAssignmentModal({
         // Remove any existing assignments for this task first
         const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
         
-        console.log('🎯 Creating optimistic assignments for employees:', currentSelectedEmployeeIds);
-        
         // Add the new assignments based on selected employees (excluding superintendent)
         const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
         const newAssignments = currentSelectedEmployeeIds
           .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
           .map((employeeIdStr, index) => {
-            const optimisticAssignment = {
+            return {
               id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
               assignmentId: `${taskId}_${employeeIdStr}`,
               taskId: taskId,
@@ -453,15 +448,9 @@ export default function EnhancedAssignmentModal({
               assignmentDate: new Date().toISOString().split('T')[0],
               notes: null
             };
-            console.log('🎯 Created optimistic assignment:', optimisticAssignment);
-            return optimisticAssignment;
           });
         
-        console.log('🎯 Total new assignments to add:', newAssignments.length);
-        const updatedData = [...filteredData, ...newAssignments];
-        console.log('🎯 Updated cache data length:', updatedData.length);
-        
-        return updatedData;
+        return [...filteredData, ...newAssignments];
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
