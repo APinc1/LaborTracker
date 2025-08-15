@@ -323,23 +323,29 @@ export default function EnhancedAssignmentModal({
         await clearExistingAssignmentsMutation.mutateAsync();
       }
       
-      // Create new assignments for all selected employees
-      const assignments = selectedEmployeeIds.map(employeeIdStr => {
-        const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
-        if (!employee) return null;
-        
-        return {
-          assignmentId: `${taskId}_${employee.id}`,
-          taskId: taskId,
-          employeeId: employee.id,
-          assignmentDate: taskDate,
-          assignedHours: employeeHours[employeeIdStr] || defaultHours,
-          actualHours: null
-        };
-      }).filter(Boolean);
+      // Create new assignments for all selected employees, excluding superintendent
+      // Superintendents should only be assigned to the task's superintendentId field, not as assignments
+      const superintendentIdStr = selectedSuperintendentId === "none" ? null : selectedSuperintendentId;
+      
+      const assignments = selectedEmployeeIds
+        .filter(employeeIdStr => employeeIdStr !== superintendentIdStr) // Exclude superintendent from assignments
+        .map(employeeIdStr => {
+          const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
+          if (!employee) return null;
+          
+          return {
+            assignmentId: `${taskId}_${employee.id}`,
+            taskId: taskId,
+            employeeId: employee.id,
+            assignmentDate: taskDate,
+            assignedHours: employeeHours[employeeIdStr] || defaultHours,
+            actualHours: null
+          };
+        }).filter(Boolean);
 
-      console.log('Creating assignments for employees:', selectedEmployeeIds);
-      console.log('Assignment data:', assignments);
+      console.log('Selected employees:', selectedEmployeeIds);
+      console.log('Selected superintendent:', superintendentIdStr);
+      console.log('Creating assignments for employees (excluding superintendent):', assignments.map(a => a.employeeId));
 
       if (assignments.length === 0) return [];
 
