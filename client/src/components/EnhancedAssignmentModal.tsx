@@ -365,11 +365,15 @@ export default function EnhancedAssignmentModal({
         await clearExistingAssignmentsMutation.mutateAsync();
       }
       
+      // Capture current state values to avoid stale closure
+      const currentSelectedEmployeeIds = [...selectedEmployeeIds];
+      const currentSelectedSuperintendentId = selectedSuperintendentId;
+      
       // Create new assignments for all selected employees, excluding superintendent
       // Superintendents should only be assigned to the task's superintendentId field, not as assignments
-      const superintendentIdStr = selectedSuperintendentId === "none" ? null : selectedSuperintendentId;
+      const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
       
-      const assignments = selectedEmployeeIds
+      const assignments = currentSelectedEmployeeIds
         .filter(employeeIdStr => employeeIdStr !== superintendentIdStr) // Exclude superintendent from assignments
         .map(employeeIdStr => {
           const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
@@ -385,7 +389,7 @@ export default function EnhancedAssignmentModal({
           };
         }).filter(Boolean);
 
-      console.log('Selected employees:', selectedEmployeeIds);
+      console.log('Selected employees:', currentSelectedEmployeeIds);
       console.log('Selected superintendent:', superintendentIdStr);
       console.log('Creating assignments for employees (excluding superintendent):', assignments.map(a => a.employeeId));
 
@@ -403,8 +407,8 @@ export default function EnhancedAssignmentModal({
       }
 
       // Update task with superintendent if selected
-      if (selectedSuperintendentId !== null && currentTask) {
-        const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+      if (currentSelectedSuperintendentId !== null && currentTask) {
+        const superintendentIdToUpdate = currentSelectedSuperintendentId === "none" ? null : parseInt(currentSelectedSuperintendentId);
         
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
@@ -416,12 +420,14 @@ export default function EnhancedAssignmentModal({
         }
       }
 
-      return results;
+      // Return both results and current state for onSuccess callback
+      return { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId };
     },
-    onSuccess: (results) => {
+    onSuccess: (data) => {
+      const { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId } = data;
       console.log('🎯 Assignment creation success - results:', results);
-      console.log('🎯 selectedEmployeeIds at success:', selectedEmployeeIds);
-      console.log('🎯 selectedSuperintendentId at success:', selectedSuperintendentId);
+      console.log('🎯 currentSelectedEmployeeIds at success:', currentSelectedEmployeeIds);
+      console.log('🎯 currentSelectedSuperintendentId at success:', currentSelectedSuperintendentId);
       
       // Optimistic cache update for assignment creation - immediately add new assignments
       queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
@@ -430,11 +436,11 @@ export default function EnhancedAssignmentModal({
         // Remove any existing assignments for this task first
         const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
         
-        console.log('🎯 Creating optimistic assignments for employees:', selectedEmployeeIds);
+        console.log('🎯 Creating optimistic assignments for employees:', currentSelectedEmployeeIds);
         
         // Add the new assignments based on selected employees (excluding superintendent)
-        const superintendentIdStr = selectedSuperintendentId === "none" ? null : selectedSuperintendentId;
-        const newAssignments = selectedEmployeeIds
+        const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
+        const newAssignments = currentSelectedEmployeeIds
           .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
           .map((employeeIdStr, index) => {
             const optimisticAssignment = {
