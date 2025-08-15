@@ -579,26 +579,51 @@ export default function EnhancedAssignmentModal({
               const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
               console.log('💾 Setting filtered assignments cache (without deleted task):', filteredAssignments.length, 'assignments');
               
-              // Nuclear cache approach - clear everything first
+              // Nuclear cache approach - clear ALL possible cache variations
               queryClient.removeQueries({ queryKey: ["/api/assignments"] });
               queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+              queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
+              queryClient.removeQueries({ queryKey: ["/api/tasks"] });
+              queryClient.removeQueries({ predicate: (query) => 
+                query.queryKey[0] === "/api/assignments" || 
+                (query.queryKey[0] === "/api/tasks" && query.queryKey[1] === taskId)
+              });
               
-              // Set fresh data
+              // Set fresh data with multiple key patterns to ensure consistency
               queryClient.setQueryData(["/api/assignments"], filteredAssignments);
               queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
               
-              // Force complete refresh
+              // Force complete refresh with comprehensive invalidation
               setTimeout(() => {
-                console.log('🔄 Final nuclear component refresh');
+                console.log('🔄 Final nuclear component refresh - comprehensive invalidation');
+                
+                // Invalidate all task-related queries
                 queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+                queryClient.invalidateQueries({ predicate: (query) => {
+                  const key = query.queryKey;
+                  return key.some(segment => 
+                    typeof segment === 'string' && 
+                    (segment.includes('/tasks') || segment.includes('/assignments') || segment.includes(taskId.toString()))
+                  );
+                }});
+                
+                // Invalidate location-specific queries
                 if (currentLocation?.locationId) {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+                  queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId] });
                 }
-                // Force React re-render by triggering a state change
-                onClose();
-                setTimeout(() => onClose(), 50);
-              }, 200);
+                
+                // Force immediate refetch of critical data
+                queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+                queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+                
+                // Close modal to complete the update cycle
+                setTimeout(() => {
+                  console.log('🎯 Assignment clearing completed - closing modal');
+                  onClose();
+                }, 100);
+              }, 300);
             });
           };
           
