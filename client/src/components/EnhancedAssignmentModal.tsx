@@ -545,38 +545,47 @@ export default function EnhancedAssignmentModal({
         }
       }, 400);
       
-      // Additional forced refresh wave to break cache stubbornness  
-      setTimeout(() => {
-        console.log('🔄 Wave 4: ULTIMATE CACHE DESTRUCTION');
-        
-        // Step 1: Completely destroy all assignment-related cache
-        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks"] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-        
-        // Step 2: Set fresh empty data to prevent race conditions
-        queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
-        
-        // Step 3: Force a completely fresh fetch after cache destruction
+      // Conditional cache strategy based on operation type
+      if (selectedEmployeeIds.length === 0) {
+        // CLEARING OPERATION: Use aggressive cache destruction
         setTimeout(() => {
-          console.log('🔄 Wave 4.5: Complete cache rebuild from server');
+          console.log('🔄 Wave 4: CLEARING - ULTIMATE CACHE DESTRUCTION');
           
-          // Fetch fresh data with no cache fallback
-          fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
-            const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
-            console.log('💾 Setting fresh assignments cache:', filteredAssignments.length, 'assignments');
-            queryClient.setQueryData(["/api/assignments"], filteredAssignments);
-            queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
-          });
+          // Step 1: Completely destroy all assignment-related cache
+          queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+          queryClient.removeQueries({ queryKey: ["/api/tasks"] });
+          queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
+          queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
           
-          // Force component re-render
-          queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-          if (currentLocation?.locationId) {
-            queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-          }
-        }, 200);
-      }, 700);
+          // Step 2: Set fresh empty data to prevent race conditions
+          queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
+          
+          // Step 3: Rebuild cache without the cleared task's assignments
+          setTimeout(() => {
+            console.log('🔄 Wave 4.5: CLEARING - Rebuild cache without cleared assignments');
+            fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
+              const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
+              console.log('💾 Setting fresh assignments cache:', filteredAssignments.length, 'assignments');
+              queryClient.setQueryData(["/api/assignments"], filteredAssignments);
+              queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
+              
+              // Force component re-render
+              queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+              if (currentLocation?.locationId) {
+                queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+              }
+            });
+          }, 200);
+        }, 600);
+      } else {
+        // ADDING OPERATION: Use gentle cache invalidation only
+        setTimeout(() => {
+          console.log('🔄 Wave 4: ADDING - Gentle cache refresh');
+          queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+        }, 600);
+      }
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
