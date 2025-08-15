@@ -579,15 +579,15 @@ export default function EnhancedAssignmentModal({
               const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
               console.log('💾 Setting filtered assignments cache (without deleted task):', filteredAssignments.length, 'assignments');
               
-              // Nuclear cache approach - clear ALL possible cache variations
-              queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-              queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-              queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
-              queryClient.removeQueries({ queryKey: ["/api/tasks"] });
-              queryClient.removeQueries({ predicate: (query) => 
-                query.queryKey[0] === "/api/assignments" || 
-                (query.queryKey[0] === "/api/tasks" && query.queryKey[1] === taskId)
-              });
+              // ULTIMATE NUCLEAR CACHE RESET - Target every possible assignment query pattern
+              console.log('💥 ULTIMATE CACHE RESET - Removing all assignment-related queries');
+              queryClient.clear(); // Nuclear option - clear entire cache
+              
+              // Alternatively, if clear() is too aggressive, use targeted removal:
+              // queryClient.removeQueries({ predicate: () => true }); // Clear everything
+              
+              // Re-initialize only essential data
+              console.log('🔄 Re-initializing essential data after cache reset');
               
               // Set fresh data with multiple key patterns to ensure consistency
               queryClient.setQueryData(["/api/assignments"], filteredAssignments);
