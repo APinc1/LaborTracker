@@ -74,9 +74,17 @@ export default function BudgetManagement() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const locationId = urlParams.get('locationId');
+    console.log('🔍 BudgetManagement URL params:', {
+      fullSearch: window.location.search,
+      locationId: locationId,
+      allParams: Object.fromEntries(urlParams.entries())
+    });
     if (locationId) {
+      console.log('✅ Setting selectedLocation to:', locationId);
       setSelectedLocation(locationId);
       setIsDirectAccess(true);
+    } else {
+      console.log('❌ No locationId found in URL parameters');
     }
   }, []);
 
