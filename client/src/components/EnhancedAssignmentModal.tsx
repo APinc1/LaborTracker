@@ -560,32 +560,49 @@ export default function EnhancedAssignmentModal({
           // Step 2: Set fresh empty data to prevent race conditions
           queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
           
-          // Step 3: Rebuild cache without the cleared task's assignments  
-          setTimeout(() => {
-            console.log('🔄 Wave 4.5: CLEARING - Rebuild cache without cleared assignments');
+          // Step 3: Rebuild cache without the cleared task's assignments with retry logic
+          const rebuildCacheWithRetry = (retryCount = 0) => {
+            console.log(`🔄 Wave 4.5: CLEARING - Rebuild cache attempt ${retryCount + 1}`);
             fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
               console.log(`🔍 Fresh assignments from server: ${freshAssignments.length} total`);
-              console.log(`🔍 Assignments for task ${taskId}:`, freshAssignments.filter((a: any) => a.taskId === taskId).length);
+              const taskAssignments = freshAssignments.filter((a: any) => a.taskId === taskId);
+              console.log(`🔍 Assignments for task ${taskId}:`, taskAssignments.length);
               
-              // CRITICAL FIX: Use the filtered assignments, not the fresh ones with deleted task assignments
+              // If backend still shows assignments for this task, retry with longer delay
+              if (taskAssignments.length > 0 && retryCount < 3) {
+                console.log(`⚠️ Backend still shows ${taskAssignments.length} assignments for task ${taskId}, retrying in ${1000 * (retryCount + 1)}ms...`);
+                setTimeout(() => rebuildCacheWithRetry(retryCount + 1), 1000 * (retryCount + 1));
+                return;
+              }
+              
+              // Either no assignments found or max retries reached - proceed with cache update
               const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
               console.log('💾 Setting filtered assignments cache (without deleted task):', filteredAssignments.length, 'assignments');
               
-              // Set both global and task-specific cache with correct data
-              queryClient.setQueryData(["/api/assignments"], filteredAssignments); // Use FILTERED data  
+              // Nuclear cache approach - clear everything first
+              queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+              queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+              
+              // Set fresh data
+              queryClient.setQueryData(["/api/assignments"], filteredAssignments);
               queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
               
-              // Force complete component refresh with stronger invalidation
+              // Force complete refresh
               setTimeout(() => {
-                console.log('🔄 Final component force refresh');
+                console.log('🔄 Final nuclear component refresh');
                 queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
                 queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
                 if (currentLocation?.locationId) {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
                 }
-              }, 100);
+                // Force React re-render by triggering a state change
+                setIsOpen(false);
+                setTimeout(() => setIsOpen(false), 50);
+              }, 200);
             });
-          }, 500); // Even longer delay to ensure backend deletion fully completes
+          };
+          
+          setTimeout(() => rebuildCacheWithRetry(), 800); // Initial delay before first attempt
         }, 600);
       } else {
         // ADDING OPERATION: Use gentle cache invalidation only
