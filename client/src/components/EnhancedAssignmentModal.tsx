@@ -560,18 +560,19 @@ export default function EnhancedAssignmentModal({
           // Step 2: Set fresh empty data to prevent race conditions
           queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
           
-          // Step 3: Rebuild cache without the cleared task's assignments
+          // Step 3: Rebuild cache without the cleared task's assignments  
           setTimeout(() => {
             console.log('🔄 Wave 4.5: CLEARING - Rebuild cache without cleared assignments');
             fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
               console.log(`🔍 Fresh assignments from server: ${freshAssignments.length} total`);
               console.log(`🔍 Assignments for task ${taskId}:`, freshAssignments.filter((a: any) => a.taskId === taskId).length);
               
+              // CRITICAL FIX: Use the filtered assignments, not the fresh ones with deleted task assignments
               const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
-              console.log('💾 Setting fresh assignments cache:', filteredAssignments.length, 'assignments');
+              console.log('💾 Setting filtered assignments cache (without deleted task):', filteredAssignments.length, 'assignments');
               
-              // Set both global and task-specific cache
-              queryClient.setQueryData(["/api/assignments"], freshAssignments); // Use fresh data, not filtered
+              // Set both global and task-specific cache with correct data
+              queryClient.setQueryData(["/api/assignments"], filteredAssignments); // Use FILTERED data  
               queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
               
               // Force complete component refresh with stronger invalidation
@@ -584,7 +585,7 @@ export default function EnhancedAssignmentModal({
                 }
               }, 100);
             });
-          }, 400); // Longer delay to ensure backend deletion completes
+          }, 500); // Even longer delay to ensure backend deletion fully completes
         }, 600);
       } else {
         // ADDING OPERATION: Use gentle cache invalidation only
