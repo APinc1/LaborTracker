@@ -179,16 +179,13 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-    // Debug persistent assignment issue for task 821
-    if (taskId === 821 && taskAssignments.length > 0) {
-      console.log(`🚨 STILL FINDING ASSIGNMENTS FOR TASK 821:`, {
-        taskAssignments: taskAssignments.map(a => ({
-          id: a.id,
-          assignmentId: a.assignmentId,
-          taskId: a.taskId,
-          employeeId: a.employeeId,
-          assignmentDate: a.assignmentDate
-        }))
+    // Debug all assignments for task 821 (Form task) - including empty results
+    if (taskId === 821) {
+      console.log(`🔍 Form Task (821) assignments check:`, {
+        totalAssignmentsInComponent: assignments.length,
+        filteredForThisTask: taskAssignments.length,
+        assignmentIds: taskAssignments.map(a => a.id),
+        shouldShowEmployees: taskAssignments.length > 0 ? 'YES' : 'NO'
       });
     }
     

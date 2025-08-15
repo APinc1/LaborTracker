@@ -343,8 +343,16 @@ export default function EnhancedAssignmentModal({
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
       }, 50);
       
-      // Additional aggressive invalidation
+      // Additional aggressive invalidation - nuclear option
       queryClient.resetQueries({ queryKey: ["/api/assignments"] });
+      
+      // Force immediate cache clearing and refetch for the specific task's location
+      setTimeout(() => {
+        // Clear everything related to assignments
+        queryClient.clear();
+        // Force reload of assignments specifically
+        queryClient.prefetchQuery({ queryKey: ["/api/assignments"] });
+      }, 100);
     }
   });
 
@@ -433,6 +441,10 @@ export default function EnhancedAssignmentModal({
         // Refetch fresh data with active refetch
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
+        
+        // Nuclear option - clear entire cache and force reload
+        queryClient.clear();
+        queryClient.prefetchQuery({ queryKey: ["/api/assignments"] });
       }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
