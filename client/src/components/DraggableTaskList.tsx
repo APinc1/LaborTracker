@@ -179,7 +179,18 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-
+    // Debug persistent assignment issue for task 821
+    if (taskId === 821 && taskAssignments.length > 0) {
+      console.log(`🚨 STILL FINDING ASSIGNMENTS FOR TASK 821:`, {
+        taskAssignments: taskAssignments.map(a => ({
+          id: a.id,
+          assignmentId: a.assignmentId,
+          taskId: a.taskId,
+          employeeId: a.employeeId,
+          assignmentDate: a.assignmentDate
+        }))
+      });
+    }
     
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
