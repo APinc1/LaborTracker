@@ -355,9 +355,19 @@ export default function EnhancedAssignmentModal({
         results = await Promise.all(promises);
       }
 
-      // Update task with superintendent if selected
-      if (selectedSuperintendentId !== null && currentTask) {
-        const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+      // Update task with superintendent
+      if (currentTask) {
+        let superintendentIdToUpdate = null;
+        
+        if (selectedSuperintendentId !== null) {
+          superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+        } else if (assignments.length === 0) {
+          // If no employees are assigned and no superintendent was explicitly selected, clear superintendent
+          superintendentIdToUpdate = null;
+        } else {
+          // Keep existing superintendent if not explicitly changed
+          superintendentIdToUpdate = currentTask.superintendentId;
+        }
         
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
@@ -380,7 +390,10 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      const message = selectedEmployeeIds.length === 0 
+        ? "Task assignments cleared successfully" 
+        : "Assignments and superintendent updated successfully";
+      toast({ title: "Success", description: message });
       onClose();
     },
     onError: () => {
