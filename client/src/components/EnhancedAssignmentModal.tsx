@@ -43,15 +43,17 @@ export default function EnhancedAssignmentModal({
   const employeeDropdownRef = useRef<HTMLDivElement>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Reset state when modal opens/closes (but don't reset if we're just opening to show existing assignments)
+  // Reset state when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      // Only reset UI state, not selections - let the existing assignments effect handle that
+      setSelectedEmployeeIds([]);
+      setSelectedCrews([]);
+      setDefaultHours('8');
+      setEmployeeHours({});
       setEditingEmployeeId(null);
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
-      // Don't reset selectedEmployeeIds, selectedCrews, employeeHours, selectedSuperintendentId here
-      // They will be set by the existing assignments loading effect
+      setSelectedSuperintendentId(null);
     }
   }, [isOpen, taskId]);
 
@@ -140,14 +142,7 @@ export default function EnhancedAssignmentModal({
   // Load existing assignments when modal opens
   useEffect(() => {
     if (isOpen && employees.length > 0) {
-      // Reset all selections first, then load existing if they exist
-      setSelectedEmployeeIds([]);
-      setSelectedCrews([]);
-      setDefaultHours('8');
-      setEmployeeHours({});
-      setSelectedSuperintendentId(null);
-      
-      // Load existing assignments if they exist
+      // Always load existing assignments if they exist
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -423,23 +418,35 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: async (results) => {
-      console.log('🎯 Assignment creation successful:', results);
-      
-      // Force immediate refetch of all assignment-related data
-      await Promise.all([
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/tasks"] }),
-        queryClient.refetchQueries({ queryKey: ["/api/locations"] })
-      ]);
-      
-      console.log('🔄 Cache refetch completed');
-      
-      // Also invalidate to trigger background updates
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+    onSuccess: () => {
+      // Optimistic cache update for assignment creation - immediately add new assignments
+      queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
+        if (!oldData) return [];
+        
+        // Remove any existing assignments for this task first
+        const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
+        
+        // Add the new assignments based on selected employees
+        const newAssignments = selectedEmployeeIds
+          .filter(employeeIdStr => employeeIdStr !== (selectedSuperintendentId === "none" ? null : selectedSuperintendentId))
+          .map((employeeIdStr, index) => {
+            return {
+              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
+              assignmentId: `${taskId}_${employeeIdStr}`,
+              taskId: taskId,
+              employeeId: parseInt(employeeIdStr),
+              assignedHours: 8,
+              actualHours: null,
+              assignmentDate: new Date().toISOString().split('T')[0],
+              notes: null
+            };
+          });
+        
+        return [...filteredData, ...newAssignments];
+      });
+
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
