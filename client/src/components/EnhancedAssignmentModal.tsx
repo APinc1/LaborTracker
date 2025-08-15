@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,13 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-
-// Extend Window interface for foreman selection
-declare global {
-  interface Window {
-    foremanSelectionResolve?: (foremanId: string | null) => void;
-  }
-}
 
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
@@ -45,9 +37,6 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
-  const [selectedForemanId, setSelectedForemanId] = useState<string | null>(null);
-  const [showForemanDialog, setShowForemanDialog] = useState(false);
-  const [availableForemen, setAvailableForemen] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -65,9 +54,6 @@ export default function EnhancedAssignmentModal({
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
       setSelectedSuperintendentId(null);
-      setSelectedForemanId(null);
-      setShowForemanDialog(false);
-      setAvailableForemen([]);
     }
   }, [isOpen, taskId]);
 
@@ -314,63 +300,6 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Intelligent foreman assignment logic
-  const handleForemanAssignment = (assignedEmployees: any[]) => {
-    // Find all foremen among assigned employees
-    const assignedForemen = assignedEmployees.filter(emp => emp.isForeman);
-    
-    // Get all available foremen from employees (even if not assigned)
-    const allForemen = (employees as any[]).filter(emp => emp.isForeman);
-    
-    console.log('🔍 Foreman Assignment Logic:');
-    console.log('- Assigned foremen:', assignedForemen.length, assignedForemen.map(f => f.name));
-    console.log('- All available foremen:', allForemen.length, allForemen.map(f => f.name));
-    
-    if (assignedForemen.length === 1) {
-      // Case 1: Exactly 1 foreman assigned → Auto-assign as task foreman
-      const foreman = assignedForemen[0];
-      setSelectedForemanId(foreman.id.toString());
-      console.log('✅ Auto-assigning single foreman:', foreman.name);
-      return Promise.resolve(foreman.id.toString());
-      
-    } else if (assignedForemen.length > 1) {
-      // Case 2: Multiple foremen assigned → Show popup to choose
-      setAvailableForemen(assignedForemen);
-      setShowForemanDialog(true);
-      console.log('🤔 Multiple foremen assigned, showing selection dialog');
-      return new Promise((resolve) => {
-        // The dialog will handle the selection and call resolve
-        window.foremanSelectionResolve = resolve;
-      });
-      
-    } else if (assignedForemen.length === 0) {
-      // Case 3: No foremen assigned → Show popup to select from all foremen
-      if (allForemen.length > 0) {
-        setAvailableForemen(allForemen);
-        setShowForemanDialog(true);
-        console.log('🤷 No foremen assigned, showing selection from all foremen');
-        return new Promise((resolve) => {
-          // The dialog will handle the selection and call resolve
-          window.foremanSelectionResolve = resolve;
-        });
-      } else {
-        console.log('⚠️ No foremen available in system');
-        return Promise.resolve(null);
-      }
-    }
-  };
-
-  const handleForemanSelection = (foremanId: string | null) => {
-    setSelectedForemanId(foremanId);
-    setShowForemanDialog(false);
-    
-    // Resolve the promise from handleForemanAssignment
-    if (window.foremanSelectionResolve) {
-      window.foremanSelectionResolve(foremanId);
-      delete window.foremanSelectionResolve;
-    }
-  };
-
   // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
@@ -412,244 +341,44 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      // If no assignments, just clear existing ones and continue to foreman logic
-      if (assignments.length === 0) {
-        console.log('No employees selected - clearing assignments only');
-      }
+      if (assignments.length === 0) return [];
 
-      let results = [];
-      
-      // Only create assignments if there are any to create
-      if (assignments.length > 0) {
-        const promises = assignments.map(assignment =>
-          apiRequest('/api/assignments', {
-            method: 'POST',
-            body: JSON.stringify(assignment),
-            headers: { 'Content-Type': 'application/json' }
-          })
-        );
+      const promises = assignments.map(assignment =>
+        apiRequest('/api/assignments', {
+          method: 'POST',
+          body: JSON.stringify(assignment),
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
 
-        results = await Promise.all(promises);
-      }
+      const results = await Promise.all(promises);
 
-      // Handle intelligent foreman assignment
-      const assignedEmployees = selectedEmployeeIds.map(empIdStr => 
-        (employees as any[]).find(emp => emp.id.toString() === empIdStr)
-      ).filter(Boolean);
-      
-      let selectedForemanIdFinal;
-      if (selectedEmployeeIds.length > 0) {
-        // Trigger foreman assignment logic when employees are assigned
-        selectedForemanIdFinal = await handleForemanAssignment(assignedEmployees);
-      } else {
-        // No employees assigned - but check if user manually selected a foreman
-        if (selectedForemanId) {
-          // User selected a foreman from popup, keep the selection
-          selectedForemanIdFinal = selectedForemanId;
-          console.log('🎯 Keeping manually selected foreman:', selectedForemanId);
-        } else {
-          // No foreman selected, clear it
-          selectedForemanIdFinal = null;
-        }
-      }
-
-      // Update task with superintendent and foreman
-      const taskUpdates: any = {};
-      let needsUpdate = false;
-
-      // Update superintendent if selected
+      // Update task with superintendent if selected
       if (selectedSuperintendentId !== null && currentTask) {
         const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+        
+        // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
-          taskUpdates.superintendentId = superintendentIdToUpdate;
-          needsUpdate = true;
+          await apiRequest(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
+            headers: { 'Content-Type': 'application/json' }
+          });
         }
-      }
-
-      // Update foreman if determined
-      if (selectedForemanIdFinal !== undefined) {
-        const foremanIdToUpdate = selectedForemanIdFinal ? parseInt(selectedForemanIdFinal) : null;
-        if (currentTask?.foremanId !== foremanIdToUpdate) {
-          taskUpdates.foremanId = foremanIdToUpdate;
-          needsUpdate = true;
-        }
-      }
-
-      // Apply updates if needed
-      if (needsUpdate && Object.keys(taskUpdates).length > 0) {
-        console.log('📝 Updating task with:', taskUpdates);
-        await apiRequest(`/api/tasks/${taskId}`, {
-          method: 'PUT',
-          body: JSON.stringify(taskUpdates),
-          headers: { 'Content-Type': 'application/json' }
-        });
       }
 
       return results;
     },
     onSuccess: () => {
-      console.log('🔄 Assignment mutation success');
-      console.log(`🎯 TaskId: ${taskId}, EmployeeCount: ${selectedEmployeeIds.length}`);
-      
-      // Aggressive but targeted cache invalidation (no nuclear clear)
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      // Location-specific invalidation
-      if (currentLocation?.locationId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-      }
-      if (currentLocation?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
-      }
-      
-      // Date range invalidation for dashboard
-      if (currentTask?.taskDate) {
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
-      }
-      
-      // Multi-wave refetch to ensure cache updates properly
-      setTimeout(() => {
-        console.log('🔄 Wave 1: Assignment data refetch');
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      }, 100);
-      
-      setTimeout(() => {
-        console.log('🔄 Wave 2: Task data refetch');
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
-        
-        if (currentLocation?.locationId) {
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-        }
-        if (currentLocation?.id) {
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
-        }
-      }, 250);
-      
-      setTimeout(() => {
-        console.log('🔄 Wave 3: Final consistency check');
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        
-        // Force component re-render by triggering location data refresh
-        if (currentLocation?.locationId) {
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId] });
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-        }
-        if (currentLocation?.id) {
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id] });
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
-        }
-      }, 400);
-      
-      // Conditional cache strategy based on operation type
-      if (selectedEmployeeIds.length === 0) {
-        // CLEARING OPERATION: Use aggressive cache destruction
-        setTimeout(() => {
-          console.log('🔄 Wave 4: CLEARING - ULTIMATE CACHE DESTRUCTION');
-          
-          // Step 1: Completely destroy all assignment-related cache
-          queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-          queryClient.removeQueries({ queryKey: ["/api/tasks"] });
-          queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
-          queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-          
-          // Step 2: Set fresh empty data to prevent race conditions
-          queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
-          
-          // Step 3: Rebuild cache without the cleared task's assignments with retry logic
-          const rebuildCacheWithRetry = (retryCount = 0) => {
-            console.log(`🔄 Wave 4.5: CLEARING - Rebuild cache attempt ${retryCount + 1}`);
-            fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
-              console.log(`🔍 Fresh assignments from server: ${freshAssignments.length} total`);
-              const taskAssignments = freshAssignments.filter((a: any) => a.taskId === taskId);
-              console.log(`🔍 Assignments for task ${taskId}:`, taskAssignments.length);
-              
-              // If backend still shows assignments for this task, retry with longer delay
-              if (taskAssignments.length > 0 && retryCount < 3) {
-                console.log(`⚠️ Backend still shows ${taskAssignments.length} assignments for task ${taskId}, retrying in ${1000 * (retryCount + 1)}ms...`);
-                setTimeout(() => rebuildCacheWithRetry(retryCount + 1), 1000 * (retryCount + 1));
-                return;
-              }
-              
-              // Either no assignments found or max retries reached - proceed with cache update
-              const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
-              console.log('💾 Setting filtered assignments cache (without deleted task):', filteredAssignments.length, 'assignments');
-              
-              // ULTIMATE NUCLEAR CACHE RESET - Target every possible assignment query pattern
-              console.log('💥 ULTIMATE CACHE RESET - Removing all assignment-related queries');
-              queryClient.clear(); // Nuclear option - clear entire cache
-              
-              // Alternatively, if clear() is too aggressive, use targeted removal:
-              // queryClient.removeQueries({ predicate: () => true }); // Clear everything
-              
-              // Re-initialize only essential data
-              console.log('🔄 Re-initializing essential data after cache reset');
-              
-              // Set fresh data with multiple key patterns to ensure consistency
-              queryClient.setQueryData(["/api/assignments"], filteredAssignments);
-              queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
-              
-              // Force complete refresh with comprehensive invalidation
-              setTimeout(() => {
-                console.log('🔄 Final nuclear component refresh - comprehensive invalidation');
-                
-                // Invalidate all task-related queries
-                queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-                queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-                queryClient.invalidateQueries({ predicate: (query) => {
-                  const key = query.queryKey;
-                  return key.some(segment => 
-                    typeof segment === 'string' && 
-                    (segment.includes('/tasks') || segment.includes('/assignments') || segment.includes(taskId.toString()))
-                  );
-                }});
-                
-                // Invalidate location-specific queries
-                if (currentLocation?.locationId) {
-                  queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId] });
-                }
-                
-                // Force immediate refetch of critical data
-                queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-                queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-                
-                // Close modal to complete the update cycle
-                setTimeout(() => {
-                  console.log('🎯 Assignment clearing completed - closing modal');
-                  onClose();
-                }, 100);
-              }, 300);
-            });
-          };
-          
-          setTimeout(() => rebuildCacheWithRetry(), 800); // Initial delay before first attempt
-        }, 600);
-      } else {
-        // ADDING OPERATION: Use gentle cache invalidation only
-        setTimeout(() => {
-          console.log('🔄 Wave 4: ADDING - Gentle cache refresh');
-          queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-        }, 600);
-      }
-      
-      const message = selectedEmployeeIds.length === 0 ? 
-        "All assignments cleared successfully" : 
-        "Assignments and superintendent updated successfully";
-      toast({ title: "Success", description: message });
-      
-      // Close modal and reset state
-      setSelectedEmployeeIds([]);
-      setSelectedForemanId(null);
-      setSelectedCrews([]);
-      setEmployeeHours({});
-      setDefaultHours('8');
+      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
     onError: () => {
@@ -1195,14 +924,7 @@ export default function EnhancedAssignmentModal({
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm">{employee.name}</span>
-                                    {employee.isForeman && (
-                                      <Badge variant="default" className="text-xs bg-blue-600">
-                                        Foreman
-                                      </Badge>
-                                    )}
-                                  </div>
+                                  <span className="font-medium text-sm">{employee.name}</span>
                                   <div className="text-xs text-gray-600">
                                     {employee.teamMemberId} • {employee.employeeType}
                                   </div>
@@ -1236,10 +958,9 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
-              {createAssignmentsMutation.isPending ? "Saving..." : 
-               selectedEmployeeIds.length === 0 ? "Clear All Assignments" : "Save Assignments"}
+              {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
           </div>
           
@@ -1247,44 +968,6 @@ export default function EnhancedAssignmentModal({
           <div className="h-32 mt-[59px] mb-[59px]"></div>
         </div>
       </DialogContent>
-
-      {/* Foreman Selection Dialog */}
-      <AlertDialog open={showForemanDialog} onOpenChange={setShowForemanDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Select Task Foreman</AlertDialogTitle>
-            <AlertDialogDescription>
-              {availableForemen.length > 0 && availableForemen[0] && (employees as any[]).some(emp => emp.id === availableForemen[0].id && selectedEmployeeIds.includes(emp.id.toString()))
-                ? "Multiple foremen are assigned to this task. Please select which foreman should be designated as the task foreman:"
-                : "Please select a foreman for this task from the available foremen:"
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          
-          <div className="space-y-2 my-4">
-            {availableForemen.map((foreman: any) => (
-              <div key={foreman.id} className="flex items-center space-x-2">
-                <button
-                  className="flex-1 text-left p-3 border rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onClick={() => handleForemanSelection(foreman.id.toString())}
-                >
-                  <div className="font-medium">{foreman.name}</div>
-                  <div className="text-sm text-gray-600">{foreman.teamMemberId} • {foreman.primaryTrade || 'Foreman'}</div>
-                  {selectedEmployeeIds.includes(foreman.id.toString()) && (
-                    <div className="text-xs text-blue-600 mt-1">Assigned to this task</div>
-                  )}
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => handleForemanSelection(null)}>
-              No Foreman
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   );
 }

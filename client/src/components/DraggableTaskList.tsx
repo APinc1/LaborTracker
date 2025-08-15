@@ -179,12 +179,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-    // Debug logging to identify stale cache issue
-    if (taskId === 779 || taskId === 742 || taskId === 772) {
-      console.log(`🔍 Task ${taskId} assignments from cache:`, taskAssignments.length, taskAssignments.map(a => a.employeeId));
-      console.log(`🔍 Task ${taskId} assignment IDs:`, taskAssignments.map(a => a.assignmentId));
-    }
-    
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
       if (!employee) return null;
@@ -212,20 +206,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       }
     }
     
-    // Add designated foreman if not assigned to task (Foreman Responsible)
-    if (task.foremanId) {
-      const designatedForeman = employees.find(emp => emp.id === task.foremanId);
-      const designatedForemanIsAssigned = assignedEmployees.some(emp => emp.id === task.foremanId);
-      
-      if (designatedForeman && !designatedForemanIsAssigned) {
-        personnelElements.push(
-          <div key={`foreman-responsible-${task.foremanId}`} className="text-xs font-bold">
-            {designatedForeman.name} (Foreman Responsible)
-          </div>
-        );
-      }
-    }
-    
     // Add assigned employees
     if (assignedEmployees.length > 0) {
       // Sort employees: foremen first, drivers last, others in between
@@ -241,23 +221,10 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         const hours = parseFloat(employee.assignedHours);
         const isDriver = employee.primaryTrade === 'Driver';
         const isForeman = employee.isForeman;
-        const isDesignatedForeman = task.foremanId && employee.id === task.foremanId;
         const showHours = hours !== 8;
         
-        // Check if the designated foreman is assigned to the task
-        const assignedForemenCount = sortedEmployees.filter(emp => emp.isForeman).length;
-        const designatedForemanIsAssigned = task.foremanId && sortedEmployees.some(emp => emp.id === task.foremanId);
-        
         let displayText = employee.name;
-        if (isDesignatedForeman) {
-          if (designatedForemanIsAssigned) {
-            // If designated foreman is also assigned, just show "Foreman"
-            displayText += ' (Foreman)';
-          } else {
-            // If designated foreman is not assigned (selected from popup), show "Foreman Responsible"
-            displayText += ' (Foreman Responsible)';
-          }
-        } else if (isForeman) {
+        if (isForeman) {
           displayText += ' (Foreman)';
         } else if (isDriver) {
           displayText += ' (Driver)';
@@ -269,7 +236,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         return (
           <div 
             key={employee.id} 
-            className={`text-xs ${isDesignatedForeman ? 'font-bold' : ''} ${
+            className={`text-xs ${isForeman ? 'font-bold' : ''} ${
               personnelElements.length === 0 && index === 0 ? '' : 'mt-1'
             }`}
           >
