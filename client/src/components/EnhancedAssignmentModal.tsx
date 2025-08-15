@@ -307,16 +307,18 @@ export default function EnhancedAssignmentModal({
     mutationFn: async () => {
       console.log('🧹 CLEARING ALL ASSIGNMENTS AND SUPERINTENDENT for task:', taskId);
       
-      // Delete all assignments
+      // Delete all assignments first
       if ((existingAssignments as any[]).length > 0) {
         const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
           apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
         );
         await Promise.all(deletePromises);
         console.log('🗑️ Deleted all assignments');
+      } else {
+        console.log('🗑️ No assignments to delete');
       }
       
-      // Clear the superintendent from the task record as well
+      // ALWAYS clear the superintendent from the task record (this is the key fix)
       await apiRequest(`/api/tasks/${taskId}`, {
         method: 'PUT',
         body: JSON.stringify({ superintendentId: null }),
@@ -344,9 +346,6 @@ export default function EnhancedAssignmentModal({
       
       // Trigger the parent component's assignment update with aggressive cache busting
       onAssignmentUpdate(Date.now() + Math.random());
-      
-      // Close the modal to force a fresh render when reopened
-      onClose();
     }
   });
 
@@ -783,28 +782,8 @@ export default function EnhancedAssignmentModal({
                       className="h-6 px-2 text-xs"
                       disabled={clearExistingAssignmentsMutation.isPending}
                       onClick={() => {
-                        if ((existingAssignments as any[]).length > 0) {
-                          // If there are existing assignments, clear them from database AND UI state
-                          clearExistingAssignmentsMutation.mutate(undefined, {
-                            onSuccess: () => {
-                              // Clear local UI state after successful database clear
-                              setSelectedEmployeeIds([]);
-                              setSelectedCrews([]);
-                              setEmployeeHours({});
-                              setEditingEmployeeId(null);
-                              setSelectedSuperintendentId(null);
-                              // Trigger cache refresh
-                              onAssignmentUpdate(Date.now());
-                            }
-                          });
-                        } else {
-                          // No existing assignments, just clear local state
-                          setSelectedEmployeeIds([]);
-                          setSelectedCrews([]);
-                          setEmployeeHours({});
-                          setEditingEmployeeId(null);
-                          setSelectedSuperintendentId(null);
-                        }
+                        // Always run the clear mutation to ensure superintendent is removed from task record
+                        clearExistingAssignmentsMutation.mutate();
                       }}
                     >
                       {clearExistingAssignmentsMutation.isPending ? "Clearing..." : "Clear All"}
