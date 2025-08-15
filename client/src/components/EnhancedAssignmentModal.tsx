@@ -439,11 +439,18 @@ export default function EnhancedAssignmentModal({
       
       let selectedForemanIdFinal;
       if (selectedEmployeeIds.length > 0) {
-        // Only trigger foreman assignment logic if there are employees assigned
+        // Trigger foreman assignment logic when employees are assigned
         selectedForemanIdFinal = await handleForemanAssignment(assignedEmployees);
       } else {
-        // If no employees assigned, clear the foreman
-        selectedForemanIdFinal = null;
+        // No employees assigned - but check if user manually selected a foreman
+        if (selectedForemanId) {
+          // User selected a foreman from popup, keep the selection
+          selectedForemanIdFinal = selectedForemanId;
+          console.log('🎯 Keeping manually selected foreman:', selectedForemanId);
+        } else {
+          // No foreman selected, clear it
+          selectedForemanIdFinal = null;
+        }
       }
 
       // Update task with superintendent and foreman
@@ -513,6 +520,11 @@ export default function EnhancedAssignmentModal({
         "All assignments cleared successfully" : 
         "Assignments and superintendent updated successfully";
       toast({ title: "Success", description: message });
+      
+      // Close modal and reset state to prevent stale data
+      setSelectedEmployeeIds([]);
+      setSelectedForemanId(null);
+      setEmployeeHours({});
       onClose();
     },
     onError: () => {
