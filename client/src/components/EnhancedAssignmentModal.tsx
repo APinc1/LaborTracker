@@ -596,8 +596,8 @@ export default function EnhancedAssignmentModal({
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
                 }
                 // Force React re-render by triggering a state change
-                setIsOpen(false);
-                setTimeout(() => setIsOpen(false), 50);
+                onClose();
+                setTimeout(() => onClose(), 50);
               }, 200);
             });
           };
