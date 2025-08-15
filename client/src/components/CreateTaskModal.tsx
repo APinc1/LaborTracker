@@ -1097,23 +1097,28 @@ export default function CreateTaskModal({
                             const taskAssignments = assignments.filter((assignment: any) => 
                               assignment.taskId === (sortedTasks[i].taskId || sortedTasks[i].id)
                             );
-                            const hasAssignments = taskAssignments.length > 0;
-                            const actualHours = taskAssignments.reduce((sum: number, assignment: any) => 
-                              sum + parseFloat(assignment.actualHours || "0"), 0
-                            );
-                            const isCompleted = hasAssignments && actualHours > 0;
+                            const taskStatus = getTaskStatus(sortedTasks[i], taskAssignments);
+                            const isCompleted = taskStatus === 'complete';
+                            
+                            console.log(`🔍 DEBUG Task ${sortedTasks[i].name} (index ${i}): status=${taskStatus}, isCompleted=${isCompleted}`);
                             
                             if (isCompleted) {
                               mostRecentCompletedTaskIndex = i;
+                              console.log(`✅ Found most recent completed task: ${sortedTasks[i].name} at index ${i}`);
                               break;
                             }
                           }
                           
+                          console.log(`📋 Most recent completed task index: ${mostRecentCompletedTaskIndex}`);
+                          
                           // Add "At the beginning" option only if no completed tasks exist
                           if (mostRecentCompletedTaskIndex === -1) {
+                            console.log('✅ Adding "At the beginning" option - no completed tasks found');
                             insertionOptions.push(
                               <SelectItem key="beginning" value="beginning">At the beginning</SelectItem>
                             );
+                          } else {
+                            console.log('❌ Skipping "At the beginning" option - completed tasks exist');
                           }
                           
                           // Add option to insert after each existing task (with restrictions)
@@ -1128,8 +1133,10 @@ export default function CreateTaskModal({
                             // Business rule: Only allow insertion after most recent completed task or any incomplete task
                             // Reject: insertion before most recent completed task
                             if (mostRecentCompletedTaskIndex !== -1 && index < mostRecentCompletedTaskIndex) {
-                              // Skip this option - can't insert before most recent completed task
+                              console.log(`❌ FILTERING OUT: "After: ${task.name}" (index ${index}) - before most recent completed task (index ${mostRecentCompletedTaskIndex})`);
                               return;
+                            } else {
+                              console.log(`✅ ALLOWING: "After: ${task.name}" (index ${index}) - ${index >= mostRecentCompletedTaskIndex ? 'at/after most recent completed' : 'no completed tasks exist'}`);
                             }
                             
                             insertionOptions.push(
