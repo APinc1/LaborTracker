@@ -117,15 +117,15 @@ export default function EnhancedAssignmentModal({
 
   // Fetch location data to get project info
   const { data: currentLocation } = useQuery({
-    queryKey: ["/api/locations", currentTask?.locationId],
-    enabled: !!currentTask?.locationId,
+    queryKey: ["/api/locations", (currentTask as any)?.locationId],
+    enabled: !!((currentTask as any)?.locationId),
     staleTime: 30000,
   });
 
   // Fetch project data using location's projectId
   const { data: currentProject } = useQuery({
-    queryKey: ["/api/projects", currentLocation?.projectId],
-    enabled: !!currentLocation?.projectId,
+    queryKey: ["/api/projects", (currentLocation as any)?.projectId],
+    enabled: !!((currentLocation as any)?.projectId),
     staleTime: 30000,
   });
 
@@ -143,16 +143,16 @@ export default function EnhancedAssignmentModal({
 
   // Load existing assignments when modal opens
   useEffect(() => {
-    if (isOpen && employees.length > 0) {
+    if (isOpen && (employees as any[]).length > 0) {
       // Always load existing assignments if they exist
-      if (existingAssignments.length > 0) {
-        const existingEmployeeIds = existingAssignments.map((assignment: any) => {
+      if ((existingAssignments as any[]).length > 0) {
+        const existingEmployeeIds = (existingAssignments as any[]).map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
           return employee?.id.toString();
         }).filter(Boolean);
 
         // Load hours from first assignment for default, and individual hours for each employee
-        const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
+        const firstAssignmentHours = (existingAssignments as any[])[0]?.assignedHours?.toString() || '8';
         const individualHours: Record<string, string> = {};
         existingAssignments.forEach((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -193,18 +193,18 @@ export default function EnhancedAssignmentModal({
       // console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
       // console.log('Current selected superintendent:', selectedSuperintendentId);
       
-      if (currentTask && currentTask.superintendentId) {
-        // console.log('Using task superintendent:', currentTask.superintendentId);
-        setSelectedSuperintendentId(currentTask.superintendentId.toString());
-      } else if (selectedSuperintendentId === null && currentProject && currentProject.defaultSuperintendent) {
+      if (currentTask && (currentTask as any).superintendentId) {
+        // console.log('Using task superintendent:', (currentTask as any).superintendentId);
+        setSelectedSuperintendentId((currentTask as any).superintendentId.toString());
+      } else if (selectedSuperintendentId === null && currentProject && (currentProject as any).defaultSuperintendent) {
         // Only set default if no superintendent is currently selected
         // console.log('No superintendent selected, using project default:', currentProject.defaultSuperintendent);
         
         // Check if defaultSuperintendent is a name (string) or ID (number)
-        if (typeof currentProject.defaultSuperintendent === 'string') {
+        if (typeof (currentProject as any).defaultSuperintendent === 'string') {
           // Find user by name
           const superintendentUser = superintendents.find((user: any) => 
-            user.name === currentProject.defaultSuperintendent
+            user.name === (currentProject as any).defaultSuperintendent
           );
           if (superintendentUser) {
             // console.log('Found superintendent by name:', superintendentUser);
@@ -214,13 +214,13 @@ export default function EnhancedAssignmentModal({
           }
         } else {
           // It's already an ID
-          setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
+          setSelectedSuperintendentId((currentProject as any).defaultSuperintendent.toString());
         }
-      } else if (!currentTask?.superintendentId && selectedSuperintendentId !== null) {
+      } else if (!(currentTask as any)?.superintendentId && selectedSuperintendentId !== null) {
         // console.log('Keeping user-selected superintendent:', selectedSuperintendentId);
       }
     }
-  }, [isOpen, existingAssignments.length, employees.length, crews.length, currentTask?.id, currentLocation?.id, currentProject?.id]);
+  }, [isOpen, (existingAssignments as any[]).length, (employees as any[]).length, (crews as any[]).length, (currentTask as any)?.id, (currentLocation as any)?.id, (currentProject as any)?.id]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
@@ -305,8 +305,8 @@ export default function EnhancedAssignmentModal({
   // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      if (existingAssignments.length === 0) return;
-      const deletePromises = existingAssignments.map((assignment: any) =>
+      if ((existingAssignments as any[]).length === 0) return;
+      const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
         apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
       );
       return Promise.all(deletePromises);
@@ -347,7 +347,7 @@ export default function EnhancedAssignmentModal({
       console.log('Assignment data:', assignments);
 
       // Create assignments only if there are any
-      let results = [];
+      let results: any[] = [];
       if (assignments.length > 0) {
         const promises = assignments.map(assignment =>
           apiRequest('/api/assignments', {
@@ -365,7 +365,7 @@ export default function EnhancedAssignmentModal({
         const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
         
         // Only update if superintendent has changed
-        if (currentTask.superintendentId !== superintendentIdToUpdate) {
+        if ((currentTask as any).superintendentId !== superintendentIdToUpdate) {
           await apiRequest(`/api/tasks/${taskId}`, {
             method: 'PUT',
             body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
@@ -389,8 +389,8 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       // Force refetch of all location-specific tasks to update task cards
-      if (currentTask?.locationId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
+      if ((currentTask as any)?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", (currentTask as any).locationId, "tasks"] });
       }
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
@@ -444,7 +444,7 @@ export default function EnhancedAssignmentModal({
           <DialogTitle>Assign Employees to {taskName}</DialogTitle>
           <div className="text-sm text-gray-500">
             Date: {taskDate}
-            {existingAssignments.length > 0 && (
+            {(existingAssignments as any[]).length > 0 && (
               <div className="text-blue-600 mt-1">
                 Click on employees below to add them to this task, or modify existing assignments
               </div>
@@ -737,7 +737,7 @@ export default function EnhancedAssignmentModal({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-gray-600">
                       {selectedEmployees.length} employee(s) selected 
-                      {existingAssignments.length > 0 && (
+                      {(existingAssignments as any[]).length > 0 && (
                         <span className="text-blue-600 ml-1">
                           (editing existing assignments)
                         </span>
