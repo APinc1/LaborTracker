@@ -435,6 +435,11 @@ export default function EnhancedAssignmentModal({
     },
     onSuccess: (data) => {
       const { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId } = data;
+      console.log('🚀 onSuccess callback triggered!');
+      console.log('🚀 Results:', results);
+      console.log('🚀 currentSelectedEmployeeIds:', currentSelectedEmployeeIds);
+      console.log('🚀 currentSelectedSuperintendentId:', currentSelectedSuperintendentId);
+      
       // Optimistic cache update for assignment creation - immediately add new assignments
       queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
         if (!oldData) return [];
