@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAssignmentUpdate?: () => void;
   taskId: string | number;
   taskDate: string;
   taskName?: string;
@@ -23,8 +22,7 @@ interface EnhancedAssignmentModalProps {
 
 export default function EnhancedAssignmentModal({ 
   isOpen, 
-  onClose,
-  onAssignmentUpdate,
+  onClose, 
   taskId, 
   taskDate, 
   taskName = "Task" 
@@ -117,15 +115,15 @@ export default function EnhancedAssignmentModal({
 
   // Fetch location data to get project info
   const { data: currentLocation } = useQuery({
-    queryKey: ["/api/locations", (currentTask as any)?.locationId],
-    enabled: !!((currentTask as any)?.locationId),
+    queryKey: ["/api/locations", currentTask?.locationId],
+    enabled: !!currentTask?.locationId,
     staleTime: 30000,
   });
 
   // Fetch project data using location's projectId
   const { data: currentProject } = useQuery({
-    queryKey: ["/api/projects", (currentLocation as any)?.projectId],
-    enabled: !!((currentLocation as any)?.projectId),
+    queryKey: ["/api/projects", currentLocation?.projectId],
+    enabled: !!currentLocation?.projectId,
     staleTime: 30000,
   });
 
@@ -143,16 +141,16 @@ export default function EnhancedAssignmentModal({
 
   // Load existing assignments when modal opens
   useEffect(() => {
-    if (isOpen && (employees as any[]).length > 0) {
+    if (isOpen && employees.length > 0) {
       // Always load existing assignments if they exist
-      if ((existingAssignments as any[]).length > 0) {
-        const existingEmployeeIds = (existingAssignments as any[]).map((assignment: any) => {
+      if (existingAssignments.length > 0) {
+        const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
           return employee?.id.toString();
         }).filter(Boolean);
 
         // Load hours from first assignment for default, and individual hours for each employee
-        const firstAssignmentHours = (existingAssignments as any[])[0]?.assignedHours?.toString() || '8';
+        const firstAssignmentHours = existingAssignments[0]?.assignedHours?.toString() || '8';
         const individualHours: Record<string, string> = {};
         existingAssignments.forEach((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
@@ -193,18 +191,18 @@ export default function EnhancedAssignmentModal({
       // console.log('Setting superintendent - Project default:', currentProject?.defaultSuperintendent);
       // console.log('Current selected superintendent:', selectedSuperintendentId);
       
-      if (currentTask && (currentTask as any).superintendentId) {
-        // console.log('Using task superintendent:', (currentTask as any).superintendentId);
-        setSelectedSuperintendentId((currentTask as any).superintendentId.toString());
-      } else if (selectedSuperintendentId === null && currentProject && (currentProject as any).defaultSuperintendent) {
+      if (currentTask && currentTask.superintendentId) {
+        // console.log('Using task superintendent:', currentTask.superintendentId);
+        setSelectedSuperintendentId(currentTask.superintendentId.toString());
+      } else if (selectedSuperintendentId === null && currentProject && currentProject.defaultSuperintendent) {
         // Only set default if no superintendent is currently selected
         // console.log('No superintendent selected, using project default:', currentProject.defaultSuperintendent);
         
         // Check if defaultSuperintendent is a name (string) or ID (number)
-        if (typeof (currentProject as any).defaultSuperintendent === 'string') {
+        if (typeof currentProject.defaultSuperintendent === 'string') {
           // Find user by name
           const superintendentUser = superintendents.find((user: any) => 
-            user.name === (currentProject as any).defaultSuperintendent
+            user.name === currentProject.defaultSuperintendent
           );
           if (superintendentUser) {
             // console.log('Found superintendent by name:', superintendentUser);
@@ -214,13 +212,13 @@ export default function EnhancedAssignmentModal({
           }
         } else {
           // It's already an ID
-          setSelectedSuperintendentId((currentProject as any).defaultSuperintendent.toString());
+          setSelectedSuperintendentId(currentProject.defaultSuperintendent.toString());
         }
-      } else if (!(currentTask as any)?.superintendentId && selectedSuperintendentId !== null) {
+      } else if (!currentTask?.superintendentId && selectedSuperintendentId !== null) {
         // console.log('Keeping user-selected superintendent:', selectedSuperintendentId);
       }
     }
-  }, [isOpen, (existingAssignments as any[]).length, (employees as any[]).length, (crews as any[]).length, (currentTask as any)?.id, (currentLocation as any)?.id, (currentProject as any)?.id]);
+  }, [isOpen, existingAssignments.length, employees.length, crews.length, currentTask?.id, currentLocation?.id, currentProject?.id]);
 
   // Calculate employee availability
   const calculateEmployeeAvailability = (employee: any) => {
@@ -302,39 +300,18 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Clear existing assignments (just like individual removal)
+  // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      console.log('🧹 CLEARING ALL ASSIGNMENTS for task:', taskId);
-      
-      // Delete all assignments (exactly like individual removal)
-      if ((existingAssignments as any[]).length > 0) {
-        const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
-          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
-        );
-        await Promise.all(deletePromises);
-        console.log('🗑️ Deleted all assignments');
-        return { deletedCount: (existingAssignments as any[]).length };
-      } else {
-        console.log('🗑️ No assignments to delete');
-        return { deletedCount: 0 };
-      }
+      if (existingAssignments.length === 0) return;
+      const deletePromises = existingAssignments.map((assignment: any) =>
+        apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
+      );
+      return Promise.all(deletePromises);
     },
-    onSuccess: (data) => {
-      console.log('✅ Successfully cleared assignments:', data?.deletedCount || 0);
-      
-      // Clear local UI state immediately
-      setSelectedEmployeeIds([]);
-      setSelectedCrews([]);
-      setEmployeeHours({});
-      setEditingEmployeeId(null);
-      
-      // Use the SAME cache strategy as individual assignment removal
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      
-      // Trigger immediate refresh (same as individual removal)
-      onAssignmentUpdate(Date.now());
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
     }
   });
 
@@ -342,11 +319,8 @@ export default function EnhancedAssignmentModal({
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
       // Always clear existing assignments first to avoid conflicts
-      if ((existingAssignments as any[]).length > 0) {
-        const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
-          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
-        );
-        await Promise.all(deletePromises);
+      if (existingAssignments.length > 0) {
+        await clearExistingAssignmentsMutation.mutateAsync();
       }
       
       // Create new assignments for all selected employees
@@ -368,7 +342,7 @@ export default function EnhancedAssignmentModal({
       console.log('Assignment data:', assignments);
 
       // Create assignments only if there are any
-      let results: any[] = [];
+      let results = [];
       if (assignments.length > 0) {
         const promises = assignments.map(assignment =>
           apiRequest('/api/assignments', {
@@ -386,7 +360,7 @@ export default function EnhancedAssignmentModal({
         const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
         
         // Only update if superintendent has changed
-        if ((currentTask as any).superintendentId !== superintendentIdToUpdate) {
+        if (currentTask.superintendentId !== superintendentIdToUpdate) {
           await apiRequest(`/api/tasks/${taskId}`, {
             method: 'PUT',
             body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
@@ -397,28 +371,16 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: async () => {
-      // Complete cache cleanup - remove all assignment-related queries immediately
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/assignments", "date"] });
-      
-      // Invalidate all other related queries
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      // Force refetch of all location-specific tasks to update task cards
-      if ((currentTask as any)?.locationId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", (currentTask as any).locationId, "tasks"] });
-      }
-      
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
-      // Call the callback to trigger immediate UI update
-      if (onAssignmentUpdate) {
-        onAssignmentUpdate();
-      }
       onClose();
     },
     onError: () => {
@@ -465,7 +427,7 @@ export default function EnhancedAssignmentModal({
           <DialogTitle>Assign Employees to {taskName}</DialogTitle>
           <div className="text-sm text-gray-500">
             Date: {taskDate}
-            {(existingAssignments as any[]).length > 0 && (
+            {existingAssignments.length > 0 && (
               <div className="text-blue-600 mt-1">
                 Click on employees below to add them to this task, or modify existing assignments
               </div>
@@ -758,7 +720,7 @@ export default function EnhancedAssignmentModal({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-gray-600">
                       {selectedEmployees.length} employee(s) selected 
-                      {(existingAssignments as any[]).length > 0 && (
+                      {existingAssignments.length > 0 && (
                         <span className="text-blue-600 ml-1">
                           (editing existing assignments)
                         </span>
@@ -769,13 +731,14 @@ export default function EnhancedAssignmentModal({
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-xs"
-                      disabled={clearExistingAssignmentsMutation.isPending}
                       onClick={() => {
-                        // Always run the clear mutation to ensure superintendent is removed from task record
-                        clearExistingAssignmentsMutation.mutate();
+                        setSelectedEmployeeIds([]);
+                        setSelectedCrews([]);
+                        setEmployeeHours({});
+                        setEditingEmployeeId(null);
                       }}
                     >
-                      {clearExistingAssignmentsMutation.isPending ? "Clearing..." : "Clear All"}
+                      Clear All
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -997,7 +960,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>

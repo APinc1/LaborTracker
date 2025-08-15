@@ -69,8 +69,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
-  const [assignmentUpdateKey, setAssignmentUpdateKey] = useState(0);
-  const [assignmentCacheVersion, setAssignmentCacheVersion] = useState(0); // Force re-render key
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -226,43 +224,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     staleTime: 30000,
   });
 
-  const { data: assignments = [], refetch: refetchAssignments } = useQuery({
+  const { data: assignments = [] } = useQuery({
     queryKey: ["/api/assignments"],
-    staleTime: 0, // No cache staleness - always fresh data for assignments
-    gcTime: 0, // Prevent cache persistence (newer React Query property)
-    onSuccess: (data) => {
-      console.log(`📊 Assignment data fetched:`, data?.length, 'assignments');
-      if (data?.length > 0) {
-        console.log('📋 Sample assignments:', data.slice(0, 3).map(a => ({ id: a.id, taskId: a.taskId, employeeId: a.employeeId })));
-      }
-    }
+    staleTime: 30000,
   });
-
-  // Force refetch when assignmentUpdateKey changes
-  useEffect(() => {
-    if (assignmentUpdateKey > 0) {
-      console.log(`🔄 CRITICAL: Triggering assignment refresh for key change: ${assignmentUpdateKey}`);
-      // Force complete cache refresh and component re-render
-      setAssignmentCacheVersion(prev => {
-        const newVersion = prev + 1;
-        console.log(`🔄 CRITICAL: Updating cache version from ${prev} to ${newVersion}`);
-        return newVersion;
-      });
-      
-      // Nuclear option: Remove all assignment and task-related queries
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks"], predicate: (query) => {
-        return query.queryKey.includes("assignments") || query.queryKey.includes("date-range");
-      }});
-      queryClient.removeQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
-      
-      // Force immediate refetch with stagger
-      setTimeout(() => {
-        console.log(`🔄 CRITICAL: Force refetching assignments now`);
-        refetchAssignments();
-      }, 100);
-    }
-  }, [assignmentUpdateKey, queryClient, refetchAssignments]);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -1367,7 +1332,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <DraggableTaskList
-                key={`task-list-${assignmentCacheVersion}-${assignments.length}`} // Force re-render on assignment changes
                 tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
@@ -1660,12 +1624,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         onClose={() => {
           setAssignmentModalOpen(false);
           setSelectedTaskForAssignment(null);
-          // Force assignment data refresh by updating key
-          setAssignmentUpdateKey(prev => prev + 1);
-        }}
-        onAssignmentUpdate={() => {
-          // Immediate callback when assignments are updated
-          setAssignmentUpdateKey(prev => prev + 1);
         }}
         taskId={selectedTaskForAssignment?.id || selectedTaskForAssignment?.taskId}
         taskDate={selectedTaskForAssignment?.taskDate || ''}
