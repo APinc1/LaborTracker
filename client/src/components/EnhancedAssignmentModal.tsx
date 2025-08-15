@@ -488,7 +488,14 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      // Comprehensive cache invalidation with force refresh
+      console.log('🔄 Assignment mutation success');
+      console.log(`🎯 TaskId: ${taskId}, EmployeeCount: ${selectedEmployeeIds.length}`);
+      
+      // Store scroll position before cache operations
+      const scrollElement = document.querySelector('.main-content') || document.documentElement;
+      const scrollTop = scrollElement.scrollTop;
+      
+      // Comprehensive cache invalidation
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
@@ -507,21 +514,36 @@ export default function EnhancedAssignmentModal({
         queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
       }
       
-      // Force immediate refetch of critical data to ensure display updates
+      // Force fresh data with multiple attempts to ensure display updates
       setTimeout(() => {
+        console.log('🔄 First refetch wave');
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
         queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+      }, 50);
+      
+      setTimeout(() => {
+        console.log('🔄 Second refetch wave');
+        queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
         if (currentLocation?.locationId) {
           queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
         }
-      }, 50);
+        if (currentLocation?.id) {
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
+        }
+        
+        // Restore scroll position
+        requestAnimationFrame(() => {
+          scrollElement.scrollTop = scrollTop;
+        });
+      }, 200);
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
         "Assignments and superintendent updated successfully";
       toast({ title: "Success", description: message });
       
-      // Close modal and reset state to prevent stale data
+      // Close modal and reset state
       setSelectedEmployeeIds([]);
       setSelectedForemanId(null);
       setSelectedCrews([]);
