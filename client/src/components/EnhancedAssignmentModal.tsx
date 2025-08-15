@@ -323,6 +323,8 @@ export default function EnhancedAssignmentModal({
         headers: { 'Content-Type': 'application/json' }
       });
       console.log('🗑️ Cleared superintendent from task record');
+      
+      return { success: true };
     },
     onSuccess: () => {
       console.log('✅ Successfully cleared all assignments and superintendent');
@@ -333,8 +335,18 @@ export default function EnhancedAssignmentModal({
       queryClient.removeQueries({ queryKey: ["/api/tasks", "date-range"] });
       queryClient.removeQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
       
-      // Immediately trigger the parent component's assignment update
-      onAssignmentUpdate(Date.now());
+      // Clear local UI state immediately
+      setSelectedEmployeeIds([]);
+      setSelectedCrews([]);
+      setEmployeeHours({});
+      setEditingEmployeeId(null);
+      setSelectedSuperintendentId(null);
+      
+      // Trigger the parent component's assignment update with aggressive cache busting
+      onAssignmentUpdate(Date.now() + Math.random());
+      
+      // Close the modal to force a fresh render when reopened
+      onClose();
     }
   });
 
