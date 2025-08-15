@@ -1661,9 +1661,8 @@ export default function BudgetManagement() {
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
                         
-                        // Skip cards where total hours is 0 AND total value is 0 (truly empty cost codes)
-                        // Allow cost codes with value but no hours (like AC, GNRL LBR that might have materials but no labor hours)
-                        if (totalHours === 0 && totalValue === 0) {
+                        // Skip cards where total hours is 0 or no budget value
+                        if (totalHours === 0) {
                           return null;
                         }
                         

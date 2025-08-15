@@ -246,11 +246,9 @@ export default function Dashboard() {
   };
 
   const getTaskAssignments = (taskId: number, date: string) => {
-    const filtered = (assignments as any[]).filter((assignment: any) => 
+    return (assignments as any[]).filter((assignment: any) => 
       assignment.taskId === taskId && assignment.assignmentDate === date
     );
-
-    return filtered;
   };
 
   const getEmployeeInfo = (employeeId: number) => {
@@ -441,8 +439,6 @@ export default function Dashboard() {
     const actualHours = getActualHours(task, date);
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
-    
-
 
     return (
       <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">

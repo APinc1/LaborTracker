@@ -300,137 +300,63 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Clear existing assignments - simplified and fixed
+  // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      console.log('🧨 CLEARING ASSIGNMENTS START');
-      console.log('🧨 existingAssignments to delete:', existingAssignments);
-      
-      // Delete each assignment individually and wait for completion
-      if (existingAssignments.length > 0) {
-        console.log('🧨 Deleting', existingAssignments.length, 'assignments');
-        
-        for (const assignment of existingAssignments) {
-          console.log('🧨 Deleting assignment ID:', assignment.id);
-          try {
-            const deleteResult = await apiRequest(`/api/assignments/${assignment.id}`, { 
-              method: 'DELETE' 
-            });
-            console.log('✅ DELETE successful:', assignment.id, deleteResult);
-          } catch (error) {
-            console.error('❌ DELETE failed:', assignment.id, error);
-            // Continue with other deletions even if one fails
-          }
-        }
-      }
-      
-      // Clear superintendent
-      if (currentTask && currentTask.superintendentId) {
-        console.log('🧨 Clearing superintendent:', currentTask.superintendentId);
-        try {
-          const result = await apiRequest(`/api/tasks/${taskId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ superintendentId: null }),
-            headers: { 'Content-Type': 'application/json' }
-          });
-          console.log('✅ Superintendent cleared:', result);
-        } catch (error) {
-          console.error('❌ Failed to clear superintendent:', error);
-        }
-      }
-      
-      console.log('🧨 CLEARING ASSIGNMENTS COMPLETE');
-      return { cleared: true };
+      if (existingAssignments.length === 0) return;
+      const deletePromises = existingAssignments.map((assignment: any) =>
+        apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
+      );
+      return Promise.all(deletePromises);
     },
     onSuccess: () => {
-      // Aggressive cache invalidation for clearing assignments
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      
-      // Force complete cache removal and refetch
-      setTimeout(() => {
-        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        // Also invalidate with refetchType: 'active' to force active queries to refetch
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
-      }, 50);
-      
-      // Additional aggressive invalidation - nuclear option
-      queryClient.resetQueries({ queryKey: ["/api/assignments"] });
-      
-      // Force immediate optimistic cache update - manually update the cache
-      setTimeout(() => {
-        queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
-          if (!oldData) return [];
-          // Remove all assignments for this specific task
-          return oldData.filter(assignment => assignment.taskId !== taskId);
-        });
-      }, 100);
     }
   });
 
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      // Capture current state values to avoid stale closure
-      const currentSelectedEmployeeIds = [...selectedEmployeeIds];
-      const currentSelectedSuperintendentId = selectedSuperintendentId;
-      
-      console.log('💾 SAVE ASSIGNMENTS - selectedEmployeeIds:', currentSelectedEmployeeIds);
-      console.log('💾 SAVE ASSIGNMENTS - selectedSuperintendentId:', currentSelectedSuperintendentId);
-      console.log('💾 SAVE ASSIGNMENTS - existingAssignments:', existingAssignments.length);
-
       // Always clear existing assignments first to avoid conflicts
       if (existingAssignments.length > 0) {
-        console.log('💾 Clearing existing assignments first');
         await clearExistingAssignmentsMutation.mutateAsync();
       }
       
-      // Create new assignments for all selected employees, excluding superintendent
-      // Superintendents should only be assigned to the task's superintendentId field, not as assignments
-      const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
-      
-      const assignments = currentSelectedEmployeeIds
-        .filter(employeeIdStr => employeeIdStr !== superintendentIdStr) // Exclude superintendent from assignments
-        .map(employeeIdStr => {
-          const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
-          if (!employee) return null;
-          
-          return {
-            assignmentId: `${taskId}_${employee.id}`,
-            taskId: taskId,
-            employeeId: employee.id,
-            assignmentDate: taskDate,
-            assignedHours: employeeHours[employeeIdStr] || defaultHours,
-            actualHours: null
-          };
-        }).filter(Boolean);
+      // Create new assignments for all selected employees
+      const assignments = selectedEmployeeIds.map(employeeIdStr => {
+        const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
+        if (!employee) return null;
+        
+        return {
+          assignmentId: `${taskId}_${employee.id}`,
+          taskId: taskId,
+          employeeId: employee.id,
+          assignmentDate: taskDate,
+          assignedHours: employeeHours[employeeIdStr] || defaultHours,
+          actualHours: null
+        };
+      }).filter(Boolean);
 
-      console.log('Selected employees:', currentSelectedEmployeeIds);
-      console.log('Selected superintendent:', superintendentIdStr);
-      console.log('Creating assignments for employees (excluding superintendent):', assignments.map(a => a.employeeId));
+      console.log('Creating assignments for employees:', selectedEmployeeIds);
+      console.log('Assignment data:', assignments);
 
-      // Create assignments for employees (if any)
-      let results = [];
-      if (assignments.length > 0) {
-        const promises = assignments.map(assignment =>
-          apiRequest('/api/assignments', {
-            method: 'POST',
-            body: JSON.stringify(assignment),
-            headers: { 'Content-Type': 'application/json' }
-          })
-        );
-        results = await Promise.all(promises);
-      }
+      if (assignments.length === 0) return [];
 
-      // Update task with superintendent if selected (including clearing superintendent)
-      if (currentSelectedSuperintendentId !== null && currentTask) {
-        const superintendentIdToUpdate = currentSelectedSuperintendentId === "none" ? null : parseInt(currentSelectedSuperintendentId);
+      const promises = assignments.map(assignment =>
+        apiRequest('/api/assignments', {
+          method: 'POST',
+          body: JSON.stringify(assignment),
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
+
+      const results = await Promise.all(promises);
+
+      // Update task with superintendent if selected
+      if (selectedSuperintendentId !== null && currentTask) {
+        const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
+        
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
           await apiRequest(`/api/tasks/${taskId}`, {
@@ -441,80 +367,9 @@ export default function EnhancedAssignmentModal({
         }
       }
 
-      // Return both results and current state for onSuccess callback
-      return { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId };
+      return results;
     },
-    onSuccess: (data) => {
-      const { results, currentSelectedEmployeeIds, currentSelectedSuperintendentId } = data;
-      console.log('🚀 onSuccess callback triggered!');
-      console.log('🚀 Results:', results);
-      console.log('🚀 currentSelectedEmployeeIds:', currentSelectedEmployeeIds);
-      console.log('🚀 currentSelectedSuperintendentId:', currentSelectedSuperintendentId);
-      
-      // Optimistic cache update for assignment creation - immediately add new assignments
-      queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
-        if (!oldData) return [];
-        
-        // Remove any existing assignments for this task first
-        const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
-        
-        // Add the new assignments based on selected employees (excluding superintendent)
-        const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
-        console.log('🎯 Creating optimistic assignments with taskId:', taskId, 'type:', typeof taskId);
-        
-        const newAssignments = currentSelectedEmployeeIds
-          .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
-          .map((employeeIdStr, index) => {
-            const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
-            const optimisticAssignment = {
-              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
-              assignmentId: `${taskId}_${employeeIdStr}`,
-              taskId: parseInt(taskId.toString()), // Ensure taskId is a number to match getAssignedEmployees filter
-              employeeId: parseInt(employeeIdStr),
-              assignedHours: 8,
-              actualHours: null,
-              assignmentDate: taskDate,
-              notes: null,
-              // Add employee info for immediate display
-              employee: employee ? {
-                id: employee.id,
-                name: employee.name,
-                teamMemberId: employee.teamMemberId
-              } : null
-            };
-            console.log('🎯 Optimistic assignment created:', optimisticAssignment);
-            return optimisticAssignment;
-          });
-        
-        return [...filteredData, ...newAssignments];
-      });
-
-      // Also update the specific task assignments cache
-      queryClient.setQueryData(["/api/tasks", taskId, "assignments"], (oldData: any[]) => {
-        const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
-        return currentSelectedEmployeeIds
-          .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
-          .map((employeeIdStr, index) => {
-            const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
-            return {
-              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index + 1000}`,
-              assignmentId: `${taskId}_${employeeIdStr}`,
-              taskId: parseInt(taskId.toString()), // Ensure taskId is a number
-              employeeId: parseInt(employeeIdStr),
-              assignedHours: 8,
-              actualHours: null,
-              assignmentDate: taskDate,
-              notes: null,
-              employee: employee ? {
-                id: employee.id,
-                name: employee.name,
-                teamMemberId: employee.teamMemberId
-              } : null
-            };
-          });
-      });
-
-      // Invalidate queries to fetch fresh data after the optimistic update
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -522,30 +377,6 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      
-      // Force a complete refresh of all related data
-      setTimeout(() => {
-        // Force refetch of all assignment-related queries
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] });
-        
-        // Clear all assignment-related cache entries
-        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-        queryClient.resetQueries({ queryKey: ["/api/assignments"] });
-        
-        // Refetch fresh data with active refetch
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
-        
-        // Optimistic cache update - immediately update the cache with fresh data
-        queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
-          if (!oldData) return [];
-          // Remove all assignments for this specific task
-          return oldData.filter(assignment => assignment.taskId !== taskId);
-        });
-      }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
@@ -898,32 +729,14 @@ export default function EnhancedAssignmentModal({
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-xs"
-                      onClick={async () => {
-                        console.log('🧨 CLEAR ALL BUTTON CLICKED');
-                        console.log('🧨 existingAssignments to clear:', existingAssignments);
-                        
-                        // Clear database assignments if they exist
-                        if (existingAssignments.length > 0) {
-                          try {
-                            console.log('🧨 Triggering database clear');
-                            await clearExistingAssignmentsMutation.mutateAsync();
-                            console.log('✅ Database clear completed');
-                          } catch (error) {
-                            console.error('❌ Database clear failed:', error);
-                          }
-                        }
-                        
-                        // Clear UI state
+                      onClick={() => {
                         setSelectedEmployeeIds([]);
                         setSelectedCrews([]);
                         setEmployeeHours({});
                         setEditingEmployeeId(null);
-                        setSelectedSuperintendentId("none");
-                        console.log('✅ UI state cleared');
                       }}
-                      disabled={clearExistingAssignmentsMutation.isPending}
                     >
-                      {clearExistingAssignmentsMutation.isPending ? 'Clearing...' : 'Clear All'}
+                      Clear All
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -1145,7 +958,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending || (selectedEmployeeIds.length === 0 && (selectedSuperintendentId === null || selectedSuperintendentId === "none"))}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>

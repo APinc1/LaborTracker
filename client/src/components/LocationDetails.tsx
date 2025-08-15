@@ -364,7 +364,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     }
     
     // Track original cost codes for combined entries
-    if (costCode === 'DEMO/EX') {
+    if (costCode === 'Demo/ex + Base/grading') {
       acc[costCode].originalCostCodes.add(item.costCode || 'UNCATEGORIZED');
     }
     
@@ -418,13 +418,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     const mappings: { [key: string]: string } = {
       'AC': 'Asphalt',
       'GNRL LBR': 'General Labor',
-      'GENERAL LABOR': 'General Labor',
       'TRAFFIC CONTROL': 'Traffic Control',
       'CONCRETE': 'Concrete',
       'SUB': 'Subcontractor',
       'LANDSCAPING': 'Landscaping',
       'UTILITY ADJ': 'Utility Adjustment',
-      'DEMO/EX': 'Demo/Ex + Base/Grading',
     };
     return mappings[costCode] || costCode;
   };
@@ -1226,7 +1224,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                             </div>
                             <div className="space-y-2">
                               {/* For combined Demo/ex + Base/grading, show separate quantities */}
-                              {summary.costCode === 'DEMO/EX' ? (
+                              {summary.costCode === 'Demo/ex + Base/grading' ? (
                                 <div className="space-y-1">
                                   {summary.originalCostCodes && Array.from(summary.originalCostCodes).map((originalCode: string) => {
                                     const originalItems = summary.items.filter((item: any) => 
