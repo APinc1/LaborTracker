@@ -488,7 +488,7 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      // Targeted cache invalidation without full page refresh
+      // Comprehensive cache invalidation with force refresh
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
@@ -506,6 +506,15 @@ export default function EnhancedAssignmentModal({
       if (currentTask?.taskDate) {
         queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
       }
+      
+      // Force immediate refetch of critical data to ensure display updates
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        if (currentLocation?.locationId) {
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+        }
+      }, 50);
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
