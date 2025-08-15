@@ -179,15 +179,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-    // Debug all assignments for task 821 (Form task) - including empty results
-    if (taskId === 821) {
-      console.log(`🔍 Form Task (821) assignments check:`, {
-        totalAssignmentsInComponent: assignments.length,
-        filteredForThisTask: taskAssignments.length,
-        assignmentIds: taskAssignments.map(a => a.id),
-        shouldShowEmployees: taskAssignments.length > 0 ? 'YES' : 'NO'
-      });
-    }
+
     
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
