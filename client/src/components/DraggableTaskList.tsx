@@ -179,6 +179,8 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
+
+    
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
       if (!employee) return null;

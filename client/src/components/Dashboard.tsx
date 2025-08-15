@@ -249,14 +249,7 @@ export default function Dashboard() {
     const filtered = (assignments as any[]).filter((assignment: any) => 
       assignment.taskId === taskId && assignment.assignmentDate === date
     );
-    // Debug logging for assignment filtering
-    if (taskId === 821) { // Form task
-      console.log(`🔍 DEBUG getTaskAssignments(${taskId}, ${date}):`, {
-        totalAssignments: assignments.length,
-        filteredCount: filtered.length,
-        filtered: filtered.map(a => ({ id: a.id, taskId: a.taskId, employeeId: a.employeeId, date: a.assignmentDate }))
-      });
-    }
+
     return filtered;
   };
 
@@ -449,11 +442,7 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
-    // Debug specific task
-    if (task.id === 821 && taskAssignments.length > 0) {
-      console.log(`🚨 PROBLEM: Task 821 (Form) still has ${taskAssignments.length} assignments in UI:`, 
-        taskAssignments.map(a => ({ id: a.id, employeeId: a.employeeId, taskId: a.taskId })));
-    }
+
 
     return (
       <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
