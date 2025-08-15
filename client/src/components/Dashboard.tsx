@@ -348,6 +348,14 @@ export default function Dashboard() {
       if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR' || trimmed === 'GENERAL') {
         return 'GENERAL LABOR';
       }
+      // Normalize AC/ASPHALT 
+      if (trimmed === 'AC' || trimmed === 'ASPHALT') {
+        return 'AC';
+      }
+      // Normalize CONCRETE (handle case variations)
+      if (trimmed === 'CONCRETE' || trimmed === 'Concrete') {
+        return 'CONCRETE';
+      }
       return trimmed; // Return uppercase normalized version
     };
     
