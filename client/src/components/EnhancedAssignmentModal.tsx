@@ -895,14 +895,32 @@ export default function EnhancedAssignmentModal({
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-xs"
-                      onClick={() => {
+                      onClick={async () => {
+                        console.log('🧨 CLEAR ALL BUTTON CLICKED');
+                        console.log('🧨 existingAssignments to clear:', existingAssignments);
+                        
+                        // Clear database assignments if they exist
+                        if (existingAssignments.length > 0) {
+                          try {
+                            console.log('🧨 Triggering database clear');
+                            await clearExistingAssignmentsMutation.mutateAsync();
+                            console.log('✅ Database clear completed');
+                          } catch (error) {
+                            console.error('❌ Database clear failed:', error);
+                          }
+                        }
+                        
+                        // Clear UI state
                         setSelectedEmployeeIds([]);
                         setSelectedCrews([]);
                         setEmployeeHours({});
                         setEditingEmployeeId(null);
+                        setSelectedSuperintendentId("none");
+                        console.log('✅ UI state cleared');
                       }}
+                      disabled={clearExistingAssignmentsMutation.isPending}
                     >
-                      Clear All
+                      {clearExistingAssignmentsMutation.isPending ? 'Clearing...' : 'Clear All'}
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
