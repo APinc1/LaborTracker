@@ -330,6 +330,9 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
     }
   });
 
@@ -402,6 +405,13 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      
+      // Force a refresh of the current task data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+        queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] });
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+      }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
