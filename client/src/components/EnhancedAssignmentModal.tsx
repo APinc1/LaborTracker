@@ -488,22 +488,24 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      // Nuclear option - clear all caches and force fresh data
-      queryClient.clear();
+      // Targeted cache invalidation without full page refresh
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       
-      // Also trigger a page-level refresh of key data after cache clear
-      setTimeout(() => {
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        
-        if (currentLocation?.locationId) {
-          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-        }
-        if (currentTask?.taskDate) {
-          queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
-        }
-      }, 100);
+      // Location-specific invalidation
+      if (currentLocation?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+      }
+      if (currentLocation?.id) {
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
+      }
+      
+      // Date range invalidation for dashboard
+      if (currentTask?.taskDate) {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
+      }
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
