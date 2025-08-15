@@ -382,6 +382,7 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
+      // Invalidate all related queries to ensure immediate UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -389,6 +390,11 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+      
+      // Force refetch location tasks to ensure immediate task card updates
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", "tasks"] });
       
       const message = selectedEmployeeIds.length === 0 
         ? "Task assignments cleared successfully" 
