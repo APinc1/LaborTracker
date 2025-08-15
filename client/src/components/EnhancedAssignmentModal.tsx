@@ -444,18 +444,20 @@ export default function EnhancedAssignmentModal({
         
         // Add the new assignments based on selected employees (excluding superintendent)
         const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
+        console.log('🎯 Creating optimistic assignments with taskId:', taskId, 'type:', typeof taskId);
+        
         const newAssignments = currentSelectedEmployeeIds
           .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
           .map((employeeIdStr, index) => {
             const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
-            return {
+            const optimisticAssignment = {
               id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
               assignmentId: `${taskId}_${employeeIdStr}`,
-              taskId: taskId,
+              taskId: parseInt(taskId.toString()), // Ensure taskId is a number to match getAssignedEmployees filter
               employeeId: parseInt(employeeIdStr),
               assignedHours: 8,
               actualHours: null,
-              assignmentDate: taskDate, // Use the actual task date
+              assignmentDate: taskDate,
               notes: null,
               // Add employee info for immediate display
               employee: employee ? {
@@ -464,6 +466,8 @@ export default function EnhancedAssignmentModal({
                 teamMemberId: employee.teamMemberId
               } : null
             };
+            console.log('🎯 Optimistic assignment created:', optimisticAssignment);
+            return optimisticAssignment;
           });
         
         return [...filteredData, ...newAssignments];
@@ -477,9 +481,9 @@ export default function EnhancedAssignmentModal({
           .map((employeeIdStr, index) => {
             const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
             return {
-              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
+              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index + 1000}`,
               assignmentId: `${taskId}_${employeeIdStr}`,
-              taskId: taskId,
+              taskId: parseInt(taskId.toString()), // Ensure taskId is a number
               employeeId: parseInt(employeeIdStr),
               assignedHours: 8,
               actualHours: null,
