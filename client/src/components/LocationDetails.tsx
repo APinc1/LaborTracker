@@ -226,10 +226,24 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   });
 
   const { data: assignments = [], refetch: refetchAssignments } = useQuery({
-    queryKey: ["/api/assignments", assignmentUpdateKey], // Include key to force refresh
+    queryKey: ["/api/assignments"],
     staleTime: 0, // No cache staleness - always fresh data for assignments
-    cacheTime: 1000, // Very short cache time
+    gcTime: 0, // Prevent cache persistence (newer React Query property)
+    onSuccess: (data) => {
+      console.log(`📊 Assignment data fetched:`, data?.length, 'assignments');
+      if (data?.length > 0) {
+        console.log('📋 Sample assignments:', data.slice(0, 3).map(a => ({ id: a.id, taskId: a.taskId, employeeId: a.employeeId })));
+      }
+    }
   });
+
+  // Force refetch when assignmentUpdateKey changes
+  useEffect(() => {
+    if (assignmentUpdateKey > 0) {
+      console.log(`🔄 Triggering assignment refetch due to key change: ${assignmentUpdateKey}`);
+      refetchAssignments();
+    }
+  }, [assignmentUpdateKey, refetchAssignments]);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
