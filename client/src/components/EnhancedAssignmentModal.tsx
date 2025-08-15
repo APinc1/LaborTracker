@@ -419,6 +419,32 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
+      // Optimistic cache update for assignment creation - immediately add new assignments
+      queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
+        if (!oldData) return [];
+        
+        // Remove any existing assignments for this task first
+        const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
+        
+        // Add the new assignments based on selected employees
+        const newAssignments = selectedEmployeeIds
+          .filter(employeeIdStr => employeeIdStr !== (selectedSuperintendentId === "none" ? null : selectedSuperintendentId))
+          .map((employeeIdStr, index) => {
+            return {
+              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
+              assignmentId: `${taskId}_${employeeIdStr}`,
+              taskId: taskId,
+              employeeId: parseInt(employeeIdStr),
+              assignedHours: 8,
+              actualHours: null,
+              assignmentDate: new Date().toISOString().split('T')[0],
+              notes: null
+            };
+          });
+        
+        return [...filteredData, ...newAssignments];
+      });
+
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
