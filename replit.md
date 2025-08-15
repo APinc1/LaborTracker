@@ -34,6 +34,7 @@ The frontend is built with React 18 and TypeScript, styled using Tailwind CSS wi
 - **Task Management**: Scheduling, assignment, and real-time status updates. Features include drag-and-drop reordering with dependency management, dynamic cost code date ranges, and intelligent date shifting based on task relationships. Supports both individual and bulk task creation with specific rules for sequential dependencies.
 - **Dashboard Features**: Real-time project overview with day-based task filtering (yesterday/today/tomorrow), employee assignment tracking with accurate project name resolution, and location progress monitoring with cost code budget tracking. Location names are clickable for navigation to detailed location pages. Location Progress section filters to show only locations with tasks scheduled on the selected day.
 - **Location Management**: Includes location completion tracking with isComplete boolean field. Future enhancement needed: completion percentage should calculate based on completed tasks or hour budget utilization, with manual completion override capability. Budget interface needs "Add Line Item" button update/improvement.
+- **Task Assignment Enhancement**: Future improvement needed: Allow complete removal of all employees from a task. Currently the system requires at least one employee assignment, but there should be an option to unassign everyone from a task entirely.
 - **Export Functionality**: PDF and Excel export capabilities for various reports.
 
 ### System Design Choices
