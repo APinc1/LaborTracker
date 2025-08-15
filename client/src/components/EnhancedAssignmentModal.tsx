@@ -303,15 +303,33 @@ export default function EnhancedAssignmentModal({
   // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      if (existingAssignments.length === 0) return;
-      const deletePromises = existingAssignments.map((assignment: any) =>
-        apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
-      );
-      return Promise.all(deletePromises);
+      const promises = [];
+      
+      // Delete existing employee assignments
+      if (existingAssignments.length > 0) {
+        const deletePromises = existingAssignments.map((assignment: any) =>
+          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
+        );
+        promises.push(...deletePromises);
+      }
+      
+      // Clear superintendent from task if it exists
+      if (currentTask && currentTask.superintendentId) {
+        const clearSuperintendentPromise = apiRequest(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ superintendentId: null }),
+          headers: { 'Content-Type': 'application/json' }
+        });
+        promises.push(clearSuperintendentPromise);
+      }
+      
+      return Promise.all(promises);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
     }
   });
 
