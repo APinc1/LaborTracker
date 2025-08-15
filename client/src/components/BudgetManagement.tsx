@@ -1645,7 +1645,32 @@ export default function BudgetManagement() {
                       
                       // Include if it's a parent OR if it's a standalone item (not a child and has no children)
                       if (isParent || (!isChild && !hasChildren)) {
-                        const costCode = item.costCode || 'No Code';
+                        let costCode = item.costCode || 'No Code';
+                        
+                        // Apply cost code normalization to match other components
+                        // Handle DEMO/EX variations
+                        if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || costCode === 'BASE/GRADING' || 
+                            costCode === 'Base/Grading' || costCode === 'Demo/Ex + Base/Grading' || 
+                            costCode === 'DEMO/EX + BASE/GRADING' || costCode === 'DEMO/EX+BASE/GRADING' || 
+                            costCode === 'DEMO EX BASE GRADING') {
+                          costCode = 'Demo/Ex + Base/Grading';
+                        }
+                        
+                        // Handle GENERAL LABOR normalization
+                        if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
+                          costCode = 'GENERAL LABOR';
+                        }
+                        
+                        // Handle AC/ASPHALT normalization
+                        if (costCode === 'AC' || costCode === 'ASPHALT') {
+                          costCode = 'AC';
+                        }
+                        
+                        // Handle CONCRETE normalization (case insensitive)
+                        if (costCode === 'CONCRETE' || costCode === 'Concrete') {
+                          costCode = 'CONCRETE';
+                        }
+                        
                         if (!groups[costCode]) {
                           groups[costCode] = [];
                         }
