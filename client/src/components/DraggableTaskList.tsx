@@ -185,7 +185,8 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         taskId,
         totalAssignments: assignments.length,
         matchingAssignments: taskAssignments.length,
-        assignmentIds: taskAssignments.map(a => a.id)
+        assignmentIds: taskAssignments.map(a => a.id),
+        assignmentsRef: assignments === assignments
       });
     }
     

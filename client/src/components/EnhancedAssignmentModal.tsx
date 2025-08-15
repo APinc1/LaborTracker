@@ -394,10 +394,7 @@ export default function EnhancedAssignmentModal({
       setTimeout(() => {
         // Force multiple assignment queries to refresh
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        // Also trigger any assignment queries with keys (like our new cache-busting approach)
-        queryClient.refetchQueries({ queryKey: ["/api/assignments", 1] });
-        queryClient.refetchQueries({ queryKey: ["/api/assignments", 0] });
-      }, 100);
+      }, 150); // Increased delay for deletions to complete
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       // Call the callback to trigger immediate UI update

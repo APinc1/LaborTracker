@@ -241,9 +241,14 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   useEffect(() => {
     if (assignmentUpdateKey > 0) {
       console.log(`🔄 Triggering assignment refetch due to key change: ${assignmentUpdateKey}`);
-      refetchAssignments();
+      // Add small delay to ensure deletions are processed
+      setTimeout(() => {
+        // Force cache invalidation before refetch
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+        refetchAssignments();
+      }, 50);
     }
-  }, [assignmentUpdateKey, refetchAssignments]);
+  }, [assignmentUpdateKey, refetchAssignments, queryClient]);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -1348,6 +1353,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <DraggableTaskList
+                key={`task-list-${assignmentUpdateKey}-${assignments.length}`} // Force re-render on assignment changes
                 tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}
