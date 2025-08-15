@@ -22,6 +22,27 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useNavigationProtection } from "@/contexts/NavigationProtectionContext";
 
+const COST_CODES = [
+  "DEMO/EX",
+  "BASE/GRADING", 
+  "AC",
+  "CONCRETE",
+  "TRAFFIC CONTROL",
+  "GNRL LBR",
+  "LANDSCAPING",
+  "PUNCHLIST GENERAL LABOR",
+  "PUNCHLIST DEMO", 
+  "PUNCHLIST CONCRETE"
+];
+
+const UNITS_OF_MEASURE = [
+  "LF",
+  "SF", 
+  "CY",
+  "TON",
+  "EA"
+];
+
 const budgetLineItemSchema = z.object({
   lineItemNumber: z.string().min(1, "Line item number is required"),
   lineItemName: z.string().min(1, "Line item name is required"),
@@ -29,14 +50,14 @@ const budgetLineItemSchema = z.object({
   unconvertedQty: z.string().min(1, "Quantity is required"),
   actualQty: z.string().default("0"),
   unitCost: z.string().min(1, "Unit cost is required"),
-  unitTotal: z.string().min(1, "Unit total is required"),
-  convertedQty: z.string().optional(),
-  convertedUnitOfMeasure: z.string().optional(),
+  unitTotal: z.string().default("0"),
+  convertedQty: z.string().default("0"),
+  convertedUnitOfMeasure: z.string().default(""),
   conversionFactor: z.string().default("1"),
   costCode: z.string().min(1, "Cost code is required"),
-  productionRate: z.string().optional(),
-  hours: z.string().optional(),
-  budgetTotal: z.string().min(1, "Budget total is required"),
+  productionRate: z.string().default("0"),
+  hours: z.string().default("0"),
+  budgetTotal: z.string().default("0"),
   billing: z.string().default("0"),
   laborCost: z.string().default("0"),
   equipmentCost: z.string().default("0"),
@@ -389,6 +410,41 @@ export default function BudgetManagement() {
     return (budgetItems as any[]).reduce((sum: number, item: any) => sum + (parseFloat(item.budgetTotal) || 0), 0);
   };
 
+  // Calculate totals automatically
+  const calculateFormTotals = (formData: any) => {
+    const unconvertedQty = parseFloat(formData.unconvertedQty) || 0;
+    const unitCost = parseFloat(formData.unitCost) || 0;
+    const convertedQty = parseFloat(formData.convertedQty) || unconvertedQty;
+    const productionRate = parseFloat(formData.productionRate) || 0;
+    
+    // Calculate Unit Total = Unconverted Qty × Unit Cost
+    const unitTotal = unconvertedQty * unitCost;
+    
+    // Calculate Hours = Converted Qty × PX (production rate)
+    const hours = convertedQty * productionRate;
+    
+    // Labor Cost = Hours × labor rate (assuming $50/hr for now, should be configurable)
+    const laborRate = 50; // TODO: Make this configurable
+    const laborCost = hours * laborRate;
+    
+    // Budget Total = Labor + Equipment + Trucking + Dump + Material + Sub
+    const equipment = parseFloat(formData.equipmentCost) || 0;
+    const trucking = parseFloat(formData.truckingCost) || 0;
+    const dump = parseFloat(formData.dumpFeesCost) || 0;
+    const material = parseFloat(formData.materialCost) || 0;
+    const sub = parseFloat(formData.subcontractorCost) || 0;
+    
+    const budgetTotal = laborCost + equipment + trucking + dump + material + sub;
+    
+    return {
+      unitTotal: unitTotal.toFixed(2),
+      hours: hours.toFixed(2),
+      laborCost: laborCost.toFixed(2),
+      budgetTotal: budgetTotal.toFixed(2),
+      billing: unitTotal.toFixed(2), // Billing should equal Unit Total
+    };
+  };
+
   const form = useForm<z.infer<typeof budgetLineItemSchema>>({
     resolver: zodResolver(budgetLineItemSchema),
     defaultValues: {
@@ -398,14 +454,14 @@ export default function BudgetManagement() {
       unconvertedQty: "",
       actualQty: "0",
       unitCost: "",
-      unitTotal: "",
-      convertedQty: "",
+      unitTotal: "0",
+      convertedQty: "0",
       convertedUnitOfMeasure: "",
       conversionFactor: "1",
       costCode: "",
-      productionRate: "",
-      hours: "",
-      budgetTotal: "",
+      productionRate: "0",
+      hours: "0",
+      budgetTotal: "0",
       billing: "0",
       laborCost: "0",
       equipmentCost: "0",
@@ -416,6 +472,36 @@ export default function BudgetManagement() {
       notes: "",
     },
   });
+
+  // Watch form changes and recalculate totals
+  const watchedValues = form.watch([
+    'unconvertedQty', 'unitCost', 'convertedQty', 'productionRate',
+    'equipmentCost', 'truckingCost', 'dumpFeesCost', 'materialCost', 'subcontractorCost'
+  ]);
+
+  useEffect(() => {
+    const [unconvertedQty, unitCost, convertedQty, productionRate, equipment, trucking, dump, material, sub] = watchedValues;
+    
+    if (unconvertedQty && unitCost) {
+      const calculated = calculateFormTotals({
+        unconvertedQty,
+        unitCost,
+        convertedQty: convertedQty || unconvertedQty,
+        productionRate,
+        equipmentCost: equipment,
+        truckingCost: trucking,
+        dumpFeesCost: dump,
+        materialCost: material,
+        subcontractorCost: sub,
+      });
+      
+      form.setValue('unitTotal', calculated.unitTotal, { shouldValidate: false });
+      form.setValue('hours', calculated.hours, { shouldValidate: false });
+      form.setValue('laborCost', calculated.laborCost, { shouldValidate: false });
+      form.setValue('budgetTotal', calculated.budgetTotal, { shouldValidate: false });
+      form.setValue('billing', calculated.billing, { shouldValidate: false });
+    }
+  }, watchedValues);
 
   const editForm = useForm<z.infer<typeof budgetLineItemSchema>>({
     resolver: zodResolver(budgetLineItemSchema),
@@ -1131,9 +1217,20 @@ export default function BudgetManagement() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Cost Code</FormLabel>
-                            <FormControl>
-                              <Input placeholder="CONCRETE" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select cost code" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {COST_CODES.map((code) => (
+                                  <SelectItem key={code} value={code}>
+                                    {code}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1174,9 +1271,20 @@ export default function BudgetManagement() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Unit of Measure</FormLabel>
-                            <FormControl>
-                              <Input placeholder="SF" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {UNITS_OF_MEASURE.map((unit) => (
+                                  <SelectItem key={unit} value={unit}>
+                                    {unit}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1201,38 +1309,24 @@ export default function BudgetManagement() {
                       name="unitTotal"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Unit Total</FormLabel>
+                          <FormLabel>Unit Total (Calculated)</FormLabel>
                           <FormControl>
-                            <Input placeholder="2500.00" {...field} />
+                            <Input placeholder="2500.00" {...field} readOnly className="bg-gray-50" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="budgetTotal"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Budget Total</FormLabel>
-                          <FormControl>
-                            <Input placeholder="2500.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
-                        name="laborCost"
+                        name="convertedQty"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Labor Cost</FormLabel>
+                            <FormLabel>Converted Qty</FormLabel>
                             <FormControl>
-                              <Input placeholder="1000.00" {...field} />
+                              <Input placeholder="100" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1240,12 +1334,36 @@ export default function BudgetManagement() {
                       />
                       <FormField
                         control={form.control}
-                        name="materialCost"
+                        name="convertedUnitOfMeasure"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Material Cost</FormLabel>
+                            <FormLabel>Converted Unit</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {UNITS_OF_MEASURE.map((unit) => (
+                                  <SelectItem key={unit} value={unit}>
+                                    {unit}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="productionRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>PX (Production Rate)</FormLabel>
                             <FormControl>
-                              <Input placeholder="600.00" {...field} />
+                              <Input placeholder="0.5" {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1256,12 +1374,12 @@ export default function BudgetManagement() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="equipmentCost"
+                        name="hours"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Equipment Cost</FormLabel>
+                            <FormLabel>Hours (Calculated)</FormLabel>
                             <FormControl>
-                              <Input placeholder="500.00" {...field} />
+                              <Input placeholder="50.00" {...field} readOnly className="bg-gray-50" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1269,17 +1387,119 @@ export default function BudgetManagement() {
                       />
                       <FormField
                         control={form.control}
-                        name="truckingCost"
+                        name="budgetTotal"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Trucking Cost</FormLabel>
+                            <FormLabel>Budget Total (Calculated)</FormLabel>
                             <FormControl>
-                              <Input placeholder="200.00" {...field} />
+                              <Input placeholder="2500.00" {...field} readOnly className="bg-gray-50" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="laborCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Labor Cost (Calculated)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="1000.00" {...field} readOnly className="bg-gray-50" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-gray-700">Cost Breakdown</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="materialCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Material</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="equipmentCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Equipment</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="truckingCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Trucking</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="subcontractorCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Sub</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="dumpFeesCost"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dump Fees</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="billing"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Billing (Calculated)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0" {...field} readOnly className="bg-gray-50" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
 
                     <FormField
