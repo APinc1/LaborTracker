@@ -346,12 +346,13 @@ export default function EnhancedAssignmentModal({
       // Additional aggressive invalidation - nuclear option
       queryClient.resetQueries({ queryKey: ["/api/assignments"] });
       
-      // Force immediate cache clearing and refetch for the specific task's location
+      // Force immediate optimistic cache update - manually update the cache
       setTimeout(() => {
-        // Clear everything related to assignments
-        queryClient.clear();
-        // Force reload of assignments specifically
-        queryClient.prefetchQuery({ queryKey: ["/api/assignments"] });
+        queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
+          if (!oldData) return [];
+          // Remove all assignments for this specific task
+          return oldData.filter(assignment => assignment.taskId !== taskId);
+        });
       }, 100);
     }
   });
@@ -442,9 +443,12 @@ export default function EnhancedAssignmentModal({
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
         
-        // Nuclear option - clear entire cache and force reload
-        queryClient.clear();
-        queryClient.prefetchQuery({ queryKey: ["/api/assignments"] });
+        // Optimistic cache update - immediately update the cache with fresh data
+        queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
+          if (!oldData) return [];
+          // Remove all assignments for this specific task
+          return oldData.filter(assignment => assignment.taskId !== taskId);
+        });
       }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
