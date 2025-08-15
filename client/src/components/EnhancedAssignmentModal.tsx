@@ -377,16 +377,19 @@ export default function EnhancedAssignmentModal({
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      // Always clear existing assignments first to avoid conflicts
-      if (existingAssignments.length > 0) {
-        await clearExistingAssignmentsMutation.mutateAsync();
-      }
-      
       // Capture current state values to avoid stale closure
       const currentSelectedEmployeeIds = [...selectedEmployeeIds];
       const currentSelectedSuperintendentId = selectedSuperintendentId;
       
+      console.log('💾 SAVE ASSIGNMENTS - selectedEmployeeIds:', currentSelectedEmployeeIds);
+      console.log('💾 SAVE ASSIGNMENTS - selectedSuperintendentId:', currentSelectedSuperintendentId);
+      console.log('💾 SAVE ASSIGNMENTS - existingAssignments:', existingAssignments.length);
 
+      // Always clear existing assignments first to avoid conflicts
+      if (existingAssignments.length > 0) {
+        console.log('💾 Clearing existing assignments first');
+        await clearExistingAssignmentsMutation.mutateAsync();
+      }
       
       // Create new assignments for all selected employees, excluding superintendent
       // Superintendents should only be assigned to the task's superintendentId field, not as assignments
