@@ -1048,10 +1048,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const storage = await getStorage();
       const assignmentId = parseInt(req.params.id);
+      console.log('🗑️ DELETE request received for assignment ID:', assignmentId);
       await storage.deleteEmployeeAssignment(assignmentId);
+      console.log('✅ Assignment', assignmentId, 'deleted successfully');
       res.status(200).json({ message: 'Assignment deleted successfully' });
     } catch (error) {
-      console.error('Error deleting assignment:', error);
+      console.error('❌ Error deleting assignment:', assignmentId, error);
       res.status(500).json({ error: 'Failed to delete assignment' });
     }
   });
