@@ -460,12 +460,22 @@ export default function DraggableTaskList({
         itemCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Handle General Labor normalization
+      if (itemCostCode === 'GNRL LBR' || itemCostCode === 'GENERAL LABOR' || itemCostCode === 'GENERAL LBR' || itemCostCode === 'GENERAL') {
+        itemCostCode = 'GENERAL LABOR';
+      }
+      
       // Handle current task cost code in the same way
       let taskCostCode = costCode;
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Handle General Labor normalization for task cost code
+      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR' || taskCostCode === 'GENERAL') {
+        taskCostCode = 'GENERAL LABOR';
       }
       
       if (itemCostCode === taskCostCode) {
@@ -502,10 +512,20 @@ export default function DraggableTaskList({
         tCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Handle General Labor normalization
+      if (tCostCode === 'GNRL LBR' || tCostCode === 'GENERAL LABOR' || tCostCode === 'GENERAL LBR' || tCostCode === 'GENERAL') {
+        tCostCode = 'GENERAL LABOR';
+      }
+      
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Handle General Labor normalization for task cost code
+      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR' || taskCostCode === 'GENERAL') {
+        taskCostCode = 'GENERAL LABOR';
       }
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
