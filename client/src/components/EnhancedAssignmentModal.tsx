@@ -372,10 +372,12 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: async () => {
-      // Force immediate cache invalidation and refetch
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
+      // Complete cache cleanup - remove all assignment-related queries
+      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.removeQueries({ queryKey: ["/api/assignments", "date"] });
+      
+      // Invalidate all other related queries
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
@@ -386,9 +388,10 @@ export default function EnhancedAssignmentModal({
         queryClient.invalidateQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
       }
       
-      // Force immediate cache reset and refetch of assignments to ensure UI updates
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      await queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+      // Small delay then force fresh fetch to prevent race conditions
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+      }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();

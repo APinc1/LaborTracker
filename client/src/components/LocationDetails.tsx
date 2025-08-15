@@ -69,6 +69,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
+  const [assignmentUpdateKey, setAssignmentUpdateKey] = useState(0); // Force re-render key
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -224,9 +225,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     staleTime: 30000,
   });
 
-  const { data: assignments = [] } = useQuery({
-    queryKey: ["/api/assignments"],
-    staleTime: 5000, // Reduced from 30s to 5s for faster assignment updates
+  const { data: assignments = [], refetch: refetchAssignments } = useQuery({
+    queryKey: ["/api/assignments", assignmentUpdateKey], // Include key to force refresh
+    staleTime: 0, // No cache staleness - always fresh data for assignments
+    cacheTime: 1000, // Very short cache time
   });
 
   const { data: employees = [] } = useQuery({
@@ -1624,6 +1626,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         onClose={() => {
           setAssignmentModalOpen(false);
           setSelectedTaskForAssignment(null);
+          // Force assignment data refresh by updating key
+          setAssignmentUpdateKey(prev => prev + 1);
         }}
         taskId={selectedTaskForAssignment?.id || selectedTaskForAssignment?.taskId}
         taskDate={selectedTaskForAssignment?.taskDate || ''}
