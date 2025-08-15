@@ -488,43 +488,25 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      console.log('🔄 Assignment mutation success');
+      console.log('🔄 Assignment mutation success - NUCLEAR CACHE CLEAR');
       console.log(`🎯 TaskId: ${taskId}, EmployeeCount: ${selectedEmployeeIds.length}`);
       
       // Store scroll position before cache operations
       const scrollElement = document.querySelector('.main-content') || document.documentElement;
       const scrollTop = scrollElement.scrollTop;
       
-      // Comprehensive cache invalidation
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      // NUCLEAR OPTION: Clear all cache data to force complete refresh
+      queryClient.clear();
       
-      // Location-specific invalidation
-      if (currentLocation?.locationId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-      }
-      if (currentLocation?.id) {
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
-      }
-      
-      // Date range invalidation for dashboard
-      if (currentTask?.taskDate) {
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
-      }
-      
-      // Force fresh data with multiple attempts to ensure display updates
+      // Wait longer and force complete page data refresh
       setTimeout(() => {
-        console.log('🔄 First refetch wave');
+        console.log('🔄 NUCLEAR REFETCH - forcing complete data reload');
+        
+        // Force refetch of ALL critical queries
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-      }, 50);
-      
-      setTimeout(() => {
-        console.log('🔄 Second refetch wave');
+        queryClient.refetchQueries({ queryKey: ["/api/employees"] });
         queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
+        
         if (currentLocation?.locationId) {
           queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
         }
@@ -532,11 +514,19 @@ export default function EnhancedAssignmentModal({
           queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
         }
         
-        // Restore scroll position
-        requestAnimationFrame(() => {
+        // Individual task refresh
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        
+        if (currentTask?.taskDate) {
+          queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range", currentTask.taskDate, currentTask.taskDate] });
+        }
+        
+        // Restore scroll position after longer delay to let page settle
+        setTimeout(() => {
           scrollElement.scrollTop = scrollTop;
-        });
-      }, 200);
+        }, 300);
+      }, 300);
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
