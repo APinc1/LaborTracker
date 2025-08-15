@@ -372,22 +372,17 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      // Invalidate all assignment-related queries
+      console.log('🔄 Assignment save successful, invalidating caches...');
+      
+      // Clear all cached data to force fresh fetches
+      queryClient.clear();
+      
+      // Also do specific invalidations as backup
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
-      
-      // Invalidate task queries to refresh task cards
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       
-      // Force refetch to ensure fresh data
-      queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-      queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] });
-      
-      // Location queries for other components
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      console.log('🔄 All caches cleared');
       
       toast({ title: "Success", description: "Assignments updated successfully" });
       onClose();
