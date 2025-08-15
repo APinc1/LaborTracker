@@ -341,17 +341,19 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      if (assignments.length === 0) return [];
+      // Create assignments only if there are any
+      let results = [];
+      if (assignments.length > 0) {
+        const promises = assignments.map(assignment =>
+          apiRequest('/api/assignments', {
+            method: 'POST',
+            body: JSON.stringify(assignment),
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
 
-      const promises = assignments.map(assignment =>
-        apiRequest('/api/assignments', {
-          method: 'POST',
-          body: JSON.stringify(assignment),
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
-
-      const results = await Promise.all(promises);
+        results = await Promise.all(promises);
+      }
 
       // Update task with superintendent if selected
       if (selectedSuperintendentId !== null && currentTask) {
