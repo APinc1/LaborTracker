@@ -1645,18 +1645,7 @@ export default function BudgetManagement() {
                       
                       // Include if it's a parent OR if it's a standalone item (not a child and has no children)
                       if (isParent || (!isChild && !hasChildren)) {
-                        let costCode = item.costCode || 'No Code';
-                        
-                        // Combine Demo/Ex and Base/Grading into DEMO/EX for summary cards
-                        if (costCode === 'DEMO/EX' || costCode === 'BASE/GRADING') {
-                          costCode = 'DEMO/EX';
-                        }
-                        
-                        // Normalize GNRL LBR to GENERAL LABOR for summary cards
-                        if (costCode === 'GNRL LBR') {
-                          costCode = 'GENERAL LABOR';
-                        }
-                        
+                        const costCode = item.costCode || 'No Code';
                         if (!groups[costCode]) {
                           groups[costCode] = [];
                         }

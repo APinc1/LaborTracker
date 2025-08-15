@@ -364,7 +364,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     }
     
     // Track original cost codes for combined entries
-    if (costCode === 'Demo/ex + Base/grading') {
+    if (costCode === 'DEMO/EX') {
       acc[costCode].originalCostCodes.add(item.costCode || 'UNCATEGORIZED');
     }
     
@@ -427,9 +427,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     return mappings[costCode] || costCode;
   };
 
-  // Filter to show cost codes that have budget hours (this ensures all cost codes including Traffic Control appear)
+  // Filter to show cost codes that have budget hours OR actual hours (this ensures all cost codes including Traffic Control appear)
   const costCodeArray = Object.values(costCodeSummaries).filter((summary: any) => 
-    summary.totalBudgetHours > 0
+    summary.totalBudgetHours > 0 || summary.totalActualHours > 0
   );
 
   // Calculate actual location duration based on task dates
