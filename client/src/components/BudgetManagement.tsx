@@ -1661,8 +1661,17 @@ export default function BudgetManagement() {
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
                         
+                        // Debug cost code hours calculation
+                        console.log(`💳 Cost Code Card: ${costCode}`, {
+                          totalHours,
+                          totalValue,
+                          itemsCount: items.length,
+                          firstItem: items[0]
+                        });
+                        
                         // Skip cards where total hours is 0 or no budget value
                         if (totalHours === 0) {
+                          console.log(`⏭️ Skipping ${costCode} card - zero hours`);
                           return null;
                         }
                         
