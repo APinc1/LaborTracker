@@ -412,24 +412,39 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      if (assignments.length === 0) return [];
+      // If no assignments, just clear existing ones and continue to foreman logic
+      if (assignments.length === 0) {
+        console.log('No employees selected - clearing assignments only');
+      }
 
-      const promises = assignments.map(assignment =>
-        apiRequest('/api/assignments', {
-          method: 'POST',
-          body: JSON.stringify(assignment),
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
+      let results = [];
+      
+      // Only create assignments if there are any to create
+      if (assignments.length > 0) {
+        const promises = assignments.map(assignment =>
+          apiRequest('/api/assignments', {
+            method: 'POST',
+            body: JSON.stringify(assignment),
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
 
-      const results = await Promise.all(promises);
+        results = await Promise.all(promises);
+      }
 
       // Handle intelligent foreman assignment
       const assignedEmployees = selectedEmployeeIds.map(empIdStr => 
         (employees as any[]).find(emp => emp.id.toString() === empIdStr)
       ).filter(Boolean);
       
-      const selectedForemanIdFinal = await handleForemanAssignment(assignedEmployees);
+      let selectedForemanIdFinal;
+      if (selectedEmployeeIds.length > 0) {
+        // Only trigger foreman assignment logic if there are employees assigned
+        selectedForemanIdFinal = await handleForemanAssignment(assignedEmployees);
+      } else {
+        // If no employees assigned, clear the foreman
+        selectedForemanIdFinal = null;
+      }
 
       // Update task with superintendent and foreman
       const taskUpdates: any = {};
@@ -1061,9 +1076,10 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
+              disabled={createAssignmentsMutation.isPending}
             >
-              {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
+              {createAssignmentsMutation.isPending ? "Saving..." : 
+               selectedEmployeeIds.length === 0 ? "Clear All Assignments" : "Save Assignments"}
             </Button>
           </div>
           
