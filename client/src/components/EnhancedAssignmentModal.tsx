@@ -372,6 +372,7 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
+      // Force immediate cache invalidation and refetch
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -384,6 +385,9 @@ export default function EnhancedAssignmentModal({
       if (currentTask?.locationId) {
         queryClient.invalidateQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
       }
+      
+      // Force immediate refetch of assignments to ensure UI updates
+      queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();

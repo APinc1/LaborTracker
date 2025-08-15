@@ -226,7 +226,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
 
   const { data: assignments = [] } = useQuery({
     queryKey: ["/api/assignments"],
-    staleTime: 30000,
+    staleTime: 5000, // Reduced from 30s to 5s for faster assignment updates
   });
 
   const { data: employees = [] } = useQuery({
