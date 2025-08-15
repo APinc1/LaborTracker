@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,13 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+
+// Extend Window interface for foreman selection
+declare global {
+  interface Window {
+    foremanSelectionResolve?: (foremanId: string | null) => void;
+  }
+}
 
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
@@ -37,6 +45,9 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
+  const [selectedForemanId, setSelectedForemanId] = useState<string | null>(null);
+  const [showForemanDialog, setShowForemanDialog] = useState(false);
+  const [availableForemen, setAvailableForemen] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -54,6 +65,9 @@ export default function EnhancedAssignmentModal({
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
       setSelectedSuperintendentId(null);
+      setSelectedForemanId(null);
+      setShowForemanDialog(false);
+      setAvailableForemen([]);
     }
   }, [isOpen, taskId]);
 
@@ -300,6 +314,63 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
+  // Intelligent foreman assignment logic
+  const handleForemanAssignment = (assignedEmployees: any[]) => {
+    // Find all foremen among assigned employees
+    const assignedForemen = assignedEmployees.filter(emp => emp.isForeman);
+    
+    // Get all available foremen from employees (even if not assigned)
+    const allForemen = (employees as any[]).filter(emp => emp.isForeman);
+    
+    console.log('🔍 Foreman Assignment Logic:');
+    console.log('- Assigned foremen:', assignedForemen.length, assignedForemen.map(f => f.name));
+    console.log('- All available foremen:', allForemen.length, allForemen.map(f => f.name));
+    
+    if (assignedForemen.length === 1) {
+      // Case 1: Exactly 1 foreman assigned → Auto-assign as task foreman
+      const foreman = assignedForemen[0];
+      setSelectedForemanId(foreman.id.toString());
+      console.log('✅ Auto-assigning single foreman:', foreman.name);
+      return Promise.resolve(foreman.id.toString());
+      
+    } else if (assignedForemen.length > 1) {
+      // Case 2: Multiple foremen assigned → Show popup to choose
+      setAvailableForemen(assignedForemen);
+      setShowForemanDialog(true);
+      console.log('🤔 Multiple foremen assigned, showing selection dialog');
+      return new Promise((resolve) => {
+        // The dialog will handle the selection and call resolve
+        window.foremanSelectionResolve = resolve;
+      });
+      
+    } else if (assignedForemen.length === 0) {
+      // Case 3: No foremen assigned → Show popup to select from all foremen
+      if (allForemen.length > 0) {
+        setAvailableForemen(allForemen);
+        setShowForemanDialog(true);
+        console.log('🤷 No foremen assigned, showing selection from all foremen');
+        return new Promise((resolve) => {
+          // The dialog will handle the selection and call resolve
+          window.foremanSelectionResolve = resolve;
+        });
+      } else {
+        console.log('⚠️ No foremen available in system');
+        return Promise.resolve(null);
+      }
+    }
+  };
+
+  const handleForemanSelection = (foremanId: string | null) => {
+    setSelectedForemanId(foremanId);
+    setShowForemanDialog(false);
+    
+    // Resolve the promise from handleForemanAssignment
+    if (window.foremanSelectionResolve) {
+      window.foremanSelectionResolve(foremanId);
+      delete window.foremanSelectionResolve;
+    }
+  };
+
   // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
@@ -353,18 +424,43 @@ export default function EnhancedAssignmentModal({
 
       const results = await Promise.all(promises);
 
-      // Update task with superintendent if selected
+      // Handle intelligent foreman assignment
+      const assignedEmployees = selectedEmployeeIds.map(empIdStr => 
+        (employees as any[]).find(emp => emp.id.toString() === empIdStr)
+      ).filter(Boolean);
+      
+      const selectedForemanIdFinal = await handleForemanAssignment(assignedEmployees);
+
+      // Update task with superintendent and foreman
+      const taskUpdates: any = {};
+      let needsUpdate = false;
+
+      // Update superintendent if selected
       if (selectedSuperintendentId !== null && currentTask) {
         const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
-        
-        // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
-          await apiRequest(`/api/tasks/${taskId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
-            headers: { 'Content-Type': 'application/json' }
-          });
+          taskUpdates.superintendentId = superintendentIdToUpdate;
+          needsUpdate = true;
         }
+      }
+
+      // Update foreman if determined
+      if (selectedForemanIdFinal !== undefined) {
+        const foremanIdToUpdate = selectedForemanIdFinal ? parseInt(selectedForemanIdFinal) : null;
+        if (currentTask?.foremanId !== foremanIdToUpdate) {
+          taskUpdates.foremanId = foremanIdToUpdate;
+          needsUpdate = true;
+        }
+      }
+
+      // Apply updates if needed
+      if (needsUpdate && Object.keys(taskUpdates).length > 0) {
+        console.log('📝 Updating task with:', taskUpdates);
+        await apiRequest(`/api/tasks/${taskId}`, {
+          method: 'PUT',
+          body: JSON.stringify(taskUpdates),
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
       return results;
@@ -924,7 +1020,14 @@ export default function EnhancedAssignmentModal({
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <span className="font-medium text-sm">{employee.name}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-sm">{employee.name}</span>
+                                    {employee.isForeman && (
+                                      <Badge variant="default" className="text-xs bg-blue-600">
+                                        Foreman
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <div className="text-xs text-gray-600">
                                     {employee.teamMemberId} • {employee.employeeType}
                                   </div>
@@ -968,6 +1071,44 @@ export default function EnhancedAssignmentModal({
           <div className="h-32 mt-[59px] mb-[59px]"></div>
         </div>
       </DialogContent>
+
+      {/* Foreman Selection Dialog */}
+      <AlertDialog open={showForemanDialog} onOpenChange={setShowForemanDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Select Task Foreman</AlertDialogTitle>
+            <AlertDialogDescription>
+              {availableForemen.length > 0 && availableForemen[0] && (employees as any[]).some(emp => emp.id === availableForemen[0].id && selectedEmployeeIds.includes(emp.id.toString()))
+                ? "Multiple foremen are assigned to this task. Please select which foreman should be designated as the task foreman:"
+                : "Please select a foreman for this task from the available foremen:"
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-2 my-4">
+            {availableForemen.map((foreman: any) => (
+              <div key={foreman.id} className="flex items-center space-x-2">
+                <button
+                  className="flex-1 text-left p-3 border rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onClick={() => handleForemanSelection(foreman.id.toString())}
+                >
+                  <div className="font-medium">{foreman.name}</div>
+                  <div className="text-sm text-gray-600">{foreman.teamMemberId} • {foreman.primaryTrade || 'Foreman'}</div>
+                  {selectedEmployeeIds.includes(foreman.id.toString()) && (
+                    <div className="text-xs text-blue-600 mt-1">Assigned to this task</div>
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => handleForemanSelection(null)}>
+              No Foreman
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
