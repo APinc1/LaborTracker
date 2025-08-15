@@ -372,19 +372,15 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      console.log('🔄 Assignment save successful, invalidating caches...');
-      
-      // Clear all cached data to force fresh fetches
-      queryClient.clear();
-      
-      // Also do specific invalidations as backup
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      console.log('🔄 All caches cleared');
-      
-      toast({ title: "Success", description: "Assignments updated successfully" });
+      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
     onError: () => {
@@ -964,7 +960,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
