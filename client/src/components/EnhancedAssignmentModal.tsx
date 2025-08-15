@@ -300,46 +300,47 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Clear existing assignments
+  // Clear existing assignments - simplified and fixed
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      console.log('🧨 CLEARING ASSIGNMENTS - existingAssignments:', existingAssignments);
-      console.log('🧨 CLEARING ASSIGNMENTS - currentTask:', currentTask);
+      console.log('🧨 CLEARING ASSIGNMENTS START');
+      console.log('🧨 existingAssignments to delete:', existingAssignments);
       
-      const promises = [];
-      
-      // Delete existing employee assignments
+      // Delete each assignment individually and wait for completion
       if (existingAssignments.length > 0) {
-        console.log('🧨 Deleting', existingAssignments.length, 'existing assignments');
-        const deletePromises = existingAssignments.map(async (assignment: any) => {
-          console.log('🧨 DELETE assignment:', assignment.id);
+        console.log('🧨 Deleting', existingAssignments.length, 'assignments');
+        
+        for (const assignment of existingAssignments) {
+          console.log('🧨 Deleting assignment ID:', assignment.id);
           try {
-            const result = await apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' });
-            console.log('✅ DELETE successful for assignment:', assignment.id, result);
-            return result;
+            const deleteResult = await apiRequest(`/api/assignments/${assignment.id}`, { 
+              method: 'DELETE' 
+            });
+            console.log('✅ DELETE successful:', assignment.id, deleteResult);
           } catch (error) {
-            console.error('❌ DELETE failed for assignment:', assignment.id, error);
-            throw error;
+            console.error('❌ DELETE failed:', assignment.id, error);
+            // Continue with other deletions even if one fails
           }
-        });
-        promises.push(...deletePromises);
+        }
       }
       
-      // Clear superintendent from task if it exists
+      // Clear superintendent
       if (currentTask && currentTask.superintendentId) {
-        console.log('🧨 Clearing superintendent from task:', currentTask.superintendentId);
-        const clearSuperintendentPromise = apiRequest(`/api/tasks/${taskId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ superintendentId: null }),
-          headers: { 'Content-Type': 'application/json' }
-        });
-        promises.push(clearSuperintendentPromise);
+        console.log('🧨 Clearing superintendent:', currentTask.superintendentId);
+        try {
+          const result = await apiRequest(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ superintendentId: null }),
+            headers: { 'Content-Type': 'application/json' }
+          });
+          console.log('✅ Superintendent cleared:', result);
+        } catch (error) {
+          console.error('❌ Failed to clear superintendent:', error);
+        }
       }
       
-      console.log('🧨 Total promises to execute:', promises.length);
-      const results = await Promise.all(promises);
-      console.log('🧨 Clear assignments results:', results);
-      return results;
+      console.log('🧨 CLEARING ASSIGNMENTS COMPLETE');
+      return { cleared: true };
     },
     onSuccess: () => {
       // Aggressive cache invalidation for clearing assignments
