@@ -310,6 +310,8 @@ export default function EnhancedAssignmentModal({
       return Promise.all(deletePromises);
     },
     onSuccess: () => {
+      // Force immediate cache clearing for assignments
+      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
     }
@@ -341,7 +343,12 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      if (assignments.length === 0) return [];
+      if (assignments.length === 0) {
+        // When clearing all assignments, force cache refresh immediately
+        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/assignments"] }), 50);
+        return [];
+      }
 
       const promises = assignments.map(assignment =>
         apiRequest('/api/assignments', {
