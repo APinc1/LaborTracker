@@ -1645,7 +1645,18 @@ export default function BudgetManagement() {
                       
                       // Include if it's a parent OR if it's a standalone item (not a child and has no children)
                       if (isParent || (!isChild && !hasChildren)) {
-                        const costCode = item.costCode || 'No Code';
+                        let costCode = item.costCode || 'No Code';
+                        
+                        // Combine Demo/Ex and Base/Grading into DEMO/EX for summary cards
+                        if (costCode === 'DEMO/EX' || costCode === 'BASE/GRADING') {
+                          costCode = 'DEMO/EX';
+                        }
+                        
+                        // Normalize GNRL LBR to GENERAL LABOR for summary cards
+                        if (costCode === 'GNRL LBR') {
+                          costCode = 'GENERAL LABOR';
+                        }
+                        
                         if (!groups[costCode]) {
                           groups[costCode] = [];
                         }
@@ -1661,17 +1672,9 @@ export default function BudgetManagement() {
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
                         
-                        // Debug cost code hours calculation
-                        console.log(`💳 Cost Code Card: ${costCode}`, {
-                          totalHours,
-                          totalValue,
-                          itemsCount: items.length,
-                          firstItem: items[0]
-                        });
-                        
-                        // Skip cards where total hours is 0 or no budget value
-                        if (totalHours === 0) {
-                          console.log(`⏭️ Skipping ${costCode} card - zero hours`);
+                        // Skip cards where total hours is 0 AND total value is 0 (truly empty cost codes)
+                        // Allow cost codes with value but no hours (like AC, GNRL LBR that might have materials but no labor hours)
+                        if (totalHours === 0 && totalValue === 0) {
                           return null;
                         }
                         
