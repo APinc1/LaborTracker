@@ -206,6 +206,20 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       }
     }
     
+    // Add designated foreman if not assigned to task (Foreman Responsible)
+    if (task.foremanId) {
+      const designatedForeman = employees.find(emp => emp.id === task.foremanId);
+      const designatedForemanIsAssigned = assignedEmployees.some(emp => emp.id === task.foremanId);
+      
+      if (designatedForeman && !designatedForemanIsAssigned) {
+        personnelElements.push(
+          <div key={`foreman-responsible-${task.foremanId}`} className="text-xs font-bold">
+            {designatedForeman.name} (Foreman Responsible)
+          </div>
+        );
+      }
+    }
+    
     // Add assigned employees
     if (assignedEmployees.length > 0) {
       // Sort employees: foremen first, drivers last, others in between
