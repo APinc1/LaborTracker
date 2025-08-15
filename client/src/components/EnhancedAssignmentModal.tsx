@@ -341,39 +341,24 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      // Create assignments only if there are any
-      let results = [];
-      if (assignments.length > 0) {
-        const promises = assignments.map(assignment =>
-          apiRequest('/api/assignments', {
-            method: 'POST',
-            body: JSON.stringify(assignment),
-            headers: { 'Content-Type': 'application/json' }
-          })
-        );
+      if (assignments.length === 0) return [];
 
-        results = await Promise.all(promises);
-      }
+      const promises = assignments.map(assignment =>
+        apiRequest('/api/assignments', {
+          method: 'POST',
+          body: JSON.stringify(assignment),
+          headers: { 'Content-Type': 'application/json' }
+        })
+      );
 
-      // Update task with superintendent
-      if (currentTask) {
-        let superintendentIdToUpdate;
-        
-        if (selectedSuperintendentId !== null) {
-          // Superintendent was explicitly selected/changed
-          superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
-        } else if (selectedEmployeeIds.length === 0) {
-          // No employees selected AND no superintendent explicitly chosen = clear superintendent
-          superintendentIdToUpdate = null;
-          console.log('🔧 Clearing superintendent because no employees are selected');
-        } else {
-          // Keep existing superintendent if employees selected but superintendent not changed
-          superintendentIdToUpdate = currentTask.superintendentId;
-        }
+      const results = await Promise.all(promises);
+
+      // Update task with superintendent if selected
+      if (selectedSuperintendentId !== null && currentTask) {
+        const superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
         
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
-          console.log('🔧 Updating superintendent:', currentTask.superintendentId, '->', superintendentIdToUpdate);
           await apiRequest(`/api/tasks/${taskId}`, {
             method: 'PUT',
             body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
@@ -385,7 +370,6 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: () => {
-      // Invalidate all related queries to ensure immediate UI updates
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -393,16 +377,8 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       
-      // Force refetch location tasks to ensure immediate task card updates
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", "tasks"] });
-      
-      const message = selectedEmployeeIds.length === 0 
-        ? "Task assignments cleared successfully" 
-        : "Assignments and superintendent updated successfully";
-      toast({ title: "Success", description: message });
+      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
     onError: () => {
@@ -982,7 +958,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
