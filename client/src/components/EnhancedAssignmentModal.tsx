@@ -326,9 +326,15 @@ export default function EnhancedAssignmentModal({
     },
     onSuccess: () => {
       console.log('✅ Successfully cleared all assignments and superintendent');
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      // Nuclear cache invalidation - clear everything related to tasks and assignments
+      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks", "date-range"] });
+      queryClient.removeQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
+      
+      // Immediately trigger the parent component's assignment update
+      onAssignmentUpdate(Date.now());
     }
   });
 

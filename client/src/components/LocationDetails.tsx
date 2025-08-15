@@ -249,17 +249,18 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         return newVersion;
       });
       
-      // Nuclear option: Remove all assignment-related queries
+      // Nuclear option: Remove all assignment and task-related queries
       queryClient.removeQueries({ queryKey: ["/api/assignments"] });
       queryClient.removeQueries({ queryKey: ["/api/tasks"], predicate: (query) => {
-        return query.queryKey.includes("assignments");
+        return query.queryKey.includes("assignments") || query.queryKey.includes("date-range");
       }});
+      queryClient.removeQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
       
-      // Force immediate refetch
+      // Force immediate refetch with stagger
       setTimeout(() => {
         console.log(`🔄 CRITICAL: Force refetching assignments now`);
         refetchAssignments();
-      }, 50);
+      }, 100);
     }
   }, [assignmentUpdateKey, queryClient, refetchAssignments]);
 
