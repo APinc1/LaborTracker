@@ -369,19 +369,26 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: () => {
-      // Invalidate all relevant queries to ensure UI updates
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+    onSuccess: async () => {
+      // Force immediate refetch by removing from cache and invalidating
+      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       
-      // Force refetch of location tasks to update the task list view
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.locationId, "tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.id, "tasks"] });
+      // Invalidate and immediately refetch all relevant queries
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/locations"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.locationId, "tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.id, "tasks"] })
+      ]);
+      
+      // Force refetch assignments data specifically
+      await queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
       
       const message = selectedEmployeeIds.length === 0 
         ? "All assignments cleared successfully" 
