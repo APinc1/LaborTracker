@@ -319,23 +319,17 @@ export default function EnhancedAssignmentModal({
       }
       
       // ALWAYS clear the superintendent from the task record (this is the key fix)
-      await apiRequest(`/api/tasks/${taskId}`, {
+      const taskUpdateResult = await apiRequest(`/api/tasks/${taskId}`, {
         method: 'PUT',
         body: JSON.stringify({ superintendentId: null }),
         headers: { 'Content-Type': 'application/json' }
       });
-      console.log('🗑️ Cleared superintendent from task record');
+      console.log('🗑️ Cleared superintendent from task record:', taskUpdateResult);
       
       return { success: true };
     },
     onSuccess: () => {
       console.log('✅ Successfully cleared all assignments and superintendent');
-      // Nuclear cache invalidation - clear everything related to tasks and assignments
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks", "date-range"] });
-      queryClient.removeQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
       
       // Clear local UI state immediately
       setSelectedEmployeeIds([]);
@@ -343,6 +337,17 @@ export default function EnhancedAssignmentModal({
       setEmployeeHours({});
       setEditingEmployeeId(null);
       setSelectedSuperintendentId(null);
+      
+      // Immediate cache invalidation with forced refetch
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", "date-range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
+      
+      // Force immediate refetch of the specific task to update the card display
+      queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.refetchQueries({ queryKey: ["/api/locations", (currentTask as any)?.locationId, "tasks"] });
       
       // Trigger the parent component's assignment update with aggressive cache busting
       onAssignmentUpdate(Date.now() + Math.random());
