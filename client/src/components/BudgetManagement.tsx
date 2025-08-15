@@ -1647,28 +1647,35 @@ export default function BudgetManagement() {
                       if (isParent || (!isChild && !hasChildren)) {
                         let costCode = item.costCode || 'No Code';
                         
+                        // Debug: Log original cost code to see what we're working with
+                        console.log(`🔍 BudgetManagement: Original cost code "${costCode}" for item:`, item.description);
+                        
                         // Apply cost code normalization to match other components
-                        // Handle DEMO/EX variations
+                        // Handle DEMO/EX variations - combine DEMO/EX and BASE/GRADING into one category
                         if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || costCode === 'BASE/GRADING' || 
                             costCode === 'Base/Grading' || costCode === 'Demo/Ex + Base/Grading' || 
                             costCode === 'DEMO/EX + BASE/GRADING' || costCode === 'DEMO/EX+BASE/GRADING' || 
                             costCode === 'DEMO EX BASE GRADING') {
                           costCode = 'Demo/Ex + Base/Grading';
+                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
                         }
                         
                         // Handle GENERAL LABOR normalization
                         if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
                           costCode = 'GENERAL LABOR';
+                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
                         }
                         
                         // Handle AC/ASPHALT normalization
                         if (costCode === 'AC' || costCode === 'ASPHALT') {
                           costCode = 'AC';
+                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
                         }
                         
                         // Handle CONCRETE normalization (case insensitive)
                         if (costCode === 'CONCRETE' || costCode === 'Concrete') {
                           costCode = 'CONCRETE';
+                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
                         }
                         
                         if (!groups[costCode]) {
