@@ -1647,8 +1647,7 @@ export default function BudgetManagement() {
                       if (isParent || (!isChild && !hasChildren)) {
                         let costCode = item.costCode || 'No Code';
                         
-                        // Debug: Log original cost code to see what we're working with
-                        console.log(`🔍 BudgetManagement: Original cost code "${costCode}" for item:`, item.description);
+
                         
                         // Apply cost code normalization to match other components
                         // Handle DEMO/EX variations - combine DEMO/EX and BASE/GRADING into one category
@@ -1695,6 +1694,7 @@ export default function BudgetManagement() {
                         
                         // Skip cards where total hours is 0 or no budget value
                         if (totalHours === 0) {
+                          console.log(`⚠️ BudgetManagement: Skipping card for "${costCode}" - no budget hours (${totalHours})`);
                           return null;
                         }
                         
