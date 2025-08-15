@@ -448,6 +448,12 @@ export default function Dashboard() {
     const actualHours = getActualHours(task, date);
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
+    
+    // Debug specific task
+    if (task.id === 821 && taskAssignments.length > 0) {
+      console.log(`🚨 PROBLEM: Task 821 (Form) still has ${taskAssignments.length} assignments in UI:`, 
+        taskAssignments.map(a => ({ id: a.id, employeeId: a.employeeId, taskId: a.taskId })));
+    }
 
     return (
       <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
