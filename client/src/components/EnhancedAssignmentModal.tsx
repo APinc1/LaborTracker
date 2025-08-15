@@ -423,12 +423,22 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: (results) => {
-      // Immediate cache invalidation with forced refetch for instant UI update
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"], refetchType: 'active' });
-      queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+    onSuccess: async (results) => {
+      console.log('🎯 Assignment creation successful:', results);
       
-      // Also invalidate other related queries
+      // Force immediate refetch of all assignment-related data
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/tasks"] }),
+        queryClient.refetchQueries({ queryKey: ["/api/locations"] })
+      ]);
+      
+      console.log('🔄 Cache refetch completed');
+      
+      // Also invalidate to trigger background updates
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
