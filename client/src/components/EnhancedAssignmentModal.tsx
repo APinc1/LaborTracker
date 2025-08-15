@@ -357,20 +357,23 @@ export default function EnhancedAssignmentModal({
 
       // Update task with superintendent
       if (currentTask) {
-        let superintendentIdToUpdate = null;
+        let superintendentIdToUpdate;
         
         if (selectedSuperintendentId !== null) {
+          // Superintendent was explicitly selected/changed
           superintendentIdToUpdate = selectedSuperintendentId === "none" ? null : parseInt(selectedSuperintendentId);
-        } else if (assignments.length === 0) {
-          // If no employees are assigned and no superintendent was explicitly selected, clear superintendent
+        } else if (selectedEmployeeIds.length === 0) {
+          // No employees selected AND no superintendent explicitly chosen = clear superintendent
           superintendentIdToUpdate = null;
+          console.log('🔧 Clearing superintendent because no employees are selected');
         } else {
-          // Keep existing superintendent if not explicitly changed
+          // Keep existing superintendent if employees selected but superintendent not changed
           superintendentIdToUpdate = currentTask.superintendentId;
         }
         
         // Only update if superintendent has changed
         if (currentTask.superintendentId !== superintendentIdToUpdate) {
+          console.log('🔧 Updating superintendent:', currentTask.superintendentId, '->', superintendentIdToUpdate);
           await apiRequest(`/api/tasks/${taskId}`, {
             method: 'PUT',
             body: JSON.stringify({ superintendentId: superintendentIdToUpdate }),
