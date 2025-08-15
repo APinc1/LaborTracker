@@ -1150,7 +1150,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 Budget Summary
                 <Badge variant="secondary">{budgetItems.length} items</Badge>
               </CardTitle>
-              <Link href={`/budgets?locationId=${location.locationId}`}>
+              <Link href={`/budgets?locationId=${encodeURIComponent(location.locationId)}`}>
                 <Button variant="outline" size="sm">
                   View Full Budget
                 </Button>
@@ -1171,7 +1171,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 <p className="text-sm text-gray-400 mt-2">
                   Budget items will appear here once they are added
                 </p>
-                <Link href={`/budgets?locationId=${location.locationId}`}>
+                <Link href={`/budgets?locationId=${encodeURIComponent(location.locationId)}`}>
                   <Button className="mt-4">
                     Manage Budget
                   </Button>

@@ -76,11 +76,15 @@ export default function BudgetManagement() {
     const locationId = urlParams.get('locationId');
     console.log('🔍 BudgetManagement URL params:', {
       fullSearch: window.location.search,
-      locationId: locationId,
+      rawLocationId: locationId,
+      decodedLocationId: locationId ? decodeURIComponent(locationId) : null,
       allParams: Object.fromEntries(urlParams.entries())
     });
     if (locationId) {
-      console.log('✅ Setting selectedLocation to:', locationId);
+      // URLSearchParams.get() automatically decodes the parameter
+      // But we need to use the exact locationId format as it appears in the database
+      // Since the URL was properly encoded with encodeURIComponent, locationId should now be correct
+      console.log('✅ URL locationId (decoded):', locationId);
       setSelectedLocation(locationId);
       setIsDirectAccess(true);
     } else {
