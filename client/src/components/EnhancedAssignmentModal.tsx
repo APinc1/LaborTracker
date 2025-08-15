@@ -547,19 +547,25 @@ export default function EnhancedAssignmentModal({
       
       // Additional forced refresh wave to break cache stubbornness  
       setTimeout(() => {
-        console.log('🔄 Wave 4: FINAL FORCE REFRESH');
-        // Force invalidation of all assignment-related queries
-        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
-        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
+        console.log('🔄 Wave 4: NUCLEAR CACHE OVERRIDE');
         
-        // Immediately refetch with fresh data
+        // FORCE overwrite stale cache data directly
+        queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
+        queryClient.setQueryData(["/api/assignments"], (oldData: any) => {
+          if (!oldData) return [];
+          return oldData.filter((assignment: any) => assignment.taskId !== taskId);
+        });
+        
+        // Remove and immediately refetch to ensure fresh data
+        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+        
         setTimeout(() => {
+          console.log('🔄 Wave 4.5: Force refresh after cache override');
           queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
           queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
           queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
-          queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
-        }, 50);
+        }, 100);
       }, 600);
       
       const message = selectedEmployeeIds.length === 0 ? 

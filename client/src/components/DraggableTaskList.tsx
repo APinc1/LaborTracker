@@ -182,6 +182,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     // Debug logging to identify stale cache issue
     if (taskId === 779 || taskId === 742 || taskId === 772) {
       console.log(`🔍 Task ${taskId} assignments from cache:`, taskAssignments.length, taskAssignments.map(a => a.employeeId));
+      console.log(`🔍 Task ${taskId} assignment IDs:`, taskAssignments.map(a => a.assignmentId));
     }
     
     return taskAssignments.map(assignment => {
