@@ -1645,38 +1645,7 @@ export default function BudgetManagement() {
                       
                       // Include if it's a parent OR if it's a standalone item (not a child and has no children)
                       if (isParent || (!isChild && !hasChildren)) {
-                        let costCode = item.costCode || 'No Code';
-                        
-
-                        
-                        // Apply cost code normalization to match other components
-                        // Handle DEMO/EX variations - combine DEMO/EX and BASE/GRADING into one category
-                        if (costCode === 'DEMO/EX' || costCode === 'Demo/Ex' || costCode === 'BASE/GRADING' || 
-                            costCode === 'Base/Grading' || costCode === 'Demo/Ex + Base/Grading' || 
-                            costCode === 'DEMO/EX + BASE/GRADING' || costCode === 'DEMO/EX+BASE/GRADING' || 
-                            costCode === 'DEMO EX BASE GRADING') {
-                          costCode = 'Demo/Ex + Base/Grading';
-                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
-                        }
-                        
-                        // Handle GENERAL LABOR normalization
-                        if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
-                          costCode = 'GENERAL LABOR';
-                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
-                        }
-                        
-                        // Handle AC/ASPHALT normalization
-                        if (costCode === 'AC' || costCode === 'ASPHALT') {
-                          costCode = 'AC';
-                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
-                        }
-                        
-                        // Handle CONCRETE normalization (case insensitive)
-                        if (costCode === 'CONCRETE' || costCode === 'Concrete') {
-                          costCode = 'CONCRETE';
-                          console.log(`✅ BudgetManagement: Normalized to "${costCode}"`);
-                        }
-                        
+                        const costCode = item.costCode || 'No Code';
                         if (!groups[costCode]) {
                           groups[costCode] = [];
                         }
@@ -1694,7 +1663,6 @@ export default function BudgetManagement() {
                         
                         // Skip cards where total hours is 0 or no budget value
                         if (totalHours === 0) {
-                          console.log(`⚠️ BudgetManagement: Skipping card for "${costCode}" - no budget hours (${totalHours})`);
                           return null;
                         }
                         

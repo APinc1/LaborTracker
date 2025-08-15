@@ -316,26 +316,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       taskCostCode = 'GENERAL LABOR';
     }
     
-    // Apply AC/ASPHALT normalization
-    if (taskCostCode === 'AC' || taskCostCode === 'ASPHALT') {
-      taskCostCode = 'AC';
-    }
-    
-    // Apply CONCRETE normalization (case insensitive)
-    if (taskCostCode === 'CONCRETE' || taskCostCode === 'Concrete') {
-      taskCostCode = 'CONCRETE';
-    }
-    
-    // Apply AC/ASPHALT normalization
-    if (taskCostCode === 'AC' || taskCostCode === 'ASPHALT') {
-      taskCostCode = 'AC';
-    }
-    
-    // Apply CONCRETE normalization (handle case variations)
-    if (taskCostCode === 'CONCRETE' || taskCostCode === 'Concrete') {
-      taskCostCode = 'CONCRETE';
-    }
-    
     // Find assignments for this task and sum actual hours
     const taskAssignments = (assignments as any[]).filter((assignment: any) => 
       assignment.taskId === task.id
@@ -368,26 +348,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Apply GENERAL LABOR normalization
     if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
       costCode = 'GENERAL LABOR';
-    }
-    
-    // Apply AC/ASPHALT normalization
-    if (costCode === 'AC' || costCode === 'ASPHALT') {
-      costCode = 'AC';
-    }
-    
-    // Apply CONCRETE normalization
-    if (costCode === 'CONCRETE' || costCode === 'Concrete') {
-      costCode = 'CONCRETE';
-    }
-    
-    // Apply AC/ASPHALT normalization
-    if (costCode === 'AC' || costCode === 'ASPHALT') {
-      costCode = 'AC';
-    }
-    
-    // Apply CONCRETE normalization
-    if (costCode === 'CONCRETE' || costCode === 'Concrete') {
-      costCode = 'CONCRETE';
     }
     
     if (!acc[costCode]) {
@@ -457,10 +417,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const getCostCodeDisplayName = (costCode: string) => {
     const mappings: { [key: string]: string } = {
       'AC': 'Asphalt',
-      'GENERAL LABOR': 'General Labor',
+      'GNRL LBR': 'General Labor',
       'TRAFFIC CONTROL': 'Traffic Control',
       'CONCRETE': 'Concrete',
-      'DEMO/EX': 'Demo/Ex',
       'SUB': 'Subcontractor',
       'LANDSCAPING': 'Landscaping',
       'UTILITY ADJ': 'Utility Adjustment',

@@ -465,16 +465,6 @@ export default function DraggableTaskList({
         itemCostCode = 'GENERAL LABOR';
       }
       
-      // Handle AC/ASPHALT normalization
-      if (itemCostCode === 'AC' || itemCostCode === 'ASPHALT') {
-        itemCostCode = 'AC';
-      }
-      
-      // Handle CONCRETE normalization (case insensitive)
-      if (itemCostCode === 'CONCRETE' || itemCostCode === 'Concrete') {
-        itemCostCode = 'CONCRETE';
-      }
-      
       // Handle current task cost code in the same way
       let taskCostCode = costCode;
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
@@ -486,16 +476,6 @@ export default function DraggableTaskList({
       // Handle General Labor normalization for task cost code
       if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR' || taskCostCode === 'GENERAL') {
         taskCostCode = 'GENERAL LABOR';
-      }
-      
-      // Handle AC/ASPHALT normalization for task cost code
-      if (taskCostCode === 'AC' || taskCostCode === 'ASPHALT') {
-        taskCostCode = 'AC';
-      }
-      
-      // Handle CONCRETE normalization for task cost code (case insensitive)
-      if (taskCostCode === 'CONCRETE' || taskCostCode === 'Concrete') {
-        taskCostCode = 'CONCRETE';
       }
       
       if (itemCostCode === taskCostCode) {
@@ -546,25 +526,6 @@ export default function DraggableTaskList({
       // Handle General Labor normalization for task cost code
       if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL LBR' || taskCostCode === 'GENERAL') {
         taskCostCode = 'GENERAL LABOR';
-      }
-      
-      // Handle AC/ASPHALT normalization for task cost code
-      if (taskCostCode === 'AC' || taskCostCode === 'ASPHALT') {
-        taskCostCode = 'AC';
-      }
-      
-      // Handle CONCRETE normalization for task cost code (case insensitive)
-      if (taskCostCode === 'CONCRETE' || taskCostCode === 'Concrete') {
-        taskCostCode = 'CONCRETE';
-      }
-      
-      // Handle tCostCode normalization as well
-      if (tCostCode === 'AC' || tCostCode === 'ASPHALT') {
-        tCostCode = 'AC';
-      }
-      
-      if (tCostCode === 'CONCRETE' || tCostCode === 'Concrete') {
-        tCostCode = 'CONCRETE';
       }
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
