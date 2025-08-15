@@ -303,18 +303,24 @@ export default function EnhancedAssignmentModal({
   // Clear existing assignments
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
+      console.log('🧨 CLEARING ASSIGNMENTS - existingAssignments:', existingAssignments);
+      console.log('🧨 CLEARING ASSIGNMENTS - currentTask:', currentTask);
+      
       const promises = [];
       
       // Delete existing employee assignments
       if (existingAssignments.length > 0) {
-        const deletePromises = existingAssignments.map((assignment: any) =>
-          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
-        );
+        console.log('🧨 Deleting', existingAssignments.length, 'existing assignments');
+        const deletePromises = existingAssignments.map((assignment: any) => {
+          console.log('🧨 DELETE assignment:', assignment.id);
+          return apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' });
+        });
         promises.push(...deletePromises);
       }
       
       // Clear superintendent from task if it exists
       if (currentTask && currentTask.superintendentId) {
+        console.log('🧨 Clearing superintendent from task:', currentTask.superintendentId);
         const clearSuperintendentPromise = apiRequest(`/api/tasks/${taskId}`, {
           method: 'PUT',
           body: JSON.stringify({ superintendentId: null }),
@@ -323,7 +329,10 @@ export default function EnhancedAssignmentModal({
         promises.push(clearSuperintendentPromise);
       }
       
-      return Promise.all(promises);
+      console.log('🧨 Total promises to execute:', promises.length);
+      const results = await Promise.all(promises);
+      console.log('🧨 Clear assignments results:', results);
+      return results;
     },
     onSuccess: () => {
       // Aggressive cache invalidation for clearing assignments
