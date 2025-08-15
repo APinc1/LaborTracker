@@ -69,7 +69,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
-  const [assignmentUpdateKey, setAssignmentUpdateKey] = useState(0); // Force re-render key
+  const [assignmentUpdateKey, setAssignmentUpdateKey] = useState(0);
+  const [assignmentCacheVersion, setAssignmentCacheVersion] = useState(0); // Force re-render key
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -241,14 +242,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   useEffect(() => {
     if (assignmentUpdateKey > 0) {
       console.log(`🔄 Triggering assignment refetch due to key change: ${assignmentUpdateKey}`);
-      // Add small delay to ensure deletions are processed
+      // Increment cache version for component key
+      setAssignmentCacheVersion(prev => prev + 1);
+      // Force complete cache refresh
+      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      // Then refetch fresh data
       setTimeout(() => {
-        // Force cache invalidation before refetch
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
         refetchAssignments();
-      }, 50);
+      }, 10);
     }
-  }, [assignmentUpdateKey, refetchAssignments, queryClient]);
+  }, [assignmentUpdateKey, queryClient, refetchAssignments]);
 
   const { data: employees = [] } = useQuery({
     queryKey: ["/api/employees"],
@@ -1353,7 +1357,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
             ) : (
               <DraggableTaskList
-                key={`task-list-${assignmentUpdateKey}-${assignments.length}`} // Force re-render on assignment changes
+                key={`task-list-${assignmentCacheVersion}-${assignments.length}`} // Force re-render on assignment changes
                 tasks={tasks || []}
                 locationId={locationId}
                 onEditTask={handleEditTask}

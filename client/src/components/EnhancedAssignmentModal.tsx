@@ -374,7 +374,7 @@ export default function EnhancedAssignmentModal({
       return results;
     },
     onSuccess: async () => {
-      // Complete cache cleanup - remove all assignment-related queries
+      // Complete cache cleanup - remove all assignment-related queries immediately
       queryClient.removeQueries({ queryKey: ["/api/assignments"] });
       queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.removeQueries({ queryKey: ["/api/assignments", "date"] });
@@ -389,12 +389,6 @@ export default function EnhancedAssignmentModal({
       if (currentTask?.locationId) {
         queryClient.invalidateQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
       }
-      
-      // Small delay then force fresh fetch to prevent race conditions
-      setTimeout(() => {
-        // Force multiple assignment queries to refresh
-        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-      }, 150); // Increased delay for deletions to complete
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       // Call the callback to trigger immediate UI update

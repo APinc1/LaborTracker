@@ -179,16 +179,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-    // Debug logging to track assignment data (can be removed after testing)
-    if (taskId === 742) {
-      console.log(`🔍 Task ${taskId} assignment lookup:`, {
-        taskId,
-        totalAssignments: assignments.length,
-        matchingAssignments: taskAssignments.length,
-        assignmentIds: taskAssignments.map(a => a.id),
-        assignmentsRef: assignments === assignments
-      });
-    }
+    // Assignment lookup complete
     
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
