@@ -241,16 +241,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   // Force refetch when assignmentUpdateKey changes
   useEffect(() => {
     if (assignmentUpdateKey > 0) {
-      console.log(`🔄 Triggering assignment refetch due to key change: ${assignmentUpdateKey}`);
-      // Increment cache version for component key
-      setAssignmentCacheVersion(prev => prev + 1);
-      // Force complete cache refresh
+      console.log(`🔄 CRITICAL: Triggering assignment refresh for key change: ${assignmentUpdateKey}`);
+      // Force complete cache refresh and component re-render
+      setAssignmentCacheVersion(prev => {
+        const newVersion = prev + 1;
+        console.log(`🔄 CRITICAL: Updating cache version from ${prev} to ${newVersion}`);
+        return newVersion;
+      });
+      
+      // Nuclear option: Remove all assignment-related queries
       queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      // Then refetch fresh data
+      queryClient.removeQueries({ queryKey: ["/api/tasks"], predicate: (query) => {
+        return query.queryKey.includes("assignments");
+      }});
+      
+      // Force immediate refetch
       setTimeout(() => {
+        console.log(`🔄 CRITICAL: Force refetching assignments now`);
         refetchAssignments();
-      }, 10);
+      }, 50);
     }
   }, [assignmentUpdateKey, queryClient, refetchAssignments]);
 

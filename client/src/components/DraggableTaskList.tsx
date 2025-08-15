@@ -179,8 +179,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
       assignment.taskId === taskId
     );
     
-    // Assignment lookup complete
-    
+
     return taskAssignments.map(assignment => {
       const employee = employees.find(emp => emp.id === assignment.employeeId);
       if (!employee) return null;
@@ -196,6 +195,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
   const formatAssignedEmployees = (assignedEmployees: any[]) => {
     const personnelElements = [];
     
+
     // Add superintendent first if exists
     if (task.superintendentId) {
       const superintendent = users.find(u => u.id === task.superintendentId);
@@ -254,6 +254,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
   };
 
   const assignedEmployees = getAssignedEmployees(task);
+
   const assignedEmployeesDisplay = formatAssignedEmployees(assignedEmployees);
   
   // Calculate total scheduled hours from assignments

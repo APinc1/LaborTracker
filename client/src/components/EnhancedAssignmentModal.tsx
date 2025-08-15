@@ -302,18 +302,33 @@ export default function EnhancedAssignmentModal({
     crew.name.toLowerCase().includes(crewSearchTerm.toLowerCase())
   );
 
-  // Clear existing assignments
+  // Clear existing assignments and superintendent
   const clearExistingAssignmentsMutation = useMutation({
     mutationFn: async () => {
-      if ((existingAssignments as any[]).length === 0) return;
-      const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
-        apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
-      );
-      return Promise.all(deletePromises);
+      console.log('🧹 CLEARING ALL ASSIGNMENTS AND SUPERINTENDENT for task:', taskId);
+      
+      // Delete all assignments
+      if ((existingAssignments as any[]).length > 0) {
+        const deletePromises = (existingAssignments as any[]).map((assignment: any) =>
+          apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' })
+        );
+        await Promise.all(deletePromises);
+        console.log('🗑️ Deleted all assignments');
+      }
+      
+      // Clear the superintendent from the task record as well
+      await apiRequest(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ superintendentId: null }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      console.log('🗑️ Cleared superintendent from task record');
     },
     onSuccess: () => {
+      console.log('✅ Successfully cleared all assignments and superintendent');
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
     }
   });
 
@@ -748,14 +763,33 @@ export default function EnhancedAssignmentModal({
                       variant="ghost"
                       size="sm"
                       className="h-6 px-2 text-xs"
+                      disabled={clearExistingAssignmentsMutation.isPending}
                       onClick={() => {
-                        setSelectedEmployeeIds([]);
-                        setSelectedCrews([]);
-                        setEmployeeHours({});
-                        setEditingEmployeeId(null);
+                        if ((existingAssignments as any[]).length > 0) {
+                          // If there are existing assignments, clear them from database AND UI state
+                          clearExistingAssignmentsMutation.mutate(undefined, {
+                            onSuccess: () => {
+                              // Clear local UI state after successful database clear
+                              setSelectedEmployeeIds([]);
+                              setSelectedCrews([]);
+                              setEmployeeHours({});
+                              setEditingEmployeeId(null);
+                              setSelectedSuperintendentId(null);
+                              // Trigger cache refresh
+                              onAssignmentUpdate(Date.now());
+                            }
+                          });
+                        } else {
+                          // No existing assignments, just clear local state
+                          setSelectedEmployeeIds([]);
+                          setSelectedCrews([]);
+                          setEmployeeHours({});
+                          setEditingEmployeeId(null);
+                          setSelectedSuperintendentId(null);
+                        }
                       }}
                     >
-                      Clear All
+                      {clearExistingAssignmentsMutation.isPending ? "Clearing..." : "Clear All"}
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
