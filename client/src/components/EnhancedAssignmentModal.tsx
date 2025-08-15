@@ -310,8 +310,6 @@ export default function EnhancedAssignmentModal({
       return Promise.all(deletePromises);
     },
     onSuccess: () => {
-      // Force immediate cache clearing for assignments
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
     }
@@ -343,12 +341,7 @@ export default function EnhancedAssignmentModal({
       console.log('Creating assignments for employees:', selectedEmployeeIds);
       console.log('Assignment data:', assignments);
 
-      if (assignments.length === 0) {
-        // When clearing all assignments, force cache refresh immediately
-        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-        setTimeout(() => queryClient.refetchQueries({ queryKey: ["/api/assignments"] }), 50);
-        return [];
-      }
+      if (assignments.length === 0) return [];
 
       const promises = assignments.map(assignment =>
         apiRequest('/api/assignments', {
@@ -376,31 +369,16 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: async () => {
-      // Force immediate refetch by removing from cache and invalidating
-      queryClient.removeQueries({ queryKey: ["/api/assignments"] });
-      queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      // Invalidate and immediately refetch all relevant queries
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/locations"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.locationId, "tasks"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation?.id, "tasks"] })
-      ]);
-      
-      // Force refetch assignments data specifically
-      await queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
-      
-      const message = selectedEmployeeIds.length === 0 
-        ? "All assignments cleared successfully" 
-        : "Assignments updated successfully";
-      toast({ title: "Success", description: message });
+      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
     onError: () => {
@@ -980,7 +958,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending}
+              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
