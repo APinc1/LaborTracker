@@ -378,7 +378,10 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      const message = selectedEmployeeIds.length === 0 
+        ? "All assignments cleared successfully" 
+        : "Assignments updated successfully";
+      toast({ title: "Success", description: message });
       onClose();
     },
     onError: () => {
@@ -958,7 +961,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
+              disabled={createAssignmentsMutation.isPending}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
