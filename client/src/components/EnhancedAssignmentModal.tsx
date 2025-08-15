@@ -380,6 +380,11 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
+      // Force refetch of all location-specific tasks to update task cards
+      if (currentTask?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
+      }
+      
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       onClose();
     },
