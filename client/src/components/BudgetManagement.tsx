@@ -997,7 +997,10 @@ export default function BudgetManagement() {
         <div className="mb-4">
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
             <button
-              onClick={() => setLocation("/")}
+              onClick={() => {
+                console.log('🏠 Breadcrumb: Navigating to Home');
+                setLocation("/");
+              }}
               className="p-1 h-auto hover:bg-gray-100 rounded flex items-center"
             >
               <Home className="w-4 h-4" />
@@ -1007,7 +1010,10 @@ export default function BudgetManagement() {
             {currentProject ? (
               <>
                 <button
-                  onClick={() => setLocation(`/projects/${currentProject.id}`)}
+                  onClick={() => {
+                    console.log(`🏗️ Breadcrumb: Navigating to Project ${currentProject.id}`);
+                    setLocation(`/projects/${currentProject.id}`);
+                  }}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
@@ -1028,7 +1034,10 @@ export default function BudgetManagement() {
             {currentLocation ? (
               <>
                 <button
-                  onClick={() => setLocation(`/locations/${currentLocation.locationId}`)}
+                  onClick={() => {
+                    console.log(`📍 Breadcrumb: Navigating to Location ${currentLocation.locationId}`);
+                    setLocation(`/locations/${currentLocation.locationId}`);
+                  }}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <MapPin className="w-4 h-4 mr-1" />
