@@ -347,17 +347,18 @@ export default function EnhancedAssignmentModal({
       console.log('Selected superintendent:', superintendentIdStr);
       console.log('Creating assignments for employees (excluding superintendent):', assignments.map(a => a.employeeId));
 
-      if (assignments.length === 0) return [];
-
-      const promises = assignments.map(assignment =>
-        apiRequest('/api/assignments', {
-          method: 'POST',
-          body: JSON.stringify(assignment),
-          headers: { 'Content-Type': 'application/json' }
-        })
-      );
-
-      const results = await Promise.all(promises);
+      // Create assignments for employees (if any)
+      let results = [];
+      if (assignments.length > 0) {
+        const promises = assignments.map(assignment =>
+          apiRequest('/api/assignments', {
+            method: 'POST',
+            body: JSON.stringify(assignment),
+            headers: { 'Content-Type': 'application/json' }
+          })
+        );
+        results = await Promise.all(promises);
+      }
 
       // Update task with superintendent if selected
       if (selectedSuperintendentId !== null && currentTask) {
@@ -964,7 +965,7 @@ export default function EnhancedAssignmentModal({
             </Button>
             <Button 
               onClick={() => createAssignmentsMutation.mutate()}
-              disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
+              disabled={createAssignmentsMutation.isPending || (selectedEmployeeIds.length === 0 && (selectedSuperintendentId === null || selectedSuperintendentId === "none"))}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
             </Button>
