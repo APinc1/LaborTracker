@@ -489,7 +489,15 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      // Additional cache invalidation for location tasks to show cleared assignments
+      if (currentLocation?.locationId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+      }
+      
+      const message = selectedEmployeeIds.length === 0 ? 
+        "All assignments cleared successfully" : 
+        "Assignments and superintendent updated successfully";
+      toast({ title: "Success", description: message });
       onClose();
     },
     onError: () => {

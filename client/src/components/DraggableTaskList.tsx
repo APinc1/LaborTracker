@@ -221,10 +221,13 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         const hours = parseFloat(employee.assignedHours);
         const isDriver = employee.primaryTrade === 'Driver';
         const isForeman = employee.isForeman;
+        const isDesignatedForeman = task.foremanId && employee.id === task.foremanId;
         const showHours = hours !== 8;
         
         let displayText = employee.name;
-        if (isForeman) {
+        if (isDesignatedForeman) {
+          displayText += ' (Foreman Responsible)';
+        } else if (isForeman) {
           displayText += ' (Foreman)';
         } else if (isDriver) {
           displayText += ' (Driver)';
@@ -236,7 +239,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         return (
           <div 
             key={employee.id} 
-            className={`text-xs ${isForeman ? 'font-bold' : ''} ${
+            className={`text-xs ${isDesignatedForeman ? 'font-bold' : ''} ${
               personnelElements.length === 0 && index === 0 ? '' : 'mt-1'
             }`}
           >
