@@ -447,6 +447,7 @@ export default function EnhancedAssignmentModal({
         const newAssignments = currentSelectedEmployeeIds
           .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
           .map((employeeIdStr, index) => {
+            const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
             return {
               id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
               assignmentId: `${taskId}_${employeeIdStr}`,
@@ -454,14 +455,46 @@ export default function EnhancedAssignmentModal({
               employeeId: parseInt(employeeIdStr),
               assignedHours: 8,
               actualHours: null,
-              assignmentDate: new Date().toISOString().split('T')[0],
-              notes: null
+              assignmentDate: taskDate, // Use the actual task date
+              notes: null,
+              // Add employee info for immediate display
+              employee: employee ? {
+                id: employee.id,
+                name: employee.name,
+                teamMemberId: employee.teamMemberId
+              } : null
             };
           });
         
         return [...filteredData, ...newAssignments];
       });
 
+      // Also update the specific task assignments cache
+      queryClient.setQueryData(["/api/tasks", taskId, "assignments"], (oldData: any[]) => {
+        const superintendentIdStr = currentSelectedSuperintendentId === "none" ? null : currentSelectedSuperintendentId;
+        return currentSelectedEmployeeIds
+          .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
+          .map((employeeIdStr, index) => {
+            const employee = (employees as any[])?.find(emp => emp.id.toString() === employeeIdStr);
+            return {
+              id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
+              assignmentId: `${taskId}_${employeeIdStr}`,
+              taskId: taskId,
+              employeeId: parseInt(employeeIdStr),
+              assignedHours: 8,
+              actualHours: null,
+              assignmentDate: taskDate,
+              notes: null,
+              employee: employee ? {
+                id: employee.id,
+                name: employee.name,
+                teamMemberId: employee.teamMemberId
+              } : null
+            };
+          });
+      });
+
+      // Invalidate queries to fetch fresh data after the optimistic update
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
