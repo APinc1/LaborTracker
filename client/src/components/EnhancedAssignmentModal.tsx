@@ -533,7 +533,34 @@ export default function EnhancedAssignmentModal({
       setTimeout(() => {
         console.log('🔄 Wave 3: Final consistency check');
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+        
+        // Force component re-render by triggering location data refresh
+        if (currentLocation?.locationId) {
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId] });
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+        }
+        if (currentLocation?.id) {
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id] });
+          queryClient.refetchQueries({ queryKey: ["/api/locations", currentLocation.id, "tasks"] });
+        }
       }, 400);
+      
+      // Additional forced refresh wave to break cache stubbornness  
+      setTimeout(() => {
+        console.log('🔄 Wave 4: FINAL FORCE REFRESH');
+        // Force invalidation of all assignment-related queries
+        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId] });
+        
+        // Immediately refetch with fresh data
+        setTimeout(() => {
+          queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+          queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+          queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+          queryClient.refetchQueries({ queryKey: ["/api/tasks"] });
+        }, 50);
+      }, 600);
       
       const message = selectedEmployeeIds.length === 0 ? 
         "All assignments cleared successfully" : 
