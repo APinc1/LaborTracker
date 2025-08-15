@@ -564,18 +564,27 @@ export default function EnhancedAssignmentModal({
           setTimeout(() => {
             console.log('🔄 Wave 4.5: CLEARING - Rebuild cache without cleared assignments');
             fetch(`/api/assignments`).then(response => response.json()).then(freshAssignments => {
+              console.log(`🔍 Fresh assignments from server: ${freshAssignments.length} total`);
+              console.log(`🔍 Assignments for task ${taskId}:`, freshAssignments.filter((a: any) => a.taskId === taskId).length);
+              
               const filteredAssignments = freshAssignments.filter((a: any) => a.taskId !== taskId);
               console.log('💾 Setting fresh assignments cache:', filteredAssignments.length, 'assignments');
-              queryClient.setQueryData(["/api/assignments"], filteredAssignments);
+              
+              // Set both global and task-specific cache
+              queryClient.setQueryData(["/api/assignments"], freshAssignments); // Use fresh data, not filtered
               queryClient.setQueryData(["/api/tasks", taskId, "assignments"], []);
               
-              // Force component re-render
-              queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-              if (currentLocation?.locationId) {
-                queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
-              }
+              // Force complete component refresh with stronger invalidation
+              setTimeout(() => {
+                console.log('🔄 Final component force refresh');
+                queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+                if (currentLocation?.locationId) {
+                  queryClient.invalidateQueries({ queryKey: ["/api/locations", currentLocation.locationId, "tasks"] });
+                }
+              }, 100);
             });
-          }, 200);
+          }, 400); // Longer delay to ensure backend deletion completes
         }, 600);
       } else {
         // ADDING OPERATION: Use gentle cache invalidation only
