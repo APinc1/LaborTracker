@@ -224,9 +224,19 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         const isDesignatedForeman = task.foremanId && employee.id === task.foremanId;
         const showHours = hours !== 8;
         
+        // Check if the designated foreman is assigned to the task
+        const assignedForemenCount = sortedEmployees.filter(emp => emp.isForeman).length;
+        const designatedForemanIsAssigned = task.foremanId && sortedEmployees.some(emp => emp.id === task.foremanId);
+        
         let displayText = employee.name;
         if (isDesignatedForeman) {
-          displayText += ' (Foreman Responsible)';
+          if (designatedForemanIsAssigned) {
+            // If designated foreman is also assigned, just show "Foreman"
+            displayText += ' (Foreman)';
+          } else {
+            // If designated foreman is not assigned (selected from popup), show "Foreman Responsible"
+            displayText += ' (Foreman Responsible)';
+          }
         } else if (isForeman) {
           displayText += ' (Foreman)';
         } else if (isDriver) {
