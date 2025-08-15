@@ -418,7 +418,11 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: () => {
+    onSuccess: (results) => {
+      console.log('🎯 Assignment creation success - results:', results);
+      console.log('🎯 selectedEmployeeIds at success:', selectedEmployeeIds);
+      console.log('🎯 selectedSuperintendentId at success:', selectedSuperintendentId);
+      
       // Optimistic cache update for assignment creation - immediately add new assignments
       queryClient.setQueryData(["/api/assignments"], (oldData: any[]) => {
         if (!oldData) return [];
@@ -426,11 +430,14 @@ export default function EnhancedAssignmentModal({
         // Remove any existing assignments for this task first
         const filteredData = oldData.filter(assignment => assignment.taskId !== taskId);
         
-        // Add the new assignments based on selected employees
+        console.log('🎯 Creating optimistic assignments for employees:', selectedEmployeeIds);
+        
+        // Add the new assignments based on selected employees (excluding superintendent)
+        const superintendentIdStr = selectedSuperintendentId === "none" ? null : selectedSuperintendentId;
         const newAssignments = selectedEmployeeIds
-          .filter(employeeIdStr => employeeIdStr !== (selectedSuperintendentId === "none" ? null : selectedSuperintendentId))
+          .filter(employeeIdStr => employeeIdStr !== superintendentIdStr)
           .map((employeeIdStr, index) => {
-            return {
+            const optimisticAssignment = {
               id: `temp_${taskId}_${employeeIdStr}_${Date.now() + index}`,
               assignmentId: `${taskId}_${employeeIdStr}`,
               taskId: taskId,
@@ -440,9 +447,15 @@ export default function EnhancedAssignmentModal({
               assignmentDate: new Date().toISOString().split('T')[0],
               notes: null
             };
+            console.log('🎯 Created optimistic assignment:', optimisticAssignment);
+            return optimisticAssignment;
           });
         
-        return [...filteredData, ...newAssignments];
+        console.log('🎯 Total new assignments to add:', newAssignments.length);
+        const updatedData = [...filteredData, ...newAssignments];
+        console.log('🎯 Updated cache data length:', updatedData.length);
+        
+        return updatedData;
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
