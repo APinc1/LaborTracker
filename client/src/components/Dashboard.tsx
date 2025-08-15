@@ -246,9 +246,18 @@ export default function Dashboard() {
   };
 
   const getTaskAssignments = (taskId: number, date: string) => {
-    return (assignments as any[]).filter((assignment: any) => 
+    const filtered = (assignments as any[]).filter((assignment: any) => 
       assignment.taskId === taskId && assignment.assignmentDate === date
     );
+    // Debug logging for assignment filtering
+    if (taskId === 821) { // Form task
+      console.log(`🔍 DEBUG getTaskAssignments(${taskId}, ${date}):`, {
+        totalAssignments: assignments.length,
+        filteredCount: filtered.length,
+        filtered: filtered.map(a => ({ id: a.id, taskId: a.taskId, employeeId: a.employeeId, date: a.assignmentDate }))
+      });
+    }
+    return filtered;
   };
 
   const getEmployeeInfo = (employeeId: number) => {

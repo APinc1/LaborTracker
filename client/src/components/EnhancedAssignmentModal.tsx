@@ -326,6 +326,7 @@ export default function EnhancedAssignmentModal({
       return Promise.all(promises);
     },
     onSuccess: () => {
+      // Aggressive cache invalidation for clearing assignments
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
@@ -333,6 +334,12 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      
+      // Force complete cache removal and refetch
+      setTimeout(() => {
+        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+      }, 50);
     }
   });
 
@@ -406,10 +413,18 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
-      // Force a refresh of the current task data
+      // Force a complete refresh of all related data
       setTimeout(() => {
+        // Force refetch of all assignment-related queries
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
         queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
         queryClient.refetchQueries({ queryKey: ["/api/tasks/date-range"] });
+        
+        // Clear all assignment-related cache entries
+        queryClient.removeQueries({ queryKey: ["/api/assignments"] });
+        queryClient.removeQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        
+        // Refetch fresh data
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
       }, 100);
       
