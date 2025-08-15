@@ -311,9 +311,16 @@ export default function EnhancedAssignmentModal({
       // Delete existing employee assignments
       if (existingAssignments.length > 0) {
         console.log('🧨 Deleting', existingAssignments.length, 'existing assignments');
-        const deletePromises = existingAssignments.map((assignment: any) => {
+        const deletePromises = existingAssignments.map(async (assignment: any) => {
           console.log('🧨 DELETE assignment:', assignment.id);
-          return apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' });
+          try {
+            const result = await apiRequest(`/api/assignments/${assignment.id}`, { method: 'DELETE' });
+            console.log('✅ DELETE successful for assignment:', assignment.id, result);
+            return result;
+          } catch (error) {
+            console.error('❌ DELETE failed for assignment:', assignment.id, error);
+            throw error;
+          }
         });
         promises.push(...deletePromises);
       }
