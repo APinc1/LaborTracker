@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAssignmentUpdate?: () => void;
   taskId: string | number;
   taskDate: string;
   taskName?: string;
@@ -22,7 +23,8 @@ interface EnhancedAssignmentModalProps {
 
 export default function EnhancedAssignmentModal({ 
   isOpen, 
-  onClose, 
+  onClose,
+  onAssignmentUpdate,
   taskId, 
   taskDate, 
   taskName = "Task" 
@@ -390,10 +392,18 @@ export default function EnhancedAssignmentModal({
       
       // Small delay then force fresh fetch to prevent race conditions
       setTimeout(() => {
+        // Force multiple assignment queries to refresh
         queryClient.refetchQueries({ queryKey: ["/api/assignments"] });
+        // Also trigger any assignment queries with keys (like our new cache-busting approach)
+        queryClient.refetchQueries({ queryKey: ["/api/assignments", 1] });
+        queryClient.refetchQueries({ queryKey: ["/api/assignments", 0] });
       }, 100);
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      // Call the callback to trigger immediate UI update
+      if (onAssignmentUpdate) {
+        onAssignmentUpdate();
+      }
       onClose();
     },
     onError: () => {

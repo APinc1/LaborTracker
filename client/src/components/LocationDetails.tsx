@@ -1629,6 +1629,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           // Force assignment data refresh by updating key
           setAssignmentUpdateKey(prev => prev + 1);
         }}
+        onAssignmentUpdate={() => {
+          // Immediate callback when assignments are updated
+          setAssignmentUpdateKey(prev => prev + 1);
+        }}
         taskId={selectedTaskForAssignment?.id || selectedTaskForAssignment?.taskId}
         taskDate={selectedTaskForAssignment?.taskDate || ''}
         taskName={selectedTaskForAssignment?.name || 'Task'}
