@@ -43,17 +43,15 @@ export default function EnhancedAssignmentModal({
   const employeeDropdownRef = useRef<HTMLDivElement>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Reset state when modal opens/closes
+  // Reset state when modal opens/closes (but don't reset if we're just opening to show existing assignments)
   useEffect(() => {
     if (isOpen) {
-      setSelectedEmployeeIds([]);
-      setSelectedCrews([]);
-      setDefaultHours('8');
-      setEmployeeHours({});
+      // Only reset UI state, not selections - let the existing assignments effect handle that
       setEditingEmployeeId(null);
       setEmployeeSearchTerm('');
       setCrewSearchTerm('');
-      setSelectedSuperintendentId(null);
+      // Don't reset selectedEmployeeIds, selectedCrews, employeeHours, selectedSuperintendentId here
+      // They will be set by the existing assignments loading effect
     }
   }, [isOpen, taskId]);
 
@@ -142,7 +140,14 @@ export default function EnhancedAssignmentModal({
   // Load existing assignments when modal opens
   useEffect(() => {
     if (isOpen && employees.length > 0) {
-      // Always load existing assignments if they exist
+      // Reset all selections first, then load existing if they exist
+      setSelectedEmployeeIds([]);
+      setSelectedCrews([]);
+      setDefaultHours('8');
+      setEmployeeHours({});
+      setSelectedSuperintendentId(null);
+      
+      // Load existing assignments if they exist
       if (existingAssignments.length > 0) {
         const existingEmployeeIds = existingAssignments.map((assignment: any) => {
           const employee = (employees as any[]).find(emp => emp.id === assignment.employeeId);
