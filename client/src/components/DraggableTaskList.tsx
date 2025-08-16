@@ -22,8 +22,10 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link, Users } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { ForemanSelectionModal } from '@/components/ForemanSelectionModal';
+import { useForemanLogic } from '@/hooks/useForemanLogic';
 import { useToast } from '@/hooks/use-toast';
 import { reorderTasksWithDependencies, realignDependentTasks, realignDependentTasksAfter } from '@shared/taskUtils';
 import {
@@ -56,6 +58,7 @@ interface SortableTaskItemProps {
   onEditTask: (task: any) => void;
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
+  onTaskUpdate?: () => void;
   employees: any[];
   assignments: any[];
   users: any[];
@@ -99,7 +102,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, onTaskUpdate, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -190,7 +193,25 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     }).filter(Boolean);
   };
 
-  // Format assigned employees display with superintendent
+  // Use foreman logic hook
+  const {
+    foremanDisplay,
+    showForemanModal,
+    setShowForemanModal,
+    foremanSelectionType,
+    assignedForemen,
+    allForemen,
+    triggerForemanSelection,
+    handleForemanSelection,
+    needsForemanSelection
+  } = useForemanLogic({
+    task,
+    assignments,
+    employees,
+    onTaskUpdate: onTaskUpdate || (() => {}) // Provide fallback function
+  });
+
+  // Format assigned employees display with superintendent and foreman
   const formatAssignedEmployees = (assignedEmployees: any[]) => {
     const personnelElements = [];
     
@@ -205,8 +226,20 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         );
       }
     }
+
+    // Add foreman display if exists
+    if (foremanDisplay) {
+      personnelElements.push(
+        <div 
+          key={`foreman-${foremanDisplay.id}`} 
+          className={`text-xs ${foremanDisplay.isBold ? 'font-bold' : ''}`}
+        >
+          {foremanDisplay.name} {foremanDisplay.displayText}
+        </div>
+      );
+    }
     
-    // Add assigned employees
+    // Add assigned employees (excluding the displayed foreman to avoid duplication)
     if (assignedEmployees.length > 0) {
       // Sort employees: foremen first, drivers last, others in between
       const sortedEmployees = [...assignedEmployees].sort((a, b) => {
@@ -223,6 +256,11 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         const isForeman = employee.isForeman;
         const showHours = hours !== 8;
         
+        // Skip displaying foreman if already shown above
+        if (isForeman && foremanDisplay && employee.id === foremanDisplay.id) {
+          return null;
+        }
+        
         let displayText = employee.name;
         if (isForeman) {
           displayText += ' (Foreman)';
@@ -236,14 +274,14 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         return (
           <div 
             key={employee.id} 
-            className={`text-xs ${isForeman ? 'font-bold' : ''} ${
+            className={`text-xs ${isForeman ? 'text-gray-600' : ''} ${
               personnelElements.length === 0 && index === 0 ? '' : 'mt-1'
             }`}
           >
             {displayText}
           </div>
         );
-      });
+      }).filter(Boolean); // Remove null values
       
       personnelElements.push(...employeeElements);
     }
@@ -1361,6 +1399,7 @@ export default function DraggableTaskList({
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
+                onTaskUpdate={onTaskUpdate || (() => {})}
                 employees={employees as any[]}
                 assignments={assignments as any[]}
                 users={users as any[]}

@@ -23,6 +23,7 @@ import {
   AlertTriangle
 } from "lucide-react";
 import ExportButtons from "./ExportButtons";
+import { TaskCardWithForeman } from '@/components/TaskCardWithForeman';
 
 export default function Dashboard() {
   const today = new Date();
@@ -432,110 +433,49 @@ export default function Dashboard() {
     }
   };
 
-  // Enhanced task card component
+  // Enhanced task card component with foreman logic
   const renderTaskCard = (task: any, date: string, showAssignmentToggle: boolean) => {
     const taskAssignments = getTaskAssignments(task.id, date);
     const scheduledHours = getScheduledHours(task, date);
     const actualHours = getActualHours(task, date);
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
+    
+    // Calculate cost code progress
+    const costCodeData = getCostCodeStatus(task.locationId);
+    const taskCostCode = task.costCode;
+    const costCodeInfo = costCodeData[taskCostCode];
+    const remainingHours = costCodeInfo ? Math.max(0, costCodeInfo.budgetHours - costCodeInfo.actualHours) : 0;
+    const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
+    
+    let remainingHoursColor = 'text-green-600';
+    if (budgetHours > 0) {
+      const remainingPercentage = (remainingHours / budgetHours) * 100;
+      if (remainingPercentage <= 0) {
+        remainingHoursColor = 'text-red-600';
+      } else if (remainingPercentage <= 15) {
+        remainingHoursColor = 'text-yellow-600';
+      }
+    }
 
     return (
-      <div key={task.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-accent rounded-full"></div>
-            <h4 className="font-medium text-gray-800">{task.name}</h4>
-          </div>
-          <span className="text-sm text-gray-500">{task.startTime || "8:00 AM"}</span>
-        </div>
-
-        <div className="space-y-2">
-          {/* Project and Location */}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <MapPin className="w-4 h-4" />
-            <span className="font-medium">{projectName}</span>
-            <span className="text-gray-400">•</span>
-            <span>{locationName}</span>
-          </div>
-
-          {/* Cost Code */}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Tag className="w-4 h-4" />
-            <Badge variant="outline" className="text-xs">
-              {task.costCode}
-            </Badge>
-          </div>
-
-          {/* Hours Information */}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Clock className="w-4 h-4" />
-            <span>{scheduledHours.toFixed(1)}h scheduled</span>
-            {actualHours > 0 && (
-              <span className="text-green-600">/ {actualHours.toFixed(1)}h actual</span>
-            )}
-          </div>
-
-          {/* Superintendent and Assigned Employees - Only show when toggle is enabled */}
-          {showAssignmentToggle && (task.superintendentId || taskAssignments.length > 0) && (
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Users className="w-4 h-4" />
-                <span>Personnel:</span>
-              </div>
-              <div className="ml-6 space-y-1">
-                {/* Superintendent */}
-                {task.superintendentId && (
-                  <div className="text-xs">
-                    <span className="font-bold text-gray-800">
-                      {(users as any[]).find(u => u.id === task.superintendentId)?.name || 'Superintendent'} (Super)
-                    </span>
-                  </div>
-                )}
-                
-                {/* Assigned Employees */}
-                {taskAssignments.map((assignment: any) => {
-                  const employee = getEmployeeInfo(assignment.employeeId);
-                  if (!employee) return null;
-                  
-                  const isForeman = employee.isForeman === true;
-                  const isDriver = employee.primaryTrade === 'Driver' || employee.secondaryTrade === 'Driver';
-                  const assignedHours = parseFloat(assignment.assignedHours) || 0;
-                  
-                  return (
-                    <div key={assignment.id} className="text-xs">
-                      <span className={isForeman ? 'font-bold text-gray-800' : 'text-gray-600'}>
-                        {employee.name}
-                        {isForeman && ' (Foreman)'}
-                        {isDriver && ' (Driver)'}
-                        {assignedHours !== 8 && ` (${assignedHours}h)`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Task Description and Notes */}
-        {(task.description || task.workDescription || task.notes) && (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
-            {(task.description || task.workDescription) && (
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Description: </span>
-                {task.description || task.workDescription}
-              </p>
-            )}
-            {task.notes && (
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Notes: </span>
-                {task.notes}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      <TaskCardWithForeman
+        key={task.id}
+        task={task}
+        taskAssignments={taskAssignments}
+        remainingHours={remainingHours}
+        remainingHoursColor={remainingHoursColor}
+        budgetHours={budgetHours}
+        projectName={projectName}
+        locationName={locationName}
+        actualHours={actualHours}
+        scheduledHours={scheduledHours}
+        showAssignmentToggle={showAssignmentToggle}
+        users={users}
+        getEmployeeInfo={getEmployeeInfo}
+        employees={employees}
+        assignments={assignments}
+      />
     );
   };
 
