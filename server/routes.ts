@@ -1079,8 +1079,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // No foremen: clear foreman assignment
         await storage.updateTask(taskId, { foremanId: null });
         console.log('🔄 CLEARED foreman assignment - no foremen assigned');
+      } else if (assignedForemen.length >= 2) {
+        // Multiple foremen: clear existing foreman assignment to force user selection
+        const currentTask = await storage.getTask(taskId);
+        if (currentTask?.foremanId) {
+          const currentForeman = assignedForemen.find(f => f.id === currentTask.foremanId);
+          if (!currentForeman) {
+            // Current foreman is no longer assigned, clear it
+            await storage.updateTask(taskId, { foremanId: null });
+            console.log('🔄 CLEARED foreman - current foreman no longer assigned');
+          }
+          // If current foreman is still assigned, keep them
+        } else {
+          console.log('🔄 Multiple foremen assigned - user must select overall foreman');
+        }
       }
-      // For 2+ foremen, keep existing foreman unless they're no longer assigned
       else if (assignedForemen.length >= 2) {
         const currentTask = await storage.getTask(taskId);
         const currentForemanStillAssigned = assignedForemen.some((f: any) => f.id === currentTask.foremanId);

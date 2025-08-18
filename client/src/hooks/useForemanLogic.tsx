@@ -80,15 +80,23 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
   // Mutation to update task foreman
   const updateTaskForemanMutation = useMutation({
     mutationFn: async ({ taskId, foremanId }: { taskId: number; foremanId: number }) => {
+      console.log('🔧 UPDATING TASK FOREMAN:', { taskId, foremanId });
       return apiRequest(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ foremanId })
+        method: 'PUT',
+        body: JSON.stringify({ foremanId }),
+        headers: { 'Content-Type': 'application/json' }
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('✅ FOREMAN UPDATE SUCCESS:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/locations', task.locationId, 'tasks'] });
       onTaskUpdate?.();
+    },
+    onError: (error) => {
+      console.error('❌ FOREMAN UPDATE FAILED:', error);
     }
   });
 
