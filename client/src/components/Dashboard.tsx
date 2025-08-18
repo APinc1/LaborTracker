@@ -442,7 +442,11 @@ export default function Dashboard() {
       if (relevantTaskCostCode !== currentTaskCostCode) return false;
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
-      return taskDate <= currentTaskDate;
+      // For tasks on the same date, include current task and all earlier tasks
+      const isBefore = taskDate < currentTaskDate || 
+                      (taskDate === currentTaskDate && (parseFloat(t.order) || 0) <= (parseFloat(task.order) || 0));
+      
+      return isBefore;
     });
 
     // Calculate total used hours from these tasks (same logic as Schedule page)
