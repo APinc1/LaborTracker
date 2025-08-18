@@ -408,9 +408,7 @@ export default function EnhancedAssignmentModal({
             assignedCount: assignedForemen.length,
             foremen: assignedForemen.map(f => f.name),
             shouldTrigger: assignedForemen.length >= 2,
-            singleForemanCase: assignedForemen.length === 1,
-            currentForemanId: task?.foremanId,
-            taskName: task?.name
+            singleForemanCase: assignedForemen.length === 1
           });
           
           if (assignedForemen.length >= 2) {
@@ -434,9 +432,7 @@ export default function EnhancedAssignmentModal({
               console.error('❌ Failed to assign single foreman:', error);
             }
           } else if (assignedForemen.length === 0) {
-            // No working foremen assigned: always show responsible foreman selection
-            // This allows user to select or change the responsible foreman
-            console.log('🔍 NO WORKING FOREMEN: Triggering responsible foreman selection');
+            // No foremen assigned: trigger responsible foreman selection
             window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
               detail: { taskId, assignedForemen: [], type: 'responsible' } 
             }));

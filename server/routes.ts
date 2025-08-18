@@ -1076,27 +1076,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateTask(taskId, { foremanId: assignedForemen[0].id });
         console.log('✅ AUTO-ASSIGNED single foreman:', assignedForemen[0].name);
       } else if (assignedForemen.length === 0) {
-        // No working foremen assigned - but keep existing responsible foreman if set
-        const currentTask = await storage.getTask(taskId);
-        if (currentTask?.foremanId) {
-          console.log('🔄 KEEPING responsible foreman assignment - no working foremen but responsible foreman exists');
-          // Don't clear the foreman - they might be a "responsible foreman" (not working but supervising)
-        } else {
-          console.log('🔄 No foreman assignment to preserve');
-        }
+        // No foremen: clear foreman assignment
+        await storage.updateTask(taskId, { foremanId: null });
+        console.log('🔄 CLEARED foreman assignment - no foremen assigned');
       } else if (assignedForemen.length >= 2) {
-        // Multiple foremen: only clear if current foreman is not among assigned foremen
+        // Multiple foremen: clear existing foreman assignment to force user selection
         const currentTask = await storage.getTask(taskId);
         if (currentTask?.foremanId) {
           const currentForeman = assignedForemen.find(f => f.id === currentTask.foremanId);
           if (!currentForeman) {
-            // Current foreman is no longer assigned as a worker, but they might be responsible foreman
-            // Only clear if they're not a foreman at all
-            console.log('🔄 Current foreman not working on task - keeping as responsible foreman');
+            // Current foreman is no longer assigned, clear it
+            await storage.updateTask(taskId, { foremanId: null });
+            console.log('🔄 CLEARED foreman - current foreman no longer assigned');
           }
-          // If current foreman is still assigned as worker, keep them
+          // If current foreman is still assigned, keep them
         } else {
           console.log('🔄 Multiple foremen assigned - user must select overall foreman');
+        }
+      }
+      else if (assignedForemen.length >= 2) {
+        const currentTask = await storage.getTask(taskId);
+        const currentForemanStillAssigned = assignedForemen.some((f: any) => f.id === currentTask.foremanId);
+        
+        if (!currentForemanStillAssigned) {
+          console.log('🔄 CURRENT foreman no longer assigned, needs manual selection');
+          // Clear foreman to trigger selection popup
+          await storage.updateTask(taskId, { foremanId: null });
         }
       }
     } catch (error) {

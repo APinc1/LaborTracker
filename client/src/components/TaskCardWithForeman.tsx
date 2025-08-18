@@ -212,7 +212,6 @@ export function TaskCardWithForeman({
         allForemen={allForemen}
         selectionType={foremanSelectionType}
         taskName={task.name}
-        currentForemanId={task.foremanId}
       />
     </>
   );

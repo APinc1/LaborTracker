@@ -458,7 +458,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
         allForemen={allForemen}
         selectionType={foremanSelectionType}
         taskName={task.name}
-        currentForemanId={task.foremanId}
       />
     </div>
   );

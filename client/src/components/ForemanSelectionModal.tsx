@@ -19,7 +19,6 @@ interface ForemanSelectionModalProps {
   allForemen: any[];
   selectionType: 'overall' | 'responsible';
   taskName: string;
-  currentForemanId?: number;
 }
 
 export function ForemanSelectionModal({
@@ -29,22 +28,16 @@ export function ForemanSelectionModal({
   assignedForemen,
   allForemen,
   selectionType,
-  taskName,
-  currentForemanId
+  taskName
 }: ForemanSelectionModalProps) {
   const [selectedForemanId, setSelectedForemanId] = useState<string>('');
 
-  // Set initial selection when modal opens
+  // Reset selection when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Pre-select current foreman if available
-      if (currentForemanId) {
-        setSelectedForemanId(currentForemanId.toString());
-      } else {
-        setSelectedForemanId('');
-      }
+      setSelectedForemanId('');
     }
-  }, [isOpen, currentForemanId]);
+  }, [isOpen]);
 
   const handleSubmit = () => {
     if (selectedForemanId) {
