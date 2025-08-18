@@ -373,36 +373,15 @@ export default function Dashboard() {
     }
   };
 
+  // This function is no longer used in Dashboard - keeping for compatibility with other components
   const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
 
-    console.log('🔍 Dashboard calculateRemainingHours:', {
-      taskName: task.name,
-      taskLocationId: task.locationId,
-      taskCostCode: costCode,
-      budgetItemsCount: budgetItems.length,
-      sampleBudgetItem: budgetItems[0]
-    });
-
     // Filter budget items to only include the current task's location
-    // Note: task.locationId is database ID (integer), budget items also use database ID as locationId
-    const locationSpecificBudgetItems = budgetItems.filter((item: any) => {
-      const match = item.locationId === task.locationId;
-      if (!match && budgetItems.length > 0) {
-        console.log('🔍 Dashboard item location mismatch:', {
-          itemLocationId: item.locationId, 
-          itemLocationIdType: typeof item.locationId,
-          taskLocationId: task.locationId,
-          taskLocationIdType: typeof task.locationId,
-          equal: item.locationId === task.locationId,
-          equalStrict: item.locationId == task.locationId
-        });
-      }
-      return match;
-    });
-
-    console.log('🔍 Dashboard location-specific budget items:', locationSpecificBudgetItems.length);
+    const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
+      item.locationId === task.locationId
+    );
 
     // Get total budget hours for this cost code from location-specific budget items
     const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
@@ -712,14 +691,25 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
-    // Get all tasks from allLocationTasks for remaining hours calculation (same as Schedule page)
-    const allTasks = Object.values(allLocationTasks).flat();
+    // Use Dashboard's cost code data instead of calculateRemainingHours
+    const location = getLocation(task.locationId);
+    const locationId = location?.locationId || task.locationId;
+    const costCodeStatus = getCostCodeStatus(locationId);
+    let remainingHours = null;
+    let totalBudgetHours = 0;
     
-    // Use the same remaining hours calculation as the Schedule page
-    const result = calculateRemainingHours(task, allTasks, allBudgetItems);
-    const remainingHours = result?.remainingHours || 0;
-    const totalBudgetHours = result?.totalBudgetHours || 0;
-    const remainingHoursColor = getRemainingHoursColor(remainingHours, totalBudgetHours);
+    if (task.costCode && costCodeStatus.costCodeData) {
+      const normalizedCostCode = normalizeCostCode(task.costCode);
+      const costData = costCodeStatus.costCodeData[normalizedCostCode];
+      
+      if (costData && costData.budgetHours > 0) {
+        totalBudgetHours = costData.budgetHours;
+        const usedHours = costData.actualHours + costData.scheduledHours;
+        remainingHours = Math.max(0, totalBudgetHours - usedHours);
+      }
+    }
+    
+    const remainingHoursColor = remainingHours !== null ? getRemainingHoursColor(remainingHours, totalBudgetHours) : 'text-gray-600';
 
     return (
       <TaskCardWithForeman
