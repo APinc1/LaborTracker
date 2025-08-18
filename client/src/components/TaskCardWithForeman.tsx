@@ -41,6 +41,13 @@ export function TaskCardWithForeman({
   onTaskUpdate
 }: TaskCardWithForemanProps) {
   
+  console.log(`🎯 TaskCardWithForeman ${task.name}:`, { 
+    remainingHours, 
+    type: typeof remainingHours,
+    isNull: remainingHours === null,
+    isUndefined: remainingHours === undefined 
+  });
+  
   const {
     foremanDisplay,
     showForemanModal,
