@@ -756,7 +756,7 @@ export default function AssignmentManagement() {
                           <SelectContent>
                             {(assignmentTasks as any[]).filter(task => task && task.id).map((task: any) => (
                               <SelectItem key={task.id} value={String(task.id)}>
-                                {task.name} - {task.costCode}
+                                {task.name} - {task.projectName} - {task.locationName}
                               </SelectItem>
                             ))}
                           </SelectContent>

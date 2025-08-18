@@ -691,7 +691,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const storage = await getStorage();
       const tasks = await withQuickTimeout(storage.getTasksByDateRange(startDate, endDate));
-      res.json(tasks);
+      
+      // Enrich tasks with project and location names for assignment dropdown
+      const enrichedTasks = await Promise.all(
+        tasks.map(async (task) => {
+          try {
+            const location = await storage.getLocation(task.locationId);
+            const project = location ? await storage.getProject(location.projectId) : null;
+            return {
+              ...task,
+              projectName: project?.name || 'Unknown Project',
+              locationName: location?.name || 'Unknown Location'
+            };
+          } catch (error) {
+            console.error(`Error enriching task ${task.id}:`, error);
+            return {
+              ...task,
+              projectName: 'Unknown Project',
+              locationName: 'Unknown Location'
+            };
+          }
+        })
+      );
+      
+      res.json(enrichedTasks);
     } catch (error: any) {
       console.error('Error fetching tasks by date range:', error);
       if (error.message?.includes('timeout')) {
