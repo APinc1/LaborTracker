@@ -706,7 +706,7 @@ export default function Dashboard() {
         taskAssignments={taskAssignments}
         remainingHours={remainingHours}
         remainingHoursColor={remainingHoursColor}
-        budgetHours={totalBudgetHours}
+        budgetHours={0} // Hide progress bars on Dashboard
         projectName={projectName}
         locationName={locationName}
         actualHours={actualHours}
