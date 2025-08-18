@@ -596,7 +596,8 @@ export default function Dashboard() {
     const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
     
     // Debug logging to see what's happening
-    console.log(`🔧 Debug task remaining hours for ${task.taskName}:`, {
+    console.log(`🔧 Debug task remaining hours for ${task.taskName || task.name}:`, {
+      taskObject: task,
       originalCostCode: task.costCode,
       normalizedCostCode: taskCostCode,
       budgetHours,
