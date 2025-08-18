@@ -174,6 +174,18 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true }).extend({
   assignmentId: z.string().optional(),
+  assignedHours: z.union([
+    z.string(),
+    z.number().transform(val => val.toString()),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  actualHours: z.union([
+    z.string(),
+    z.number().transform(val => val.toString()),
+    z.null(),
+    z.undefined()
+  ]).optional(),
 });
 
 // Types
