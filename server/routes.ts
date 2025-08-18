@@ -1024,6 +1024,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New endpoint for assignments within a date range - optimized for Dashboard
+  app.get('/api/assignments/date-range/:startDate/:endDate', async (req, res) => {
+    try {
+      const { startDate, endDate } = req.params;
+      
+      // Validate date parameters
+      if (!startDate || !endDate || startDate === '' || endDate === '' || 
+          startDate === 'undefined' || endDate === 'undefined' || 
+          startDate === 'NaN' || endDate === 'NaN' ||
+          isNaN(Date.parse(startDate)) || isNaN(Date.parse(endDate))) {
+        console.log('Invalid assignment date parameters received:', { startDate, endDate });
+        return res.json([]);
+      }
+      
+      const storage = await getStorage();
+      const assignments = await withQuickTimeout(storage.getEmployeeAssignmentsByDateRange(startDate, endDate));
+      res.json(assignments);
+    } catch (error: any) {
+      console.error('Error fetching assignments by date range:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch assignments' });
+      }
+    }
+  });
+
   app.post('/api/assignments', async (req, res) => {
     try {
       const storage = await getStorage();
