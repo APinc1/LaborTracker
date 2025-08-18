@@ -453,8 +453,27 @@ export default function ScheduleManagement() {
       const isSameCostCode = tCostCode === taskCostCode;
       const isCurrentOrBefore = taskDate <= currentTaskDate;
       
-      return isSameCostCode && isCurrentOrBefore;
+      // For tasks on the same date, use order to determine precedence (lower order = earlier)
+      const isBefore = taskDate < currentTaskDate || 
+                      (taskDate === currentTaskDate && (parseFloat(t.order) || 0) <= (parseFloat(task.order) || 0));
+      
+      return isSameCostCode && isBefore;
     });
+    
+    // Debug logging for remaining hours calculation
+    if (task.costCode === 'Demo/Ex + Base/Grading' || task.costCode === 'DEMO/EX + BASE/GRADING') {
+      console.log(`🔍 Remaining hours debug for task "${task.name}" (${task.costCode}):`, {
+        taskDate: task.taskDate,
+        taskOrder: task.order,
+        relevantTasks: relevantTasks.map(t => ({
+          name: t.name,
+          date: t.taskDate,
+          order: t.order,
+          costCode: t.costCode
+        })),
+        budgetHours: costCodeBudgetHours
+      });
+    }
 
     // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
     const usedHours = relevantTasks.reduce((total: number, t: any) => {
