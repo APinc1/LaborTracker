@@ -596,7 +596,10 @@ export default function AssignmentManagement() {
 
   const getEmployeeHours = (employeeId: number) => {
     return (assignments as any[])
-      .filter((assignment: any) => assignment.employeeId === employeeId)
+      .filter((assignment: any) => 
+        assignment.employeeId === employeeId && 
+        assignment.assignmentDate === selectedDate
+      )
       .reduce((sum: number, assignment: any) => sum + (parseFloat(assignment.assignedHours) || 0), 0);
   };
 
