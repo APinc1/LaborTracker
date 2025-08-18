@@ -92,22 +92,16 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     }
   });
 
-  // Function to trigger foreman selection manually (called from assignment save)
+  // Function to trigger foreman selection
   const triggerForemanSelection = () => {
     if (assignedForemen.length >= 2) {
-      console.log('🔍 FOREMAN LOGIC: Multiple foremen detected after save, triggering Overall Foreman selection', {
-        assignedForemen: assignedForemen.map(f => f.name),
-        taskName: task.name
-      });
       setForemanSelectionType('overall');
       setShowForemanModal(true);
     } else if (assignedForemen.length === 0) {
-      console.log('🔍 FOREMAN LOGIC: No foremen assigned after save, triggering Responsible Foreman selection', {
-        taskName: task.name
-      });
       setForemanSelectionType('responsible');
       setShowForemanModal(true);
     }
+    // Single foreman case is handled automatically in useEffect
   };
 
   // Handle foreman selection from modal
@@ -116,11 +110,6 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
       taskId: task.id, 
       foremanId 
     });
-    setShowForemanModal(false);
-  };
-
-  // Handle modal dismiss/cancel
-  const handleModalDismiss = () => {
     setShowForemanModal(false);
   };
 
@@ -133,7 +122,6 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     allForemen,
     triggerForemanSelection,
     handleForemanSelection,
-    handleModalDismiss,
     needsForemanSelection: assignedForemen.length >= 2 || (assignedForemen.length === 0 && !task.foremanId)
   };
 }

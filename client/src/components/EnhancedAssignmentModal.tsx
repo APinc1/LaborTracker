@@ -11,7 +11,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { ForemanSelectionModal } from '@/components/ForemanSelectionModal';
 
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
@@ -19,7 +18,6 @@ interface EnhancedAssignmentModalProps {
   taskId: string | number;
   taskDate: string;
   taskName?: string;
-  onAssignmentsSaved?: () => void;
 }
 
 export default function EnhancedAssignmentModal({ 
@@ -27,8 +25,7 @@ export default function EnhancedAssignmentModal({
   onClose, 
   taskId, 
   taskDate, 
-  taskName = "Task",
-  onAssignmentsSaved
+  taskName = "Task" 
 }: EnhancedAssignmentModalProps) {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
@@ -40,9 +37,6 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
-  const [showForemanModal, setShowForemanModal] = useState(false);
-  const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
-  const [selectedForemanForModal, setSelectedForemanForModal] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -375,7 +369,7 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -385,10 +379,6 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
-      
-      // Call the callback after successful assignment save
-      onAssignmentsSaved?.();
-      
       onClose();
     },
     onError: () => {
@@ -415,77 +405,6 @@ export default function EnhancedAssignmentModal({
           Available
         </Badge>
       );
-    }
-  };
-
-  // Check if foreman selection is needed based on selected employees (before saving)
-  const checkForForemanSelectionBeforeSave = () => {
-    // Get employees that will be assigned to this task
-    const selectedEmployees = employees.filter((emp: any) => 
-      selectedEmployeeIds.includes(emp.id.toString())
-    );
-    
-    // Filter for foremen among selected employees
-    const selectedForemen = selectedEmployees.filter((emp: any) => 
-      emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
-    );
-
-    console.log('🔍 FOREMAN CHECK: Selected employees:', selectedEmployees.map((e: any) => ({ name: e.name, trades: [e.primaryTrade, e.secondaryTrade, e.tertiaryTrade] })));
-    console.log('🔍 FOREMAN CHECK: Selected foremen:', selectedForemen.map((f: any) => f.name));
-
-    // Trigger foreman selection based on conditions
-    if (selectedForemen.length >= 2 && !currentTask?.foremanId) {
-      setForemanSelectionType('overall');
-      setSelectedForemanForModal(selectedForemen); // Store the assigned foremen
-      setShowForemanModal(true);
-      console.log('🔍 FOREMAN SELECTION: Multiple foremen selected, need Overall Foreman selection', {
-        selectedForemen: selectedForemen.map((f: any) => f.name),
-        taskName: currentTask?.name
-      });
-      return true; // Indicates foreman selection is needed
-    } else if (selectedForemen.length === 0 && !currentTask?.foremanId) {
-      setForemanSelectionType('responsible');
-      setSelectedForemanForModal([]); // No foremen assigned, use all foremen
-      setShowForemanModal(true);
-      console.log('🔍 FOREMAN SELECTION: No foremen selected, need Responsible Foreman selection', {
-        taskName: currentTask?.name
-      });
-      return true; // Indicates foreman selection is needed
-    }
-    
-    return false; // No foreman selection needed
-  };
-
-  // Handle the Save Assignments button click - check foreman first
-  const handleSaveAssignments = () => {
-    // First check if foreman selection is needed
-    const needsForemanSelection = checkForForemanSelectionBeforeSave();
-    
-    if (!needsForemanSelection) {
-      // No foreman selection needed, proceed with saving assignments
-      createAssignmentsMutation.mutate();
-    }
-    // If foreman selection is needed, the modal will show and assignments will be saved after foreman is selected
-  };
-
-  // Handle foreman selection
-  const handleForemanSelection = async (foremanId: number) => {
-    try {
-      await apiRequest(`/api/tasks/${taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ foremanId })
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
-      
-      toast({ title: "Success", description: "Foreman assigned successfully" });
-      setShowForemanModal(false);
-      
-      // Now that foreman is selected, proceed with saving assignments
-      createAssignmentsMutation.mutate();
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to assign foreman", variant: "destructive" });
     }
   };
 
@@ -1038,7 +957,7 @@ export default function EnhancedAssignmentModal({
               Cancel
             </Button>
             <Button 
-              onClick={handleSaveAssignments}
+              onClick={() => createAssignmentsMutation.mutate()}
               disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
@@ -1049,23 +968,6 @@ export default function EnhancedAssignmentModal({
           <div className="h-32 mt-[59px] mb-[59px]"></div>
         </div>
       </DialogContent>
-      
-      {/* Foreman Selection Modal */}
-      <ForemanSelectionModal
-        isOpen={showForemanModal}
-        onClose={() => setShowForemanModal(false)}
-        onSelectForeman={handleForemanSelection}
-        assignedForemen={selectedForemanForModal}
-        allForemen={(() => {
-          const allForemen = employees.filter((emp: any) => 
-            emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
-          );
-          console.log('🔍 FOREMAN MODAL DATA: allForemen:', allForemen.map((f: any) => ({ id: f.id, name: f.name, trades: [f.primaryTrade, f.secondaryTrade, f.tertiaryTrade] })));
-          return allForemen;
-        })()}
-        selectionType={foremanSelectionType}
-        taskName={taskName}
-      />
     </Dialog>
   );
 }
