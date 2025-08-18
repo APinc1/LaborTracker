@@ -115,6 +115,8 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+
+
   // State for selected day for assignments
   const [selectedDay, setSelectedDay] = useState<'yesterday' | 'today' | 'tomorrow'>('today');
 
@@ -328,10 +330,14 @@ export default function Dashboard() {
     const location = (locations as any[]).find((loc: any) => loc.locationId === locationId);
     if (!location) return {};
     
-    // Get all tasks for this location using the database ID
-    const allLocationTasks = [...(allTasks as any[])].filter((task: any) => task.locationId === location.id);
+    // Calculate actual hours directly from assignments for this location
+    // We'll group assignments by task, then by cost code to calculate totals
     
-
+    console.log(`🔍 Dashboard getCostCodeStatus for ${locationId}:`, {
+      locationDbId: location.id,
+      assignmentsCount: (assignments as any[]).length,
+      assignmentsWithActualHours: (assignments as any[]).filter(a => parseFloat(a.actualHours) > 0).length
+    });
     
     // Initialize with budget data first
     const costCodeData: { [key: string]: { budgetHours: number; actualHours: number; scheduledHours: number } } = {};
@@ -359,7 +365,7 @@ export default function Dashboard() {
     // Add budget hours from budget line items
     locationBudget.forEach((budgetItem: any) => {
       const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
-      const totalHours = budgetItem.hours || budgetItem.totalHours || budgetItem.quantity; // Fix: use correct field name
+      const totalHours = budgetItem.hours || budgetItem.totalHours || budgetItem.quantity;
       
       if (costCode && costCode.trim()) {
         const normalizedCostCode = normalizeCostCode(costCode);
@@ -378,8 +384,16 @@ export default function Dashboard() {
       }
     });
     
-    // Add actual and scheduled hours from tasks/assignments
-    allLocationTasks.forEach((task: any) => {
+    // Dashboard Limitation: We only have tasks from a limited date range (recent days)
+    // But actual hours come from completed tasks that may be outside this range
+    // For accurate cost code calculations, we need to click on individual locations
+    
+    console.log(`📊 Dashboard: Note - Limited to tasks from recent date range for ${locationId}`);
+    
+    // Add scheduled hours from tasks in current date range  
+    const currentLocationTasks = (allTasks as any[]).filter((task: any) => task.locationId === location.id);
+    
+    currentLocationTasks.forEach((task: any) => {
       if (!task.costCode) return;
       
       const normalizedTaskCostCode = normalizeCostCode(task.costCode);
@@ -388,17 +402,20 @@ export default function Dashboard() {
         costCodeData[normalizedTaskCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
       }
       
-      // Get task assignments to calculate actual and scheduled hours
+      // Get task assignments to calculate scheduled hours from current date range
       const taskAssignments = (assignments as any[]).filter((assignment: any) => assignment.taskId === task.id);
       
       taskAssignments.forEach((assignment: any) => {
-        const actualHours = parseFloat(assignment.actualHours) || 0;
         const scheduledHours = parseFloat(assignment.assignedHours) || 0;
-        
-        costCodeData[normalizedTaskCostCode].actualHours += actualHours;
         costCodeData[normalizedTaskCostCode].scheduledHours += scheduledHours;
+        
+        // Also include any actual hours from the current date range (though most will be 0)
+        const actualHours = parseFloat(assignment.actualHours) || 0;
+        costCodeData[normalizedTaskCostCode].actualHours += actualHours;
       });
     });
+    
+    console.log(`📊 Dashboard: Processed ${currentLocationTasks.length} tasks from current date range for ${locationId}`);
     
     // Show all cost codes that have either budget hours > 0 OR actual/scheduled hours > 0
     const filteredCostCodeData = Object.fromEntries(
@@ -406,6 +423,8 @@ export default function Dashboard() {
         data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0
       )
     );
+    
+    console.log(`🔍 Dashboard final cost code data for ${locationId}:`, filteredCostCodeData);
     
     return filteredCostCodeData;
   };
@@ -831,7 +850,10 @@ export default function Dashboard() {
                     {/* Cost Code Progress Bars */}
                     {Object.keys(costCodeData).length > 0 && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <h5 className="text-sm font-medium text-gray-700 mb-2">Cost Code Progress</h5>
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-sm font-medium text-gray-700">Cost Code Progress</h5>
+                          <span className="text-xs text-gray-500 italic">Click location for full actual hours</span>
+                        </div>
                         <div className="space-y-3">
                           {Object.entries(costCodeData)
                             .filter(([_, data]) => data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0)
@@ -841,8 +863,13 @@ export default function Dashboard() {
                               const overageHours = Math.max(0, data.actualHours - data.budgetHours);
                               const progressPercentage = data.budgetHours > 0 ? Math.min(100, (data.actualHours / data.budgetHours) * 100) : 0;
                               
+                              // For Dashboard, also show scheduled hours progress when actual hours are low
+                              const scheduledPercentage = data.budgetHours > 0 ? Math.min(100, (data.scheduledHours / data.budgetHours) * 100) : 0;
+                              const showScheduledIndicator = data.actualHours < data.scheduledHours && data.scheduledHours > 0;
+                              
                               // Color coding based on remaining hours percentage
-                              let progressColor = 'bg-green-500'; // Default green
+                              let progressColor = 'bg-green-500'; // Default green for actual hours
+                              let scheduledColor = 'bg-blue-300'; // Light blue for scheduled hours
                               if (data.budgetHours > 0) {
                                 const remainingPercentage = (remainingHours / data.budgetHours) * 100;
                                 if (remainingPercentage <= 0) {
@@ -858,18 +885,31 @@ export default function Dashboard() {
                                     <span className="font-medium text-gray-700">{costCode}</span>
                                     <span className="text-gray-600">
                                       {data.actualHours.toFixed(1)}h / {data.budgetHours.toFixed(1)}h
+                                      {data.scheduledHours > 0 && (
+                                        <span className="text-blue-600 ml-1">
+                                          (+{data.scheduledHours.toFixed(1)}h scheduled)
+                                        </span>
+                                      )}
                                       {overageHours > 0 && (
                                         <span className="text-red-600 ml-1">
-                                          (+{overageHours.toFixed(1)}h)
+                                          (+{overageHours.toFixed(1)}h over)
                                         </span>
                                       )}
                                     </span>
                                   </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
+                                  <div className="w-full bg-gray-200 rounded-full h-2 relative">
+                                    {/* Base progress bar for actual hours */}
                                     <div 
                                       className={`h-2 rounded-full transition-all duration-300 ${progressColor}`}
                                       style={{ width: `${Math.min(100, progressPercentage)}%` }}
                                     />
+                                    {/* Overlay for scheduled hours when they exceed actual hours */}
+                                    {showScheduledIndicator && (
+                                      <div 
+                                        className={`absolute top-0 h-2 rounded-full transition-all duration-300 ${scheduledColor}`}
+                                        style={{ width: `${Math.min(100, scheduledPercentage)}%` }}
+                                      />
+                                    )}
                                   </div>
                                   {remainingHours > 0 && (
                                     <div className="text-xs text-gray-500">
