@@ -434,20 +434,12 @@ export default function EnhancedAssignmentModal({
               console.error('❌ Failed to assign single foreman:', error);
             }
           } else if (assignedForemen.length === 0) {
-            // No working foremen assigned: check if task already has a foreman
-            try {
-              const taskResponse = await apiRequest(`/api/tasks/${taskId}`);
-              if (!taskResponse?.foremanId) {
-                console.log('🔍 NO FOREMAN ASSIGNED: Triggering responsible foreman selection');
-                window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
-                  detail: { taskId, assignedForemen: [], type: 'responsible' } 
-                }));
-              } else {
-                console.log('🔍 RESPONSIBLE FOREMAN EXISTS: Not triggering selection, foreman already assigned');
-              }
-            } catch (error) {
-              console.error('Failed to check task foreman status:', error);
-            }
+            // No working foremen assigned: always show responsible foreman selection
+            // This allows user to select or change the responsible foreman
+            console.log('🔍 NO WORKING FOREMEN: Triggering responsible foreman selection');
+            window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
+              detail: { taskId, assignedForemen: [], type: 'responsible' } 
+            }));
           }
         } catch (error) {
           console.error('Failed to check foreman assignments:', error);
