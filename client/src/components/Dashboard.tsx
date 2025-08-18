@@ -35,34 +35,9 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
-  // Helper function to find the previous day with scheduled tasks
-  const findPreviousScheduledDay = (): Date => {
-    for (let i = 1; i <= 7; i++) {
-      const checkDate = subDays(today, i);
-      const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
-      if (hasTasks) {
-        return checkDate;
-      }
-    }
-    return subDays(today, 1); // fallback to yesterday
-  };
-
-  // Helper function to find the next day with scheduled tasks
-  const findNextScheduledDay = (): Date => {
-    for (let i = 1; i <= 14; i++) {
-      const checkDate = addDays(today, i);
-      const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
-      if (hasTasks) {
-        return checkDate;
-      }
-    }
-    return addDays(today, 1); // fallback to tomorrow
-  };
-
-  const previousDay = findPreviousScheduledDay();
-  const nextDay = findNextScheduledDay();
+  // Use literal previous day, today, and next day
+  const previousDay = subDays(today, 1);
+  const nextDay = addDays(today, 1);
 
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
