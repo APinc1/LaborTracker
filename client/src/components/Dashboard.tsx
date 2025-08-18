@@ -1020,6 +1020,14 @@ export default function Dashboard() {
                                         }}
                                       />
                                     )}
+                                    {/* Budget marker line - shows where 100% budget is */}
+                                    {data.budgetHours > 0 && (
+                                      <div 
+                                        className="absolute top-0 w-0.5 h-2 bg-gray-800 opacity-80"
+                                        style={{ left: '100%' }}
+                                        title={`Budget limit: ${data.budgetHours.toFixed(1)}h`}
+                                      />
+                                    )}
                                   </div>
                                   {remainingHours > 0 && (
                                     <div className="text-xs text-gray-500">
