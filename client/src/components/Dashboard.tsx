@@ -568,21 +568,27 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
-    // Calculate cost code progress
+    // Calculate task-level remaining hours: scheduled - actual for this specific task
+    const remainingHours = Math.max(0, scheduledHours - actualHours);
+    
+    // Get cost code budget info for context (not used for remaining hours calculation)
     const costCodeData = getCostCodeStatus(task.locationId);
     const taskCostCode = task.costCode;
     const costCodeInfo = costCodeData[taskCostCode];
-    const remainingHours = costCodeInfo ? Math.max(0, costCodeInfo.budgetHours - costCodeInfo.actualHours) : 0;
     const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
     
     let remainingHoursColor = 'text-green-600';
-    if (budgetHours > 0) {
-      const remainingPercentage = (remainingHours / budgetHours) * 100;
-      if (remainingPercentage <= 0) {
-        remainingHoursColor = 'text-red-600';
-      } else if (remainingPercentage <= 15) {
-        remainingHoursColor = 'text-yellow-600';
+    if (scheduledHours > 0) {
+      const completionPercentage = (actualHours / scheduledHours) * 100;
+      if (remainingHours <= 0 || completionPercentage >= 100) {
+        remainingHoursColor = 'text-green-600'; // Completed
+      } else if (completionPercentage >= 75) {
+        remainingHoursColor = 'text-yellow-600'; // Nearly complete
+      } else {
+        remainingHoursColor = 'text-green-600'; // In progress
       }
+    } else if (actualHours > 0) {
+      remainingHoursColor = 'text-green-600'; // Work done but no scheduled baseline
     }
 
     return (
