@@ -19,7 +19,7 @@ interface UseForemanLogicProps {
 export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: UseForemanLogicProps) {
   const [showForemanModal, setShowForemanModal] = useState(false);
   const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
-  const [dismissedForTask, setDismissedForTask] = useState<string | null>(null);
+  const [dismissedTasks, setDismissedTasks] = useState<Set<string>>(new Set());
   
   const queryClient = useQueryClient();
 
@@ -111,23 +111,25 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     
     // Only trigger if modal is not already showing, task doesn't have a foremanId, 
     // and this specific condition hasn't been dismissed for this task
-    if (!showForemanModal && !task.foremanId && dismissedForTask !== taskKey) {
+    if (!showForemanModal && !task.foremanId && !dismissedTasks.has(taskKey)) {
       if (assignedForemen.length >= 2) {
         console.log('🔍 FOREMAN LOGIC: Multiple foremen detected, triggering Overall Foreman selection', {
           assignedForemen: assignedForemen.map(f => f.name),
-          taskName: task.name
+          taskName: task.name,
+          taskKey
         });
         setForemanSelectionType('overall');
         setShowForemanModal(true);
       } else if (assignedForemen.length === 0) {
         console.log('🔍 FOREMAN LOGIC: No foremen assigned, triggering Responsible Foreman selection', {
-          taskName: task.name
+          taskName: task.name,
+          taskKey
         });
         setForemanSelectionType('responsible');
         setShowForemanModal(true);
       }
     }
-  }, [assignedForemen.length, task.foremanId, task.id, task.name, showForemanModal, dismissedForTask]);
+  }, [assignedForemen.length, task.foremanId, task.id, task.name, showForemanModal, dismissedTasks]);
 
   // Handle foreman selection from modal
   const handleForemanSelection = (foremanId: number) => {
