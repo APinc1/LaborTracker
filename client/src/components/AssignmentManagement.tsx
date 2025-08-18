@@ -630,15 +630,25 @@ export default function AssignmentManagement() {
     }
   };
 
-  const filteredAssignments = (assignments as any[]).filter((assignment: any) => {
-    const employee = getEmployee(assignment.employeeId);
-    const crew = getCrew(employee?.crewId);
-    
-    if (filterCrew && filterCrew !== "all" && crew?.name !== filterCrew) return false;
-    if (filterEmployeeType && filterEmployeeType !== "all" && employee?.employeeType !== filterEmployeeType) return false;
-    
-    return true;
-  });
+  const filteredAssignments = (assignments as any[])
+    .filter((assignment: any) => {
+      const employee = getEmployee(assignment.employeeId);
+      const crew = getCrew(employee?.crewId);
+      
+      if (filterCrew && filterCrew !== "all" && crew?.name !== filterCrew) return false;
+      if (filterEmployeeType && filterEmployeeType !== "all" && employee?.employeeType !== filterEmployeeType) return false;
+      
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      const taskA = getTask(a.taskId);
+      const taskB = getTask(b.taskId);
+      const locationA = getLocation(taskA?.locationId)?.name || 'Unknown Location';
+      const locationB = getLocation(taskB?.locationId)?.name || 'Unknown Location';
+      
+      // Sort by location name in descending order (Z to A)
+      return locationB.localeCompare(locationA);
+    });
 
   const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name)));
   const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
