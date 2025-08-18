@@ -1057,7 +1057,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get current task assignments and employee data
       const assignments = await storage.getEmployeeAssignments(taskId);
-      const allEmployees = await storage.getAllEmployees();
+      const allEmployees = await storage.getEmployees();
       
       // Find currently assigned foremen
       const assignedForemen = assignments

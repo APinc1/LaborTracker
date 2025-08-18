@@ -378,6 +378,12 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
+      // Force refresh of specific task to show updated foreman
+      await queryClient.refetchQueries({ queryKey: ["/api/tasks", taskId] });
+      if (currentTask?.locationId) {
+        await queryClient.refetchQueries({ queryKey: ["/api/locations", currentTask.locationId, "tasks"] });
+      }
+      
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
       
       // Check if we need to trigger foreman selection after assignments are saved
