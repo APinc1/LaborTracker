@@ -308,7 +308,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         taskCostCode.includes('BASE') || taskCostCode.includes('GRADING') ||
         taskCostCode === 'DEMO/EX' || taskCostCode === 'DEMO/EX + BASE/GRADING' || 
         taskCostCode === 'DEMO/EX+BASE/GRADING' || taskCostCode === 'DEMO EX BASE GRADING') {
-      taskCostCode = 'DEMO/EX';
+      taskCostCode = 'Demo/Ex + Base/Grading';
     }
     
     // Apply GENERAL LABOR normalization
@@ -342,7 +342,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     if (costCode === 'DEMO/EX' || costCode === 'DEMO' || costCode === 'EX' ||
         costCode === 'BASE/GRADING' || costCode === 'BASE' || costCode === 'GRADING' || 
         costCode === 'DEMO/EX + BASE/GRADING' || costCode === 'DEMO/EX+BASE/GRADING') {
-      costCode = 'DEMO/EX';
+      costCode = 'Demo/Ex + Base/Grading';
     }
     
     // Apply GENERAL LABOR normalization
@@ -423,6 +423,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       'SUB': 'Subcontractor',
       'LANDSCAPING': 'Landscaping',
       'UTILITY ADJ': 'Utility Adjustment',
+      'Demo/Ex + Base/Grading': 'Demo/Ex + Base/Grading',
+      'GENERAL LABOR': 'General Labor',
     };
     return mappings[costCode] || costCode;
   };
