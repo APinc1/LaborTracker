@@ -1201,7 +1201,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(assignment);
     } catch (error) {
-      res.status(400).json({ error: 'Invalid assignment data' });
+      console.error('Assignment validation error:', error);
+      console.error('Request body:', req.body);
+      res.status(400).json({ 
+        error: 'Invalid assignment data', 
+        details: error instanceof Error ? error.message : 'Validation failed'
+      });
     }
   });
 
