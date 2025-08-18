@@ -349,6 +349,10 @@ export default function Dashboard() {
       if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR' || trimmed === 'GENERAL') {
         return 'GENERAL LABOR';
       }
+      // Normalize AC and ASPHALT to the same cost code
+      if (trimmed === 'AC' || trimmed === 'ASPHALT') {
+        return 'AC';
+      }
       return trimmed; // Return uppercase normalized version
     };
     
