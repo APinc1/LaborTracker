@@ -387,9 +387,20 @@ export default function Dashboard() {
 
     // Filter budget items to only include the current task's location
     // Note: task.locationId is database ID (integer), budget items also use database ID as locationId
-    const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
-      item.locationId === task.locationId
-    );
+    const locationSpecificBudgetItems = budgetItems.filter((item: any) => {
+      const match = item.locationId === task.locationId;
+      if (!match && budgetItems.length > 0) {
+        console.log('🔍 Dashboard item location mismatch:', {
+          itemLocationId: item.locationId, 
+          itemLocationIdType: typeof item.locationId,
+          taskLocationId: task.locationId,
+          taskLocationIdType: typeof task.locationId,
+          equal: item.locationId === task.locationId,
+          equalStrict: item.locationId == task.locationId
+        });
+      }
+      return match;
+    });
 
     console.log('🔍 Dashboard location-specific budget items:', locationSpecificBudgetItems.length);
 
