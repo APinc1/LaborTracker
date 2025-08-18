@@ -67,7 +67,7 @@ export function TaskCardWithForeman({
             <div className="space-y-1">
               <h3 className="font-medium text-gray-900">{task.name}</h3>
               <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <span>{format(new Date(task.taskDate), "MMM d")}</span>
+                <span>{format(new Date(task.taskDate + 'T00:00:00'), "MMM d")}</span>
                 <span className="text-gray-400">•</span>
                 <Badge variant="secondary" className="text-xs">
                   {task.status?.replace('_', ' ') || 'upcoming'}
