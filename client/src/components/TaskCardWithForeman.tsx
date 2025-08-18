@@ -75,7 +75,22 @@ export function TaskCardWithForeman({
               </div>
             </div>
             
-
+            {/* Cost Code Progress */}
+            <div className="text-right space-y-1">
+              <div className="text-sm font-medium">
+                <span className={remainingHoursColor}>
+                  {remainingHours.toFixed(1)}h remaining
+                </span>
+              </div>
+              {budgetHours > 0 && (
+                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full ${remainingHours <= 0 ? 'bg-red-500' : remainingHours / budgetHours <= 0.15 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.max(0, Math.min(100, (remainingHours / budgetHours) * 100))}%` }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Project and Location */}
