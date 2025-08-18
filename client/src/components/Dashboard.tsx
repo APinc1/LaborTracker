@@ -488,18 +488,21 @@ export default function Dashboard() {
         costCodeData[normalizedCostCode].actualHours += actualHours;
         
         // Only count scheduled hours for assignments that DON'T have actual hours yet
-        // This prevents double-counting completed work as both actual AND scheduled
-        if (actualHours === 0) {
+        // AND are from incomplete tasks - completed tasks should never contribute to scheduled hours
+        const isTaskComplete = task.status === 'complete' || task.status === 'completed' || task.status === 'Complete';
+        
+        if (actualHours === 0 && !isTaskComplete) {
           costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
           
           // Debug: Log scheduled hours being added
           if (scheduledHours > 0) {
-            console.log(`📊 Dashboard: Adding ${scheduledHours}h scheduled to ${normalizedCostCode} for ${locationId} (task ${taskId}, no actual hours)`);
+            console.log(`📊 Dashboard: Adding ${scheduledHours}h scheduled to ${normalizedCostCode} for ${locationId} (task ${taskId}, no actual hours, task incomplete)`);
           }
         } else {
-          // Debug: Log when we skip scheduled hours due to actual hours
+          // Debug: Log when we skip scheduled hours
           if (scheduledHours > 0) {
-            console.log(`📊 Dashboard: Skipping ${scheduledHours}h scheduled for ${normalizedCostCode} in ${locationId} (task ${taskId} has ${actualHours}h actual)`);
+            const reason = actualHours > 0 ? `has ${actualHours}h actual` : 'task completed';
+            console.log(`📊 Dashboard: Skipping ${scheduledHours}h scheduled for ${normalizedCostCode} in ${locationId} (task ${taskId} ${reason})`);
           }
         }
       }
