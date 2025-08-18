@@ -491,6 +491,16 @@ export default function Dashboard() {
         // This prevents double-counting completed work as both actual AND scheduled
         if (actualHours === 0) {
           costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+          
+          // Debug: Log scheduled hours being added
+          if (scheduledHours > 0) {
+            console.log(`📊 Dashboard: Adding ${scheduledHours}h scheduled to ${normalizedCostCode} for ${locationId} (task ${taskId}, no actual hours)`);
+          }
+        } else {
+          // Debug: Log when we skip scheduled hours due to actual hours
+          if (scheduledHours > 0) {
+            console.log(`📊 Dashboard: Skipping ${scheduledHours}h scheduled for ${normalizedCostCode} in ${locationId} (task ${taskId} has ${actualHours}h actual)`);
+          }
         }
       }
     });
@@ -990,16 +1000,19 @@ export default function Dashboard() {
                                     </span>
                                   </div>
                                   <div className="w-full bg-gray-200 rounded-full h-2 relative">
-                                    {/* Base progress bar for actual hours */}
+                                    {/* Progress bar showing actual hours in green/yellow/red */}
                                     <div 
                                       className={`h-2 rounded-full transition-all duration-300 ${progressColor}`}
                                       style={{ width: `${Math.min(100, progressPercentage)}%` }}
                                     />
-                                    {/* Overlay for scheduled hours when they exceed actual hours */}
-                                    {showScheduledIndicator && (
+                                    {/* Additional blue section for scheduled hours beyond actual hours */}
+                                    {data.scheduledHours > 0 && data.actualHours < data.budgetHours && (
                                       <div 
-                                        className={`absolute top-0 h-2 rounded-full transition-all duration-300 ${scheduledColor}`}
-                                        style={{ width: `${Math.min(100, scheduledPercentage)}%` }}
+                                        className="absolute top-0 h-2 bg-blue-400 rounded-full transition-all duration-300 opacity-70"
+                                        style={{ 
+                                          left: `${Math.min(100, progressPercentage)}%`,
+                                          width: `${Math.min(100 - progressPercentage, scheduledPercentage)}%` 
+                                        }}
                                       />
                                     )}
                                   </div>
