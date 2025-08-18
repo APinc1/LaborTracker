@@ -1,0 +1,656 @@
+📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 7 tasks for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 1 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 7 tasks for 120700_Area 16
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 11 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Asphalt: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - NW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - NW has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 7 tasks for 123100_76th and Crenshaw - NW
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 826, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 4 assignments with task mapping for 123100_76th and Crenshaw - NW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - NW: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 7 tasks for 120700_Area 16
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 11 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 7 tasks for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 1 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object
+Console.js:61 🔍 Dashboard budget fetch - relevant locations: Array(9)
+Console.js:61 📊 Dashboard fetching budget for: 123800_6th Street
+Console.js:61 📊 Dashboard fetching budget for: 121500_SW62 - Punchlist
+Console.js:61 📊 Dashboard fetching budget for: 120700_Area 15
+Console.js:61 📊 Dashboard fetching budget for: 1_Richardson
+Console.js:61 📊 Dashboard fetching budget for: 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard fetching budget for: 123100_76th and Crenshaw - SW
+Console.js:61 📊 Dashboard fetching budget for: 120700_Area 16
+Console.js:61 📊 Dashboard fetching budget for: 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard fetching budget for: 101_test
+Console.js:61 ✅ Dashboard budget loaded for 123800_6th Street: 0 items
+Console.js:61 ✅ Dashboard budget loaded for 1_Richardson: 0 items
+Console.js:61 ✅ Dashboard budget loaded for 120700_Area 15: 49 items
+Console.js:61 ✅ Dashboard budget loaded for 121500_SW62 - Punchlist: 0 items
+Console.js:61 ✅ Dashboard budget loaded for 123100_76th and Crenshaw - SW: 46 items
+Console.js:61 ✅ Dashboard budget loaded for 123100_76th and Crenshaw - NW: 46 items
+Console.js:61 ✅ Dashboard budget loaded for 101_test: 52 items
+Console.js:61 ✅ Dashboard budget loaded for 123200_Crescent Heights and Rosewood - West: 43 items
+Console.js:61 ✅ Dashboard budget loaded for 120700_Area 16: 51 items
+Console.js:61 📋 Dashboard all budget data loaded: Array(9)
+Console.js:61 📋 Dashboard: Fetching all tasks for locations with budget data: Array(9)
+Console.js:61 📋 Dashboard: Loaded 14 tasks for 121500_SW62 - Punchlist
+Console.js:61 📋 Dashboard: Loaded 8 tasks for 1_Richardson
+Console.js:61 📋 Dashboard: Loaded 37 tasks for 120700_Area 15
+Console.js:61 📋 Dashboard: Loaded 14 tasks for 123100_76th and Crenshaw - SW
+Console.js:61 📋 Dashboard: Loaded 21 tasks for 123100_76th and Crenshaw - NW
+Console.js:61 📋 Dashboard: Loaded 49 tasks for 123800_6th Street
+Console.js:61 📋 Dashboard: Loaded 11 tasks for 120700_Area 16
+Console.js:61 📋 Dashboard: Loaded 4 tasks for 101_test
+Console.js:61 📋 Dashboard: Loaded 8 tasks for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📋 Dashboard: All location tasks loaded: Array(9)
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 11 tasks for 120700_Area 16
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC CONTROL for 120700_Area 16 (task 800, no actual hours, task incomplete)
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 15 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - SW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - SW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - SW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 14 tasks for 123100_76th and Crenshaw - SW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 658 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 659 has 8h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 660 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 661 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 661 has 7h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 7h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 6.7h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 has 8h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 has 7.49h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 task completed)
+Console.js:61 📊 Dashboard: Adding 4h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+6Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 666, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 6.59h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123100_76th and Crenshaw - SW (task 663 has 8h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 123100_76th and Crenshaw - SW (task 825, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 34 assignments with task mapping for 123100_76th and Crenshaw - SW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - SW: Object
+Console.js:61 🔍 Dashboard renderTaskCard for General Labor: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - SW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - SW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - SW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 14 tasks for 123100_76th and Crenshaw - SW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 658 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 659 has 8h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 660 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 661 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - SW (task 661 has 7h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 7h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 6.7h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 has 8h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 has 7.49h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 664 task completed)
+Console.js:61 📊 Dashboard: Adding 4h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 665, no actual hours, task incomplete)
+6Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 123100_76th and Crenshaw - SW (task 666, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - SW (task 662 has 6.59h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123100_76th and Crenshaw - SW (task 663 has 8h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 123100_76th and Crenshaw - SW (task 825, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 34 assignments with task mapping for 123100_76th and Crenshaw - SW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - SW: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Pour: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123800_6th Street: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123800_6th Street
+Console.js:61 📊 Dashboard: Location 123800_6th Street has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 49 tasks for 123800_6th Street
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 307 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 308 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 123800_6th Street (task 308 has 1h actual)
+3Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 123800_6th Street (task 309 has 4h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 310 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 311 has 9.8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 311 has 10.5h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 312 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 313 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 313 has 8.25h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 313 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 314 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 315 has 8.75h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 316 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 317 has 9.3h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 317 has 8.6h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 317 has 9.3h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 318 has 8.92h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 319 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 319 has 9.2h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 320 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 320 task completed)
+3Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 123800_6th Street (task 320 has 4h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 123800_6th Street (task 322 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 123800_6th Street (task 322 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 123800_6th Street (task 322 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 123800_6th Street (task 322 has 2.7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 123800_6th Street (task 322 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 1h scheduled for GENERAL LABOR in 123800_6th Street (task 321 has 1h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 323 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 324 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 324 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 325 has 6.85h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 8.63h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 8.31h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 9.19h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 8.12h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 326 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 327 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 327 has 8.39h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 327 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 328 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 328 has 8.75h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 329 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 329 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 330 has 9.23h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 330 has 8.71h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 331 has 9.47h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 331 has 8.18h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 332 has 9.19h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 332 has 9h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 333 has 7.95h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 334 has 7.5h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 335 has 8.5h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 336 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 337 has 13.17h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 337 has 8.5h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 338 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 123800_6th Street (task 338 has 6.6h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 338 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 339 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 339 has 7.76h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 340 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 341 has 8.8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 342 has 8.64h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 343 has 11.06h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 344 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123800_6th Street (task 344 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 345 has 10.45h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 345 has 10.34h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 346 has 9.1h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 347 has 8.85h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 347 has 8.68h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 347 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 348 has 11.35h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 348 has 10.8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123800_6th Street (task 349 has 11h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123800_6th Street (task 349 has 11.78h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 350 has 9.9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 350 has 9.42h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 351 has 11.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 352 has 9.37h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 352 has 8.28h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 123800_6th Street (task 352 has 10h actual)
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 123800_6th Street (task 353, no actual hours, task incomplete)
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 123800_6th Street (task 823, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 115 assignments with task mapping for 123800_6th Street
+Console.js:61 🔍 Dashboard final cost code data for 123800_6th Street: Object
+Console.js:61 🔍 Dashboard renderTaskCard for General Labor: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 15: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 15
+Console.js:61 📊 Dashboard: Location 120700_Area 15 has budget cost codes: Array(9)
+Console.js:61 📊 Dashboard: Created task mapping with 37 tasks for 120700_Area 15
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for TRAFFIC CONTROL in 120700_Area 15 (task 538 has 10.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for TRAFFIC CONTROL in 120700_Area 15 (task 538 has 11h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for TRAFFIC CONTROL in 120700_Area 15 (task 538 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for TRAFFIC CONTROL in 120700_Area 15 (task 538 has 10.6h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 8.45h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 8.52h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 8.53h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 539 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 7.54h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 8.13h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 540 has 8h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 541 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 541 has 10h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 541 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 8.49h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 8.55h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 542 has 5.26h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 543 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 543 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 543 has 6.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 543 has 8h actual)
+5Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 544 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 544 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 544 has 8h actual)
+5Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 545 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 545 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.13h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.12h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.22h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.24h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 8.48h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 547 has 9.25h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 546 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 546 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 546 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 548 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 549 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 549 has 8.25h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 550 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 549 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 549 has 8.5h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 548 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 548 has 9h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 551 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 551 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 552 has 8.39h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 552 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 552 has 8.28h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 549 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 553 has 4h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 553 has 3.72h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 554 has 3h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 554 has 4h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 554 has 3.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 555 has 2h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 556 has 6.8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 556 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 555 has 1.95h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 555 has 1.74h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 557 has 9.93h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 557 has 7.5h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 557 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 559 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 558 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 558 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 558 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 559 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 557 has 9.5h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 555 has 2h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 560 has 7.57h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 560 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 560 has 7.79h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 560 has 6h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 560 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 561 has 6.87h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 561 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 561 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 561 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 558 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 562 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 563 has 6.71h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 563 has 7.7h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 563 has 7.72h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 563 has 9h actual)
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for CONCRETE in 120700_Area 15 (task 564 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 has 7.18h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 has 7.34h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 has 6.83h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 has 7.52h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 566 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 6.89h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 8.39h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 task completed)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 120700_Area 15 (task 568 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 565 has 6.85h actual)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 569 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 569 has 10h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 569 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 567 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 570 has 7.1h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 570 has 7.22h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 570 has 7.33h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 120700_Area 15 (task 570 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.13h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.49h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.38h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 11.92h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.54h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.6h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.19h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 9.84h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for AC in 120700_Area 15 (task 571 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 120700_Area 15 (task 572 task completed)
+10Console.js:61 📊 Dashboard: Adding 8h scheduled to AC for 120700_Area 15 (task 573, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST CONCRETE for 120700_Area 15 (task 824, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 188 assignments with task mapping for 120700_Area 15
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 15: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Punchlist Concrete: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - NW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - NW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 21 tasks for 123100_76th and Crenshaw - NW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 628 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 629 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 10h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 631 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.59h actual)
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.41h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 has 5.83h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7.76h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 5.91h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.62h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.51h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.44h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 task completed)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 636 has 8h actual)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 637, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 811, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 826, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 46 assignments with task mapping for 123100_76th and Crenshaw - NW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - NW: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 8 tasks for 123200_Crescent Heights and Rosewood - West
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for TRAFFIC CONTROL in 123200_Crescent Heights and Rosewood - West (task 707 task completed)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 3 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Traffic Control: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 1_Richardson: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 1_Richardson
+Console.js:61 📊 Dashboard: Location 1_Richardson has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 8 tasks for 1_Richardson
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 26 has 9.59h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 1_Richardson (task 26 has 7.41h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for GENERAL LABOR in 1_Richardson (task 26 has 9.63h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 27 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 28 has 9.32h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 28 has 9.19h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 29 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for GENERAL LABOR in 1_Richardson (task 30 has 8h actual)
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 1_Richardson (task 31, no actual hours, task incomplete)
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 1_Richardson (task 812, no actual hours, task incomplete)
+3Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 1_Richardson (task 828, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 17 assignments with task mapping for 1_Richardson
+Console.js:61 🔍 Dashboard final cost code data for 1_Richardson: Object
+Console.js:61 🔍 Dashboard renderTaskCard for General Labor: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 121500_SW62 - Punchlist: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 121500_SW62 - Punchlist
+Console.js:61 📊 Dashboard: Location 121500_SW62 - Punchlist has budget cost codes: Array(0)
+Console.js:61 📊 Dashboard: Created task mapping with 14 tasks for 121500_SW62 - Punchlist
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 39 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 40 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 9.75h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 9h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 42 has 8.25h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 44 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 46 has 5.59h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST GENERAL LABOR in 121500_SW62 - Punchlist (task 45 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 43 has 4.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 46 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 44 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 46 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 43 has 4.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 46 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 43 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 47 has 9.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 47 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 47 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 46 has 10h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST DEMO for 121500_SW62 - Punchlist (task 813, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 43 has 4.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 40 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 41 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 47 has 7.5h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST GENERAL LABOR in 121500_SW62 - Punchlist (task 48 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 44 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST DEMO in 121500_SW62 - Punchlist (task 43 has 4.5h actual)
+3Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST DEMO for 121500_SW62 - Punchlist (task 813, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST CONCRETE for 121500_SW62 - Punchlist (task 814, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to GENERAL LABOR for 121500_SW62 - Punchlist (task 815, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for PUNCHLIST CONCRETE in 121500_SW62 - Punchlist (task 42 has 8.25h actual)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST DEMO for 121500_SW62 - Punchlist (task 813, no actual hours, task incomplete)
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to PUNCHLIST GENERAL LABOR for 121500_SW62 - Punchlist (task 829, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 43 assignments with task mapping for 121500_SW62 - Punchlist
+Console.js:61 🔍 Dashboard final cost code data for 121500_SW62 - Punchlist: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Punchlist General Labor: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - NW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - NW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 21 tasks for 123100_76th and Crenshaw - NW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 628 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 629 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 10h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 631 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.59h actual)
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.41h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 has 5.83h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7.76h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 5.91h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.62h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.51h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.44h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 task completed)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 636 has 8h actual)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 637, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 811, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 826, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 46 assignments with task mapping for 123100_76th and Crenshaw - NW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - NW: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Form: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 8 tasks for 123200_Crescent Heights and Rosewood - West
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for TRAFFIC CONTROL in 123200_Crescent Heights and Rosewood - West (task 707 task completed)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 3 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 11 tasks for 120700_Area 16
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC CONTROL for 120700_Area 16 (task 800, no actual hours, task incomplete)
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 15 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Pour: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - NW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - NW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 21 tasks for 123100_76th and Crenshaw - NW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 628 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 629 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 10h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 631 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.59h actual)
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.41h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 has 5.83h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7.76h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 5.91h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.62h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.51h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.44h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 task completed)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 636 has 8h actual)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 637, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 811, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 826, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 46 assignments with task mapping for 123100_76th and Crenshaw - NW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - NW: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Form: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 8 tasks for 123200_Crescent Heights and Rosewood - West
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for TRAFFIC CONTROL in 123200_Crescent Heights and Rosewood - West (task 707 task completed)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 3 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 11 tasks for 120700_Area 16
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC CONTROL for 120700_Area 16 (task 800, no actual hours, task incomplete)
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 15 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Demo/Ex + Base/Grading: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object
+Console.js:61 🔍 Dashboard renderTaskCard for Asphalt: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123100_76th and Crenshaw - NW: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123100_76th and Crenshaw - NW
+Console.js:61 📊 Dashboard: Location 123100_76th and Crenshaw - NW has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 21 tasks for 123100_76th and Crenshaw - NW
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 628 has 8h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 629 has 8h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 630 has 10h actual)
+3Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 631 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.59h actual)
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.5h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 10h actual)
+Console.js:61 📊 Dashboard: Skipping 4h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 632 has 8.41h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 has 5.83h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 633 task completed)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 7.76h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 5.91h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 634 has 8h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.62h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.51h actual)
+Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 has 7.44h actual)
+2Console.js:61 📊 Dashboard: Skipping 8h scheduled for CONCRETE in 123100_76th and Crenshaw - NW (task 635 task completed)
+4Console.js:61 📊 Dashboard: Skipping 8h scheduled for DEMO/EX + BASE/GRADING in 123100_76th and Crenshaw - NW (task 636 has 8h actual)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 637, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 811, no actual hours, task incomplete)
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 123100_76th and Crenshaw - NW (task 826, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 46 assignments with task mapping for 123100_76th and Crenshaw - NW
+Console.js:61 🔍 Dashboard final cost code data for 123100_76th and Crenshaw - NW: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 120700_Area 16: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 120700_Area 16
+Console.js:61 📊 Dashboard: Location 120700_Area 16 has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 11 tasks for 120700_Area 16
+4Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC CONTROL for 120700_Area 16 (task 800, no actual hours, task incomplete)
+11Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 120700_Area 16 (task 801, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 15 assignments with task mapping for 120700_Area 16
+Console.js:61 🔍 Dashboard final cost code data for 120700_Area 16: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 123200_Crescent Heights and Rosewood - West
+Console.js:61 📊 Dashboard: Location 123200_Crescent Heights and Rosewood - West has budget cost codes: Array(7)
+Console.js:61 📊 Dashboard: Created task mapping with 8 tasks for 123200_Crescent Heights and Rosewood - West
+2Console.js:61 📊 Dashboard: Skipping 4h scheduled for TRAFFIC CONTROL in 123200_Crescent Heights and Rosewood - West (task 707 task completed)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to TRAFFIC for 123200_Crescent Heights and Rosewood - West (task 827, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 3 assignments with task mapping for 123200_Crescent Heights and Rosewood - West
+Console.js:61 🔍 Dashboard final cost code data for 123200_Crescent Heights and Rosewood - West: Object
+Console.js:61 🔍 Dashboard getCostCodeStatus for 101_test: Object
+Console.js:61 📊 Dashboard: Calculating actual hours from ALL assignments for 101_test
+Console.js:61 📊 Dashboard: Location 101_test has budget cost codes: Array(12)
+Console.js:61 📊 Dashboard: Created task mapping with 4 tasks for 101_test
+2Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Adding 8h scheduled to CONCRETE for 101_test (task 848, no actual hours, task incomplete)
+7Console.js:61 📊 Dashboard: Adding 8h scheduled to DEMO/EX + BASE/GRADING for 101_test (task 847, no actual hours, task incomplete)
+Console.js:61 📊 Dashboard: Processed 10 assignments with task mapping for 101_test
+Console.js:61 🔍 Dashboard final cost code data for 101_test: Object

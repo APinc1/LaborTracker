@@ -698,16 +698,12 @@ export default function Dashboard() {
     let remainingHours = null;
     let totalBudgetHours = 0;
     
-    console.log(`🔍 Dashboard renderTaskCard for ${task.name}:`, {
-      taskCostCode: task.costCode,
+    console.log(`🔍 TASK CARD DEBUG: ${task.name}`, { 
+      costCode: task.costCode, 
       locationId: locationId,
-      costCodeStatusKeys: Object.keys(costCodeStatus),
-      hasData: !!costCodeStatus.costCodeData
+      costCodeStatus: !!costCodeStatus,
+      hasData: !!costCodeStatus?.costCodeData 
     });
-    
-    if (costCodeStatus.costCodeData) {
-      console.log(`🔍 Available cost codes:`, Object.keys(costCodeStatus.costCodeData));
-    }
     
     if (task.costCode && costCodeStatus.costCodeData) {
       const normalizedCostCode = normalizeCostCode(task.costCode);
