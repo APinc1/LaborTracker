@@ -428,10 +428,10 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
-    // Find all tasks for this cost code up to and including the current task date, across ALL locations
+    // Find all tasks for this cost code up to and including the current task date, same location only
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
     const relevantTasks = allTasks.filter((t: any) => {
-      if (!t.costCode) return false;
+      if (!t.costCode || t.locationId !== task.locationId) return false;
       
       // Handle cost code matching with combined codes
       let tCostCode = t.costCode;
@@ -474,9 +474,17 @@ export default function ScheduleManagement() {
         return sum + (parseFloat(assignment.actualHours) || 0);
       }, 0);
       
-      // If no actual hours, fall back to scheduled hours
-      let taskHours = taskActualHours;
-      if (taskActualHours === 0) {
+      // Check if task is complete to determine which hours to use
+      const isComplete = t.isComplete === 1 || t.isComplete === true;
+      let taskHours = 0;
+      
+      if (isComplete) {
+        // For completed tasks, use actual hours if available, otherwise use scheduled hours  
+        taskHours = taskActualHours > 0 ? taskActualHours : taskAssignments.reduce((sum: number, assignment: any) => {
+          return sum + (parseFloat(assignment.assignedHours) || 0);
+        }, 0);
+      } else {
+        // For incomplete tasks, only use scheduled hours (don't count actual hours)
         taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
           return sum + (parseFloat(assignment.assignedHours) || 0);
         }, 0);
