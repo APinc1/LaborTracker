@@ -75,8 +75,8 @@ export function TaskCardWithForeman({
               </div>
             </div>
             
-            {/* Cost Code Progress - only show if there are scheduled hours */}
-            {scheduledHours > 0 && (
+            {/* Cost Code Progress - show remaining hours for tasks with cost codes that have budget */}
+            {remainingHours !== null && remainingHours !== undefined && (
               <div className="text-right space-y-1">
                 <div className="text-sm font-medium">
                   <span className={remainingHoursColor}>
