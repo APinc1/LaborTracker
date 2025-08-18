@@ -1019,6 +1019,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           actualHours: req.body.actualHours || null
         }));
         console.log('Assignment updated:', updated);
+        
+        // Reassign foreman after assignment update
+        await reassignTaskForeman(storage, updated.taskId);
+        
         return res.status(200).json(updated);
       }
       
@@ -1031,6 +1035,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertEmployeeAssignmentSchema.parse(assignmentData);
       const assignment = await withFastTimeout(storage.createEmployeeAssignment(validated));
       console.log('Assignment created:', assignment);
+      
+      // Reassign foreman after new assignment is created
+      await reassignTaskForeman(storage, assignment.taskId);
+      
       res.status(201).json(assignment);
     } catch (error: any) {
       console.error('Assignment creation error:', error);
@@ -1044,11 +1052,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to reassign foreman based on current task assignments
+  const reassignTaskForeman = async (storage: any, taskId: number) => {
+    try {
+      // Get current task assignments and employee data
+      const assignments = await storage.getEmployeeAssignments(taskId);
+      const allEmployees = await storage.getAllEmployees();
+      
+      // Find currently assigned foremen
+      const assignedForemen = assignments
+        .map((assignment: any) => allEmployees.find((emp: any) => emp.id === assignment.employeeId))
+        .filter((emp: any) => emp && emp.isForeman === true);
+      
+      console.log('🔍 FOREMAN REASSIGNMENT:', {
+        taskId,
+        totalAssignments: assignments.length,
+        assignedForemen: assignedForemen.map((f: any) => ({ id: f.id, name: f.name }))
+      });
+      
+      // Update task foreman based on assignment count
+      if (assignedForemen.length === 1) {
+        // Single foreman: auto-assign
+        await storage.updateTask(taskId, { foremanId: assignedForemen[0].id });
+        console.log('✅ AUTO-ASSIGNED single foreman:', assignedForemen[0].name);
+      } else if (assignedForemen.length === 0) {
+        // No foremen: clear foreman assignment
+        await storage.updateTask(taskId, { foremanId: null });
+        console.log('🔄 CLEARED foreman assignment - no foremen assigned');
+      }
+      // For 2+ foremen, keep existing foreman unless they're no longer assigned
+      else if (assignedForemen.length >= 2) {
+        const currentTask = await storage.getTask(taskId);
+        const currentForemanStillAssigned = assignedForemen.some((f: any) => f.id === currentTask.foremanId);
+        
+        if (!currentForemanStillAssigned) {
+          console.log('🔄 CURRENT foreman no longer assigned, needs manual selection');
+          // Clear foreman to trigger selection popup
+          await storage.updateTask(taskId, { foremanId: null });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to reassign foreman:', error);
+    }
+  };
+
   app.delete('/api/assignments/:id', async (req, res) => {
     try {
       const storage = await getStorage();
       const assignmentId = parseInt(req.params.id);
+      
+      // Get assignment details before deletion to know which task to update
+      const assignment = await storage.getAllEmployeeAssignments();
+      const targetAssignment = assignment.find((a: any) => a.id === assignmentId);
+      
       await storage.deleteEmployeeAssignment(assignmentId);
+      
+      // Reassign foreman if assignment was deleted
+      if (targetAssignment) {
+        await reassignTaskForeman(storage, targetAssignment.taskId);
+      }
+      
       res.status(200).json({ message: 'Assignment deleted successfully' });
     } catch (error) {
       console.error('Error deleting assignment:', error);
