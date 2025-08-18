@@ -377,10 +377,21 @@ export default function Dashboard() {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
 
+    console.log('🔍 Dashboard calculateRemainingHours:', {
+      taskName: task.name,
+      taskLocationId: task.locationId,
+      taskCostCode: costCode,
+      budgetItemsCount: budgetItems.length,
+      sampleBudgetItem: budgetItems[0]
+    });
+
     // Filter budget items to only include the current task's location
+    // Note: task.locationId is database ID (integer), budget items also use database ID as locationId
     const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
       item.locationId === task.locationId
     );
+
+    console.log('🔍 Dashboard location-specific budget items:', locationSpecificBudgetItems.length);
 
     // Get total budget hours for this cost code from location-specific budget items
     const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
