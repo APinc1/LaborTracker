@@ -373,7 +373,6 @@ export default function Dashboard() {
     }
   };
 
-  // This function is no longer used in Dashboard - keeping for compatibility with other components
   const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
@@ -691,40 +690,14 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
-    // Use Dashboard's cost code data instead of calculateRemainingHours
-    const location = getLocation(task.locationId);
-    const locationId = location?.locationId || task.locationId;
-    const costCodeStatus = getCostCodeStatus(locationId);
-    let remainingHours = null;
-    let totalBudgetHours = 0;
+    // Get all tasks from allLocationTasks for remaining hours calculation (same as Schedule page)
+    const allTasks = Object.values(allLocationTasks).flat();
     
-    console.log(`🔍 TASK CARD DEBUG: ${task.name}`, { 
-      costCode: task.costCode, 
-      locationId: locationId,
-      costCodeStatus: !!costCodeStatus,
-      hasData: !!costCodeStatus?.costCodeData 
-    });
-    
-    if (task.costCode && costCodeStatus.costCodeData) {
-      const normalizedCostCode = normalizeCostCode(task.costCode);
-      const costData = costCodeStatus.costCodeData[normalizedCostCode];
-      
-      console.log(`🔍 Dashboard cost data lookup:`, {
-        normalizedCostCode,
-        costData,
-        availableKeys: Object.keys(costCodeStatus.costCodeData)
-      });
-      
-      if (costData && costData.budgetHours > 0) {
-        totalBudgetHours = costData.budgetHours;
-        const usedHours = costData.actualHours + costData.scheduledHours;
-        remainingHours = Math.max(0, totalBudgetHours - usedHours);
-        
-        console.log(`✅ Dashboard calculated remaining hours: ${remainingHours} (${totalBudgetHours} budget - ${usedHours} used)`);
-      }
-    }
-    
-    const remainingHoursColor = remainingHours !== null ? getRemainingHoursColor(remainingHours, totalBudgetHours) : 'text-gray-600';
+    // Use the same remaining hours calculation as the Schedule page
+    const result = calculateRemainingHours(task, allTasks, allBudgetItems);
+    const remainingHours = result?.remainingHours || 0;
+    const totalBudgetHours = result?.totalBudgetHours || 0;
+    const remainingHoursColor = getRemainingHoursColor(remainingHours, totalBudgetHours);
 
     return (
       <TaskCardWithForeman
@@ -733,7 +706,7 @@ export default function Dashboard() {
         taskAssignments={taskAssignments}
         remainingHours={remainingHours}
         remainingHoursColor={remainingHoursColor}
-        budgetHours={0} // Hide progress bars on Dashboard
+        budgetHours={totalBudgetHours}
         projectName={projectName}
         locationName={locationName}
         actualHours={actualHours}
