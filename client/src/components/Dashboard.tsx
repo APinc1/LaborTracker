@@ -570,7 +570,28 @@ export default function Dashboard() {
     
     // Get cost code budget info for remaining hours calculation
     const costCodeData = getCostCodeStatus(task.locationId);
-    const taskCostCode = task.costCode;
+    
+    // Normalize task cost code to match the keys in costCodeData
+    const normalizeCostCode = (costCode: string) => {
+      const trimmed = costCode.trim().toUpperCase();
+      // Combine DEMO/EX and BASE/GRADING into one category
+      if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING' || 
+          trimmed === 'DEMO/EX + BASE/GRADING' || 
+          trimmed.includes('DEMO/EX') || trimmed.includes('BASE/GRADING')) {
+        return 'DEMO/EX + BASE/GRADING';
+      }
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR' || trimmed === 'GENERAL') {
+        return 'GENERAL LABOR';
+      }
+      // Normalize AC and ASPHALT to the same cost code
+      if (trimmed === 'AC' || trimmed === 'ASPHALT') {
+        return 'AC';
+      }
+      return trimmed; // Return uppercase normalized version
+    };
+    
+    const taskCostCode = normalizeCostCode(task.costCode || '');
     const costCodeInfo = costCodeData[taskCostCode];
     const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
     
