@@ -417,7 +417,7 @@ export default function EnhancedAssignmentModal({
             
             try {
               await apiRequest(`/api/tasks/${taskId}`, {
-                method: 'PATCH',
+                method: 'PUT',
                 body: JSON.stringify({ foremanId: foreman.id }),
                 headers: { 'Content-Type': 'application/json' }
               });
