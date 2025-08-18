@@ -971,6 +971,11 @@ export default function ScheduleManagement() {
           taskId={selectedTaskForAssignment.id}
           taskDate={selectedTaskForAssignment.taskDate}
           taskName={selectedTaskForAssignment.name}
+          onAssignmentsSaved={() => {
+            // Additional refresh after assignments saved
+            queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+          }}
         />
       )}
 

@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { ForemanSelectionModal } from '@/components/ForemanSelectionModal';
 
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface EnhancedAssignmentModalProps {
   taskId: string | number;
   taskDate: string;
   taskName?: string;
+  onAssignmentsSaved?: () => void;
 }
 
 export default function EnhancedAssignmentModal({ 
@@ -25,7 +27,8 @@ export default function EnhancedAssignmentModal({
   onClose, 
   taskId, 
   taskDate, 
-  taskName = "Task" 
+  taskName = "Task",
+  onAssignmentsSaved
 }: EnhancedAssignmentModalProps) {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
@@ -37,6 +40,8 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
+  const [showForemanModal, setShowForemanModal] = useState(false);
+  const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -369,7 +374,7 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -379,6 +384,13 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      
+      // Call the callback after successful assignment save
+      onAssignmentsSaved?.();
+      
+      // Check if foreman selection is needed after saving assignments
+      await checkForForemanSelection();
+      
       onClose();
     },
     onError: () => {
@@ -405,6 +417,67 @@ export default function EnhancedAssignmentModal({
           Available
         </Badge>
       );
+    }
+  };
+
+  // Check if foreman selection is needed after assignments saved
+  const checkForForemanSelection = async () => {
+    try {
+      // Get fresh task and assignment data
+      const taskData = await queryClient.fetchQuery({
+        queryKey: ['/api/tasks', taskId]
+      });
+      const assignmentsData = await queryClient.fetchQuery({
+        queryKey: ['/api/assignments']
+      });
+
+      if (!taskData) return;
+
+      // Get assignments for this task
+      const taskAssignments = assignmentsData.filter((a: any) => a.taskId === parseInt(taskId.toString()));
+      
+      // Get employees assigned to this task
+      const assignedEmployeeIds = taskAssignments.map((a: any) => a.employeeId);
+      const assignedForemen = employees.filter((emp: any) => 
+        assignedEmployeeIds.includes(emp.id) && 
+        (emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman')
+      );
+
+      // Trigger foreman selection based on conditions
+      if (assignedForemen.length >= 2 && !taskData.foremanId) {
+        setForemanSelectionType('overall');
+        setShowForemanModal(true);
+        console.log('🔍 FOREMAN SELECTION: Multiple foremen assigned, need Overall Foreman selection', {
+          assignedForemen: assignedForemen.map((f: any) => f.name),
+          taskName: taskData.name
+        });
+      } else if (assignedForemen.length === 0 && !taskData.foremanId) {
+        setForemanSelectionType('responsible');
+        setShowForemanModal(true);
+        console.log('🔍 FOREMAN SELECTION: No foremen assigned, need Responsible Foreman selection', {
+          taskName: taskData.name
+        });
+      }
+    } catch (error) {
+      console.error('Error checking foreman selection:', error);
+    }
+  };
+
+  // Handle foreman selection
+  const handleForemanSelection = async (foremanId: number) => {
+    try {
+      await apiRequest(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ foremanId })
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/locations'] });
+      
+      toast({ title: "Success", description: "Foreman assigned successfully" });
+      setShowForemanModal(false);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to assign foreman", variant: "destructive" });
     }
   };
 
@@ -968,6 +1041,23 @@ export default function EnhancedAssignmentModal({
           <div className="h-32 mt-[59px] mb-[59px]"></div>
         </div>
       </DialogContent>
+      
+      {/* Foreman Selection Modal */}
+      <ForemanSelectionModal
+        isOpen={showForemanModal}
+        onClose={() => setShowForemanModal(false)}
+        onSelectForeman={handleForemanSelection}
+        assignedForemen={employees.filter((emp: any) => {
+          const assignedEmployeeIds = selectedEmployeeIds.map(id => parseInt(id));
+          return assignedEmployeeIds.includes(emp.id) && 
+                 (emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman');
+        })}
+        allForemen={employees.filter((emp: any) => 
+          emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
+        )}
+        selectionType={foremanSelectionType}
+        taskName={taskName}
+      />
     </Dialog>
   );
 }

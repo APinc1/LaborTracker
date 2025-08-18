@@ -685,6 +685,11 @@ export default function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailM
         taskId={taskId || 0}
         taskDate={task?.taskDate || ''}
         taskName={task?.name || 'Task'}
+        onAssignmentsSaved={() => {
+          // Refresh task and assignment data after saving
+          queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+        }}
       />
 
       {/* Delete Confirmation Dialog */}
