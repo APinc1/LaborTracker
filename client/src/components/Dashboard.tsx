@@ -276,9 +276,9 @@ export default function Dashboard() {
   // Only fetch budget data for locations that have tasks in the selected time period
   // Fix: Use database IDs for proper filtering
   const locationDbIdsWithTasks = [...new Set([
-    ...todayTasks.map((task: any) => task.locationId),
-    ...previousDayTasks.map((task: any) => task.locationId),
-    ...nextDayTasks.map((task: any) => task.locationId)
+    ...(todayTasks as any[]).map((task: any) => task.locationId),
+    ...(previousDayTasks as any[]).map((task: any) => task.locationId),
+    ...(nextDayTasks as any[]).map((task: any) => task.locationId)
   ].filter(Boolean))];
 
   const { data: budgetDataByLocation = {} } = useQuery({
@@ -316,15 +316,50 @@ export default function Dashboard() {
       return budgetData;
     },
     enabled: (locations as any[]).length > 0 && 
-             (todayTasks.length > 0 || previousDayTasks.length > 0 || nextDayTasks.length > 0) &&
+             ((todayTasks as any[]).length > 0 || (previousDayTasks as any[]).length > 0 || (nextDayTasks as any[]).length > 0) &&
              !todayLoading && !previousLoading && !nextLoading,
     staleTime: 60000,
+  });
+
+  // Create a hook to get all tasks for dashboard locations (for actual hours calculation)
+  const { data: allLocationTasks = {} } = useQuery({
+    queryKey: ["/api/dashboard/location-tasks", Object.keys(budgetDataByLocation)],
+    queryFn: async () => {
+      const locationIds = Object.keys(budgetDataByLocation);
+      if (locationIds.length === 0) return {};
+      
+      console.log('📋 Dashboard: Fetching all tasks for locations with budget data:', locationIds);
+      
+      const taskPromises = locationIds.map(async (locationId: string) => {
+        try {
+          const response = await fetch(`/api/locations/${locationId}/tasks`);
+          const tasks = await response.json();
+          console.log(`📋 Dashboard: Loaded ${tasks.length} tasks for ${locationId}`);
+          return { locationId, tasks };
+        } catch (error) {
+          console.warn(`Failed to fetch tasks for location ${locationId}:`, error);
+          return { locationId, tasks: [] };
+        }
+      });
+      
+      const results = await Promise.all(taskPromises);
+      const allTasks = results.reduce((acc: any, { locationId, tasks }) => {
+        acc[locationId] = tasks;
+        return acc;
+      }, {});
+      
+      console.log('📋 Dashboard: All location tasks loaded:', Object.keys(allTasks));
+      return allTasks;
+    },
+    enabled: Object.keys(budgetDataByLocation).length > 0,
+    staleTime: 300000, // 5 minutes - longer since this is more expensive
   });
 
   // Calculate cost code hours and status for location progress
   const getCostCodeStatus = (locationId: string) => {
     // Get budget data for this location
     const locationBudget = budgetDataByLocation[locationId] || [];
+    const locationTasks = allLocationTasks[locationId] || [];
     
     // Find the location object to get its database ID
     const location = (locations as any[]).find((loc: any) => loc.locationId === locationId);
@@ -384,38 +419,87 @@ export default function Dashboard() {
       }
     });
     
-    // Dashboard Limitation: We only have tasks from a limited date range (recent days)
-    // But actual hours come from completed tasks that may be outside this range
-    // For accurate cost code calculations, we need to click on individual locations
+    // Dashboard Implementation: Calculate actual hours from ALL assignments for this location
+    // We'll use a different approach - find all assignments that have actual hours,
+    // then group them by cost code for this location
     
-    console.log(`📊 Dashboard: Note - Limited to tasks from recent date range for ${locationId}`);
+    console.log(`📊 Dashboard: Calculating actual hours from ALL assignments for ${locationId}`);
     
-    // Add scheduled hours from tasks in current date range  
-    const currentLocationTasks = (allTasks as any[]).filter((task: any) => task.locationId === location.id);
-    
-    currentLocationTasks.forEach((task: any) => {
-      if (!task.costCode) return;
-      
-      const normalizedTaskCostCode = normalizeCostCode(task.costCode);
-      
-      if (!costCodeData[normalizedTaskCostCode]) {
-        costCodeData[normalizedTaskCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
+    // First, collect all task IDs for this location from budget cost codes
+    // We'll match assignments by task->cost code relationship
+    const locationBudgetCostCodes = new Set<string>();
+    locationBudget.forEach((budgetItem: any) => {
+      const costCode = budgetItem.costCode || budgetItem.code || budgetItem.category;
+      if (costCode && costCode.trim()) {
+        const normalizedCostCode = normalizeCostCode(costCode);
+        locationBudgetCostCodes.add(normalizedCostCode);
+        locationBudgetCostCodes.add(costCode.trim().toUpperCase());
       }
-      
-      // Get task assignments to calculate scheduled hours from current date range
-      const taskAssignments = (assignments as any[]).filter((assignment: any) => assignment.taskId === task.id);
-      
-      taskAssignments.forEach((assignment: any) => {
-        const scheduledHours = parseFloat(assignment.assignedHours) || 0;
-        costCodeData[normalizedTaskCostCode].scheduledHours += scheduledHours;
-        
-        // Also include any actual hours from the current date range (though most will be 0)
-        const actualHours = parseFloat(assignment.actualHours) || 0;
-        costCodeData[normalizedTaskCostCode].actualHours += actualHours;
-      });
     });
     
-    console.log(`📊 Dashboard: Processed ${currentLocationTasks.length} tasks from current date range for ${locationId}`);
+    console.log(`📊 Dashboard: Location ${locationId} has budget cost codes:`, Array.from(locationBudgetCostCodes));
+    
+    // Process ALL assignments to find actual hours for this location's cost codes
+    // Use the comprehensive task data from the location-specific task fetch
+    const taskToCostCodeMap: { [taskId: string]: string } = {};
+    
+    // First, use tasks from the comprehensive location task data
+    locationTasks.forEach((task: any) => {
+      if (task.costCode) {
+        taskToCostCodeMap[task.id.toString()] = task.costCode;
+      }
+    });
+    
+    // Also add tasks from the current date range (allTasks)
+    (allTasks as any[]).forEach((task: any) => {
+      if (task.locationId === location.id && task.costCode) {
+        taskToCostCodeMap[task.id.toString()] = task.costCode;
+      }
+    });
+    
+    console.log(`📊 Dashboard: Created task mapping with ${Object.keys(taskToCostCodeMap).length} tasks for ${locationId}`);
+    
+    // Also check ALL assignments for task IDs we haven't seen in allTasks
+    // This handles the case where completed tasks are outside our date range
+    (assignments as any[]).forEach((assignment: any) => {
+      const taskId = assignment.taskId.toString();
+      const actualHours = parseFloat(assignment.actualHours) || 0;
+      const scheduledHours = parseFloat(assignment.assignedHours) || 0;
+      
+      if (actualHours > 0 || scheduledHours > 0) {
+        // Check if this task belongs to our location
+        let taskCostCode = taskToCostCodeMap[taskId];
+        
+        if (!taskCostCode) {
+          // This task might be from outside our date range but belong to this location
+          // We'll use a heuristic: if the assignment has significant actual hours
+          // and we haven't matched it to another location yet, it might belong here
+          
+          // For now, skip these assignments as we can't definitively assign them
+          return;
+        }
+        
+        const normalizedCostCode = normalizeCostCode(taskCostCode);
+        
+        if (!costCodeData[normalizedCostCode]) {
+          costCodeData[normalizedCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
+        }
+        
+        costCodeData[normalizedCostCode].actualHours += actualHours;
+        costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+      }
+    });
+    
+    // For assignments without task mapping (completed tasks outside date range),
+    // we can't easily determine location without fetching all tasks for each location.
+    // This is a Dashboard limitation - for complete accuracy, click the location link.
+    
+    const assignmentsWithTaskMapping = (assignments as any[]).filter((assignment: any) => {
+      const taskId = assignment.taskId.toString();
+      return taskToCostCodeMap[taskId];
+    }).length;
+    
+    console.log(`📊 Dashboard: Processed ${assignmentsWithTaskMapping} assignments with task mapping for ${locationId}`);
     
     // Show all cost codes that have either budget hours > 0 OR actual/scheduled hours > 0
     const filteredCostCodeData = Object.fromEntries(
@@ -494,15 +578,17 @@ export default function Dashboard() {
         actualHours={actualHours}
         scheduledHours={scheduledHours}
         showAssignmentToggle={showAssignmentToggle}
-        users={users}
+        users={users as any[]}
         getEmployeeInfo={getEmployeeInfo}
-        employees={employees}
-        assignments={assignments}
+        employees={employees as any[]}
+        assignments={assignments as any[]}
       />
     );
   };
 
-  if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading) {
+  const allLocationTasksLoading = Object.keys(budgetDataByLocation).length > 0 && Object.keys(allLocationTasks).length === 0;
+  
+  if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading || allLocationTasksLoading) {
     return (
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -820,11 +906,12 @@ export default function Dashboard() {
                 // Find project by matching the database ID
                 const project = (projects as any[]).find((proj: any) => proj.id === location.projectId);
                 // Calculate progress based on ALL completed tasks vs total tasks for this location
-                const allLocationTasks = (allTasks as any[]).filter((task: any) => task.locationId === location.id);
-                const completedTasks = allLocationTasks.filter((task: any) => 
+                // Use comprehensive location task data instead of limited date range tasks
+                const locationTasksList = allLocationTasks[location.locationId] || [];
+                const completedTasks = locationTasksList.filter((task: any) => 
                   task.status === 'complete' || task.status === 'Completed' || task.status === 'completed'
                 ).length;
-                const totalTasks = allLocationTasks.length;
+                const totalTasks = locationTasksList.length;
                 const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
                 
                 // Get cost code status for this location
