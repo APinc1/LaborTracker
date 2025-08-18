@@ -1150,6 +1150,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </div>
               <Progress value={progressPercentage} className="h-2" />
             </div>
+            
+            <div className="mt-6 pt-4 border-t">
+              <Button 
+                onClick={() => setIsCreateTaskModalOpen(true)}
+                className="w-full"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Task
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
