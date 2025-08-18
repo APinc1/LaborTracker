@@ -681,14 +681,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { startDate, endDate } = req.params;
       
       // Validate date parameters - return empty array for invalid dates instead of error
-      if (!startDate || !endDate || 
-          startDate === '' || endDate === '' || 
+      if (!startDate || !endDate || startDate === '' || endDate === '' || 
           startDate === 'undefined' || endDate === 'undefined' || 
-          startDate === 'null' || endDate === 'null' ||
           startDate === 'NaN' || endDate === 'NaN' ||
-          startDate.includes('NaN') || endDate.includes('NaN') ||
           isNaN(Date.parse(startDate)) || isNaN(Date.parse(endDate))) {
-        console.log('❌ Invalid date parameters received:', { startDate, endDate });
+        console.log('Invalid date parameters received:', { startDate, endDate });
         return res.json([]); // Return empty array instead of error
       }
       
