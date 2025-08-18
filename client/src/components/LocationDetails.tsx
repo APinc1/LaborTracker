@@ -1225,37 +1225,73 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                               </span>
                             </div>
                             <div className="space-y-2">
-                              {/* For combined Demo/ex + Base/grading, show separate quantities */}
-                              {summary.costCode === 'Demo/ex + Base/grading' ? (
+                              {/* For combined Demo/Ex + Base/Grading, show separate quantities and hours */}
+                              {summary.costCode === 'Demo/Ex + Base/Grading' ? (
                                 <div className="space-y-1">
-                                  {summary.originalCostCodes && Array.from(summary.originalCostCodes).map((originalCode: string) => {
-                                    const originalItems = summary.items.filter((item: any) => 
-                                      (item.costCode === originalCode || 
-                                       (originalCode === 'UNCATEGORIZED' && !item.costCode))
+                                  {/* Show breakdown by original cost codes */}
+                                  {(() => {
+                                    // Group items by their original cost codes
+                                    const demoItems = summary.items.filter((item: any) => 
+                                      item.costCode && (item.costCode.toUpperCase().includes('DEMO') || item.costCode.toUpperCase().includes('EX'))
                                     );
-                                    const originalQty = originalItems.reduce((sum: number, item: any) => {
-                                      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
-                                      const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
-                                      const hasChildren = budgetItems.some((child: any) => 
-                                        child.lineItemNumber && child.lineItemNumber.includes('.') && 
-                                        child.lineItemNumber.split('.')[0] === item.lineItemNumber
-                                      );
-                                      if (isParent || (!isChild && !hasChildren)) {
-                                        return sum + (parseFloat(item.convertedQty) || 0);
-                                      }
-                                      return sum;
-                                    }, 0);
+                                    const baseItems = summary.items.filter((item: any) => 
+                                      item.costCode && (item.costCode.toUpperCase().includes('BASE') || item.costCode.toUpperCase().includes('GRADING'))
+                                    );
+                                    
+                                    const calculateTotals = (items: any[]) => {
+                                      return items.reduce((totals: any, item: any) => {
+                                        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+                                        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+                                        const hasChildren = budgetItems.some((child: any) => 
+                                          child.lineItemNumber && child.lineItemNumber.includes('.') && 
+                                          child.lineItemNumber.split('.')[0] === item.lineItemNumber
+                                        );
+                                        if (isParent || (!isChild && !hasChildren)) {
+                                          totals.qty += parseFloat(item.convertedQty) || 0;
+                                          totals.hours += parseFloat(item.hours) || 0;
+                                        }
+                                        return totals;
+                                      }, { qty: 0, hours: 0 });
+                                    };
+                                    
+                                    const demoTotals = calculateTotals(demoItems);
+                                    const baseTotals = calculateTotals(baseItems);
+                                    
                                     return (
-                                      <div key={originalCode} className="flex justify-between text-xs">
-                                        <span className="text-gray-500">{originalCode || 'Demo/Ex'}:</span>
-                                        <span className="font-medium">{originalQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
-                                      </div>
+                                      <>
+                                        {demoTotals.qty > 0 && (
+                                          <div className="bg-gray-50 p-2 rounded text-xs">
+                                            <div className="font-medium text-gray-700 mb-1">Demo/Ex:</div>
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-500">Qty:</span>
+                                              <span>{demoTotals.qty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-500">Hours:</span>
+                                              <span>{demoTotals.hours.toLocaleString()} hrs</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        {baseTotals.qty > 0 && (
+                                          <div className="bg-gray-50 p-2 rounded text-xs">
+                                            <div className="font-medium text-gray-700 mb-1">Base/Grading:</div>
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-500">Qty:</span>
+                                              <span>{baseTotals.qty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                              <span className="text-gray-500">Hours:</span>
+                                              <span>{baseTotals.hours.toLocaleString()} hrs</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        <div className="flex justify-between text-sm border-t pt-1 font-semibold">
+                                          <span className="text-gray-600">Combined Total:</span>
+                                          <span>{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
+                                        </div>
+                                      </>
                                     );
-                                  })}
-                                  <div className="flex justify-between text-sm border-t pt-1">
-                                    <span className="text-gray-600 font-medium">Combined Qty:</span>
-                                    <span className="font-semibold">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
-                                  </div>
+                                  })()}
                                 </div>
                               ) : (
                                 <div className="flex justify-between text-sm">
