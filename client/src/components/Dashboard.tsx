@@ -591,17 +591,19 @@ export default function Dashboard() {
       return trimmed; // Return uppercase normalized version
     };
     
-    const taskCostCode = normalizeCostCode(task.costCode || '');
+    // The task name itself appears to be the cost code
+    const taskName = task.taskName || task.name || '';
+    const taskCostCode = normalizeCostCode(task.costCode || taskName);
     const costCodeInfo = costCodeData[taskCostCode];
     const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
     
     // Debug logging to see what's happening
-    console.log(`🔧 Debug task remaining hours for ${task.taskName || task.name}:`, {
-      taskObject: task,
+    console.log(`🔧 Debug task remaining hours for ${taskName}:`, {
+      taskName,
       originalCostCode: task.costCode,
       normalizedCostCode: taskCostCode,
       budgetHours,
-      costCodeInfo,
+      costCodeInfo: costCodeInfo ? `${costCodeInfo.budgetHours}h budget` : 'no match',
       availableCostCodes: Object.keys(costCodeData),
       scheduledHours,
       actualHours,
