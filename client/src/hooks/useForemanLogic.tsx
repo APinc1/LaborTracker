@@ -110,12 +110,12 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
   // Listen for custom event to trigger foreman selection after assignment saves
   useEffect(() => {
     const handleForemanTrigger = (event: CustomEvent) => {
-      const { taskId: eventTaskId } = event.detail;
+      const { taskId: eventTaskId, type = 'overall' } = event.detail;
       
       // Only trigger for this specific task
       if (eventTaskId == task.id || eventTaskId == task.taskId) {
-        console.log('🔍 FOREMAN EVENT: Triggering selection for', task.name);
-        setForemanSelectionType('overall');
+        console.log('🔍 FOREMAN EVENT: Triggering', type, 'selection for', task.name);
+        setForemanSelectionType(type);
         setShowForemanModal(true);
       }
     };

@@ -390,20 +390,45 @@ export default function EnhancedAssignmentModal({
           });
           
           // Count assigned foremen
-          const assignedForemen = selectedEmployeeIds
+          const selectedEmployees = selectedEmployeeIds
             .map(empId => (employees as any[])?.find(emp => emp.id.toString() === empId))
-            .filter(emp => emp?.isForeman === true);
+            .filter(Boolean);
+            
+          const assignedForemen = selectedEmployees.filter(emp => emp?.isForeman === true);
           
           console.log('🔍 ASSIGNMENT SAVE: Foreman check', {
+            selectedEmployeeIds,
+            selectedEmployees: selectedEmployees.map(e => ({ id: e.id, name: e.name, isForeman: e.isForeman })),
             assignedCount: assignedForemen.length,
             foremen: assignedForemen.map(f => f.name),
-            shouldTrigger: assignedForemen.length >= 2
+            shouldTrigger: assignedForemen.length >= 2,
+            singleForemanCase: assignedForemen.length === 1
           });
           
           if (assignedForemen.length >= 2) {
-            // Broadcast foreman selection needed event
+            // Multiple foremen: trigger popup to select overall foreman
             window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
-              detail: { taskId, assignedForemen } 
+              detail: { taskId, assignedForemen, type: 'overall' } 
+            }));
+          } else if (assignedForemen.length === 1) {
+            // Single foreman: automatically assign as task foreman
+            const foreman = assignedForemen[0];
+            console.log('🔍 AUTO-ASSIGNING: Single foreman', foreman.name, 'to task', taskId);
+            
+            try {
+              await apiRequest(`/api/tasks/${taskId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ foremanId: foreman.id }),
+                headers: { 'Content-Type': 'application/json' }
+              });
+              console.log('✅ Single foreman assigned successfully');
+            } catch (error) {
+              console.error('❌ Failed to assign single foreman:', error);
+            }
+          } else if (assignedForemen.length === 0) {
+            // No foremen assigned: trigger responsible foreman selection
+            window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
+              detail: { taskId, assignedForemen: [], type: 'responsible' } 
             }));
           }
         } catch (error) {
