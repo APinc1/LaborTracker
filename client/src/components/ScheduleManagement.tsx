@@ -482,10 +482,14 @@ export default function ScheduleManagement() {
     };
   };
 
-  // Format detailed assignment display for task cards with superintendent
+  // Format detailed assignment display for task cards with proper foreman hierarchy
   const formatDetailedAssignmentDisplay = (task: any) => {
     const assignedEmployees = getAssignedEmployees(task);
     const personnelElements = [];
+    
+    // Get foremen from assigned employees
+    const assignedForemen = assignedEmployees.filter((emp: any) => emp.isForeman);
+    const allForemen = employees.filter((emp: any) => emp.isForeman);
     
     // Add superintendent first if exists
     if (task.superintendentId) {
@@ -499,7 +503,32 @@ export default function ScheduleManagement() {
       }
     }
     
-    // Add assigned employees
+    // Add foreman with proper hierarchy display
+    if (task.foremanId) {
+      const currentForeman = allForemen.find(f => f.id === task.foremanId);
+      if (currentForeman) {
+        const assignedCount = assignedForemen.length;
+        let displayText = '';
+        let isBold = assignedCount > 0;
+        
+        if (assignedCount === 0) {
+          displayText = '(Responsible Foreman)';
+          isBold = false; // Not bold if not assigned
+        } else if (assignedCount === 1) {
+          displayText = '(Foreman)';
+        } else {
+          displayText = '(Overall Foreman)';
+        }
+        
+        personnelElements.push(
+          <div key={`foreman-${currentForeman.id}`} className={`text-sm ${isBold ? 'font-bold' : 'text-gray-600'}`}>
+            {currentForeman.name} {displayText}
+          </div>
+        );
+      }
+    }
+    
+    // Add assigned employees (excluding the foreman that's already displayed)
     if (assignedEmployees.length > 0) {
       // Sort employees: foremen first, drivers last, others in between
       const sortedEmployees = [...assignedEmployees].sort((a: any, b: any) => {
@@ -510,11 +539,16 @@ export default function ScheduleManagement() {
         return 0;
       });
 
-      const employeeElements = sortedEmployees.map((employee: any, index: number) => {
+      const employeeElements = sortedEmployees.map((employee: any) => {
         const isDriver = employee.primaryTrade === 'Driver';
         const isForeman = employee.isForeman;
         const hours = parseFloat(employee.assignedHours);
         const showHours = hours !== 8;
+        
+        // Skip foreman if already displayed above
+        if (isForeman && task.foremanId && employee.id === task.foremanId) {
+          return null;
+        }
         
         let displayText = employee.name;
         if (isForeman) {
@@ -534,7 +568,7 @@ export default function ScheduleManagement() {
             {displayText}
           </div>
         );
-      });
+      }).filter(Boolean);
       
       personnelElements.push(...employeeElements);
     }
