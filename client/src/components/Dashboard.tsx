@@ -275,11 +275,11 @@ export default function Dashboard() {
   // Get budget data for specific location
   // Only fetch budget data for locations that have tasks in the selected time period
   // Fix: Use database IDs for proper filtering
-  const locationDbIdsWithTasks = [...new Set([
+  const locationDbIdsWithTasks = Array.from(new Set([
     ...(todayTasks as any[]).map((task: any) => task.locationId),
     ...(previousDayTasks as any[]).map((task: any) => task.locationId),
     ...(nextDayTasks as any[]).map((task: any) => task.locationId)
-  ].filter(Boolean))];
+  ].filter(Boolean)));
 
   const { data: budgetDataByLocation = {} } = useQuery({
     queryKey: ["/api/budget", locationDbIdsWithTasks.join(',')],
@@ -489,7 +489,9 @@ export default function Dashboard() {
         
         // Only count scheduled hours for assignments that DON'T have actual hours yet
         // AND are from incomplete tasks - completed tasks should never contribute to scheduled hours
-        const isTaskComplete = task.status === 'complete' || task.status === 'completed' || task.status === 'Complete';
+        const taskData = locationTasks.find((t: any) => t.id.toString() === taskId) || 
+                        (allTasks as any[]).find((t: any) => t.id.toString() === taskId);
+        const isTaskComplete = taskData && (taskData.status === 'complete' || taskData.status === 'completed' || taskData.status === 'Complete');
         
         if (actualHours === 0 && !isTaskComplete) {
           costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
