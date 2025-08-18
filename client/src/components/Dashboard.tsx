@@ -486,7 +486,12 @@ export default function Dashboard() {
         }
         
         costCodeData[normalizedCostCode].actualHours += actualHours;
-        costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+        
+        // Only count scheduled hours for assignments that DON'T have actual hours yet
+        // This prevents double-counting completed work as both actual AND scheduled
+        if (actualHours === 0) {
+          costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+        }
       }
     });
     
