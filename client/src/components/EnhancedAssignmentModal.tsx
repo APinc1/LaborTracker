@@ -388,9 +388,6 @@ export default function EnhancedAssignmentModal({
       // Call the callback after successful assignment save
       onAssignmentsSaved?.();
       
-      // Check if foreman selection is needed after saving assignments
-      await checkForForemanSelection();
-      
       onClose();
     },
     onError: () => {
@@ -420,47 +417,52 @@ export default function EnhancedAssignmentModal({
     }
   };
 
-  // Check if foreman selection is needed after assignments saved
-  const checkForForemanSelection = async () => {
-    try {
-      // Get fresh task and assignment data
-      const taskData = await queryClient.fetchQuery({
-        queryKey: ['/api/tasks', taskId]
+  // Check if foreman selection is needed based on selected employees (before saving)
+  const checkForForemanSelectionBeforeSave = () => {
+    // Get employees that will be assigned to this task
+    const selectedEmployees = employees.filter((emp: any) => 
+      selectedEmployeeIds.includes(emp.id.toString())
+    );
+    
+    // Filter for foremen among selected employees
+    const selectedForemen = selectedEmployees.filter((emp: any) => 
+      emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
+    );
+
+    console.log('🔍 FOREMAN CHECK: Selected employees:', selectedEmployees.map((e: any) => ({ name: e.name, trades: [e.primaryTrade, e.secondaryTrade, e.tertiaryTrade] })));
+    console.log('🔍 FOREMAN CHECK: Selected foremen:', selectedForemen.map((f: any) => f.name));
+
+    // Trigger foreman selection based on conditions
+    if (selectedForemen.length >= 2 && !currentTask?.foremanId) {
+      setForemanSelectionType('overall');
+      setShowForemanModal(true);
+      console.log('🔍 FOREMAN SELECTION: Multiple foremen selected, need Overall Foreman selection', {
+        selectedForemen: selectedForemen.map((f: any) => f.name),
+        taskName: currentTask?.name
       });
-      const assignmentsData = await queryClient.fetchQuery({
-        queryKey: ['/api/assignments']
+      return true; // Indicates foreman selection is needed
+    } else if (selectedForemen.length === 0 && !currentTask?.foremanId) {
+      setForemanSelectionType('responsible');
+      setShowForemanModal(true);
+      console.log('🔍 FOREMAN SELECTION: No foremen selected, need Responsible Foreman selection', {
+        taskName: currentTask?.name
       });
-
-      if (!taskData) return;
-
-      // Get assignments for this task
-      const taskAssignments = assignmentsData.filter((a: any) => a.taskId === parseInt(taskId.toString()));
-      
-      // Get employees assigned to this task
-      const assignedEmployeeIds = taskAssignments.map((a: any) => a.employeeId);
-      const assignedForemen = employees.filter((emp: any) => 
-        assignedEmployeeIds.includes(emp.id) && 
-        (emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman')
-      );
-
-      // Trigger foreman selection based on conditions
-      if (assignedForemen.length >= 2 && !taskData.foremanId) {
-        setForemanSelectionType('overall');
-        setShowForemanModal(true);
-        console.log('🔍 FOREMAN SELECTION: Multiple foremen assigned, need Overall Foreman selection', {
-          assignedForemen: assignedForemen.map((f: any) => f.name),
-          taskName: taskData.name
-        });
-      } else if (assignedForemen.length === 0 && !taskData.foremanId) {
-        setForemanSelectionType('responsible');
-        setShowForemanModal(true);
-        console.log('🔍 FOREMAN SELECTION: No foremen assigned, need Responsible Foreman selection', {
-          taskName: taskData.name
-        });
-      }
-    } catch (error) {
-      console.error('Error checking foreman selection:', error);
+      return true; // Indicates foreman selection is needed
     }
+    
+    return false; // No foreman selection needed
+  };
+
+  // Handle the Save Assignments button click - check foreman first
+  const handleSaveAssignments = () => {
+    // First check if foreman selection is needed
+    const needsForemanSelection = checkForForemanSelectionBeforeSave();
+    
+    if (!needsForemanSelection) {
+      // No foreman selection needed, proceed with saving assignments
+      createAssignmentsMutation.mutate();
+    }
+    // If foreman selection is needed, the modal will show and assignments will be saved after foreman is selected
   };
 
   // Handle foreman selection
@@ -476,6 +478,9 @@ export default function EnhancedAssignmentModal({
       
       toast({ title: "Success", description: "Foreman assigned successfully" });
       setShowForemanModal(false);
+      
+      // Now that foreman is selected, proceed with saving assignments
+      createAssignmentsMutation.mutate();
     } catch (error) {
       toast({ title: "Error", description: "Failed to assign foreman", variant: "destructive" });
     }
@@ -1030,7 +1035,7 @@ export default function EnhancedAssignmentModal({
               Cancel
             </Button>
             <Button 
-              onClick={() => createAssignmentsMutation.mutate()}
+              onClick={handleSaveAssignments}
               disabled={createAssignmentsMutation.isPending || selectedEmployeeIds.length === 0}
             >
               {createAssignmentsMutation.isPending ? "Saving..." : "Save Assignments"}
@@ -1047,14 +1052,23 @@ export default function EnhancedAssignmentModal({
         isOpen={showForemanModal}
         onClose={() => setShowForemanModal(false)}
         onSelectForeman={handleForemanSelection}
-        assignedForemen={employees.filter((emp: any) => {
+        assignedForemen={(() => {
           const assignedEmployeeIds = selectedEmployeeIds.map(id => parseInt(id));
-          return assignedEmployeeIds.includes(emp.id) && 
-                 (emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman');
-        })}
-        allForemen={employees.filter((emp: any) => 
-          emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
-        )}
+          const assignedForemen = employees.filter((emp: any) => {
+            const isAssigned = assignedEmployeeIds.includes(emp.id);
+            const isForeman = emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman';
+            return isAssigned && isForeman;
+          });
+          console.log('🔍 FOREMAN MODAL DATA: assignedForemen:', assignedForemen.map((f: any) => ({ id: f.id, name: f.name, trades: [f.primaryTrade, f.secondaryTrade, f.tertiaryTrade] })));
+          return assignedForemen;
+        })()}
+        allForemen={(() => {
+          const allForemen = employees.filter((emp: any) => 
+            emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
+          );
+          console.log('🔍 FOREMAN MODAL DATA: allForemen:', allForemen.map((f: any) => ({ id: f.id, name: f.name, trades: [f.primaryTrade, f.secondaryTrade, f.tertiaryTrade] })));
+          return allForemen;
+        })()}
         selectionType={foremanSelectionType}
         taskName={taskName}
       />
