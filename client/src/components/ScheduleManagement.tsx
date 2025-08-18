@@ -481,12 +481,12 @@ export default function ScheduleManagement() {
       if (isComplete) {
         // For completed tasks, use actual hours if available, otherwise use scheduled hours  
         taskHours = taskActualHours > 0 ? taskActualHours : taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.assignedHours) || 0);
+          return sum + (parseFloat(assignment.scheduledHours) || 0);
         }, 0);
       } else {
         // For incomplete tasks, only use scheduled hours (don't count actual hours)
         taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.assignedHours) || 0);
+          return sum + (parseFloat(assignment.scheduledHours) || 0);
         }, 0);
       }
       
