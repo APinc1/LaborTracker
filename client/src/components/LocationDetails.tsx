@@ -316,6 +316,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       taskCostCode = 'GENERAL LABOR';
     }
     
+    // Normalize AC and ASPHALT to the same cost code
+    if (taskCostCode === 'AC' || taskCostCode === 'ASPHALT') {
+      taskCostCode = 'AC';
+    }
+    
     // Find assignments for this task and sum actual hours
     const taskAssignments = (assignments as any[]).filter((assignment: any) => 
       assignment.taskId === task.id
@@ -348,6 +353,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     // Apply GENERAL LABOR normalization
     if (costCode === 'GNRL LBR' || costCode === 'GENERAL LABOR' || costCode === 'GENERAL LBR' || costCode === 'GENERAL') {
       costCode = 'GENERAL LABOR';
+    }
+    
+    // Normalize AC and ASPHALT to the same cost code
+    if (costCode === 'AC' || costCode === 'ASPHALT') {
+      costCode = 'AC';
     }
     
     if (!acc[costCode]) {
