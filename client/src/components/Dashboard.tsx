@@ -968,15 +968,17 @@ export default function Dashboard() {
                             .map(([costCode, data]) => {
                               const remainingHours = Math.max(0, data.budgetHours - data.actualHours);
                               const overageHours = Math.max(0, data.actualHours - data.budgetHours);
-                              const progressPercentage = data.budgetHours > 0 ? Math.min(100, (data.actualHours / data.budgetHours) * 100) : 0;
+                              const totalHours = data.actualHours + data.scheduledHours;
+                              const totalOverageHours = Math.max(0, totalHours - data.budgetHours);
                               
-                              // For Dashboard, also show scheduled hours progress when actual hours are low
-                              const scheduledPercentage = data.budgetHours > 0 ? Math.min(100, (data.scheduledHours / data.budgetHours) * 100) : 0;
-                              const showScheduledIndicator = data.actualHours < data.scheduledHours && data.scheduledHours > 0;
+                              // Calculate percentages based on the maximum of budget or total hours for proper scaling
+                              const maxHours = Math.max(data.budgetHours, totalHours);
+                              const actualPercentage = maxHours > 0 ? (data.actualHours / maxHours) * 100 : 0;
+                              const scheduledPercentage = maxHours > 0 ? (data.scheduledHours / maxHours) * 100 : 0;
+                              const budgetPercentage = maxHours > 0 ? (data.budgetHours / maxHours) * 100 : 100;
                               
                               // Color coding based on remaining hours percentage
                               let progressColor = 'bg-green-500'; // Default green for actual hours
-                              let scheduledColor = 'bg-blue-300'; // Light blue for scheduled hours
                               if (data.budgetHours > 0) {
                                 const remainingPercentage = (remainingHours / data.budgetHours) * 100;
                                 if (remainingPercentage <= 0) {
@@ -997,9 +999,9 @@ export default function Dashboard() {
                                           (+{data.scheduledHours.toFixed(1)}h scheduled)
                                         </span>
                                       )}
-                                      {overageHours > 0 && (
+                                      {totalOverageHours > 0 && (
                                         <span className="text-red-600 ml-1">
-                                          (+{overageHours.toFixed(1)}h over)
+                                          (+{totalOverageHours.toFixed(1)}h over)
                                         </span>
                                       )}
                                     </span>
@@ -1008,23 +1010,23 @@ export default function Dashboard() {
                                     {/* Progress bar showing actual hours in green/yellow/red */}
                                     <div 
                                       className={`h-2 rounded-full transition-all duration-300 ${progressColor}`}
-                                      style={{ width: `${Math.min(100, progressPercentage)}%` }}
+                                      style={{ width: `${actualPercentage}%` }}
                                     />
-                                    {/* Additional blue section for scheduled hours beyond actual hours */}
-                                    {data.scheduledHours > 0 && data.actualHours < data.budgetHours && (
+                                    {/* Additional blue section for scheduled hours */}
+                                    {data.scheduledHours > 0 && (
                                       <div 
                                         className="absolute top-0 h-2 bg-blue-400 rounded-full transition-all duration-300 opacity-70"
                                         style={{ 
-                                          left: `${Math.min(100, progressPercentage)}%`,
-                                          width: `${Math.min(100 - progressPercentage, scheduledPercentage)}%` 
+                                          left: `${actualPercentage}%`,
+                                          width: `${scheduledPercentage}%` 
                                         }}
                                       />
                                     )}
-                                    {/* Budget marker line - shows where 100% budget is */}
-                                    {data.budgetHours > 0 && (
+                                    {/* Budget marker line - shows where budget limit is within the total scale */}
+                                    {data.budgetHours > 0 && budgetPercentage < 100 && (
                                       <div 
                                         className="absolute top-0 w-0.5 h-2 bg-gray-800 opacity-80"
-                                        style={{ left: '100%' }}
+                                        style={{ left: `${budgetPercentage}%` }}
                                         title={`Budget limit: ${data.budgetHours.toFixed(1)}h`}
                                       />
                                     )}
