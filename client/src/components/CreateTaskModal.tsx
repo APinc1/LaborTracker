@@ -32,7 +32,7 @@ const TASK_TYPE_TO_COST_CODE = {
   "Form": "CONCRETE",
   "Pour": "CONCRETE",
   "Form + Pour": "CONCRETE",
-  "Asphalt": "AC",
+  "Asphalt": "ASPHALT",
   "General Labor": "GENERAL LABOR",
   "Landscaping": "LANDSCAPE", 
   "Utility Adjustment": "UTILITY ADJ",
