@@ -428,10 +428,10 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
-    // Find all tasks for this cost code up to and including the current task date, same location only
+    // Find all tasks for this cost code up to and including the current task date, across ALL locations
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
     const relevantTasks = allTasks.filter((t: any) => {
-      if (!t.costCode || t.locationId !== task.locationId) return false;
+      if (!t.costCode) return false;
       
       // Handle cost code matching with combined codes
       let tCostCode = t.costCode;
