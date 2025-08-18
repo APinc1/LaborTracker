@@ -698,14 +698,29 @@ export default function Dashboard() {
     let remainingHours = null;
     let totalBudgetHours = 0;
     
+    console.log(`🔍 Dashboard renderTaskCard for ${task.name}:`, {
+      taskCostCode: task.costCode,
+      locationId: locationId,
+      costCodeStatus: costCodeStatus,
+      hasData: !!costCodeStatus.costCodeData
+    });
+    
     if (task.costCode && costCodeStatus.costCodeData) {
       const normalizedCostCode = normalizeCostCode(task.costCode);
       const costData = costCodeStatus.costCodeData[normalizedCostCode];
+      
+      console.log(`🔍 Dashboard cost data lookup:`, {
+        normalizedCostCode,
+        costData,
+        availableKeys: Object.keys(costCodeStatus.costCodeData)
+      });
       
       if (costData && costData.budgetHours > 0) {
         totalBudgetHours = costData.budgetHours;
         const usedHours = costData.actualHours + costData.scheduledHours;
         remainingHours = Math.max(0, totalBudgetHours - usedHours);
+        
+        console.log(`✅ Dashboard calculated remaining hours: ${remainingHours} (${totalBudgetHours} budget - ${usedHours} used)`);
       }
     }
     
