@@ -445,19 +445,21 @@ export default function Dashboard() {
       return taskDate <= currentTaskDate;
     });
 
-    // Calculate total used hours from these tasks
+    // Calculate total used hours from these tasks (same logic as Schedule page)
     const usedHours = relevantTasks.reduce((total: number, t: any) => {
-      // Get task assignments to calculate hours
-      const taskAssignments = t.assignments || [];
-      let taskHours = 0;
+      const taskId = t.id || t.taskId;
+      const taskAssignments = (assignments as any[]).filter((assignment: any) => 
+        assignment.taskId === taskId
+      );
       
-      if (t.status === 'complete') {
-        // For completed tasks, prefer actual hours
-        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.actualHours) || parseFloat(assignment.assignedHours) || 0);
-        }, 0);
-      } else {
-        // For incomplete tasks, use scheduled hours
+      // Try to get actual hours first
+      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
+        return sum + (parseFloat(assignment.actualHours) || 0);
+      }, 0);
+      
+      // If no actual hours, fall back to scheduled hours
+      let taskHours = taskActualHours;
+      if (taskActualHours === 0) {
         taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
           return sum + (parseFloat(assignment.assignedHours) || 0);
         }, 0);
@@ -688,8 +690,11 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
+    // Get all tasks from allLocationTasks for remaining hours calculation (same as Schedule page)
+    const allTasks = Object.values(allLocationTasks).flat();
+    
     // Use the same remaining hours calculation as the Schedule page
-    const result = calculateRemainingHours(task, allLocationTasks[task.locationId] || [], allBudgetItems);
+    const result = calculateRemainingHours(task, allTasks, allBudgetItems);
     const remainingHours = result?.remainingHours || 0;
     const totalBudgetHours = result?.totalBudgetHours || 0;
     const remainingHoursColor = getRemainingHoursColor(remainingHours, totalBudgetHours);
