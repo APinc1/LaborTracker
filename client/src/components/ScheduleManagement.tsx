@@ -462,6 +462,8 @@ export default function ScheduleManagement() {
     
 
 
+
+
     // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
     const usedHours = relevantTasks.reduce((total: number, t: any) => {
       const taskId = t.id || t.taskId;
@@ -479,16 +481,18 @@ export default function ScheduleManagement() {
       let taskHours = 0;
       
       if (isComplete) {
-        // For completed tasks, use actual hours if available, otherwise use scheduled hours  
+        // For completed tasks, use actual hours if available, otherwise use assigned hours  
         taskHours = taskActualHours > 0 ? taskActualHours : taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.scheduledHours) || 0);
+          return sum + (parseFloat(assignment.assignedHours) || 0);
         }, 0);
       } else {
-        // For incomplete tasks, only use scheduled hours (don't count actual hours)
+        // For incomplete tasks, only use assigned hours (don't count actual hours)
         taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.scheduledHours) || 0);
+          return sum + (parseFloat(assignment.assignedHours) || 0);
         }, 0);
       }
+
+
       
       return total + taskHours;
     }, 0);
