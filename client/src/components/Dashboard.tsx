@@ -701,9 +701,13 @@ export default function Dashboard() {
     console.log(`🔍 Dashboard renderTaskCard for ${task.name}:`, {
       taskCostCode: task.costCode,
       locationId: locationId,
-      costCodeStatus: costCodeStatus,
+      costCodeStatusKeys: Object.keys(costCodeStatus),
       hasData: !!costCodeStatus.costCodeData
     });
+    
+    if (costCodeStatus.costCodeData) {
+      console.log(`🔍 Available cost codes:`, Object.keys(costCodeStatus.costCodeData));
+    }
     
     if (task.costCode && costCodeStatus.costCodeData) {
       const normalizedCostCode = normalizeCostCode(task.costCode);
