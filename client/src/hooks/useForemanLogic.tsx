@@ -19,6 +19,7 @@ interface UseForemanLogicProps {
 export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: UseForemanLogicProps) {
   const [showForemanModal, setShowForemanModal] = useState(false);
   const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
+  const [dismissedForTask, setDismissedForTask] = useState<string | null>(null);
   
   const queryClient = useQueryClient();
 
@@ -106,8 +107,11 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
 
   // Automatically trigger foreman selection when conditions are met
   useEffect(() => {
-    // Only trigger if modal is not already showing and task doesn't have a foremanId
-    if (!showForemanModal && !task.foremanId) {
+    const taskKey = `${task.id}-${assignedForemen.length}`;
+    
+    // Only trigger if modal is not already showing, task doesn't have a foremanId, 
+    // and this specific condition hasn't been dismissed for this task
+    if (!showForemanModal && !task.foremanId && dismissedForTask !== taskKey) {
       if (assignedForemen.length >= 2) {
         console.log('🔍 FOREMAN LOGIC: Multiple foremen detected, triggering Overall Foreman selection', {
           assignedForemen: assignedForemen.map(f => f.name),
@@ -123,7 +127,7 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
         setShowForemanModal(true);
       }
     }
-  }, [assignedForemen.length, task.foremanId, task.name, showForemanModal]);
+  }, [assignedForemen.length, task.foremanId, task.id, task.name, showForemanModal, dismissedForTask]);
 
   // Handle foreman selection from modal
   const handleForemanSelection = (foremanId: number) => {
@@ -131,6 +135,14 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
       taskId: task.id, 
       foremanId 
     });
+    setShowForemanModal(false);
+    setDismissedForTask(null); // Reset dismissed state when selection is made
+  };
+
+  // Handle modal dismiss/cancel
+  const handleModalDismiss = () => {
+    const taskKey = `${task.id}-${assignedForemen.length}`;
+    setDismissedForTask(taskKey);
     setShowForemanModal(false);
   };
 
@@ -143,6 +155,7 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     allForemen,
     triggerForemanSelection,
     handleForemanSelection,
+    handleModalDismiss,
     needsForemanSelection: assignedForemen.length >= 2 || (assignedForemen.length === 0 && !task.foremanId)
   };
 }

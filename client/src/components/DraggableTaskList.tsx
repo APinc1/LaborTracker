@@ -203,6 +203,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
     allForemen,
     triggerForemanSelection,
     handleForemanSelection,
+    handleModalDismiss,
     needsForemanSelection
   } = useForemanLogic({
     task,
@@ -448,6 +449,17 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
           </div>
         </CardContent>
       </Card>
+      
+      {/* Foreman Selection Modal */}
+      <ForemanSelectionModal
+        isOpen={showForemanModal}
+        onClose={handleModalDismiss}
+        onSelectForeman={handleForemanSelection}
+        assignedForemen={assignedForemen}
+        allForemen={allForemen}
+        selectionType={foremanSelectionType}
+        taskName={task.name}
+      />
     </div>
   );
 }

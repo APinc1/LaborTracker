@@ -50,6 +50,7 @@ export function TaskCardWithForeman({
     allForemen,
     triggerForemanSelection,
     handleForemanSelection,
+    handleModalDismiss,
     needsForemanSelection
   } = useForemanLogic({
     task,
@@ -206,7 +207,7 @@ export function TaskCardWithForeman({
       {/* Foreman Selection Modal */}
       <ForemanSelectionModal
         isOpen={showForemanModal}
-        onClose={() => setShowForemanModal(false)}
+        onClose={handleModalDismiss}
         onSelectForeman={handleForemanSelection}
         assignedForemen={assignedForemen}
         allForemen={allForemen}
