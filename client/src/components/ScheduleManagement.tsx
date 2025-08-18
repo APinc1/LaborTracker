@@ -385,8 +385,14 @@ export default function ScheduleManagement() {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
 
-    // Get total budget hours for this cost code from all budget items
-    const costCodeBudgetHours = budgetItems.reduce((total: number, item: any) => {
+    // Filter budget items to only include the current task's location
+    const taskLocation = locations.find((loc: any) => loc.id === task.locationId);
+    const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
+      item.locationId === task.locationId
+    );
+
+    // Get total budget hours for this cost code from location-specific budget items
+    const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
       let itemCostCode = item.costCode || 'UNCATEGORIZED';
       
       // Handle combined cost codes (Demo/Ex + Base/Grading)
@@ -422,10 +428,10 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
-    // Find all tasks for this cost code up to and including the current task date
+    // Find all tasks for this cost code up to and including the current task date, same location only
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
     const relevantTasks = allTasks.filter((t: any) => {
-      if (!t.costCode) return false;
+      if (!t.costCode || t.locationId !== task.locationId) return false;
       
       // Handle cost code matching with combined codes
       let tCostCode = t.costCode;
