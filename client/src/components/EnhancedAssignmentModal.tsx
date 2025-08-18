@@ -42,6 +42,7 @@ export default function EnhancedAssignmentModal({
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
   const [showForemanModal, setShowForemanModal] = useState(false);
   const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
+  const [selectedForemanForModal, setSelectedForemanForModal] = useState<any[]>([]);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -435,6 +436,7 @@ export default function EnhancedAssignmentModal({
     // Trigger foreman selection based on conditions
     if (selectedForemen.length >= 2 && !currentTask?.foremanId) {
       setForemanSelectionType('overall');
+      setSelectedForemanForModal(selectedForemen); // Store the assigned foremen
       setShowForemanModal(true);
       console.log('🔍 FOREMAN SELECTION: Multiple foremen selected, need Overall Foreman selection', {
         selectedForemen: selectedForemen.map((f: any) => f.name),
@@ -443,6 +445,7 @@ export default function EnhancedAssignmentModal({
       return true; // Indicates foreman selection is needed
     } else if (selectedForemen.length === 0 && !currentTask?.foremanId) {
       setForemanSelectionType('responsible');
+      setSelectedForemanForModal([]); // No foremen assigned, use all foremen
       setShowForemanModal(true);
       console.log('🔍 FOREMAN SELECTION: No foremen selected, need Responsible Foreman selection', {
         taskName: currentTask?.name
@@ -1052,16 +1055,7 @@ export default function EnhancedAssignmentModal({
         isOpen={showForemanModal}
         onClose={() => setShowForemanModal(false)}
         onSelectForeman={handleForemanSelection}
-        assignedForemen={(() => {
-          const assignedEmployeeIds = selectedEmployeeIds.map(id => parseInt(id));
-          const assignedForemen = employees.filter((emp: any) => {
-            const isAssigned = assignedEmployeeIds.includes(emp.id);
-            const isForeman = emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman';
-            return isAssigned && isForeman;
-          });
-          console.log('🔍 FOREMAN MODAL DATA: assignedForemen:', assignedForemen.map((f: any) => ({ id: f.id, name: f.name, trades: [f.primaryTrade, f.secondaryTrade, f.tertiaryTrade] })));
-          return assignedForemen;
-        })()}
+        assignedForemen={selectedForemanForModal}
         allForemen={(() => {
           const allForemen = employees.filter((emp: any) => 
             emp.primaryTrade === 'Foreman' || emp.secondaryTrade === 'Foreman' || emp.tertiaryTrade === 'Foreman'
