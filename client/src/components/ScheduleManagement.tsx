@@ -151,6 +151,12 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
+  // Fetch ALL tasks for remaining hours calculation (very wide date range)
+  const { data: allTasksForBudget = [] } = useQuery({
+    queryKey: ["/api/tasks/date-range", "2020-01-01", "2030-12-31"],
+    staleTime: 30000,
+  });
+
   const { data: assignments = [] } = useQuery({
     queryKey: ["/api/assignments"],
     staleTime: 30000,
@@ -428,7 +434,10 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
+
+
     // Find all tasks for this cost code up to and including the current task date, same location only
+    // Note: allTasks might be filtered by date range, so we need to consider all tasks in this location
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
     const relevantTasks = allTasks.filter((t: any) => {
       if (!t.costCode || t.locationId !== task.locationId) return false;
@@ -943,7 +952,7 @@ export default function ScheduleManagement() {
                                 )}
                               </div>
                               {(() => {
-                                const result = calculateRemainingHours(task, tasks, allBudgetItems);
+                                const result = calculateRemainingHours(task, allTasksForBudget, allBudgetItems);
                                 const remainingHours = result?.remainingHours;
                                 const totalBudgetHours = result?.totalBudgetHours || 0;
                                 
