@@ -355,6 +355,126 @@ export default function Dashboard() {
     staleTime: 300000, // 5 minutes - longer since this is more expensive
   });
 
+  // Get all budget items for remaining hours calculation (same as Schedule page)
+  const allBudgetItems = Object.values(budgetDataByLocation).flat();
+
+  // Helper function to get remaining hours color based on percentage (copied from Schedule page)
+  const getRemainingHoursColor = (remainingHours: number, totalBudgetHours: number) => {
+    if (totalBudgetHours === 0) return 'text-gray-600';
+    
+    const percentage = (remainingHours / totalBudgetHours) * 100;
+    
+    if (percentage <= 0) {
+      return 'text-red-600';
+    } else if (percentage <= 15) {
+      return 'text-yellow-600';
+    } else {
+      return 'text-green-600';
+    }
+  };
+
+  const calculateRemainingHours = (task: any, allTasks: any[], budgetItems: any[]) => {
+    const costCode = task.costCode;
+    if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
+
+    // Filter budget items to only include the current task's location
+    const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
+      item.locationId === task.locationId
+    );
+
+    // Get total budget hours for this cost code from location-specific budget items
+    const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
+      let itemCostCode = item.costCode || 'UNCATEGORIZED';
+      
+      // Handle combined cost codes (Demo/Ex + Base/Grading)
+      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
+          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
+          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
+        itemCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Handle current task cost code in the same way
+      let taskCostCode = costCode;
+      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
+          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
+          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
+        taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (itemCostCode === taskCostCode) {
+        // Only include parent items or standalone items (avoid double counting)
+        const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+        const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+        const hasChildren = budgetItems.some((child: any) => 
+          child.lineItemNumber && child.lineItemNumber.includes('.') && 
+          child.lineItemNumber.split('.')[0] === item.lineItemNumber
+        );
+        
+        if (isParent || (!isChild && !hasChildren)) {
+          return total + (parseFloat(item.hours) || 0);
+        }
+      }
+      return total;
+    }, 0);
+
+    if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
+
+    // Find all tasks for this cost code up to and including the current task date, same location only
+    const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
+    const relevantTasks = allTasks.filter((t: any) => {
+      if (!t.costCode || t.locationId !== task.locationId) return false;
+      
+      // Handle task cost codes the same way
+      let relevantTaskCostCode = t.costCode;
+      if (relevantTaskCostCode === 'DEMO/EX' || relevantTaskCostCode === 'Demo/Ex' || 
+          relevantTaskCostCode === 'BASE/GRADING' || relevantTaskCostCode === 'Base/Grading' || 
+          relevantTaskCostCode === 'Demo/Ex + Base/Grading' || relevantTaskCostCode === 'DEMO/EX + BASE/GRADING') {
+        relevantTaskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      let currentTaskCostCode = costCode;
+      if (currentTaskCostCode === 'DEMO/EX' || currentTaskCostCode === 'Demo/Ex' || 
+          currentTaskCostCode === 'BASE/GRADING' || currentTaskCostCode === 'Base/Grading' || 
+          currentTaskCostCode === 'Demo/Ex + Base/Grading' || currentTaskCostCode === 'DEMO/EX + BASE/GRADING') {
+        currentTaskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      if (relevantTaskCostCode !== currentTaskCostCode) return false;
+      
+      const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
+      return taskDate <= currentTaskDate;
+    });
+
+    // Calculate total used hours from these tasks
+    const usedHours = relevantTasks.reduce((total: number, t: any) => {
+      // Get task assignments to calculate hours
+      const taskAssignments = t.assignments || [];
+      let taskHours = 0;
+      
+      if (t.status === 'complete') {
+        // For completed tasks, prefer actual hours
+        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
+          return sum + (parseFloat(assignment.actualHours) || parseFloat(assignment.assignedHours) || 0);
+        }, 0);
+      } else {
+        // For incomplete tasks, use scheduled hours
+        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
+          return sum + (parseFloat(assignment.assignedHours) || 0);
+        }, 0);
+      }
+      
+      return total + taskHours;
+    }, 0);
+
+    // Calculate remaining hours
+    const remainingHours = costCodeBudgetHours - usedHours;
+    
+    return {
+      remainingHours: remainingHours, // Allow negative hours to show overruns
+      totalBudgetHours: costCodeBudgetHours
+    };
+  };
+
   // Calculate cost code hours and status for location progress
   const getCostCodeStatus = (locationId: string) => {
     // Get budget data for this location
@@ -568,64 +688,11 @@ export default function Dashboard() {
     const projectName = getProjectName(task);
     const locationName = getLocationName(task);
     
-    // Get cost code budget info for remaining hours calculation
-    const costCodeData = getCostCodeStatus(task.locationId);
-    
-    // Normalize task cost code to match the keys in costCodeData
-    const normalizeCostCode = (costCode: string) => {
-      const trimmed = costCode.trim().toUpperCase();
-      // Combine DEMO/EX and BASE/GRADING into one category
-      if (trimmed === 'DEMO/EX' || trimmed === 'BASE/GRADING' || 
-          trimmed === 'DEMO/EX + BASE/GRADING' || 
-          trimmed.includes('DEMO/EX') || trimmed.includes('BASE/GRADING')) {
-        return 'DEMO/EX + BASE/GRADING';
-      }
-      // Normalize GNRL LBR to GENERAL LABOR
-      if (trimmed === 'GNRL LBR' || trimmed === 'GENERAL LABOR' || trimmed === 'GENERAL') {
-        return 'GENERAL LABOR';
-      }
-      // Normalize AC and ASPHALT to the same cost code
-      if (trimmed === 'AC' || trimmed === 'ASPHALT') {
-        return 'AC';
-      }
-      return trimmed; // Return uppercase normalized version
-    };
-    
-    // The task name itself appears to be the cost code
-    const taskName = task.taskName || task.name || '';
-    const taskCostCode = normalizeCostCode(task.costCode || taskName);
-    const costCodeInfo = costCodeData[taskCostCode];
-    const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
-    
-    // Debug logging to see what's happening
-    console.log(`🔧 Debug task remaining hours for ${taskName}:`, {
-      taskName,
-      originalCostCode: task.costCode,
-      normalizedCostCode: taskCostCode,
-      budgetHours,
-      costCodeInfo: costCodeInfo ? `${costCodeInfo.budgetHours}h budget` : 'no match',
-      availableCostCodes: Object.keys(costCodeData),
-      scheduledHours,
-      actualHours,
-      isComplete: task.status === 'complete'
-    });
-    
-    // Calculate remaining hours: budget - (actual if task is complete OR scheduled if not complete)
-    const isTaskComplete = task.status === 'complete';
-    const usedHours = isTaskComplete ? actualHours : scheduledHours;
-    const remainingHours = Math.max(0, budgetHours - usedHours);
-    
-    let remainingHoursColor = 'text-green-600';
-    if (budgetHours > 0) {
-      const remainingPercentage = (remainingHours / budgetHours) * 100;
-      if (remainingPercentage <= 0) {
-        remainingHoursColor = 'text-red-600'; // Over budget
-      } else if (remainingPercentage <= 15) {
-        remainingHoursColor = 'text-yellow-600'; // Low remaining hours (15% or less)
-      } else {
-        remainingHoursColor = 'text-green-600'; // Sufficient remaining hours
-      }
-    }
+    // Use the same remaining hours calculation as the Schedule page
+    const result = calculateRemainingHours(task, allLocationTasks[task.locationId] || [], allBudgetItems);
+    const remainingHours = result?.remainingHours || 0;
+    const totalBudgetHours = result?.totalBudgetHours || 0;
+    const remainingHoursColor = getRemainingHoursColor(remainingHours, totalBudgetHours);
 
     return (
       <TaskCardWithForeman
@@ -634,7 +701,7 @@ export default function Dashboard() {
         taskAssignments={taskAssignments}
         remainingHours={remainingHours}
         remainingHoursColor={remainingHoursColor}
-        budgetHours={budgetHours}
+        budgetHours={totalBudgetHours}
         projectName={projectName}
         locationName={locationName}
         actualHours={actualHours}
