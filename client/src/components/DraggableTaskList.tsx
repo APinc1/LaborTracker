@@ -448,6 +448,17 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
           </div>
         </CardContent>
       </Card>
+      
+      {/* Foreman Selection Modal */}
+      <ForemanSelectionModal
+        isOpen={showForemanModal}
+        onClose={() => setShowForemanModal(false)}
+        onSelectForeman={handleForemanSelection}
+        assignedForemen={assignedForemen}
+        allForemen={allForemen}
+        selectionType={foremanSelectionType}
+        taskName={task.name}
+      />
     </div>
   );
 }
