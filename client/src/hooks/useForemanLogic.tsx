@@ -104,6 +104,27 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     // Single foreman case is handled automatically in useEffect
   };
 
+  // Automatically trigger foreman selection when conditions are met
+  useEffect(() => {
+    // Only trigger if modal is not already showing and task doesn't have a foremanId
+    if (!showForemanModal && !task.foremanId) {
+      if (assignedForemen.length >= 2) {
+        console.log('🔍 FOREMAN LOGIC: Multiple foremen detected, triggering Overall Foreman selection', {
+          assignedForemen: assignedForemen.map(f => f.name),
+          taskName: task.name
+        });
+        setForemanSelectionType('overall');
+        setShowForemanModal(true);
+      } else if (assignedForemen.length === 0) {
+        console.log('🔍 FOREMAN LOGIC: No foremen assigned, triggering Responsible Foreman selection', {
+          taskName: task.name
+        });
+        setForemanSelectionType('responsible');
+        setShowForemanModal(true);
+      }
+    }
+  }, [assignedForemen.length, task.foremanId, task.name, showForemanModal]);
+
   // Handle foreman selection from modal
   const handleForemanSelection = (foremanId: number) => {
     updateTaskForemanMutation.mutate({ 
