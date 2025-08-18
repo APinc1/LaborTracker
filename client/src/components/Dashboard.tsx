@@ -595,6 +595,18 @@ export default function Dashboard() {
     const costCodeInfo = costCodeData[taskCostCode];
     const budgetHours = costCodeInfo ? costCodeInfo.budgetHours : 0;
     
+    // Debug logging to see what's happening
+    console.log(`🔧 Debug task remaining hours for ${task.taskName}:`, {
+      originalCostCode: task.costCode,
+      normalizedCostCode: taskCostCode,
+      budgetHours,
+      costCodeInfo,
+      availableCostCodes: Object.keys(costCodeData),
+      scheduledHours,
+      actualHours,
+      isComplete: task.status === 'complete'
+    });
+    
     // Calculate remaining hours: budget - (actual if task is complete OR scheduled if not complete)
     const isTaskComplete = task.status === 'complete';
     const usedHours = isTaskComplete ? actualHours : scheduledHours;
