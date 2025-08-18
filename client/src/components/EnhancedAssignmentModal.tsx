@@ -369,7 +369,7 @@ export default function EnhancedAssignmentModal({
 
       return results;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
@@ -379,6 +379,38 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       toast({ title: "Success", description: "Assignments and superintendent updated successfully" });
+      
+      // Check if we need to trigger foreman selection after assignments are saved
+      setTimeout(async () => {
+        try {
+          // Get the employees data to check for foremen
+          const employees = await queryClient.fetchQuery({ 
+            queryKey: ["/api/employees"],
+            staleTime: 0 // Force fresh data
+          });
+          
+          // Count assigned foremen
+          const assignedForemen = selectedEmployeeIds
+            .map(empId => (employees as any[])?.find(emp => emp.id.toString() === empId))
+            .filter(emp => emp?.isForeman === true);
+          
+          console.log('🔍 ASSIGNMENT SAVE: Foreman check', {
+            assignedCount: assignedForemen.length,
+            foremen: assignedForemen.map(f => f.name),
+            shouldTrigger: assignedForemen.length >= 2
+          });
+          
+          if (assignedForemen.length >= 2) {
+            // Broadcast foreman selection needed event
+            window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
+              detail: { taskId, assignedForemen } 
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to check foreman assignments:', error);
+        }
+      }, 500); // Small delay to allow data to refresh
+      
       onClose();
     },
     onError: () => {

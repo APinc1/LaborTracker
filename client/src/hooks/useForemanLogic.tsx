@@ -104,23 +104,28 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     // Single foreman case is handled automatically
   };
 
-  // Auto-trigger foreman selection when conditions are met
+  // Check if foreman selection is needed (but don't auto-trigger)
+  const needsForemanSelection = assignedForemen.length >= 2 && !task.foremanId;
+
+  // Listen for custom event to trigger foreman selection after assignment saves
   useEffect(() => {
-    console.log('🔍 FOREMAN AUTO-TRIGGER CHECK:', {
-      taskName: task.name,
-      taskHasForeman: !!task.foremanId,
-      assignedForemenCount: assignedForemen.length,
-      assignedForemen: assignedForemen.map(f => f.name),
-      shouldTrigger: assignedForemen.length >= 2 && !task.foremanId
-    });
+    const handleForemanTrigger = (event: CustomEvent) => {
+      const { taskId: eventTaskId } = event.detail;
+      
+      // Only trigger for this specific task
+      if (eventTaskId == task.id || eventTaskId == task.taskId) {
+        console.log('🔍 FOREMAN EVENT: Triggering selection for', task.name);
+        setForemanSelectionType('overall');
+        setShowForemanModal(true);
+      }
+    };
+
+    window.addEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
     
-    // Only auto-trigger if task doesn't already have a foreman set
-    if (!task.foremanId && assignedForemen.length >= 2) {
-      console.log('🔍 AUTO-TRIGGERING: Overall Foreman selection for', task.name);
-      setForemanSelectionType('overall');
-      setShowForemanModal(true);
-    }
-  }, [assignedForemen.length, task.foremanId, task.name, assignedForemen]);
+    return () => {
+      window.removeEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
+    };
+  }, [task.id, task.taskId, task.name]);
 
   // Handle foreman selection from modal
   const handleForemanSelection = (foremanId: number) => {
@@ -140,6 +145,6 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
     allForemen,
     triggerForemanSelection,
     handleForemanSelection,
-    needsForemanSelection: assignedForemen.length >= 2 || (assignedForemen.length === 0 && !task.foremanId)
+    needsForemanSelection
   };
 }
