@@ -408,7 +408,9 @@ export default function EnhancedAssignmentModal({
             assignedCount: assignedForemen.length,
             foremen: assignedForemen.map(f => f.name),
             shouldTrigger: assignedForemen.length >= 2,
-            singleForemanCase: assignedForemen.length === 1
+            singleForemanCase: assignedForemen.length === 1,
+            currentForemanId: task?.foremanId,
+            taskName: task?.name
           });
           
           if (assignedForemen.length >= 2) {
@@ -432,10 +434,15 @@ export default function EnhancedAssignmentModal({
               console.error('❌ Failed to assign single foreman:', error);
             }
           } else if (assignedForemen.length === 0) {
-            // No foremen assigned: trigger responsible foreman selection
-            window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
-              detail: { taskId, assignedForemen: [], type: 'responsible' } 
-            }));
+            // No working foremen assigned: only trigger responsible foreman selection if no foreman is already assigned to task
+            if (!task?.foremanId) {
+              console.log('🔍 NO FOREMAN ASSIGNED: Triggering responsible foreman selection');
+              window.dispatchEvent(new CustomEvent('triggerForemanSelection', { 
+                detail: { taskId, assignedForemen: [], type: 'responsible' } 
+              }));
+            } else {
+              console.log('🔍 RESPONSIBLE FOREMAN EXISTS: Not triggering selection, foreman already assigned');
+            }
           }
         } catch (error) {
           console.error('Failed to check foreman assignments:', error);
