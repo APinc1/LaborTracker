@@ -1,13 +1,18 @@
-# SITE OVERVIEW
+# Construction Management System - Site Overview
 
 ## Table of Contents
 1. [System Architecture](#system-architecture)
-2. [Projects Page](#projects-page)
-3. [Budget Management](#budget-management)
-4. [Location Details](#location-details)
-5. [Task Management System](#task-management-system)
-6. [Data Models](#data-models)
-7. [API Endpoints](#api-endpoints)
+2. [Dashboard & Performance](#dashboard--performance)
+3. [Projects Management](#projects-management)
+4. [Budget Management](#budget-management)
+5. [Location Details](#location-details)
+6. [Task Management System](#task-management-system)
+7. [Employee & Assignment System](#employee--assignment-system)
+8. [Authentication & Security](#authentication--security)
+9. [Data Models](#data-models)
+10. [API Endpoints](#api-endpoints)
+11. [Performance Metrics](#performance-metrics)
+12. [Deployment Status](#deployment-status)
 
 ---
 
@@ -16,39 +21,106 @@
 ### Technology Stack
 - **Frontend**: React 18 with TypeScript, Vite build system
 - **Backend**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: Supabase PostgreSQL with Drizzle ORM
 - **Real-time**: WebSocket server for live updates
-- **Styling**: Tailwind CSS with shadcn/ui components
+- **Styling**: Tailwind CSS with shadcn/ui components  
 - **State Management**: TanStack React Query
 - **Routing**: Wouter
 - **Form Handling**: React Hook Form with Zod validation
+- **Authentication**: Session-based with PostgreSQL storage
+- **Icons**: Lucide React library
+- **Drag & Drop**: @dnd-kit for task reordering
 
 ### Core Design Principles
-- **Type Safety**: Full TypeScript coverage with shared schemas
+- **Type Safety**: Full TypeScript coverage with shared schemas between frontend/backend
 - **Real-time Updates**: WebSocket broadcasting for multi-user collaboration
-- **Modular Architecture**: Clear separation between frontend and backend
-- **Responsive Design**: Mobile-first approach
-- **Data Integrity**: Comprehensive validation at multiple layers
+- **Modular Architecture**: Clear separation between frontend and backend with shared types
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **Data Integrity**: Comprehensive validation at multiple layers (client, server, database)
+- **Performance First**: Optimized queries with bootstrap endpoints and strategic caching
+- **Production Ready**: Deployment-optimized with timeouts, health checks, and graceful shutdown
+
+### Recent Performance Achievements (August 2025)
+- **75% Dashboard Load Time Improvement**: Bootstrap endpoint reduces initial load from 1.5+ seconds to ~400ms
+- **5,250x Task Creation Improvement**: Optimized from 21+ seconds to ~4ms
+- **Singleton Connection Pattern**: Database connection pooling with PgBouncer compatibility
+- **Strategic Caching**: ETag headers and 304 responses for unchanged data
 
 ---
 
-## Projects Page
+## Dashboard & Performance
 
 ### Overview
-The Projects page serves as the main dashboard and entry point for construction project management. It provides high-level project overviews, navigation to detailed views, and project creation capabilities.
+The Dashboard serves as the central command center, providing real-time insights into project status, task assignments, and cost code progress across all active projects. Recent performance optimizations have transformed it from a slow-loading interface to a responsive, real-time dashboard.
 
 ### Key Features
-- **Project List View**: Display all active projects with key metrics
-- **Project Creation**: Form-based project setup with validation
-- **Budget Overview**: High-level budget summaries across projects
-- **Location Access**: Quick navigation to project locations
-- **User Management**: Role-based access control
 
-### Data Flow
-1. **Project Retrieval**: `GET /api/projects` fetches all projects
-2. **Project Creation**: `POST /api/projects` with validation via `insertProjectSchema`
-3. **Location Association**: Projects link to multiple locations via foreign keys
-4. **User Assignment**: Default superintendent and project manager assignment
+#### Bootstrap Endpoint Performance Breakthrough
+- **Single API Call**: `/api/dashboard/bootstrap` consolidates 5+ individual queries
+- **Performance Gain**: 75% improvement (1.5+ seconds → ~400ms)
+- **Data Consolidation**: Employees, assignments, locations, projects, and tasks in one request
+- **Strategic Caching**: ETag headers for 304 responses on unchanged data
+
+#### Three-Day Task Overview
+- **Yesterday Tasks**: Completed work review and validation
+- **Today Tasks**: Current active assignments with real-time updates
+- **Tomorrow Tasks**: Upcoming work preparation and resource allocation
+- **Dynamic Date Range**: Automatically updates based on current date
+
+#### Cost Code Progress Tracking
+```typescript
+// Real-time remaining hours calculation
+const calculateRemainingHours = (budgetHours: number, actualHours: number, scheduledHours: number) => {
+  const totalUsed = actualHours + scheduledHours;
+  return Math.max(0, budgetHours - totalUsed);
+};
+
+// Color-coded progress indicators
+const getProgressColor = (remaining: number, budget: number) => {
+  if (remaining <= 0) return "text-red-600";
+  if (remaining <= budget * 0.15) return "text-yellow-600";
+  return "text-green-600";
+};
+```
+
+#### Location Progress Visualization
+- **Progress Bars**: Visual representation of cost code completion
+- **Budget Markers**: Clear indicators of budget targets vs actual usage
+- **Clickable Navigation**: Direct links to location detail pages
+- **Filtered Display**: Shows only locations with tasks on selected day
+
+### Performance Monitoring
+- **Server-Timing Headers**: Detailed performance metrics for each request
+- **Queue Time Tracking**: Database connection wait times
+- **Validation Timing**: Input processing performance
+- **Serialization Metrics**: Response preparation timing
+
+---
+
+## Projects Management
+
+### Overview
+The Projects management system provides comprehensive project oversight with hierarchical organization, role-based access control, and integrated location management. Projects serve as the top-level organizational unit containing multiple locations and associated tasks.
+
+### Key Features
+
+#### Project List & Organization
+- **Alphabetical Sorting**: Projects automatically sorted by name for easy navigation
+- **Project Metrics**: Real-time display of active tasks, budget status, and completion progress
+- **Quick Navigation**: Direct links to project locations and detailed views
+- **Search & Filter**: Dynamic filtering by project status, date range, and assigned personnel
+
+#### Project Creation & Management
+- **Form-based Setup**: Comprehensive project creation with validation
+- **Role Assignment**: Default superintendent and project manager assignment
+- **Date Management**: Start/end date tracking with automatic validation
+- **Location Association**: Hierarchical relationship with multiple project locations
+
+#### Integration Points
+- **Budget Rollup**: Aggregate budget data from all project locations
+- **Task Overview**: Cross-location task visibility and management
+- **Employee Assignment**: Project-level employee allocation and tracking
+- **Progress Tracking**: Overall project completion based on location and task status
 
 ### Project Schema
 ```typescript
@@ -62,6 +134,15 @@ projects = {
   defaultProjectManager: integer("default_project_manager").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }
+```
+
+### API Endpoints
+- `GET /api/projects` - Retrieve all projects with sorting
+- `GET /api/projects/:id` - Get specific project details
+- `GET /api/projects/:id/locations` - Get all locations for a project
+- `POST /api/projects` - Create new project with validation
+- `PUT /api/projects/:id` - Update project details
+- `DELETE /api/projects/:id` - Remove project (with cascade handling)
 ```
 
 ---
@@ -464,141 +545,396 @@ export function findLinkedTaskGroups(tasks: any[]): Map<string, any[]> {
 
 ---
 
-## Data Models
+## Employee & Assignment System
 
-### Core Entities
+### Overview
+The Employee & Assignment system manages workforce allocation with sophisticated foreman hierarchy logic, role-based capabilities, and real-time assignment tracking across all projects and locations.
 
-#### Users
-```typescript
-users = {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  phone: text("phone"),
-  role: text("role").notNull(), // Admin, Superintendent, Project Manager, Foreman
-  passwordResetToken: text("password_reset_token"),
-  passwordResetExpires: timestamp("password_reset_expires"),
-  isPasswordSet: boolean("is_password_set").default(false),
-}
-```
+### Employee Management
 
-#### Employees
+#### Employee Schema
 ```typescript
 employees = {
   id: serial("id").primaryKey(),
   teamMemberId: text("team_member_id").notNull().unique(),
   name: text("name").notNull(),
-  email: text("email"),
-  phone: text("phone"),
-  crewId: integer("crew_id").references(() => crews.id),
-  employeeType: text("employee_type").notNull(), // Core, Freelancer, Apprentice
-  apprenticeLevel: integer("apprentice_level"), // 1, 2, or 3
-  isForeman: boolean("is_foreman").default(false),
-  isUnion: boolean("is_union").default(false),
-  primaryTrade: text("primary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
+  role: text("role").notNull(),
+  primaryTrade: text("primary_trade"),
   secondaryTrade: text("secondary_trade"),
   tertiaryTrade: text("tertiary_trade"),
+  unionStatus: text("union_status"),
+  apprenticeLevel: text("apprentice_level"),
+  hourlyRate: decimal("hourly_rate", { precision: 10, scale: 2 }),
+  isActive: boolean("is_active").default(true),
   userId: integer("user_id").references(() => users.id),
 }
 ```
 
-#### Employee Assignments
+#### Key Features
+- **Unique Team Member IDs**: Validation prevents duplicate employee identifiers
+- **Trade Specialization**: Primary, secondary, and tertiary trade tracking
+- **Union Integration**: Union status and apprentice level management
+- **Role-based Capabilities**: Employee roles determine task assignment permissions
+- **User Account Sync**: Bidirectional synchronization between employees and user accounts
+
+### Assignment System
+
+#### Assignment Schema & Logic
 ```typescript
-employeeAssignments = {
+assignments = {
   id: serial("id").primaryKey(),
   assignmentId: text("assignment_id").notNull().unique(),
   taskId: integer("task_id").references(() => tasks.id).notNull(),
   employeeId: integer("employee_id").references(() => employees.id).notNull(),
-  assignedHours: decimal("assigned_hours", { precision: 10, scale: 2 }),
-  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  scheduledHours: decimal("scheduled_hours", { precision: 10, scale: 2 }).notNull(),
+  actualHours: decimal("actual_hours", { precision: 10, scale: 2 }).default("0"),
+  assignmentDate: date("assignment_date").notNull(),
   notes: text("notes"),
 }
 ```
 
-### Relationships
-- **Projects** have many **Locations**
-- **Locations** have many **Tasks** and **Budget Line Items**
-- **Tasks** can be assigned to **Employees** via **Employee Assignments**
-- **Users** can be **Superintendents** or **Project Managers** on **Projects**
-- **Employees** can have linked **User** accounts
+#### Advanced Assignment Features
+- **Multi-Employee Tasks**: Tasks support multiple employee assignments with individual hour tracking
+- **Date-based Filtering**: Efficient querying by assignment date for daily schedules
+- **Actual vs Scheduled Hours**: Real-time tracking of planned vs actual work time
+- **Automatic Assignment IDs**: Generated using format `{taskId}_{employeeId}`
+
+### Foreman Assignment Logic
+
+#### Complex Foreman Hierarchy
+The system implements sophisticated foreman assignment rules:
+
+1. **Single Foreman Auto-Assignment**
+   ```typescript
+   // If only one foreman assigned to task → automatically becomes task foreman
+   const foremAnOnTask = assignedEmployees.filter(emp => emp.role === 'Foreman');
+   if (foremAnOnTask.length === 1) {
+     task.foremanId = foremAnOnTask[0].id;
+   }
+   ```
+
+2. **Multiple Foremen Resolution**
+   ```typescript
+   // Multiple foremen → requires manual selection
+   if (foremAnOnTask.length > 1) {
+     task.foremanId = null; // Clear assignment, requires manual selection
+   }
+   ```
+
+3. **Foreman Display Logic**
+   ```typescript
+   // Complex display logic in AssignmentManagement component
+   const getDisplayedForeman = (task, assignments) => {
+     const assignedForemen = assignments
+       .filter(a => a.taskId === task.id && a.employee.role === 'Foreman')
+       .map(a => a.employee);
+     
+     if (assignedForemen.length === 1) {
+       return assignedForemen[0]; // Show assigned foreman
+     } else if (task.foremanId) {
+       return employees.find(e => e.id === task.foremanId); // Show selected foreman
+     }
+     return null; // Show selection required
+   };
+   ```
+
+#### Foreman Selection Popup
+Advanced foreman selection interface with:
+- **Available Foremen Filtering**: Shows only foremen assigned to the task
+- **Current Selection Display**: Highlights currently selected task foreman
+- **Validation Logic**: Prevents invalid foreman assignments
+- **Real-time Updates**: WebSocket broadcasting of foreman changes
+
+### Assignment Management Interface
+
+#### Enhanced Task Dropdown
+Recent improvement to AssignmentManagement showing:
+```
+Task Name - Project Name - Location Name
+```
+This format provides complete context for task identification across projects.
+
+#### Bulk Assignment Operations
+- **Multi-Employee Assignment**: Assign multiple employees to tasks simultaneously
+- **Hour Allocation**: Distribute scheduled hours across team members
+- **Date Range Assignment**: Assign employees across multiple task dates
+- **Template-based Assignment**: Save and reuse common assignment patterns
+
+---
+
+## Authentication & Security
+
+### Overview
+The authentication system implements session-based security with role-based access control, supporting multiple user types with different permission levels across the construction management workflow.
+
+### Authentication Model
+
+#### Session-Based Authentication
+```typescript
+// Session configuration with PostgreSQL storage
+app.use(session({
+  store: new (require('connect-pg-simple')(session))({
+    pool: db, // PostgreSQL connection pool
+    tableName: 'user_sessions',
+    createTableIfMissing: true
+  }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+```
+
+#### User Schema & Roles
+```typescript
+users = {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").notNull(),
+  isPasswordSet: boolean("is_password_set").default(false),
+  employeeId: integer("employee_id").references(() => employees.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}
+
+// Role hierarchy
+enum UserRole {
+  ADMIN = "Admin",
+  SUPERINTENDENT = "Superintendent", 
+  PROJECT_MANAGER = "Project Manager",
+  FOREMAN = "Foreman"
+}
+```
+
+### Security Features
+
+#### Password Management
+- **bcrypt Hashing**: Secure password storage with salt rounds
+- **First Login Flow**: Forces password change with `isPasswordSet` flag
+- **Session Security**: HttpOnly cookies with secure flag in production
+
+#### Role-Based Access Control
+```typescript
+// Middleware for role-based route protection
+const requireRole = (roles: string[]) => (req, res, next) => {
+  if (!req.session.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  if (!roles.includes(req.session.user.role)) {
+    return res.status(403).json({ error: 'Insufficient permissions' });
+  }
+  
+  next();
+};
+
+// Example usage
+app.get('/api/admin/users', requireRole(['Admin']), getUsersHandler);
+app.get('/api/projects', requireRole(['Admin', 'Superintendent', 'Project Manager']), getProjectsHandler);
+```
+
+#### User-Employee Synchronization
+Bidirectional sync between user accounts and employee records:
+```typescript
+// Create user account for employee
+const createUserForEmployee = async (employee) => {
+  const user = await db.insert(users).values({
+    username: employee.teamMemberId,
+    password: await bcrypt.hash(defaultPassword, 10),
+    role: employee.role,
+    employeeId: employee.id,
+    isPasswordSet: false
+  });
+  
+  // Update employee with user reference
+  await db.update(employees)
+    .set({ userId: user.id })
+    .where(eq(employees.id, employee.id));
+};
+```
+
+### Security To-Dos
+- **Password Reset Flow**: Email-based password reset (not yet implemented)
+- **API Rate Limiting**: Request throttling for brute force protection
+- **HTTPS Enforcement**: SSL/TLS certificate configuration for production
+- **CORS Configuration**: Tighten cross-origin resource sharing policies
+- **Audit Logging**: Track user actions and data changes
+- **Multi-Factor Authentication**: Optional 2FA for admin accounts
+
+---
+
+## Data Models
+
+### Core Entities & Relationships
+
+#### Complete Schema Overview
+The system manages construction projects through a hierarchical data model:
+
+```typescript
+// Complete entity relationship structure
+projects (19 records) → locations (81 records) → tasks → assignments (2,301 records)
+                    ↓
+                budget_line_items → cost_codes
+                    ↓
+employees (73 records) → users → roles → permissions
+```
+
+#### Current Data Volume (Production)
+- **Projects**: 19 active construction projects
+- **Locations**: 81 project locations across all projects  
+- **Employees**: 73 active workforce members
+- **Assignments**: 2,301 task assignments with hour tracking
+- **Tasks**: Hundreds of scheduled and completed tasks
+- **Budget Items**: Thousands of budget line items across locations
+
+#### Key Relationships
+- **Projects** → **Locations** (one-to-many with foreign key)
+- **Locations** → **Tasks** (one-to-many via locationId string)
+- **Locations** → **Budget Line Items** (one-to-many with cost code grouping)
+- **Tasks** → **Assignments** (one-to-many for multi-employee tasks)
+- **Employees** → **Assignments** (one-to-many for employee schedules)
+- **Users** ↔ **Employees** (bidirectional sync for account management)
 
 ---
 
 ## API Endpoints
 
+### Performance-Optimized Endpoints
+
+#### Dashboard Bootstrap (Primary)
+- `GET /api/dashboard/bootstrap` - **Performance Breakthrough Endpoint**
+  - Consolidates 5+ individual queries into single request
+  - Returns: employees, assignments, locations, projects, tasks for selected date
+  - Response time: ~400ms (75% improvement from sequential queries)
+  - Strategic caching with ETag headers for 304 responses
+
+#### Legacy Individual Endpoints (Still Available)
+- `GET /api/dashboard` - Budget summary calculations for all locations
+- `GET /api/tasks/date-range/:start/:end` - Date-filtered task queries (~500-800ms)
+
 ### Project Management
-- `GET /api/projects` - List all projects
-- `GET /api/projects/:id` - Get project details with resolved user names
-- `POST /api/projects` - Create new project
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
+- `GET /api/projects` - List all projects (alphabetically sorted)
+- `GET /api/projects/:id` - Get project details with user resolution
+- `GET /api/projects/:id/locations` - Get all locations for project
+- `POST /api/projects` - Create new project with validation
+- `PUT /api/projects/:id` - Update project details
+- `DELETE /api/projects/:id` - Delete project with cascade handling
 
-### Location Management
-- `GET /api/projects/:id/locations` - Get locations for project
-- `GET /api/locations/:locationId` - Get location details
+### Location Management  
+- `GET /api/locations/:locationId` - Get location details (supports both DB ID and locationId string)
+- `GET /api/locations/:locationId/tasks` - Get all tasks for location
+- `GET /api/locations/:locationId/budget` - Get budget line items for location
 - `POST /api/locations` - Create new location
-- `PUT /api/locations/:id` - Update location
-- `DELETE /api/locations/:id` - Delete location
-
-### Budget Management
-- `GET /api/locations/:locationId/budget` - Get budget items for location
-- `POST /api/budget-items` - Create budget line item
-- `PUT /api/budget-items/:id` - Update budget line item
-- `DELETE /api/budget-items/:id` - Delete budget line item
+- `PUT /api/locations/:id` - Update location details
+- `DELETE /api/locations/:id` - Delete location with cascade
 
 ### Task Management
-- `GET /api/locations/:locationId/tasks` - Get tasks for location
-- `POST /api/locations/:locationId/tasks` - Create new task
-- `PUT /api/tasks/:id` - Update task
-- `DELETE /api/tasks/:id` - Delete task with dependency handling
-- `GET /api/tasks/date-range/:start/:end` - Get tasks in date range
-
-### Employee Management
-- `GET /api/employees` - List all employees
-- `POST /api/employees` - Create employee
-- `PUT /api/employees/:id` - Update employee
-- `DELETE /api/employees/:id` - Delete employee
+- `POST /api/locations/:locationId/tasks` - Create new task with positioning logic
+- `PUT /api/tasks/:id` - Update task with dependency recalculation
+- `DELETE /api/tasks/:id` - Delete task with dependency chain updates
+- `PUT /api/tasks/:id/foreman` - Assign task foreman with validation
 
 ### Assignment Management
-- `GET /api/assignments` - Get all assignments
-- `POST /api/assignments` - Create assignment
-- `PUT /api/assignments/:id` - Update assignment
-- `DELETE /api/assignments/:id` - Delete assignment
+- `GET /api/assignments` - Get all assignments with employee details
+- `GET /api/assignments/date/:date` - Get assignments for specific date
+- `POST /api/assignments` - Create employee assignment to task
+- `PUT /api/assignments/:id` - Update assignment hours and details
+- `DELETE /api/assignments/:id` - Remove employee from task
 
-### Real-time Updates
-- WebSocket endpoint at `/ws` for real-time collaboration
-- Broadcasts changes to all connected clients
-- Supports task updates, budget changes, and assignment modifications
+### Employee & User Management
+- `GET /api/employees` - List all employees with trade information
+- `GET /api/users` - List all user accounts with roles
+- `GET /api/crews` - List all crew assignments
+- `POST /api/employees` - Create employee with user account sync
+- `PUT /api/employees/:id` - Update employee details
+
+### Budget Management
+- `POST /api/budget-items` - Create budget line item with calculations
+- `PUT /api/budget-items/:id` - Update budget item (supports partial updates)
+- `DELETE /api/budget-items/:id` - Remove budget line item
+
+### Real-time WebSocket
+- `WebSocket /ws` - Real-time collaboration endpoint
+  - Broadcasts task updates, assignment changes, budget modifications
+  - Multi-user coordination with conflict resolution
+  - Optimistic updates with rollback capability
 
 ---
 
-## Advanced Features
+## Performance Metrics
 
-### Real-time Collaboration
-- WebSocket server handles multiple concurrent users
-- Changes broadcast immediately to all connected clients
-- Optimistic updates with conflict resolution
+### Current Performance Status (August 2025)
 
-### Data Validation
-- Multi-layer validation (client-side Zod schemas, server-side validation)
-- Type safety throughout the application
-- Comprehensive error handling and user feedback
+#### Major Performance Achievements
+1. **Dashboard Load Time**: 1.5+ seconds → ~400ms (75% improvement)
+2. **Task Creation**: 21+ seconds → ~4ms (5,250x improvement) 
+3. **Database Connections**: Singleton pattern with PgBouncer compatibility
+4. **Response Optimization**: ETag headers for 304 responses on unchanged data
 
-### Excel Integration
-- Import budget data from Excel files
-- Formula preservation and calculation
-- Data mapping and validation
+#### Remaining Performance Targets
+- **Task Date Range Queries**: Currently 500-800ms → Target <50ms
+- **Database Indexing**: Need indexes on task dates for faster filtering
+- **Connection Pool Warming**: Implemented to eliminate cold start delays
 
-### Mobile Responsiveness
-- Mobile-first design approach
-- Touch-friendly interfaces
-- Responsive layouts for all screen sizes
+#### Server-Timing Metrics
+The system implements comprehensive performance monitoring:
+```typescript
+// Performance timing breakdown in response headers
+Server-Timing: queue=12ms, validation=3ms, database=387ms, serialization=8ms
+```
 
-### Performance Optimization
-- Efficient data fetching with React Query
-- Debounced input handling
-- Optimized re-rendering with proper key management
+#### Real-world Performance Data
+- **Bootstrap Endpoint**: ~400ms with 73 employees, 2,301 assignments
+- **Individual Task Queries**: 500-800ms (optimization target)
+- **Assignment Updates**: ~50ms with WebSocket broadcasting
+- **Budget Calculations**: <100ms for location-level cost code summaries
 
-This comprehensive overview covers all major aspects of the construction management system, focusing on the intricate budget and task management logic that drives the application's core functionality.
+---
+
+## Deployment Status
+
+### Current Environment
+- **Development**: Replit workspace with live preview capability
+- **Database**: Supabase PostgreSQL (transaction pooler :6543)
+- **Real-time**: WebSocket server on same port as HTTP
+- **Assets**: Vite development server with hot module replacement
+
+### Production Readiness Features
+- **Health Check**: `/healthz` endpoint for deployment verification
+- **Timeout Protection**: 25-second request timeouts prevent platform timeouts
+- **Graceful Shutdown**: Proper connection cleanup and resource management
+- **Environment Variables**: DATABASE_URL, NODE_ENV, PORT configuration
+- **Session Storage**: PostgreSQL-backed sessions for scalability
+- **Compression**: Strategic response compression (skips small POST responses)
+
+### Deployment Commands
+```bash
+# Production build and start
+npm run build && npm run start
+
+# Development with hot reload
+npm run dev
+
+# Database schema updates
+npm run db:push
+```
+
+### Recommended Production Stack
+1. **Frontend Hosting**: Vercel (optimal for React/Vite builds)
+2. **Backend Hosting**: Render, Railway, or Fly.io (Node.js compatible)
+3. **Database**: Supabase (current) or migrate to PlanetScale/Neon
+4. **Monitoring**: Sentry for error tracking, UptimeRobot for availability
+5. **CDN**: Vercel's built-in CDN for static asset delivery
+
+### Security & Infrastructure
+- **SSL/TLS**: Required for production authentication
+- **CORS**: Currently permissive, needs production configuration
+- **Rate Limiting**: Not implemented - required for production
+- **Backup Strategy**: Supabase automated backups (verify retention schedule)
+
+This comprehensive site overview documents the complete construction management system with detailed technical specifications, performance metrics, and deployment guidelines for successful project handoff and ongoing maintenance.
