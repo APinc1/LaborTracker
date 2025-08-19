@@ -1,0 +1,76 @@
+1) Define bootstrapLoading and stop using assignmentsLoading
+Add (or confirm) the bootstrap query in Dashboard.tsx:
+
+tsx
+Copy
+Edit
+// near top of component
+const { data: bootstrap, isLoading: bootstrapLoading, isFetching: bootstrapFetching, error: bootstrapError } =
+  useQuery({
+    queryKey: ["dashboardBootstrap", from, to],
+    queryFn: () => fetch(`/api/dashboard/bootstrap?from=${from}&to=${to}`).then(r => r.json()),
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+// pull data from bootstrap
+const employees   = bootstrap?.employees   ?? [];
+const assignments = bootstrap?.assignments ?? [];
+const locations   = bootstrap?.locations   ?? [];
+const projects    = bootstrap?.projects    ?? [];
+const tasksRange  = bootstrap?.tasksRange  ?? [];
+2) Replace the bad reference (line ~691)
+Your current guard (per screenshot) references a non-existent assignmentsLoading. Change it to use bootstrapLoading:
+
+tsx
+Copy
+Edit
+// BEFORE (crashes)
+if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading) {
+  return <div className="flex-1 overflow-y-auto p-6 space-y-6">...</div>;
+}
+
+// AFTER (works)
+const isLoadingAny =
+  bootstrapLoading || todayLoading || previousLoading || nextLoading || allTasksLoading;
+
+if (isLoadingAny) {
+  return <div className="flex-1 overflow-y-auto p-6 space-y-6">...</div>;
+}
+If you want it bullet-proof, compute once:
+
+tsx
+Copy
+Edit
+const isLoadingAny = [
+  bootstrapLoading,
+  todayLoading,
+  previousLoading,
+  nextLoading,
+  allTasksLoading,
+].some(Boolean);
+3) Remove old “assignments” query (so you don’t reintroduce the bug)
+Delete any legacy hook like:
+
+tsx
+Copy
+Edit
+// ❌ remove this
+const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery({ ... });
+You already have assignments from bootstrap.
+
+4) Stop the old slow calls (for now)
+Until your fast 304/ETag work lands, disable the legacy date-range queries that are still firing:
+
+tsx
+Copy
+Edit
+// TEMP: disable legacy date-range queries to avoid 500ms+ hits
+const { data: tasksToday,    isLoading: todayLoading    } = useQuery({ /* ... */, enabled: false });
+const { data: tasksPrevious, isLoading: previousLoading } = useQuery({ /* ... */, enabled: false });
+const { data: tasksNext,     isLoading: nextLoading     } = useQuery({ /* ... */, enabled: false });
+(If you need one range for the view, source it from bootstrap.tasksRange instead.)
+
+One-liner you can paste to Replit
+Replace every assignmentsLoading reference in client/src/components/Dashboard.tsx with bootstrapLoading. Ensure the bootstrap query is defined and destructured (const { data: bootstrap, isLoading: bootstrapLoading, ... } = useQuery(...)) and remove the old useQuery for assignments. Temporarily set enabled: false on the legacy /api/tasks/date-range queries so only the /api/dashboard/bootstrap and /api/dashboard?locationIds=... calls run.

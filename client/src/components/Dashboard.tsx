@@ -91,11 +91,13 @@ export default function Dashboard() {
   const todayTasks = todayTasksFromBootstrap;
   const todayLoading = bootstrapLoading;
 
+  // Temporarily disabled to test bootstrap performance - these will be optimized with indexes/ETag later  
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
     staleTime: 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    enabled: false, // TEMP: disable legacy slow queries
   });
 
   const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
@@ -103,6 +105,7 @@ export default function Dashboard() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    enabled: false, // TEMP: disable legacy slow queries  
   });
 
   // Individual queries that still need separate calls
@@ -688,7 +691,16 @@ export default function Dashboard() {
 
   const allLocationTasksLoading = Object.keys(budgetDataByLocation).length > 0 && Object.keys(allLocationTasks).length === 0;
   
-  if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading || allLocationTasksLoading) {
+  const isLoadingAny = [
+    bootstrapLoading,
+    todayLoading,
+    previousLoading,
+    nextLoading,
+    allTasksLoading,
+    allLocationTasksLoading
+  ].some(Boolean);
+
+  if (isLoadingAny) {
     return (
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
