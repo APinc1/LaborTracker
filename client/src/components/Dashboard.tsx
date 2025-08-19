@@ -281,30 +281,30 @@ export default function Dashboard() {
     ...(nextDayTasks as any[]).map((task: any) => task.locationId)
   ].filter(Boolean)));
 
-  const { data: budgetDataByLocation = {} } = useQuery({
-    queryKey: ["/api/dashboard/budget", locationDbIdsWithTasks.join(',')],
+  // Bulk dashboard data fetch - both budgets and tasks in one request
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["/api/dashboard", locationDbIdsWithTasks.join(',')],
     staleTime: 30000,
     queryFn: async () => {
-      // Only fetch budget data for locations that actually have tasks
+      // Only fetch data for locations that actually have tasks
       const relevantLocations = (locations as any[]).filter((location: any) => 
-        locationDbIdsWithTasks.includes(location.id) // Fix: use database ID for matching
+        locationDbIdsWithTasks.includes(location.id)
       );
       
-      console.log('🔍 Dashboard budget fetch - relevant locations:', relevantLocations.map(l => l.locationId));
-      
-      if (relevantLocations.length === 0) return {};
+      if (relevantLocations.length === 0) return { budgets: {}, tasks: {} };
       
       // Use bulk dashboard endpoint for all locations at once
       const locationIds = relevantLocations.map((location: any) => location.locationId);
       try {
-        console.log(`📊 Dashboard fetching budget for: ${locationIds.join(', ')}`);
+        console.log(`📊 Dashboard bulk fetch for: ${locationIds.join(', ')}`);
         const response = await fetch(`/api/dashboard?locationIds=${locationIds.join(',')}`);
-        const { budgets } = await response.json();
-        console.log(`✅ Dashboard budget loaded for ${locationIds.length} locations`);
-        return budgets;
+        if (!response.ok) throw new Error(`Bulk fetch failed: ${response.status}`);
+        const data = await response.json();
+        console.log(`✅ Dashboard bulk loaded for ${locationIds.length} locations`);
+        return data;
       } catch (error) {
-        console.warn(`Failed to fetch bulk budget data:`, error);
-        return {};
+        console.warn(`Failed to fetch bulk dashboard data:`, error);
+        return { budgets: {}, tasks: {} };
       }
     },
     enabled: (locations as any[]).length > 0 && 
@@ -312,39 +312,9 @@ export default function Dashboard() {
              !todayLoading && !previousLoading && !nextLoading,
   });
 
-  // Create a hook to get all tasks for dashboard locations (for actual hours calculation)
-  const { data: allLocationTasks = {} } = useQuery({
-    queryKey: ["/api/dashboard/location-tasks", Object.keys(budgetDataByLocation)],
-    queryFn: async () => {
-      const locationIds = Object.keys(budgetDataByLocation);
-      if (locationIds.length === 0) return {};
-      
-      console.log('📋 Dashboard: Fetching all tasks for locations with budget data:', locationIds);
-      
-      const taskPromises = locationIds.map(async (locationId: string) => {
-        try {
-          const response = await fetch(`/api/locations/${locationId}/tasks`);
-          const tasks = await response.json();
-          console.log(`📋 Dashboard: Loaded ${tasks.length} tasks for ${locationId}`);
-          return { locationId, tasks };
-        } catch (error) {
-          console.warn(`Failed to fetch tasks for location ${locationId}:`, error);
-          return { locationId, tasks: [] };
-        }
-      });
-      
-      const results = await Promise.all(taskPromises);
-      const allTasks = results.reduce((acc: any, { locationId, tasks }) => {
-        acc[locationId] = tasks;
-        return acc;
-      }, {});
-      
-      console.log('📋 Dashboard: All location tasks loaded:', Object.keys(allTasks));
-      return allTasks;
-    },
-    enabled: Object.keys(budgetDataByLocation).length > 0,
-    staleTime: 300000, // 5 minutes - longer since this is more expensive
-  });
+  // Extract budgets and tasks from bulk response
+  const budgetDataByLocation = dashboardData?.budgets ?? {};
+  const allLocationTasks = dashboardData?.tasks ?? {};
 
   // Get all budget items for remaining hours calculation (same as Schedule page)
   const allBudgetItems = Object.values(budgetDataByLocation).flat();

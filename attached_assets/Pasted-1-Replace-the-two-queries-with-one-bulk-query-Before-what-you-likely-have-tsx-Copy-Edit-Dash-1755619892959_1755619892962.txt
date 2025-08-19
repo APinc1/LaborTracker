@@ -1,0 +1,150 @@
+1) Replace the two queries with one bulk query
+Before (what you likely have):
+
+tsx
+Copy
+Edit
+// Dashboard.tsx (old pattern)
+const { data: budgetsByLoc } = useQuery({
+  queryKey: ["budgets", locationIds],
+  queryFn: () => Promise.all(locationIds.map(id =>
+    fetch(`/api/locations/${encodeURIComponent(id)}/budget`).then(r => r.json())
+  )).then((arr) =>
+    Object.fromEntries(locationIds.map((id, i) => [id, arr[i]]))
+  ),
+});
+
+const { data: tasksByLoc } = useQuery({
+  queryKey: ["tasks", locationIds],
+  queryFn: () => Promise.all(locationIds.map(id =>
+    fetch(`/api/locations/${encodeURIComponent(id)}/tasks`).then(r => r.json())
+  )).then((arr) =>
+    Object.fromEntries(locationIds.map((id, i) => [id, arr[i]]))
+  ),
+});
+After (use the existing bulk endpoint for both):
+
+tsx
+Copy
+Edit
+// Dashboard.tsx (new pattern)
+import { useQuery } from "@tanstack/react-query";
+
+type Budget = any; // put your real type here
+type Task = any;   // put your real type here
+
+type DashboardBulkResponse = {
+  budgets: Record<string, Budget[]>;
+  tasks:   Record<string, Task[]>;
+};
+
+export default function Dashboard({ locationIds }: { locationIds: string[] }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["dashboardBulk", locationIds],
+    queryFn: async (): Promise<DashboardBulkResponse> => {
+      const url = `/api/dashboard?locationIds=${encodeURIComponent(locationIds.join(","))}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Bulk fetch failed: ${res.status}`);
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+
+  // Keep old variable names so the rest of your component doesn’t change
+  const budgetsByLoc = data?.budgets ?? {};
+  const tasksByLoc   = data?.tasks   ?? {};
+
+  if (error) return <div>Failed to load dashboard.</div>;
+  if (isLoading) return <div>Loading…</div>;
+
+  // Optional sanity logging
+  console.log(
+    "✅ Bulk dashboard loaded: budgets=%d locations, tasks=%d locations",
+    Object.keys(budgetsByLoc).length,
+    Object.keys(tasksByLoc).length
+  );
+
+  return (
+    <YourDashboardComponent
+      budgets={budgetsByLoc}
+      tasks={tasksByLoc}
+      locationIds={locationIds}
+    />
+  );
+}
+This removes all per-location tasks requests. You’ll now see just the single GET /api/dashboard?locationIds=... in your logs.
+
+2) Delete/disable any leftover per-location task fetches
+Search and remove any of these patterns (they silently re-introduce the 7 calls):
+
+Hooks like useTasks(locationId) or useQuery({ queryKey: ["tasks", id], … })
+
+Effects that fetch /api/locations/${id}/tasks in a loop
+
+Example to nuke:
+
+tsx
+Copy
+Edit
+// ❌ REMOVE
+useEffect(() => {
+  (async () => {
+    for (const id of locationIds) {
+      await fetch(`/api/locations/${encodeURIComponent(id)}/tasks`); // <- delete this whole loop
+    }
+  })();
+}, [locationIds]);
+3) (Optional) Keep a safe fallback without re-adding the waterfall
+If you want a guard in case the server temporarily omits tasks, do a single parallel call—not 7—only when data?.tasks is empty:
+
+tsx
+Copy
+Edit
+const needsFallback = data && Object.keys(data.tasks ?? {}).length === 0;
+
+const { data: fallbackTasks } = useQuery({
+  enabled: !!needsFallback,
+  queryKey: ["dashboardTasksFallback", locationIds],
+  queryFn: async () => {
+    const results = await Promise.all(
+      locationIds.map(id =>
+        fetch(`/api/locations/${encodeURIComponent(id)}/tasks`).then(r => r.json())
+      )
+    );
+    return Object.fromEntries(locationIds.map((id, i) => [id, results[i]]));
+  },
+  staleTime: 30_000,
+});
+
+const tasksByLoc = needsFallback ? (fallbackTasks ?? {}) : (data?.tasks ?? {});
+(You can skip this if your bulk endpoint is stable.)
+
+4) Quick server shape check (for reference)
+Your bulk route should already return:
+
+ts
+Copy
+Edit
+// { budgets: { [locationId]: Budget[] }, tasks: { [locationId]: Task[] } }
+If it doesn’t, either:
+
+change the server to that shape, or
+
+group on the client. Example:
+
+tsx
+Copy
+Edit
+function groupBy<T>(rows: T[], getKey: (r: T) => string) {
+  return rows.reduce<Record<string, T[]>>((acc, row) => {
+    const k = getKey(row);
+    (acc[k] ||= []).push(row);
+    return acc;
+  }, {});
+}
+
+// If server returns arrays:
+const budgetsByLoc = groupBy(data.allBudgets, b => String(b.locationId));
+const tasksByLoc   = groupBy(data.allTasks,   t => String(t.locationId));
+5) What to tell Replit (one-liner)
+“Update Dashboard.tsx to fetch both budgets and tasks from /api/dashboard?locationIds=… in a single useQuery and delete any remaining per-location /tasks requests. Keep staleTime: 30_000. Ensure the bulk response returns { budgets: Record<string, Budget[]>, tasks: Record<string, Task[]> } keyed by locationId.”
