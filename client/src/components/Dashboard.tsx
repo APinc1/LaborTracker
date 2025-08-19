@@ -67,46 +67,47 @@ export default function Dashboard() {
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
 
-  const { data: todayTasks = [], isLoading: todayLoading } = useQuery({
-    queryKey: ["/api/tasks/date-range", todayFormatted, todayFormatted],
-    staleTime: 30000,
+  // Bootstrap endpoint - gets all basic data in one request (parallel loading)
+  const { data: bootstrapData, isLoading: bootstrapLoading } = useQuery({
+    queryKey: ["/api/dashboard/bootstrap", todayFormatted, todayFormatted],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/bootstrap?from=${todayFormatted}&to=${todayFormatted}`);
+      if (!response.ok) throw new Error(`Bootstrap failed: ${response.status}`);
+      return response.json();
+    },
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
+
+  // Extract data from bootstrap response (eliminates sequential bottleneck)
+  const assignments = bootstrapData?.assignments ?? [];
+  const employees = bootstrapData?.employees ?? [];
+  const projects = bootstrapData?.projects ?? [];
+  const locations = bootstrapData?.locations ?? [];
+  const todayTasksFromBootstrap = bootstrapData?.tasksRange ?? [];
+
+  // Use today's tasks from bootstrap (eliminates slow individual query)
+  const todayTasks = todayTasksFromBootstrap;
+  const todayLoading = bootstrapLoading;
 
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
     staleTime: 30000,
-    enabled: !!(allTasks as any[]).length,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", nextDayFormatted, nextDayFormatted],
     staleTime: 30000,
-    enabled: !!(allTasks as any[]).length,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
-  // Fetch ALL assignments for accurate cost code calculations
-  const { data: assignments = [], isLoading: assignmentsLoading } = useQuery({
-    queryKey: ["/api/assignments"],
-    staleTime: 30000,
-  });
-
-  const { data: employees = [] } = useQuery({
-    queryKey: ["/api/employees"],
-    staleTime: 30000,
-  });
-
+  // Individual queries that still need separate calls
   const { data: users = [] } = useQuery({
     queryKey: ["/api/users"],
-    staleTime: 30000,
-  });
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ["/api/projects"],
-    staleTime: 30000,
-  });
-
-  const { data: locations = [] } = useQuery({
-    queryKey: ["/api/locations"],
     staleTime: 30000,
   });
 

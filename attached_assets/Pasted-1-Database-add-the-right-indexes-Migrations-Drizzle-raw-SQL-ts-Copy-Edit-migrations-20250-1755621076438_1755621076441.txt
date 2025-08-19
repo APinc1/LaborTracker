@@ -1,0 +1,245 @@
+1) Database: add the right indexes
+Migrations (Drizzle + raw SQL):
+
+ts
+Copy
+Edit
+// migrations/20250819_task_indexes.ts
+import { sql } from "drizzle-orm";
+
+export async function up(db: any) {
+  await db.execute(sql`
+    CREATE INDEX IF NOT EXISTS idx_tasks_task_date           ON tasks(task_date);
+    CREATE INDEX IF NOT EXISTS idx_tasks_task_date_updated   ON tasks(task_date, updated_at);
+    -- Optional if you frequently filter by location+date
+    CREATE INDEX IF NOT EXISTS idx_tasks_location_date       ON tasks(location_id, task_date);
+  `);
+}
+
+export async function down(db: any) {
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_location_date`);
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_task_date_updated`);
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_task_date`);
+}
+Important query hygiene
+
+Use WHERE task_date BETWEEN $1 AND $2 (or = $1).
+
+Don’t wrap task_date in functions (date_trunc, casts, to_char) on the LHS.
+
+(If the table is huge) consider a BRIN index (cheap & very fast for date-range scans):
+
+sql
+Copy
+Edit
+CREATE INDEX IF NOT EXISTS brin_tasks_task_date ON tasks USING BRIN(task_date);
+You can keep both B-tree and BRIN; Postgres picks the best.
+
+2) API: fast 304s for /api/tasks/date-range/:from/:to
+Tiny in-memory cache + cheap version probe (count + max(updated_at))
+This avoids the full result query unless data changed. With indexes above, the probe is ~5–20ms.
+
+ts
+Copy
+Edit
+// server/routes/tasks.ts
+import { Router } from "express";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+
+const router = Router();
+
+// super simple 10s TTL cache for the final payload (optional)
+const payloadCache = new Map<string, { at: number; etag: string; data: any }>();
+const TTL_MS = 10_000;
+
+function makeKey(from: string, to: string) {
+  return `${from}:${to}`;
+}
+
+router.get("/tasks/date-range/:from/:to", async (req, res, next) => {
+  try {
+    const from = req.params.from; // 'YYYY-MM-DD'
+    const to   = req.params.to;
+
+    const key = makeKey(from, to);
+
+    // 1) Fast version probe: COUNT + MAX(updated_at) uses the (task_date, updated_at) index
+    const verRow = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt,
+             COALESCE(MAX(updated_at), 'epoch'::timestamptz) AS max_updated_at
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+    `);
+    const { cnt, max_updated_at } = (Array.isArray(verRow) ? verRow[0] : verRow.rows[0]) as any;
+    const lastMod = new Date(max_updated_at);
+    const etag = `W/"t:${from}:${to}:${cnt}:${lastMod.getTime()}"`;
+
+    // 2) If client sent a matching ETag, return 304 immediately (no row fetch)
+    if (req.headers["if-none-match"] === etag) {
+      res.setHeader("ETag", etag);
+      res.setHeader("Last-Modified", lastMod.toUTCString());
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      return res.status(304).end();
+    }
+
+    // 3) Serve from small TTL cache if available
+    const hit = payloadCache.get(key);
+    if (hit && Date.now() - hit.at < TTL_MS && hit.etag === etag) {
+      res.setHeader("ETag", etag);
+      res.setHeader("Last-Modified", lastMod.toUTCString());
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      return res.json(hit.data);
+    }
+
+    // 4) Fetch rows only when version changed
+    const rows = await db.execute(sql`
+      SELECT id, name, location_id, project_id, task_date, status
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+      ORDER BY task_date, location_id
+      LIMIT 5000
+    `);
+
+    const data = Array.isArray(rows) ? rows : rows.rows;
+    payloadCache.set(key, { at: Date.now(), etag, data });
+
+    res.setHeader("ETag", etag);
+    res.setHeader("Last-Modified", lastMod.toUTCString());
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    res.json(data);
+  } catch (e) {
+    next(e);
+  }
+});
+
+export default router;
+Why this is fast
+
+The probe touches only the index: COUNT + MAX(updated_at) over task_date range.
+
+On ETag match → no row scan; 304 returns immediately.
+
+On ETag miss → one actual row query; result cached for 10s to short-circuit duplicates.
+
+Expect 304s to drop from ~700ms → ~5–30ms once indexes are in place.
+
+Apply the same pattern to /api/assignments, /api/employees, /api/projects, or just give them longer caching (max-age=300) since they’re fairly static.
+
+3) Client: fire everything in parallel (or one bootstrap)
+If you’re currently gating the bulk call behind others, remove that. Either:
+
+A) Parallel queries (quick change)
+tsx
+Copy
+Edit
+// Dashboard.tsx
+import { useQueries } from "@tanstack/react-query";
+
+const q = (key: any[], fn: () => Promise<any>, opts: any = {}) => ({
+  queryKey: key, queryFn: fn,
+  staleTime: 300_000,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  ...opts,
+});
+
+export default function Dashboard({ locationIds, day, from, to }:{
+  locationIds: string[]; day: string; from: string; to: string;
+}) {
+  const results = useQueries({
+    queries: [
+      q(["dashboardBulk", locationIds], () =>
+        fetch(`/api/dashboard?locationIds=${encodeURIComponent(locationIds.join(","))}`, { credentials: "include" })
+        .then(r => r.json()),
+        { staleTime: 30_000 }
+      ),
+      q(["tasksRange", from, to], () =>
+        fetch(`/api/tasks/date-range/${from}/${to}`, { credentials: "include", headers: { "Cache-Control": "no-cache" } })
+        .then(r => r.json())
+      ),
+      q(["assignments"], () => fetch("/api/assignments").then(r => r.json())),
+      q(["employees"],   () => fetch("/api/employees").then(r => r.json())),
+      q(["locations"],   () => fetch("/api/locations").then(r => r.json())),
+      q(["projects"],    () => fetch("/api/projects").then(r => r.json())),
+    ],
+  });
+
+  if (results.some(r => r.isLoading)) return <div>Loading…</div>;
+  if (results.some(r => r.error))     return <div>Failed to load.</div>;
+
+  const [bulk, tasks, assignments, employees, locations, projects] = results;
+
+  return (
+    <DashboardView
+      budgets={bulk.data.budgets}
+      tasksByLoc={bulk.data.tasks}
+      tasksRange={tasks.data}
+      assignments={assignments.data}
+      employees={employees.data}
+      locations={locations.data}
+      projects={projects.data}
+    />
+  );
+}
+B) Or, make a single bootstrap endpoint (best)
+Combine employees, assignments, locations, projects, and the date-range tasks into one response.
+
+ts
+Copy
+Edit
+// server/routes/dashboard.ts
+router.get("/dashboard/bootstrap", async (req, res, next) => {
+  try {
+    const dayFrom = (req.query.from as string) ?? new Date().toISOString().slice(0,10);
+    const dayTo   = (req.query.to   as string) ?? dayFrom;
+
+    const [employees, assignments, locations, projects, tasksRange] = await Promise.all([
+      db.execute(sql`SELECT id, name, role FROM employees`),
+      db.execute(sql`SELECT id, employee_id, task_id FROM assignments`),
+      db.execute(sql`SELECT id, name FROM locations`),
+      db.execute(sql`SELECT id, name FROM projects`),
+      db.execute(sql`
+        SELECT id, name, location_id, project_id, task_date, status
+        FROM tasks
+        WHERE task_date BETWEEN ${dayFrom}::date AND ${dayTo}::date
+        ORDER BY task_date, location_id
+        LIMIT 5000
+      `),
+    ]);
+
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    res.json({
+      employees:   (employees as any).rows ?? employees,
+      assignments: (assignments as any).rows ?? assignments,
+      locations:   (locations as any).rows ?? locations,
+      projects:    (projects as any).rows ?? projects,
+      tasksRange:  (tasksRange as any).rows ?? tasksRange,
+    });
+  } catch (e) { next(e); }
+});
+Client:
+
+tsx
+Copy
+Edit
+const { data } = useQuery({
+  queryKey: ["dashboardBootstrap", from, to],
+  queryFn: () => fetch(`/api/dashboard/bootstrap?from=${from}&to=${to}`).then(r => r.json()),
+  staleTime: 300_000, refetchOnWindowFocus: false, refetchOnReconnect: false,
+});
+With /bootstrap + /dashboard?locationIds=… you’ll have two requests, both parallel.
+
+4) Sanity checks & profiling
+Verify index usage: run one slow query with
+EXPLAIN (ANALYZE, BUFFERS) SELECT … WHERE task_date BETWEEN …
+
+Ensure transaction pooler (:6543) for many short concurrent queries.
+
+Return only needed columns (avoid blobs/notes).
+
+Cache headers on static lists (employees/projects):
+Cache-Control: public, max-age=300, stale-while-revalidate=30.
+
+What to paste to Replit (one paragraph)
+“Add B-tree indexes on tasks(task_date) and tasks(task_date, updated_at) (optional BRIN on task_date). Update /api/tasks/date-range/:from/:to to compute an ETag using COUNT(*) and MAX(updated_at) over the date range, return 304 immediately on match, and only fetch rows when the version changes. Keep a 10s in-memory TTL cache keyed by (from,to). Fire all dashboard queries in parallel (or add /api/dashboard/bootstrap?from&to and call that + the existing /api/dashboard?locationIds=…). Set staleTime to 5 minutes for reference lists. Use Supabase transaction pooler :6543.”

@@ -454,6 +454,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bootstrap endpoint - consolidates all basic data queries into one request
+  app.get('/api/dashboard/bootstrap', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const dayFrom = (req.query.from as string) || new Date().toISOString().slice(0, 10);
+      const dayTo = (req.query.to as string) || dayFrom;
+      
+      console.log(`📊 Dashboard bootstrap request: ${dayFrom} to ${dayTo}`);
+      
+      // Fire all queries in parallel to eliminate sequential loading bottleneck
+      const [employees, assignments, locations, projects, tasksRange] = await Promise.all([
+        withFastTimeout(storage.getEmployees()),
+        withFastTimeout(storage.getAllEmployeeAssignments()), 
+        withFastTimeout(storage.getAllLocations()),
+        withFastTimeout(storage.getProjects()),
+        withFastTimeout(storage.getTasksByDateRange(dayFrom, dayTo))
+      ]);
+      
+      // Add cache headers for better performance
+      res.set({
+        'Cache-Control': 'public, max-age=30, must-revalidate',
+        'ETag': `bootstrap-${dayFrom}-${dayTo}-${Date.now()}`
+      });
+      
+      const result = {
+        employees,
+        assignments,
+        locations,
+        projects,
+        tasksRange
+      };
+      
+      console.log(`✅ Dashboard bootstrap response: ${employees.length} employees, ${assignments.length} assignments, ${locations.length} locations, ${projects.length} projects, ${tasksRange.length} tasks`);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('Dashboard bootstrap error:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Bootstrap request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch bootstrap data' });
+      }
+    }
+  });
+
   app.get('/api/locations/:id', async (req, res) => {
     try {
       const storage = await getStorage();
@@ -1201,7 +1246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       else if (assignedForemen.length >= 2) {
         const currentTask = await storage.getTask(taskId);
-        const currentForemanStillAssigned = assignedForemen.some((f: any) => f.id === currentTask.foremanId);
+        const currentForemanStillAssigned = assignedForemen.some(f => f.id === currentTask.foremanId);
         
         if (!currentForemanStillAssigned) {
           console.log('🔄 CURRENT foreman no longer assigned, needs manual selection');
