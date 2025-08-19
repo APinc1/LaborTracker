@@ -1,0 +1,113 @@
+What I’m looking for (1–2 pages is fine, links welcome):
+
+ 
+
+1. Executive overview (plain English)
+
+ 
+
+* What the app does today and who uses it
+
+* The current state (what’s working, what’s WIP, any known issues)
+
+* Immediate priorities for the next 30–60 days
+
+ 
+
+2. Tech summary (for developers)
+
+ 
+
+* Tech stack and key libraries (frontend, backend, DB, real-time, validation, routing, state)
+
+  *(From your doc, I understand it’s React + TypeScript (Vite), Express + TypeScript, Postgres with Drizzle, WebSockets, Tailwind + shadcn/ui, React Query, Wouter, RHF + Zod.)*&#x20;
+
+* How to run locally (clone, install, scripts), required environment variables, and secrets handling
+
+* Repo location/branches and any CI/CD details
+
+* Database details (where it lives, migrations/Drizzle workflow, seed data, backups)
+
+ 
+
+3. Deployment & maintenance
+
+ 
+
+* Where it’s hosted right now (I know you used Replit during development) and any gotchas
+
+* How deployments are done today and a suggested “good” path (e.g., Vercel/Render/Fly + managed Postgres)
+
+* Monitoring/logging/error reporting (what exists vs. what’s needed)
+
+* Weekly maintenance tasks a consultant should own (dependency updates, DB backups, uptime checks, etc.)
+
+ 
+
+4. Security & access
+
+ 
+
+* Auth model (roles, password hashing, session/JWT approach), password reset flow, and any open security to-dos
+
+* Access and handoff list: repo, DB (staging/prod), environment files, API keys—please note what exists and what we still need to set up
+
+ 
+
+5. Features with tricky logic (so a new dev doesn’t break them)
+
+ 
+
+* Budget import (Excel), unit conversions, validations, and where files are stored
+
+* Task linking/ordering, weekday/weekend rules, and real-time updates behavior
+
+* Any concurrency/conflict resolution patterns we rely on
+
+ 
+
+6. Roadmap / future expansion ideas (tie to business goals)
+
+ 
+
+* Daily labor review and printed schedules; budget vs. actual reporting; role-based dashboards
+
+* Integrations we care about (Sage Intacct for timesheets, Samsara GPS, Outlook/Teams for distribution)
+
+* RFI helper / AI workflows; audit logs; mobile/offline; ADA checks and standard plan helpers
+
+ 
+
+7. “Consultant brief” (copy I can paste into a job post)
+
+ 
+
+* Commitment: 5–20 hours/week depending on needs
+
+* Work directly with me (company President; I’m not technical)
+
+* Must learn our business flow, constraints, and goals; communicate clearly in plain English
+
+* Initial deliverables for the first 2–4 weeks (your suggestion) and ongoing cadence (weekly check-ins, docs expectations)
+
+ 
+
+Open questions / clarifications I’d love you to cover
+
+ 
+
+* Hosting & links: Replit project link(s), current deployment URL (if any), and your recommendation for production hosting
+
+* Environment: full .env variable list with descriptions; how secrets are currently stored
+
+* Database: current Postgres provider, credentials handoff plan, migration/backup process, and seed/demo data
+
+* Auth: confirm password hashing and reset flows; any libraries in use; known gaps
+
+* Excel import: sample file + field mapping; size limits; library used; where uploads live
+
+* Testing/tooling: current test coverage, lint/format setup, and code style notes
+
+* API docs: Postman/Insomnia collection or endpoint notes beyond the PDF
+
+* Known bugs/tech debt: top 5 issues and your recommended order of attack
