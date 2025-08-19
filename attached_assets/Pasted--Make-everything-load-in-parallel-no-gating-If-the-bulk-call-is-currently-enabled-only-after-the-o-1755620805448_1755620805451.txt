@@ -1,0 +1,234 @@
+ Make everything load in parallel (no gating)
+If the bulk call is currently enabled only after the others finish, remove that. Use useQueries so all requests fire at once (or, better, replace them with a single bootstrap endpoint—see §2).
+
+tsx
+Copy
+Edit
+// Dashboard.tsx
+import { useQueries } from "@tanstack/react-query";
+
+const q = (key: any[], fn: () => Promise<any>, opts: any = {}) => ({
+  queryKey: key,
+  queryFn: fn,
+  staleTime: 300_000,              // 5 min: avoids 304 roundtrips
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+  ...opts,
+});
+
+export default function Dashboard({ locationIds, day }: { locationIds: string[]; day: string }) {
+  const results = useQueries({
+    queries: [
+      q(["dashboardBulk", locationIds], () =>
+        fetch(`/api/dashboard?locationIds=${encodeURIComponent(locationIds.join(","))}`).then(r => r.json()),
+        { staleTime: 30_000 } // bulk can be shorter
+      ),
+      q(["tasksRange", day, day], () =>
+        fetch(`/api/tasks/date-range/${day}/${day}`).then(r => r.json())
+      ),
+      q(["assignments"], () => fetch("/api/assignments").then(r => r.json())),
+      q(["employees"],   () => fetch("/api/employees").then(r => r.json())),
+      q(["locations"],   () => fetch("/api/locations").then(r => r.json())),
+      q(["projects"],    () => fetch("/api/projects").then(r => r.json())),
+    ],
+  });
+
+  const [bulk, tasks, assignments, employees, locations, projects] = results;
+
+  if (results.some(r => r.isLoading)) return <div>Loading…</div>;
+  if (results.some(r => r.error))     return <div>Failed to load.</div>;
+
+  return (
+    <YourDashboardComponent
+      budgets={bulk.data.budgets}
+      tasksByLoc={bulk.data.tasks}
+      tasksRange={tasks.data}
+      assignments={assignments.data}
+      employees={employees.data}
+      locations={locations.data}
+      projects={projects.data}
+    />
+  );
+}
+This removes the “bulk waits for others” waterfall. But the real 700ms+ hit is the tasks date-range API. Fix it next.
+
+1) Speed up /api/tasks/date-range (732ms → ~10–60ms)
+(a) Add covering indexes (Drizzle)
+If tasks are one-day (your earlier spec), index by date and (optionally) by location/project you filter on:
+
+ts
+Copy
+Edit
+// migrations/xxx_tasks_indexes.ts
+import { sql } from "drizzle-orm";
+
+export async function up(db: any) {
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tasks_task_date ON tasks(task_date)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tasks_task_date_location ON tasks(task_date, location_id)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at)`);
+}
+
+export async function down(db: any) {
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_task_date_location`);
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_task_date`);
+  await db.execute(sql`DROP INDEX IF EXISTS idx_tasks_updated_at`);
+}
+Important query hygiene: do not wrap the date column in functions (e.g., ::text, to_char, date_trunc) on the left-hand side—use a plain WHERE task_date BETWEEN $1 AND $2 (or = $1 for a single day) so the index is used.
+
+(b) Select only columns you render
+ts
+Copy
+Edit
+// server/routes/tasks.ts
+const rows = await db
+  .select({
+    id: tasks.id,
+    name: tasks.name,
+    locationId: tasks.locationId,
+    projectId: tasks.projectId,
+    taskDate: tasks.taskDate,
+    status: tasks.status,
+    // omit heavy blobs/notes/etc.
+  })
+  .from(tasks)
+  .where(and(gte(tasks.taskDate, from), lte(tasks.taskDate, to)))
+  .orderBy(tasks.taskDate, tasks.locationId)
+  .limit(1000); // safety cap
+(c) Fast 304s with ETag-by-version (avoid heavy DB work for “not modified”)
+Your 304s take hundreds of ms because the server still does the heavy query to compute a body hash. Instead, check a cheap version first:
+
+ts
+Copy
+Edit
+// server/routes/tasks.ts
+router.get("/tasks/date-range/:from/:to", async (req, res, next) => {
+  try {
+    const from = req.params.from; // 'YYYY-MM-DD'
+    const to   = req.params.to;
+
+    // 1) Fast version probe using cheap aggregates (use indexes!)
+    const [{ maxUpdatedAt, count }] = await db.execute(sql`
+      SELECT COALESCE(MAX(updated_at), 'epoch'::timestamptz) AS max_updated_at,
+             COUNT(*)::int AS count
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+    `);
+    const etag = `"t:${from}:${to}:${count}:${new Date(maxUpdatedAt as any).getTime()}"`;
+
+    if (req.headers["if-none-match"] === etag) {
+      res.setHeader("ETag", etag);
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      return res.status(304).end();      // returns immediately, no row scan
+    }
+
+    // 2) Only fetch rows if changed
+    const rows = await db.execute(sql`
+      SELECT id, name, location_id, project_id, task_date, status
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+      ORDER BY task_date, location_id
+      LIMIT 1000
+    `);
+
+    res.setHeader("ETag", etag);
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    res.json(rows);
+  } catch (e) { next(e); }
+});
+After this, a 304 should be ~5–20ms, not 300–700ms.
+
+(d) Tiny in-memory TTL cache for hot dates (optional, simple)
+ts
+Copy
+Edit
+// server/cache.ts
+const cache = new Map<string, { t: number; etag: string; data: any }>();
+const TTL_MS = 10_000;
+
+export function getCached(key: string) {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.t < TTL_MS) return hit;
+  return null;
+}
+export function setCached(key: string, etag: string, data: any) {
+  cache.set(key, { t: Date.now(), etag, data });
+}
+Use it in the handler to serve repeated same-day requests without touching the DB.
+
+2) Collapse the boot endpoints into a single /api/dashboard/bootstrap
+One call returns: employees, assignments, locations, projects and today’s tasks range. This kills 4–5 separate HTTP round trips.
+
+ts
+Copy
+Edit
+// server/routes/dashboard.ts
+router.get("/dashboard/bootstrap", async (req, res, next) => {
+  try {
+    const day = (req.query.day as string) ?? new Date().toISOString().slice(0,10);
+
+    // Run all in parallel (and each query is already indexed/lightweight)
+    const [employees, assignments, locations, projects, tasksRange] = await Promise.all([
+      db.select({ id: employees.id, name: employees.name, role: employees.role }).from(employees),
+      db.select({ id: assignments.id, employeeId: assignments.employeeId, taskId: assignments.taskId })
+        .from(assignments),
+      db.select({ id: locations.id, name: locations.name }).from(locations),
+      db.select({ id: projects.id, name: projects.name }).from(projects),
+      db.execute(sql`
+        SELECT id, name, location_id, project_id, task_date, status
+        FROM tasks
+        WHERE task_date = ${day}::date
+        ORDER BY location_id
+        LIMIT 1000
+      `),
+    ]);
+
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    res.json({ employees, assignments, locations, projects, tasksRange });
+  } catch (e) { next(e); }
+});
+Then in the client:
+
+tsx
+Copy
+Edit
+const { data, isLoading } = useQuery({
+  queryKey: ["dashboardBootstrap", day],
+  queryFn: () => fetch(`/api/dashboard/bootstrap?day=${day}`).then(r => r.json()),
+  staleTime: 300_000,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+});
+With this, you’ll have just two HTTP calls on load: /api/dashboard/bootstrap and /api/dashboard?locationIds=… — both in parallel.
+
+3) Client caching defaults (avoid needless 304s)
+Set React Query defaults once:
+
+ts
+Copy
+Edit
+// client/queryClient.ts
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 300_000,          // 5 min for reference data
+      gcTime: 30 * 60_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
+4) Quick checklist
+ Remove any enabled: that serializes queries.
+
+ Add idx_tasks_task_date (+ optional composite index).
+
+ Ensure WHERE task_date BETWEEN $1 AND $2 (no functions on the column).
+
+ Implement ETag-by-version for /tasks/date-range (fast 304).
+
+ (Optional) Add 10s in-memory TTL for hot date ranges.
+
+ Add /api/dashboard/bootstrap and switch the UI to call it.
+
+ Increase staleTime on reference data to reduce network chatter.
