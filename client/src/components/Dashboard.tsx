@@ -219,6 +219,7 @@ export default function Dashboard() {
   // Helper functions to get enhanced task information
   const getProjectName = (task: any) => {
     if (!task.locationId) return "Unknown Project";
+    
     // After migration: task.locationId is now the database ID (integer), not the locationId string
     const location = (locations as any[]).find((loc: any) => loc.id === task.locationId);
     if (!location) return "Unknown Project";
