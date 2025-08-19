@@ -82,7 +82,6 @@ export interface IStorage {
   updateEmployeeAssignment(id: number, assignment: Partial<InsertEmployeeAssignment>): Promise<EmployeeAssignment>;
   deleteEmployeeAssignment(id: number): Promise<void>;
   getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]>;
-  getEmployeeAssignmentsByDateRange(startDate: string, endDate: string): Promise<EmployeeAssignment[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -978,12 +977,6 @@ export class MemStorage implements IStorage {
       assignment.assignmentDate === date
     );
   }
-
-  async getEmployeeAssignmentsByDateRange(startDate: string, endDate: string): Promise<EmployeeAssignment[]> {
-    return Array.from(this.employeeAssignments.values()).filter(assignment => 
-      assignment.assignmentDate >= startDate && assignment.assignmentDate <= endDate
-    );
-  }
 }
 
 // Global database connection - singleton pattern for deployment
@@ -1867,15 +1860,6 @@ class DatabaseStorage implements IStorage {
 
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
     return await this.db.select().from(employeeAssignments).where(eq(employeeAssignments.assignmentDate, date));
-  }
-
-  async getEmployeeAssignmentsByDateRange(startDate: string, endDate: string): Promise<EmployeeAssignment[]> {
-    return await this.db.select().from(employeeAssignments).where(
-      and(
-        gte(employeeAssignments.assignmentDate, startDate),
-        lte(employeeAssignments.assignmentDate, endDate)
-      )
-    );
   }
 }
 
