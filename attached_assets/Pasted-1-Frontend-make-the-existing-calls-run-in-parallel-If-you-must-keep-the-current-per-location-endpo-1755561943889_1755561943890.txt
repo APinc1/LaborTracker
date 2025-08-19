@@ -1,0 +1,184 @@
+1) Frontend: make the existing calls run in parallel
+If you must keep the current per-location endpoints (/api/locations/:id/budget and /api/locations/:id/tasks), fetch them concurrently and render when both sets are ready.
+
+React Query (recommended)
+tsx
+Copy
+Edit
+// Dashboard.tsx
+import { useQuery } from "@tanstack/react-query";
+
+async function fetchBudgets(ids: number[]) {
+  const url = `/api/budgets?locationIds=${ids.join(",")}`; // if bulk exists
+  return fetch(url).then(r => r.json());
+}
+
+async function fetchBudgetsPerLocation(ids: number[]) {
+  const results = await Promise.all(
+    ids.map(id => fetch(`/api/locations/${id}/budget`).then(r => r.json()))
+  );
+  // flatten/shape as needed
+  return Object.fromEntries(ids.map((id, i) => [id, results[i]]));
+}
+
+async function fetchTasksPerLocation(ids: number[]) {
+  const results = await Promise.all(
+    ids.map(id => fetch(`/api/locations/${id}/tasks`).then(r => r.json()))
+  );
+  return Object.fromEntries(ids.map((id, i) => [id, results[i]]));
+}
+
+export default function Dashboard({ locationIds }: { locationIds: number[] }) {
+  const { data: budgets, isLoading: budgetsLoading } = useQuery({
+    queryKey: ["budgets", locationIds],
+    queryFn: () => fetchBudgetsPerLocation(locationIds),
+    staleTime: 30_000,
+  });
+
+  const { data: tasks, isLoading: tasksLoading } = useQuery({
+    queryKey: ["tasks", locationIds],
+    queryFn: () => fetchTasksPerLocation(locationIds),
+    staleTime: 30_000,
+  });
+
+  if (budgetsLoading || tasksLoading) return <div>Loading…</div>;
+
+  // render using budgets[locId] and tasks[locId]
+  return <YourDashboard budgets={budgets} tasks={tasks} />;
+}
+Key points
+
+Promise.all(...) kicks all requests off at once (no sequential waiting).
+
+Add keepalive/HTTP keep-alive at fetch layer if you’ve turned it off.
+
+Set staleTime to avoid immediate refetch loops.
+
+If you’re not using React Query, the core idea is the same:
+
+ts
+Copy
+Edit
+const [budgetsByLoc, tasksByLoc] = await Promise.all([
+  Promise.all(locationIds.map(id => fetch(`/api/locations/${id}/budget`).then(r => r.json()))),
+  Promise.all(locationIds.map(id => fetch(`/api/locations/${id}/tasks`).then(r => r.json()))),
+]);
+2) Backend: add a bulk endpoint (eliminates 14 requests → 1)
+Create a single route that returns all budgets and tasks for the requested locations in one payload. This reduces HTTP overhead and lets the DB do fewer round trips.
+
+Express + TypeScript + Drizzle example
+ts
+Copy
+Edit
+// server/routes/dashboard.ts
+import { Router } from "express";
+import { db } from "../db"; // your drizzle instance
+import { inArray } from "drizzle-orm";
+import { budgets } from "../db/schema/budgets";
+import { tasks } from "../db/schema/tasks";
+
+const router = Router();
+
+// GET /api/dashboard?locationIds=1,2,3
+router.get("/dashboard", async (req, res, next) => {
+  try {
+    const raw = (req.query.locationIds as string | undefined) ?? "";
+    const ids = raw
+      .split(",")
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => Number.isFinite(n));
+
+    if (ids.length === 0) return res.status(400).json({ error: "locationIds required" });
+
+    // One transaction, two batched queries (can also be a single SQL with CTEs)
+    const data = await db.transaction(async (tx) => {
+      const [allBudgets, allTasks] = await Promise.all([
+        tx.select().from(budgets).where(inArray(budgets.locationId, ids)),
+        tx.select().from(tasks).where(inArray(tasks.locationId, ids)),
+      ]);
+      return { allBudgets, allTasks };
+    });
+
+    // Shape the response keyed by locationId for easy rendering
+    const out = {
+      budgets: Object.fromEntries(
+        ids.map(id => [id, data.allBudgets.filter(b => b.locationId === id)])
+      ),
+      tasks: Object.fromEntries(
+        ids.map(id => [id, data.allTasks.filter(t => t.locationId === id)])
+      ),
+    };
+
+    res.json(out);
+  } catch (err) {
+    next(err);
+  }
+});
+
+export default router;
+Register it:
+
+ts
+Copy
+Edit
+// server/index.ts
+import dashboardRoutes from "./routes/dashboard";
+app.use("/api", dashboardRoutes);
+(Optional) Single SQL round trip with CTE
+If you prefer one DB query instead of two:
+
+ts
+Copy
+Edit
+// drizzle sql tagged template
+import { sql } from "drizzle-orm";
+const rows = await db.execute(sql`
+  with ids as (
+    select unnest(${ids}::int[]) as location_id
+  ),
+  b as (
+    select * from budgets where location_id = any(${ids}::int[])
+  ),
+  t as (
+    select * from tasks where location_id = any(${ids}::int[])
+  )
+  select 'budget' as kind, to_jsonb(b.*) as row from b
+  union all
+  select 'task'   as kind, to_jsonb(t.*) as row from t
+`);
+Then split rows by kind and group by row.location_id.
+
+Frontend usage with the bulk route
+tsx
+Copy
+Edit
+const { data, isLoading } = useQuery({
+  queryKey: ["dashboardBulk", locationIds],
+  queryFn: () =>
+    fetch(`/api/dashboard?locationIds=${locationIds.join(",")}`).then(r => r.json()),
+  staleTime: 30_000,
+});
+
+// data.budgets[locId] and data.tasks[locId] are arrays
+3) Extra speed-ups (quick checks)
+HTTP keep-alive on server:
+
+ts
+Copy
+Edit
+// server/index.ts
+import http from "http";
+const server = http.createServer(app);
+server.keepAliveTimeout = 75_000;
+server.headersTimeout = 76_000;
+React Query: set staleTime and gcTime to cut refetch churn on tab focus.
+
+Indexes (verify in Supabase):
+
+CREATE INDEX IF NOT EXISTS idx_budgets_location_id ON budgets(location_id);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_location_id ON tasks(location_id);
+
+Transaction pooler: queries that run many short requests usually benefit from the transaction pooler (:6543) in Supabase. Keep a single pooled client and reuse it (don’t open/close per request).
+
+Shape only what you render: select columns you actually use (select({ ...specific columns }) in Drizzle) to reduce payload size.

@@ -372,6 +372,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk dashboard endpoint - fetch budgets and tasks for multiple locations in one request
+  app.get('/api/dashboard', async (req, res) => {
+    try {
+      const raw = (req.query.locationIds as string | undefined) ?? "";
+      const locationIds = raw
+        .split(",")
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      if (locationIds.length === 0) {
+        return res.status(400).json({ error: "locationIds parameter required" });
+      }
+
+      const storage = await getStorage();
+      
+      // Fetch all locations to get their database IDs
+      const allLocations = await storage.getAllLocations();
+      const locationMap = new Map(allLocations.map(loc => [loc.locationId, loc.id]));
+      
+      // Convert locationId strings to database IDs
+      const dbIds = locationIds
+        .map(locId => locationMap.get(locId))
+        .filter(id => id !== undefined) as number[];
+
+      if (dbIds.length === 0) {
+        return res.json({ budgets: {}, tasks: {} });
+      }
+
+      // Fetch budgets and tasks in parallel for all locations
+      const [allBudgets, allTasks] = await Promise.all([
+        Promise.all(dbIds.map(async (dbId) => {
+          try {
+            const budgets = await storage.getBudgetLineItems(dbId);
+            return { dbId, budgets };
+          } catch (error) {
+            console.error(`Error fetching budgets for location ${dbId}:`, error);
+            return { dbId, budgets: [] };
+          }
+        })),
+        Promise.all(dbIds.map(async (dbId) => {
+          try {
+            const tasks = await storage.getTasks(dbId);
+            return { dbId, tasks };
+          } catch (error) {
+            console.error(`Error fetching tasks for location ${dbId}:`, error);
+            return { dbId, tasks: [] };
+          }
+        }))
+      ]);
+
+      // Shape response keyed by original locationId for easy frontend consumption
+      const budgetsByLocationId: Record<string, any[]> = {};
+      const tasksByLocationId: Record<string, any[]> = {};
+
+      // Map back from database IDs to locationIds
+      const dbIdToLocationId = new Map(allLocations.map(loc => [loc.id, loc.locationId]));
+
+      allBudgets.forEach(({ dbId, budgets }) => {
+        const locationId = dbIdToLocationId.get(dbId);
+        if (locationId) {
+          budgetsByLocationId[locationId] = budgets;
+        }
+      });
+
+      allTasks.forEach(({ dbId, tasks }) => {
+        const locationId = dbIdToLocationId.get(dbId);
+        if (locationId) {
+          tasksByLocationId[locationId] = tasks;
+        }
+      });
+
+      res.json({
+        budgets: budgetsByLocationId,
+        tasks: tasksByLocationId
+      });
+
+    } catch (error: any) {
+      console.error('Error in bulk dashboard endpoint:', error);
+      res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+  });
+
   app.get('/api/locations/:id', async (req, res) => {
     try {
       const storage = await getStorage();
