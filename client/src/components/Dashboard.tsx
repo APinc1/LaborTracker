@@ -91,13 +91,11 @@ export default function Dashboard() {
   const todayTasks = todayTasksFromBootstrap;
   const todayLoading = bootstrapLoading;
 
-  // Temporarily disabled to test bootstrap performance - these will be optimized with indexes/ETag later  
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
     staleTime: 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    enabled: false, // TEMP: disable legacy slow queries
   });
 
   const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
@@ -105,7 +103,6 @@ export default function Dashboard() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    enabled: false, // TEMP: disable legacy slow queries  
   });
 
   // Individual queries that still need separate calls
