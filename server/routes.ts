@@ -907,7 +907,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: body.status || 'upcoming',
         scheduledHours: body.scheduledHours || '0.00',
         order: body.order || '999.00',
-        linkedTaskGroup: body.linkedTaskGroup || null
+        linkedTaskGroup: body.linkedTaskGroup || null,
+        workDescription: body.workDescription || null,
+        notes: body.notes || null
       };
       mark('v1');
 
