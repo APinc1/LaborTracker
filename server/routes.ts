@@ -828,8 +828,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid from/to dates (YYYY-MM-DD required)" });
       }
 
-      // Optional filters
-      const locationIds = toIntArray(req.query.locationIds as string | undefined);
+      // Optional filters - only pass locationIds if there are actual IDs to filter by
+      const locationIdsArray = toIntArray(req.query.locationIds as string | undefined);
+      const locationIds = locationIdsArray.length > 0 ? locationIdsArray : undefined;
       const limit = toIntOrUndef(req.query.limit) ?? 1000;
       const offset = toIntOrUndef(req.query.offset) ?? 0;
 

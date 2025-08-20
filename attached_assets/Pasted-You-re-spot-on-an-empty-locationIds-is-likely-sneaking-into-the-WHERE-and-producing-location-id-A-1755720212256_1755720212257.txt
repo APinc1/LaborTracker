@@ -1,0 +1,132 @@
+You’re spot on: an empty locationIds is likely sneaking into the WHERE and producing location_id = ANY('{}') (or IN ()) → always false → [].
+
+Here’s how to inspect and the minimal, safe way to build the clause so an empty array = no filter.
+
+What to verify (no code execution)
+In the date-range route, find where you push the location condition. Look for something like:
+
+ts
+Copy
+Edit
+conditions.push(inArray(tasks.locationId, locationIds));
+or
+
+ts
+Copy
+Edit
+const whereLoc = sql`AND location_id = ANY(${locationIds}::int[])`;
+If this runs when locationIds.length === 0, that’s the bug.
+
+Also check any downstream “storage/service” wrapper that rebuilds the query. It might be unconditionally adding the location predicate even if you guarded it in the route.
+
+Safe builder pattern (skip filter when empty)
+ts
+Copy
+Edit
+// helpers
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const toISO = (s: any) => (typeof s === "string" && ISO_DATE.test(s) ? s : null);
+
+const toIntArray = (s?: string) => {
+  if (!s || !s.trim()) return [];
+  return s.split(",")
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(Number)
+    .filter(Number.isInteger);
+};
+
+const isPosInt = (v: any) => Number.isInteger(Number(v)) && Number(v) > 0;
+const isNonNegInt = (v: any) => Number.isInteger(Number(v)) && Number(v) >= 0;
+
+// route
+const from = toISO(req.params.from);
+const to   = toISO(req.params.to);
+const locationIds = toIntArray(req.query.locationIds as string | undefined);
+
+const limit  = isPosInt(req.query.limit)  ? Number(req.query.limit)  : 1000;
+const offset = isNonNegInt(req.query.offset) ? Number(req.query.offset) : 0;
+
+const conds: any[] = [];
+
+// Half-open date range (works for DATE and TIMESTAMP/TZ)
+conds.push(
+  gte(tasks.taskDate, sql`${from}::date`),
+  lt(tasks.taskDate,  sql`${to}::date + interval '1 day'`)
+);
+
+// ✅ Only add when array has elements
+if (locationIds.length > 0) {
+  conds.push(inArray(tasks.locationId, locationIds));
+}
+
+let qb = db
+  .select({
+    id: tasks.id,
+    name: tasks.name,
+    locationId: tasks.locationId,
+    projectId: tasks.projectId,
+    taskDate: tasks.taskDate,
+    status: tasks.status,
+  })
+  .from(tasks);
+
+if (conds.length) qb = qb.where(and(...conds));
+
+qb = qb.orderBy(tasks.taskDate, tasks.locationId).limit(limit).offset(offset);
+
+// Running qb is fine; reassigning is the correct way with Drizzle’s immutable builder.
+If you’re using raw SQL fragments instead of inArray
+Do this instead of precomputing a fragment with an empty array:
+
+ts
+Copy
+Edit
+const whereLoc = locationIds.length > 0
+  ? sql` AND location_id = ANY(${locationIds}::int[])`
+  : sql``; // empty fragment; contributes nothing
+
+const rows = await db.execute(sql`
+  SELECT id, name, location_id, project_id, task_date, status
+  FROM tasks
+  WHERE task_date >= ${from}::date
+    AND task_date < (${to}::date + interval '1 day')
+  ${whereLoc}
+  ORDER BY task_date, location_id
+  LIMIT ${limit} OFFSET ${offset}
+`);
+Guard against accidental re-addition downstream
+If you pass locationIds into a repository method, add a helper there too so it’s impossible to add an empty filter:
+
+ts
+Copy
+Edit
+function whereInIfAny<T>(col: T, ids: number[] | undefined) {
+  return Array.isArray(ids) && ids.length > 0 ? inArray(col, ids) : undefined;
+}
+
+// usage
+const maybeLoc = whereInIfAny(tasks.locationId, locationIds);
+const conds = [dateLower, dateUpper, maybeLoc].filter(Boolean) as any[];
+Verify the fix without running writes
+Inspect the generated SQL from your builder (Drizzle supports .toSQL() on many builders):
+
+ts
+Copy
+Edit
+const { sql: rendered, params } = qb.toSQL();
+console.log(rendered, params);
+With no locationIds, there should be no = ANY(...) or IN (...) in the output.
+
+Sanity query (read-only) you can compare against:
+
+sql
+Copy
+Edit
+SELECT id, task_date
+FROM tasks
+WHERE task_date >= DATE '2025-08-19'
+  AND task_date <  DATE '2025-08-20'
+ORDER BY task_date
+LIMIT 5;
+This should return rows (you’ve already confirmed counts).
