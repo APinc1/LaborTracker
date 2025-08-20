@@ -1,0 +1,117 @@
+You’re thinking in the right places. Reassigning the Drizzle query object is not what’s making results empty — that pattern is fine. The usual culprits for “DB has rows, API returns []” are:
+
+A predicate that’s always false (e.g., location_id = ANY('{}'::int[]) when locationIds is empty/invalid).
+
+A date predicate that misses rows (e.g., inclusive BETWEEN with a timestamp column, or wrong upper bound).
+
+A where(and(...)) with an empty/undefined condition that Drizzle treats oddly.
+
+Limit/offset = 0 (less common, but check your guards).
+
+Below is a tight checklist + a drop-in-safe query builder that avoids all of these. You can compare vs what’s in your endpoint to see the mismatch. (No need to run right now—just examine.)
+
+Quick checks to pinpoint the bug
+Location filter: If locationIds parses to [] but you still add AND location_id = ANY($1), Postgres evaluates it as false for every row → empty result.
+Test mentally: SELECT 1 WHERE 5 = ANY('{}'::int[]) → no row.
+
+Date bounds: If tasks.task_date is a timestamp[tz], BETWEEN $from::date AND $to::date only matches midnight… Use a half-open range:
+
+Single day: task_date >= $d::date AND task_date < ($d::date + interval '1 day')
+
+Date span: task_date >= $from::date AND task_date < ($to::date + interval '1 day')
+
+Empty and(...): If you build const conditions = []; where(and(...conditions)) with zero items, behavior can be surprising. Only call .where(...) when there’s at least one condition.
+
+Guard limit/offset: Ensure limit > 0 actually applies, and offset >= 0. Don’t pass NaN.
+
+Safe Drizzle builder pattern (compare vs yours)
+ts
+Copy
+Edit
+// Inputs already sanitized to strings like '2025-08-19'
+const from = req.params.from; 
+const to   = req.params.to;
+
+// Optional filters
+const locIds = parseIntArray(req.query.locationIds as string | undefined); // [] if none/invalid
+const limit  = isPosInt(req.query.limit)  ? Number(req.query.limit)  : 1000;
+const offset = isNonNegInt(req.query.offset) ? Number(req.query.offset) : 0;
+
+const conditions: any[] = [];
+
+// Half-open date span (works for DATE and TIMESTAMP[TZ])
+conditions.push(
+  gte(tasks.taskDate, sql`${from}::date`),
+  lt(tasks.taskDate,  sql`${to}::date + interval '1 day'`)
+);
+
+// Add location filter ONLY if we actually have ids
+if (locIds.length > 0) {
+  conditions.push(inArray(tasks.locationId, locIds));
+}
+
+// Build query safely; only call where() if we have conditions
+let qb = db
+  .select({
+    id: tasks.id,
+    name: tasks.name,
+    locationId: tasks.locationId,
+    projectId: tasks.projectId,
+    taskDate: tasks.taskDate,
+    status: tasks.status,
+  })
+  .from(tasks);
+
+if (conditions.length) {
+  qb = qb.where(and(...conditions));
+}
+
+qb = qb.orderBy(tasks.taskDate, tasks.locationId).limit(limit).offset(offset);
+
+// NOTE: Drizzle methods return new objects; reassigning `qb = qb.limit(...)` is correct.
+const rows = await qb;
+Helpers (for your sanity)
+ts
+Copy
+Edit
+const isPosInt     = (v: any) => Number.isInteger(Number(v)) && Number(v) > 0;
+const isNonNegInt  = (v: any) => Number.isInteger(Number(v)) && Number(v) >= 0;
+const parseIntArray = (s?: string) =>
+  (s ?? "")
+    .split(",")
+    .map(x => Number(x.trim()))
+    .filter(Number.isInteger);
+Why this addresses each failure mode
+Empty ANY(): We only add inArray(..., locIds) when locIds.length > 0. No ANY('{}') traps.
+
+Date inclusivity: The half-open predicate returns all rows on those dates regardless of time zone or time-of-day.
+
+where(and(...)): We avoid passing an empty and() to .where().
+
+Query chaining: Using let qb and reassigning is the intended way; the object is immutable, so your second style is fine.
+
+If you want to isolate Drizzle vs SQL (diagnostic, not a change yet)
+Create the same predicate in one raw SQL db.execute(sql…) and confirm it returns the 8 + 3 rows for 8/19 and 8/21. If raw SQL works but the Drizzle builder does not, the difference will show up in either:
+
+the location filter being added when locIds is empty, or
+
+the date upper bound being inclusive midnight instead of half-open.
+
+TL;DR
+Your “reassigning the query” theory isn’t the cause; that’s fine.
+
+The most likely actual cause is location_id = ANY('{}') or a date bound that misses daytime rows.
+
+Compare your endpoint to the safe pattern above—especially: conditional inArray, half-open dates, and only calling .where() when you have conditions.
+
+If you paste the current WHERE assembly (just the few lines that build conditions), I can point to the exact line that’s nullifying the result.
+
+
+
+
+
+
+
+
+
+Ask ChatGPT
