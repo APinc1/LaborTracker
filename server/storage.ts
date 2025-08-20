@@ -1759,14 +1759,15 @@ class DatabaseStorage implements IStorage {
       whereConditions.push(inArray(tasks.locationId, locationIds));
     }
 
-    const query = this.db.select().from(tasks).where(and(...whereConditions));
+    // Build query with all conditions at once
+    let query = this.db.select().from(tasks).where(and(...whereConditions));
 
-    // Apply limit and offset if provided
-    if (limit) {
-      query.limit(limit);
+    // Apply limit and offset if provided (must be done before execute)
+    if (offset && offset > 0) {
+      query = query.offset(offset);
     }
-    if (offset) {
-      query.offset(offset);
+    if (limit && limit > 0) {
+      query = query.limit(limit);
     }
 
     return await query;

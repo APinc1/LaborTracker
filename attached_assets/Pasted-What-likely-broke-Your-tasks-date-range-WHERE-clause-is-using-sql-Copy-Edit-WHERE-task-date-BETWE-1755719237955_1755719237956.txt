@@ -1,0 +1,71 @@
+What likely broke
+Your /tasks/date-range WHERE clause is using:
+
+sql
+Copy
+Edit
+WHERE task_date BETWEEN $from::date AND $to::date
+If tasks.task_date is a timestamp/timestamptz (very common), this will only match rows at exactly midnight, because Postgres casts the DATE bounds to midnight timestamps. Any task at 2025-08-19 09:30 won’t match BETWEEN '2025-08-19 00:00' AND '2025-08-19 00:00'.
+
+That explains:
+
+DB shows rows on 8/19 and 8/21, but API returns [].
+
+304/200 status aside, the count/MAX(updated_at) “version probe” uses the same WHERE, so it also “sees” zero rows.
+
+Timezone can make this even worse if task_date is timestamptz.
+
+How to verify (no changes, just checks)
+Run these read-only queries:
+
+Check the column type:
+
+sql
+Copy
+Edit
+SELECT data_type
+FROM information_schema.columns
+WHERE table_name = 'tasks' AND column_name = 'task_date';
+Peek at actual values on a “missing” day:
+
+sql
+Copy
+Edit
+SELECT id, task_date
+FROM tasks
+WHERE task_date::date = DATE '2025-08-19'
+ORDER BY task_date
+LIMIT 5;
+If rows appear here, your data is fine and the API filter is the culprit.
+
+See what your API’s WHERE is effectively comparing:
+
+If task_date is timestamp[tz], BETWEEN DATE '2025-08-19' AND DATE '2025-08-19'
+becomes BETWEEN '2025-08-19 00:00' AND '2025-08-19 00:00' → matches only 00:00.
+
+The minimal, correct filter (what to change later)
+Keep the column uncast for index use, and use a half-open range:
+
+Single day:
+task_date >= $from::date AND task_date < ($from::date + INTERVAL '1 day')
+
+Date range (inclusive of both dates):
+task_date >= $from::date AND task_date < ($to::date + INTERVAL '1 day')
+
+This works for timestamp and timestamptz, is index-friendly, and won’t miss daytime rows.
+
+Guardrails to check alongside
+Make sure locationIds filtering isn’t accidentally applied when empty. (Only add AND location_id = ANY($ids) when $ids length > 0.)
+
+Ensure limit/offset aren’t NaN (you already added sanitizers, good).
+
+Keep the version probe (COUNT/MAX(updated_at)) using the same half-open predicate so ETags match what you actually return.
+
+Why your current symptoms line up
+DB shows counts on 8/19 & 8/21 → data exists.
+
+API returns [] for those exact single-day calls → BETWEEN date & same date on a timestamp column.
+
+304 sometimes, 200 other times → depends on whether the probe saw zero (bad predicate) and whether ETag matched; but both queries share the same faulty predicate.
+
+When you’re ready to patch, update the WHERE to the half-open form above in both the probe and the rows query. That should make the “yesterday” and “tomorrow” calls return the expected rows immediately and keep the index usage optimal.
