@@ -1887,7 +1887,17 @@ class DatabaseStorage implements IStorage {
   }
 
   async createEmployeeAssignment(insertEmployeeAssignment: InsertEmployeeAssignment): Promise<EmployeeAssignment> {
-    const result = await this.db.insert(employeeAssignments).values(insertEmployeeAssignment).returning();
+    // Check if the employee is a driver to set isDriverHours
+    const employee = await this.db.select().from(employees).where(eq(employees.id, insertEmployeeAssignment.employeeId));
+    const isDriver = employee.length > 0 && employee[0].primaryTrade === 'Driver';
+    
+    // Set isDriverHours based on employee's primary trade
+    const assignmentData = {
+      ...insertEmployeeAssignment,
+      isDriverHours: isDriver
+    };
+    
+    const result = await this.db.insert(employeeAssignments).values(assignmentData).returning();
     return result[0];
   }
 

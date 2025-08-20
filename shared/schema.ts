@@ -128,6 +128,7 @@ export const employeeAssignments = pgTable("employee_assignments", {
   assignmentDate: date("assignment_date").notNull(),
   assignedHours: decimal("assigned_hours", { precision: 10, scale: 2 }).default("8"),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
+  isDriverHours: boolean("is_driver_hours").default(false),
 });
 
 // Insert schemas

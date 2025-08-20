@@ -268,9 +268,11 @@ export default function Dashboard() {
 
   const getActualHours = (task: any, date: string) => {
     const taskAssignments = getTaskAssignments(task.id, date);
-    return taskAssignments.reduce((total: number, assignment: any) => 
-      total + (parseFloat(assignment.actualHours) || 0), 0
-    );
+    return taskAssignments
+      .filter((assignment: any) => !assignment.isDriverHours) // Exclude driver hours
+      .reduce((total: number, assignment: any) => 
+        total + (parseFloat(assignment.actualHours) || 0), 0
+      );
   };
 
   // Get budget data for specific location
@@ -418,10 +420,12 @@ export default function Dashboard() {
         assignment.taskId === taskId
       );
       
-      // Try to get actual hours first
-      const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
-        return sum + (parseFloat(assignment.actualHours) || 0);
-      }, 0);
+      // Try to get actual hours first (excluding driver hours)
+      const taskActualHours = taskAssignments
+        .filter((assignment: any) => !assignment.isDriverHours) // Exclude driver hours
+        .reduce((sum: number, assignment: any) => {
+          return sum + (parseFloat(assignment.actualHours) || 0);
+        }, 0);
       
       // If no actual hours, fall back to scheduled hours
       let taskHours = taskActualHours;
@@ -549,63 +553,67 @@ export default function Dashboard() {
     
     // Also check ALL assignments for task IDs we haven't seen in allTasks
     // This handles the case where completed tasks are outside our date range
-    (assignments as any[]).forEach((assignment: any) => {
-      const taskId = assignment.taskId.toString();
-      const actualHours = parseFloat(assignment.actualHours) || 0;
-      const scheduledHours = parseFloat(assignment.assignedHours) || 0;
-      
-      if (actualHours > 0 || scheduledHours > 0) {
-        // Check if this task belongs to our location
-        let taskCostCode = taskToCostCodeMap[taskId];
+    (assignments as any[])
+      .filter((assignment: any) => !assignment.isDriverHours) // Exclude driver hours
+      .forEach((assignment: any) => {
+        const taskId = assignment.taskId.toString();
+        const actualHours = parseFloat(assignment.actualHours) || 0;
+        const scheduledHours = parseFloat(assignment.assignedHours) || 0;
         
-        if (!taskCostCode) {
-          // This task might be from outside our date range but belong to this location
-          // We'll use a heuristic: if the assignment has significant actual hours
-          // and we haven't matched it to another location yet, it might belong here
+        if (actualHours > 0 || scheduledHours > 0) {
+          // Check if this task belongs to our location
+          let taskCostCode = taskToCostCodeMap[taskId];
           
-          // For now, skip these assignments as we can't definitively assign them
-          return;
-        }
-        
-        const normalizedCostCode = normalizeCostCode(taskCostCode);
-        
-        if (!costCodeData[normalizedCostCode]) {
-          costCodeData[normalizedCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
-        }
-        
-        costCodeData[normalizedCostCode].actualHours += actualHours;
-        
-        // Only count scheduled hours for assignments that DON'T have actual hours yet
-        // AND are from incomplete tasks - completed tasks should never contribute to scheduled hours
-        const taskData = locationTasks.find((t: any) => t.id.toString() === taskId) || 
-                        (allTasks as any[]).find((t: any) => t.id.toString() === taskId);
-        const isTaskComplete = taskData && (taskData.status === 'complete' || taskData.status === 'completed' || taskData.status === 'Complete');
-        
-        if (actualHours === 0 && !isTaskComplete) {
-          costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+          if (!taskCostCode) {
+            // This task might be from outside our date range but belong to this location
+            // We'll use a heuristic: if the assignment has significant actual hours
+            // and we haven't matched it to another location yet, it might belong here
+            
+            // For now, skip these assignments as we can't definitively assign them
+            return;
+          }
           
-          // Debug: Log scheduled hours being added
-          if (scheduledHours > 0) {
-            console.log(`📊 Dashboard: Adding ${scheduledHours}h scheduled to ${normalizedCostCode} for ${locationId} (task ${taskId}, no actual hours, task incomplete)`);
+          const normalizedCostCode = normalizeCostCode(taskCostCode);
+          
+          if (!costCodeData[normalizedCostCode]) {
+            costCodeData[normalizedCostCode] = { budgetHours: 0, actualHours: 0, scheduledHours: 0 };
           }
-        } else {
-          // Debug: Log when we skip scheduled hours
-          if (scheduledHours > 0) {
-            const reason = actualHours > 0 ? `has ${actualHours}h actual` : 'task completed';
-            console.log(`📊 Dashboard: Skipping ${scheduledHours}h scheduled for ${normalizedCostCode} in ${locationId} (task ${taskId} ${reason})`);
+          
+          costCodeData[normalizedCostCode].actualHours += actualHours;
+          
+          // Only count scheduled hours for assignments that DON'T have actual hours yet
+          // AND are from incomplete tasks - completed tasks should never contribute to scheduled hours
+          const taskData = locationTasks.find((t: any) => t.id.toString() === taskId) || 
+                          (allTasks as any[]).find((t: any) => t.id.toString() === taskId);
+          const isTaskComplete = taskData && (taskData.status === 'complete' || taskData.status === 'completed' || taskData.status === 'Complete');
+          
+          if (actualHours === 0 && !isTaskComplete) {
+            costCodeData[normalizedCostCode].scheduledHours += scheduledHours;
+            
+            // Debug: Log scheduled hours being added
+            if (scheduledHours > 0) {
+              console.log(`📊 Dashboard: Adding ${scheduledHours}h scheduled to ${normalizedCostCode} for ${locationId} (task ${taskId}, no actual hours, task incomplete)`);
+            }
+          } else {
+            // Debug: Log when we skip scheduled hours
+            if (scheduledHours > 0) {
+              const reason = actualHours > 0 ? `has ${actualHours}h actual` : 'task completed';
+              console.log(`📊 Dashboard: Skipping ${scheduledHours}h scheduled for ${normalizedCostCode} in ${locationId} (task ${taskId} ${reason})`);
+            }
           }
         }
-      }
-    });
+      });
     
     // For assignments without task mapping (completed tasks outside date range),
     // we can't easily determine location without fetching all tasks for each location.
     // This is a Dashboard limitation - for complete accuracy, click the location link.
     
-    const assignmentsWithTaskMapping = (assignments as any[]).filter((assignment: any) => {
-      const taskId = assignment.taskId.toString();
-      return taskToCostCodeMap[taskId];
-    }).length;
+    const assignmentsWithTaskMapping = (assignments as any[])
+      .filter((assignment: any) => !assignment.isDriverHours) // Exclude driver hours
+      .filter((assignment: any) => {
+        const taskId = assignment.taskId.toString();
+        return taskToCostCodeMap[taskId];
+      }).length;
     
     console.log(`📊 Dashboard: Processed ${assignmentsWithTaskMapping} assignments with task mapping for ${locationId}`);
     
