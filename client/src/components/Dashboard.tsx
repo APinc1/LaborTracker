@@ -29,18 +29,34 @@ export default function Dashboard() {
   const today = new Date();
   const todayFormatted = format(today, "yyyy-MM-dd");
 
-  // Get all tasks to find dates with scheduled work - reduced range for faster loading
-  const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
-    queryKey: ["/api/tasks/date-range", format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
-    staleTime: 30000,
+  // Single consolidated query for all dashboard data
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["dashboardV2", [], format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
+    queryFn: async () => {
+      const from = format(subDays(today, 3), "yyyy-MM-dd");
+      const to = format(addDays(today, 7), "yyyy-MM-dd");
+      const url = `/api/dashboard/v2?locationIds=&from=${from}&to=${to}`;
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error(`Dashboard V2 failed: ${response.status}`);
+      return response.json();
+    },
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
+
+  // Extract data from the consolidated response
+  const allTasks = dashboardData?.tasksRange || [];
+  const projects = dashboardData?.projects || [];
+  const users = dashboardData?.users || [];
+  const crews = dashboardData?.crews || [];
 
   // Helper function to find the previous day with scheduled tasks
   const findPreviousScheduledDay = (): Date => {
     for (let i = 1; i <= 7; i++) {
       const checkDate = subDays(today, i);
       const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      const hasTasks = (allTasks as any[]).some((task: any) => task.task_date === checkDateFormatted);
       if (hasTasks) {
         return checkDate;
       }
@@ -53,7 +69,7 @@ export default function Dashboard() {
     for (let i = 1; i <= 14; i++) {
       const checkDate = addDays(today, i);
       const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      const hasTasks = (allTasks as any[]).some((task: any) => task.task_date === checkDateFormatted);
       if (hasTasks) {
         return checkDate;
       }
@@ -67,7 +83,7 @@ export default function Dashboard() {
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
 
-  // Bootstrap endpoint - gets all basic data in one request (parallel loading)
+  // Additional bootstrap data for specific functionality
   const { data: bootstrapData, isLoading: bootstrapLoading } = useQuery({
     queryKey: ["/api/dashboard/bootstrap", todayFormatted, todayFormatted],
     queryFn: async () => {
@@ -80,16 +96,12 @@ export default function Dashboard() {
     refetchOnReconnect: false,
   });
 
-  // Extract data from bootstrap response (eliminates sequential bottleneck)
+  // Extract data from consolidated response and bootstrap
   const assignments = bootstrapData?.assignments ?? [];
   const employees = bootstrapData?.employees ?? [];
-  const projects = bootstrapData?.projects ?? [];
   const locations = bootstrapData?.locations ?? [];
-  const todayTasksFromBootstrap = bootstrapData?.tasksRange ?? [];
-
-  // Use today's tasks from bootstrap (eliminates slow individual query)
-  const todayTasks = todayTasksFromBootstrap;
-  const todayLoading = bootstrapLoading;
+  const todayTasks = allTasks.filter((task: any) => task.task_date === todayFormatted);
+  const todayLoading = dashboardLoading;
 
   const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
     queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
@@ -103,17 +115,6 @@ export default function Dashboard() {
     staleTime: 30000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-  });
-
-  // Individual queries that still need separate calls
-  const { data: users = [] } = useQuery({
-    queryKey: ["/api/users"],
-    staleTime: 30000,
-  });
-
-  const { data: crews = [] } = useQuery({
-    queryKey: ["/api/crews"],
-    staleTime: 30000,
   });
 
 
@@ -283,7 +284,7 @@ export default function Dashboard() {
   ].filter(Boolean)));
 
   // Bulk dashboard data fetch - both budgets and tasks in one request
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+  const { data: legacyDashboardData, isLoading: legacyDashboardLoading } = useQuery({
     queryKey: ["/api/dashboard", locationDbIdsWithTasks.join(',')],
     staleTime: 30000,
     queryFn: async () => {
@@ -314,8 +315,8 @@ export default function Dashboard() {
   });
 
   // Extract budgets and tasks from bulk response
-  const budgetDataByLocation = dashboardData?.budgets ?? {};
-  const allLocationTasks = dashboardData?.tasks ?? {};
+  const budgetDataByLocation = legacyDashboardData?.budgets ?? {};
+  const allLocationTasks = legacyDashboardData?.tasks ?? {};
 
   // Get all budget items for remaining hours calculation (same as Schedule page)
   const allBudgetItems = Object.values(budgetDataByLocation).flat();
@@ -693,7 +694,7 @@ export default function Dashboard() {
     todayLoading,
     previousLoading,
     nextLoading,
-    allTasksLoading,
+    dashboardLoading,
     allLocationTasksLoading
   ].some(Boolean);
 
