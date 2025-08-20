@@ -480,12 +480,9 @@ export default function CreateTaskModal({
         // Do NOT modify the sequential status - it was already correctly set above
         // The sequential status should only be determined when the task was first created or explicitly modified
       } else {
-        // For individual tasks, make sequential if not first overall
-        if (groupIndex > 0) {
-          group.tasks[0].dependentOnPrevious = true;
-        } else {
-          group.tasks[0].dependentOnPrevious = false;
-        }
+        // For individual tasks, PRESERVE their original sequential status
+        // DO NOT automatically make them sequential based on position
+        // The sequential status should only be changed by explicit user action
       }
     });
     
@@ -917,12 +914,9 @@ export default function CreateTaskModal({
             // The new task's sequential status was already set based on the position choice
           });
         } else {
-          // For individual tasks, make sequential if not first overall
-          if (groupIndex > 0) {
-            group.tasks[0].dependentOnPrevious = true;
-          } else {
-            group.tasks[0].dependentOnPrevious = false;
-          }
+          // For individual tasks, PRESERVE their original sequential status
+          // DO NOT automatically make them sequential based on position
+          // The sequential status should only be changed by explicit user action
         }
       });
       
