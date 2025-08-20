@@ -1138,7 +1138,10 @@ export default function CreateTaskModal({
                                 key={task.id || task.taskId} 
                                 value={`after-${(task.taskId || task.id).toString()}`}
                               >
-                                After: {task.name}{statusIndicator} ({new Date(task.taskDate).toLocaleDateString('en-US')})
+                                After: {task.name}{statusIndicator} ({(() => {
+                                  const [year, month, day] = task.taskDate.split('-');
+                                  return `${month}/${day}/${year}`;
+                                })()})
                               </SelectItem>
                             );
                           });
