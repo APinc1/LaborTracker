@@ -1,0 +1,155 @@
+1) Server — bullet-proof the /api/tasks/date-range/:from/:to handler
+Goals
+
+Never pass NaN to Postgres
+
+Validate dates
+
+Parameterize everything (no string-interpolated numbers)
+
+Optional filters & sane defaults
+
+ts
+Copy
+Edit
+// server/routes/tasks.ts
+import { Router } from "express";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+
+const router = Router();
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const toISO = (s: any) => (typeof s === "string" && ISO_DATE.test(s) ? s : null);
+const toIntOrUndef = (v: any) => {
+  const n = Number(v);
+  return Number.isInteger(n) ? n : undefined;
+};
+const toIntArray = (s?: string) =>
+  (s ?? "")
+    .split(",")
+    .map(x => Number(x))
+    .filter(n => Number.isInteger(n));
+
+router.get("/tasks/date-range/:from/:to", async (req, res, next) => {
+  try {
+    const from = toISO(req.params.from);
+    const to   = toISO(req.params.to);
+    if (!from || !to) return res.status(400).json({ error: "Invalid from/to (YYYY-MM-DD)" });
+
+    // Optional filters
+    const locationIds = toIntArray(req.query.locationIds as string | undefined);
+    const limit  = toIntOrUndef(req.query.limit)  ?? 1000;
+    const offset = toIntOrUndef(req.query.offset) ?? 0;
+
+    // Build conditional SQL fragments safely
+    const whereLoc =
+      locationIds.length > 0 ? sql` AND location_id = ANY(${locationIds}::int[])` : sql``;
+
+    // ---------- FAST VERSION PROBE (for ETag) ----------
+    const ver = await db.execute(sql`
+      SELECT COUNT(*)::int AS cnt,
+             COALESCE(MAX(updated_at), 'epoch'::timestamptz) AS max_updated_at
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+      ${whereLoc}
+    `);
+    const row0 = Array.isArray(ver) ? (ver as any)[0] : (ver as any).rows[0];
+    const cnt = Number(row0.cnt) || 0;
+    const maxUpdatedAt = new Date(row0.max_updated_at);
+    const etag = `W/"t:${from}:${to}:${cnt}:${maxUpdatedAt.getTime()}"`;
+
+    if (req.headers["if-none-match"] === etag) {
+      res.setHeader("ETag", etag);
+      res.setHeader("Last-Modified", maxUpdatedAt.toUTCString());
+      res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+      return res.status(304).end();
+    }
+
+    // ---------- ACTUAL ROWS ----------
+    const rowsRes = await db.execute(sql`
+      SELECT id, name, location_id, project_id, task_date, status
+      FROM tasks
+      WHERE task_date BETWEEN ${from}::date AND ${to}::date
+      ${whereLoc}
+      ORDER BY task_date, location_id
+      LIMIT ${limit} OFFSET ${offset}
+    `);
+    const rows = Array.isArray(rowsRes) ? rowsRes : (rowsRes as any).rows;
+
+    res.setHeader("ETag", etag);
+    res.setHeader("Last-Modified", maxUpdatedAt.toUTCString());
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate");
+    res.json(rows);
+  } catch (e) {
+    // Make 4xx vs 5xx obvious in logs
+    console.error("[tasks/date-range] error", {
+      from: req.params.from, to: req.params.to,
+      locationIds: req.query.locationIds, limit: req.query.limit, offset: req.query.offset, err: e
+    });
+    next(e);
+  }
+});
+
+export default router;
+Why this fixes the 500s
+
+Any NaN coming from limit, offset, or locationIds is discarded before it reaches SQL.
+
+Date params are validated; bad inputs return 400 (not an internal 500).
+
+Everything stays parameterized; Postgres never sees 'NaN'::int.
+
+Also ensure you have these indexes (already suggested):
+CREATE INDEX IF NOT EXISTS idx_tasks_task_date ON tasks(task_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_task_date_updated ON tasks(task_date, updated_at);
+
+2) Client — don’t call the API with invalid params
+Guard the query with enabled and sanitize inputs before constructing the URL.
+
+tsx
+Copy
+Edit
+// Dashboard.tsx
+const isISO = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const cleanIds = (ids?: string[] | number[]) =>
+  (ids ?? []).map(Number).filter(Number.isInteger);
+
+const safeFrom = isISO(from) ? from : undefined;
+const safeTo   = isISO(to)   ? to   : undefined;
+const safeLocs = cleanIds(selectedLocationIds);
+
+// Only run when valid
+const { data: rangeTasks, isLoading: rangeLoading } = useQuery({
+  queryKey: ["tasksRange", safeFrom, safeTo, safeLocs],
+  enabled: Boolean(safeFrom && safeTo),
+  queryFn: async () => {
+    const qs = new URLSearchParams();
+    if (safeLocs.length) qs.set("locationIds", safeLocs.join(","));
+    // leave limit/offset off unless you actually need them
+    const url = `/api/tasks/date-range/${safeFrom}/${safeTo}?${qs.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`range fetch failed: ${res.status}`);
+    return res.json();
+  },
+  staleTime: 300_000,
+});
+This prevents accidental fetches like /date-range/undefined/undefined and ensures no NaNs are ever sent from the UI.
+
+3) (Optional) Quick pool sanity
+Make sure you aren’t creating a new PG pool per request:
+
+ts
+Copy
+Edit
+// server/db.ts (singleton)
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, // use :6543 transaction pooler
+  max: 20, idleTimeoutMillis: 30_000,
+});
+export const db = drizzle(pool);
+4) What to tell Replit (single paragraph)
+“Patch /api/tasks/date-range/:from/:to to validate dates, sanitize limit/offset/locationIds, and parameterize everything so we never send 'NaN' to Postgres. Use the snippet above with toIntArray, toIntOrUndef, and conditional SQL. On the client, add enabled: Boolean(from && to) and sanitize IDs before building the URL. Confirm PG indexes on tasks(task_date) and (task_date, updated_at) are present.”

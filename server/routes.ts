@@ -807,17 +807,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate } = req.params;
       
-      // Validate date parameters - return empty array for invalid dates instead of error
-      if (!startDate || !endDate || startDate === '' || endDate === '' || 
-          startDate === 'undefined' || endDate === 'undefined' || 
-          startDate === 'NaN' || endDate === 'NaN' ||
-          isNaN(Date.parse(startDate)) || isNaN(Date.parse(endDate))) {
-        console.log('Invalid date parameters received:', { startDate, endDate });
-        return res.json([]); // Return empty array instead of error
-      }
+      // Bulletproof date validation
+      const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+      const toISO = (s: any) => (typeof s === "string" && ISO_DATE.test(s) ? s : null);
+      const toIntOrUndef = (v: any) => {
+        const n = Number(v);
+        return Number.isInteger(n) ? n : undefined;
+      };
+      const toIntArray = (s?: string) =>
+        (s ?? "")
+          .split(",")
+          .map(x => Number(x))
+          .filter(n => Number.isInteger(n));
+
+      const from = toISO(startDate);
+      const to = toISO(endDate);
       
+      if (!from || !to) {
+        console.log('Invalid date parameters received:', { startDate, endDate });
+        return res.status(400).json({ error: "Invalid from/to dates (YYYY-MM-DD required)" });
+      }
+
+      // Optional filters
+      const locationIds = toIntArray(req.query.locationIds as string | undefined);
+      const limit = toIntOrUndef(req.query.limit) ?? 1000;
+      const offset = toIntOrUndef(req.query.offset) ?? 0;
+
       const storage = await getStorage();
-      const tasks = await withQuickTimeout(storage.getTasksByDateRange(startDate, endDate));
+      const tasks = await withQuickTimeout(storage.getTasksByDateRange(from, to, locationIds, limit, offset));
       
       // Enrich tasks with project and location names for assignment dropdown
       const enrichedTasks = await Promise.all(
@@ -843,7 +860,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(enrichedTasks);
     } catch (error: any) {
-      console.error('Error fetching tasks by date range:', error);
+      console.error('[tasks/date-range] error', {
+        startDate: req.params.startDate, 
+        endDate: req.params.endDate,
+        locationIds: req.query.locationIds, 
+        limit: req.query.limit, 
+        offset: req.query.offset, 
+        err: error
+      });
       if (error.message?.includes('timeout')) {
         res.status(408).json({ error: 'Request timeout - please try again' });
       } else {

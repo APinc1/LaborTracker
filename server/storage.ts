@@ -8,7 +8,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lte, asc, gt, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lte, asc, gt, desc, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -68,7 +68,7 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
-  getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]>;
+  getTasksByDateRange(startDate: string, endDate: string, locationIds?: number[], limit?: number, offset?: number): Promise<Task[]>;
   
   // Optimized task helper methods
   createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious?: boolean): Promise<{ id: number }>;
@@ -933,10 +933,27 @@ export class MemStorage implements IStorage {
     this.tasks.delete(id);
   }
 
-  async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {
-    return Array.from(this.tasks.values()).filter(task => 
+  async getTasksByDateRange(startDate: string, endDate: string, locationIds?: number[], limit?: number, offset?: number): Promise<Task[]> {
+    let filteredTasks = Array.from(this.tasks.values()).filter(task => 
       task.taskDate >= startDate && task.taskDate <= endDate
     );
+
+    // Filter by location IDs if provided
+    if (locationIds && locationIds.length > 0) {
+      filteredTasks = filteredTasks.filter(task => locationIds.includes(task.locationId));
+    }
+
+    // Apply offset
+    if (offset && offset > 0) {
+      filteredTasks = filteredTasks.slice(offset);
+    }
+
+    // Apply limit
+    if (limit && limit > 0) {
+      filteredTasks = filteredTasks.slice(0, limit);
+    }
+
+    return filteredTasks;
   }
 
   // Employee assignment methods
@@ -1731,13 +1748,28 @@ class DatabaseStorage implements IStorage {
     await this.db.delete(tasks).where(eq(tasks.id, id));
   }
 
-  async getTasksByDateRange(startDate: string, endDate: string): Promise<Task[]> {
-    return await this.db.select().from(tasks).where(
-      and(
-        gte(tasks.taskDate, startDate),
-        lte(tasks.taskDate, endDate)
-      )
-    );
+  async getTasksByDateRange(startDate: string, endDate: string, locationIds?: number[], limit?: number, offset?: number): Promise<Task[]> {
+    let whereConditions = [
+      gte(tasks.taskDate, startDate),
+      lte(tasks.taskDate, endDate)
+    ];
+
+    // Add location filter if provided
+    if (locationIds && locationIds.length > 0) {
+      whereConditions.push(inArray(tasks.locationId, locationIds));
+    }
+
+    const query = this.db.select().from(tasks).where(and(...whereConditions));
+
+    // Apply limit and offset if provided
+    if (limit) {
+      query.limit(limit);
+    }
+    if (offset) {
+      query.offset(offset);
+    }
+
+    return await query;
   }
 
   // Single round-trip task creation with CTE
