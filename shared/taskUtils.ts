@@ -325,19 +325,23 @@ export function realignDependentTasks(tasks: any[]): any[] {
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
-      // CRITICAL: For linked groups, we need to find the actual previous task that matters
-      // If the previous task is linked and unsequential, we need to look further back
+      // CRITICAL: Find the actual previous task by looking at the immediate predecessor
+      // Don't skip over linked groups - respect the logical order sequence
       let actualPreviousTask = previousTask;
-      let lookbackIndex = i - 1;
       
-      // If previous task is in a linked group and is unsequential, 
-      // find the last sequential task or first task in the dependency chain
-      while (lookbackIndex > 0 && 
-             actualPreviousTask.linkedTaskGroup && 
-             !actualPreviousTask.dependentOnPrevious) {
-        console.log(`🔍 Previous task "${actualPreviousTask.name}" is linked+unsequential, looking further back...`);
-        lookbackIndex--;
-        actualPreviousTask = updatedTasks[lookbackIndex];
+      // Special handling: If the previous task is part of a linked group,
+      // use the latest date from that linked group as the reference
+      if (actualPreviousTask.linkedTaskGroup) {
+        // Find all tasks in the same linked group and use the one with the latest date
+        const linkedGroupTasks = updatedTasks.filter(t => 
+          t.linkedTaskGroup === actualPreviousTask.linkedTaskGroup
+        );
+        if (linkedGroupTasks.length > 0) {
+          // Sort by date to find the latest task in the linked group
+          linkedGroupTasks.sort((a, b) => new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime());
+          actualPreviousTask = linkedGroupTasks[linkedGroupTasks.length - 1];
+          console.log(`🔗 Previous task is in linked group, using latest task "${actualPreviousTask.name}" with date ${actualPreviousTask.taskDate}`);
+        }
       }
       
       console.log(`🔧 DEBUG: Actual previous task "${actualPreviousTask.name}" date: ${actualPreviousTask.taskDate}`);
