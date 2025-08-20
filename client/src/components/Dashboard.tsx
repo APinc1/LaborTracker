@@ -29,71 +29,19 @@ export default function Dashboard() {
   const today = new Date();
   const todayFormatted = format(today, "yyyy-MM-dd");
 
-  // Single consolidated V2 query for ALL dashboard data
-  const { data: dashboardData, isLoading: dashboardLoading, isFetching: dashboardFetching } = useQuery({
-    queryKey: ["dashboardV2", [], format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
-    queryFn: async () => {
-      const from = format(subDays(today, 3), "yyyy-MM-dd");
-      const to = format(addDays(today, 7), "yyyy-MM-dd");
-      const url = `/api/dashboard/v2?locationIds=&from=${from}&to=${to}`;
-      const response = await fetch(url, { credentials: "include" });
-      if (!response.ok) throw new Error(`Dashboard V2 failed: ${response.status}`);
-      return response.json();
-    },
-    staleTime: 300000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+  // Get all tasks to find dates with scheduled work - reduced range for faster loading
+  const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", format(subDays(today, 3), "yyyy-MM-dd"), format(addDays(today, 7), "yyyy-MM-dd")],
+    staleTime: 30000,
   });
-
-  const loading = dashboardLoading || dashboardFetching;
-  
-  if (loading) {
-    return (
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!dashboardData) {
-    return (
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="text-red-600">Failed to load dashboard data.</div>
-      </div>
-    );
-  }
-
-  // Extract ALL data from the single consolidated V2 response
-  const allTasks = dashboardData.tasksRange || [];
-  const projects = dashboardData.projects || [];
-  const users = dashboardData.users || [];
-  const crews = dashboardData.crews || [];
-  const assignments = dashboardData.assignments || [];
-  const employees = dashboardData.employees || [];
-  const locations = dashboardData.locations || [];
-  const budgetDataByLocation = dashboardData.budgetsByLoc || {};
-  const allLocationTasks = dashboardData.tasksByLoc || {};
-
-  // Derive date-specific tasks from the consolidated range
-  const byDate = allTasks.reduce((acc: any, task: any) => {
-    const dateKey = task.task_date;
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(task);
-    return acc;
-  }, {});
-
-  const todayTasks = byDate[todayFormatted] || [];
 
   // Helper function to find the previous day with scheduled tasks
   const findPreviousScheduledDay = (): Date => {
     for (let i = 1; i <= 7; i++) {
       const checkDate = subDays(today, i);
       const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      if (byDate[checkDateFormatted]?.length > 0) {
+      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      if (hasTasks) {
         return checkDate;
       }
     }
@@ -105,7 +53,8 @@ export default function Dashboard() {
     for (let i = 1; i <= 14; i++) {
       const checkDate = addDays(today, i);
       const checkDateFormatted = format(checkDate, "yyyy-MM-dd");
-      if (byDate[checkDateFormatted]?.length > 0) {
+      const hasTasks = (allTasks as any[]).some((task: any) => task.taskDate === checkDateFormatted);
+      if (hasTasks) {
         return checkDate;
       }
     }
@@ -118,14 +67,54 @@ export default function Dashboard() {
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
 
-  const previousDayTasks = byDate[previousDayFormatted] || [];
-  const nextDayTasks = byDate[nextDayFormatted] || [];
+  // Bootstrap endpoint - gets all basic data in one request (parallel loading)
+  const { data: bootstrapData, isLoading: bootstrapLoading } = useQuery({
+    queryKey: ["/api/dashboard/bootstrap", todayFormatted, todayFormatted],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/bootstrap?from=${todayFormatted}&to=${todayFormatted}`);
+      if (!response.ok) throw new Error(`Bootstrap failed: ${response.status}`);
+      return response.json();
+    },
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
-  // All loading states now unified
-  const todayLoading = false;
-  const previousLoading = false;
-  const nextLoading = false;
-  const bootstrapLoading = false;
+  // Extract data from bootstrap response (eliminates sequential bottleneck)
+  const assignments = bootstrapData?.assignments ?? [];
+  const employees = bootstrapData?.employees ?? [];
+  const projects = bootstrapData?.projects ?? [];
+  const locations = bootstrapData?.locations ?? [];
+  const todayTasksFromBootstrap = bootstrapData?.tasksRange ?? [];
+
+  // Use today's tasks from bootstrap (eliminates slow individual query)
+  const todayTasks = todayTasksFromBootstrap;
+  const todayLoading = bootstrapLoading;
+
+  const { data: previousDayTasks = [], isLoading: previousLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", previousDayFormatted, previousDayFormatted],
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const { data: nextDayTasks = [], isLoading: nextLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", nextDayFormatted, nextDayFormatted],
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  // Individual queries that still need separate calls
+  const { data: users = [] } = useQuery({
+    queryKey: ["/api/users"],
+    staleTime: 30000,
+  });
+
+  const { data: crews = [] } = useQuery({
+    queryKey: ["/api/crews"],
+    staleTime: 30000,
+  });
 
 
 
@@ -284,7 +273,49 @@ export default function Dashboard() {
     );
   };
 
-  // All data now comes from the V2 endpoint above - no additional queries needed
+  // Get budget data for specific location
+  // Only fetch budget data for locations that have tasks in the selected time period
+  // Fix: Use database IDs for proper filtering
+  const locationDbIdsWithTasks = Array.from(new Set([
+    ...(todayTasks as any[]).map((task: any) => task.locationId),
+    ...(previousDayTasks as any[]).map((task: any) => task.locationId),
+    ...(nextDayTasks as any[]).map((task: any) => task.locationId)
+  ].filter(Boolean)));
+
+  // Bulk dashboard data fetch - both budgets and tasks in one request
+  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
+    queryKey: ["/api/dashboard", locationDbIdsWithTasks.join(',')],
+    staleTime: 30000,
+    queryFn: async () => {
+      // Only fetch data for locations that actually have tasks
+      const relevantLocations = (locations as any[]).filter((location: any) => 
+        locationDbIdsWithTasks.includes(location.id)
+      );
+      
+      if (relevantLocations.length === 0) return { budgets: {}, tasks: {} };
+      
+      // Use bulk dashboard endpoint for all locations at once
+      const locationIds = relevantLocations.map((location: any) => location.locationId);
+      try {
+        console.log(`📊 Dashboard bulk fetch for: ${locationIds.join(', ')}`);
+        const response = await fetch(`/api/dashboard?locationIds=${locationIds.join(',')}`);
+        if (!response.ok) throw new Error(`Bulk fetch failed: ${response.status}`);
+        const data = await response.json();
+        console.log(`✅ Dashboard bulk loaded for ${locationIds.length} locations`);
+        return data;
+      } catch (error) {
+        console.warn(`Failed to fetch bulk dashboard data:`, error);
+        return { budgets: {}, tasks: {} };
+      }
+    },
+    enabled: (locations as any[]).length > 0 && 
+             ((todayTasks as any[]).length > 0 || (previousDayTasks as any[]).length > 0 || (nextDayTasks as any[]).length > 0) &&
+             !todayLoading && !previousLoading && !nextLoading,
+  });
+
+  // Extract budgets and tasks from bulk response
+  const budgetDataByLocation = dashboardData?.budgets ?? {};
+  const allLocationTasks = dashboardData?.tasks ?? {};
 
   // Get all budget items for remaining hours calculation (same as Schedule page)
   const allBudgetItems = Object.values(budgetDataByLocation).flat();
@@ -655,7 +686,28 @@ export default function Dashboard() {
     );
   };
 
-  // Loading is now handled at the top of the component with the V2 query
+  const allLocationTasksLoading = Object.keys(budgetDataByLocation).length > 0 && Object.keys(allLocationTasks).length === 0;
+  
+  const isLoadingAny = [
+    bootstrapLoading,
+    todayLoading,
+    previousLoading,
+    nextLoading,
+    allTasksLoading,
+    allLocationTasksLoading
+  ].some(Boolean);
+
+  if (isLoadingAny) {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">

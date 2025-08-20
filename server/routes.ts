@@ -9,7 +9,6 @@ import {
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 import { timing, validateLimit } from "./middleware/timing";
 import { nextWeekday } from "./lib/dates";
-import dashboardV2Routes from "./routes/dashboardV2";
 
 // Aggressive timeout for better performance
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -58,10 +57,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('WebSocket client disconnected');
     });
   });
-
-  // Add timing middleware and dashboardV2 routes
-  app.use('/api', timing);
-  app.use('/api', dashboardV2Routes);
 
   // User routes
   app.get('/api/users', async (req, res) => {
