@@ -1,0 +1,111 @@
+1) Replace multiple queries with one V2 query
+// Dashboard.tsx
+import { useQuery } from "@tanstack/react-query";
+
+type V2Response = {
+  projects: any[];
+  users: any[];         // or employees if that’s your schema
+  crews: any[];
+  tasksRange: any[];    // covers today/yesterday/tomorrow if you pass from/to
+  budgetsByLoc: Record<string, any[]>;
+  tasksByLoc:   Record<string, any[]>;
+};
+
+export default function Dashboard({
+  locationIds,
+  from,                // 'YYYY-MM-DD'
+  to,                  // 'YYYY-MM-DD'
+}: { locationIds: string[]; from: string; to: string }) {
+
+  const { data, isLoading, isFetching, error } = useQuery<V2Response>({
+    queryKey: ["dashboardV2", locationIds, from, to],
+    queryFn: async () => {
+      const url =
+        `/api/dashboard/v2?locationIds=${encodeURIComponent(locationIds.join(","))}` +
+        `&from=${from}&to=${to}`;
+      const r = await fetch(url, { credentials: "include" });
+      if (!r.ok) throw new Error(`v2 failed: ${r.status}`);
+      return r.json();
+    },
+    staleTime: 300_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  const loading = isLoading || isFetching;
+  if (loading) return <div className="p-6">Loading…</div>;
+  if (error || !data) return <div className="p-6 text-red-600">Failed to load.</div>;
+
+  return (
+    <DashboardView
+      projects={data.projects}
+      users={data.users}
+      crews={data.crews}
+      tasksRange={data.tasksRange}        // derive today/prev/next from this range if needed
+      budgetsByLoc={data.budgetsByLoc}
+      tasksByLoc={data.tasksByLoc}
+      locationIds={locationIds}
+      from={from}
+      to={to}
+    />
+  );
+}
+
+2) Remove/disable the legacy calls (important)
+
+Search & delete (or set enabled:false) anywhere these appear:
+
+/api/dashboard/bootstrap
+
+/api/tasks/date-range/… (today/prev/next/all)
+
+/api/projects, /api/users (or /api/employees), /api/crews
+
+Any …Loading flags tied to those (e.g., assignmentsLoading, todayLoading, etc.)
+
+Quick grep patterns:
+
+tasks/date-range
+
+bootstrap
+
+useQuery({ queryKey: ["projects"]
+
+useQuery({ queryKey: ["users"] or ["employees"]
+
+useQuery({ queryKey: ["crews"]
+
+If you can’t remove yet, hard-disable:
+
+useQuery({ /* old tasks */ enabled: false } as any);
+useQuery({ /* old projects */ enabled: false } as any);
+
+
+Replace any guards like:
+
+// BEFORE
+if (todayLoading || previousLoading || nextLoading || assignmentsLoading || allTasksLoading) return …;
+// AFTER
+if (isLoading || isFetching) return …;
+
+3) (Optional) derive today/prev/next from tasksRange
+
+If the UI expects separate arrays, split once locally:
+
+const byDate = data.tasksRange.reduce((acc:any, t:any) => {
+  const d = t.task_date.slice(0,10);
+  (acc[d] ||= []).push(t);
+  return acc;
+}, {});
+const tasksToday = byDate[from] ?? [];
+// const tasksPrev = byDate[prevDate] ?? []; const tasksNext = byDate[nextDate] ?? [];
+
+4) Verify it worked
+
+Reload and check network tab/logs: you should see one GET /api/dashboard/v2 … and no /tasks/date-range or /bootstrap.
+
+TTFB should drop ~2–3s → a few hundred ms (+ render).
+
+No more undefined …Loading runtime errors.
+
+If anything still calls the old endpoints, nuke it. Once the Dashboard truly depends only on /api/dashboard/v2, the backend optimizations you built will finally show up in real load times.
