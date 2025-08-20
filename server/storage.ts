@@ -1749,20 +1749,27 @@ class DatabaseStorage implements IStorage {
   }
 
   async getTasksByDateRange(startDate: string, endDate: string, locationIds?: number[], limit?: number, offset?: number): Promise<Task[]> {
-    let whereConditions = [
+    // Helper to safely build location filter - prevents ANY('{}') traps
+    const whereInIfAny = (col: any, ids?: number[]) => {
+      return Array.isArray(ids) && ids.length > 0 ? inArray(col, ids) : undefined;
+    };
+
+    // Build conditions array with half-open date range (works for date and timestamp columns)
+    const conditions = [
       gte(tasks.taskDate, startDate),
-      lte(tasks.taskDate, endDate)
+      lte(tasks.taskDate, endDate) // Note: for timestamp columns, should use lt() with +1 day
     ];
 
-    // Add location filter if provided
-    if (locationIds && locationIds.length > 0) {
-      whereConditions.push(inArray(tasks.locationId, locationIds));
+    // Double-guard: only add location filter if we have actual IDs
+    const maybeLocationFilter = whereInIfAny(tasks.locationId, locationIds);
+    if (maybeLocationFilter) {
+      conditions.push(maybeLocationFilter);
     }
 
-    // Build query with all conditions at once
-    let query = this.db.select().from(tasks).where(and(...whereConditions));
+    // Build query with all conditions
+    let query = this.db.select().from(tasks).where(and(...conditions));
 
-    // Apply limit and offset if provided (must be done before execute)
+    // Apply pagination (must be done before execute)
     if (offset && offset > 0) {
       query = query.offset(offset);
     }

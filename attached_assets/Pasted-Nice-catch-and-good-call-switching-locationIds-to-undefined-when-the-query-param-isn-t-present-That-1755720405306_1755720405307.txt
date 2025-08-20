@@ -1,0 +1,115 @@
+Nice catch—and good call switching locationIds to undefined when the query param isn’t present. That’s the safest way to guarantee “no filter” instead of ANY('{}').
+
+Here’s a tight validation + hardening pass so this never regresses, plus a quick checklist to confirm the fix actually works.
+
+Minimal hardening (route + storage)
+Route (safe pass-through):
+
+ts
+Copy
+Edit
+// Parse once
+const rawLocs = req.query.locationIds as string | undefined;
+
+const toIntArray = (s?: string) =>
+  !s?.trim()
+    ? []
+    : s.split(",").map(x => Number(x.trim())).filter(Number.isInteger);
+
+const locIdsParsed = toIntArray(rawLocs);
+// ✅ Only pass when non-empty; otherwise `undefined` (means “no filter”)
+const locIdsParam  = locIdsParsed.length ? locIdsParsed : undefined;
+
+const tasks = await withQuickTimeout(
+  storage.getTasksByDateRange(from, to, locIdsParam, limit, offset)
+);
+Storage (double-guard so an empty array can never leak into SQL):
+
+ts
+Copy
+Edit
+function whereInIfAny(col: any, ids?: number[]) {
+  return Array.isArray(ids) && ids.length > 0 ? inArray(col, ids) : undefined;
+}
+
+const conds: any[] = [
+  gte(tasks.taskDate, sql`${from}::date`),
+  lt(tasks.taskDate,  sql`${to}::date + interval '1 day'`), // half-open upper bound
+];
+
+const maybeLoc = whereInIfAny(tasks.locationId, locationIds);
+if (maybeLoc) conds.push(maybeLoc);
+
+let qb = db.select({...}).from(tasks);
+if (conds.length) qb = qb.where(and(...conds));
+qb = qb.orderBy(tasks.taskDate, tasks.locationId).limit(limit).offset(offset);
+Note: the half-open date predicate works for both date and timestamp[tz] columns and is index-friendly.
+
+Quick verification plan (no writes, just checks)
+Smoke test endpoints (should return rows now):
+
+bash
+Copy
+Edit
+# yesterday
+curl -s /api/tasks/date-range/2025-08-19/2025-08-19 | jq 'length'
+# tomorrow
+curl -s /api/tasks/date-range/2025-08-21/2025-08-21 | jq 'length'
+Expect counts (e.g., 8 and 3), not 0.
+
+Ensure “no filter” really omits the ANY('{}') clause:
+
+Temporarily log SQL once:
+
+ts
+Copy
+Edit
+const { sql: rendered, params } = qb.toSQL?.() ?? {};
+console.debug("[tasks range] SQL:", rendered, params);
+With no locationIds, there should be no = ANY(...) or IN ().
+
+304 path stays fast and consistent:
+
+Hit the same URL twice; second request should be 304 and tens of ms, not hundreds.
+
+Confirm the ETag/Last-Modified code uses the same half-open predicate and the same (optional) location filter logic (i.e., only applies when locIdsParam is defined).
+
+Edge cases that used to break:
+
+bash
+Copy
+Edit
+# no param at all (✅ all tasks for range)
+curl -s '/api/tasks/date-range/2025-08-19/2025-08-19'
+
+# empty param (✅ treated same as no filter)
+curl -s '/api/tasks/date-range/2025-08-19/2025-08-19?locationIds='
+
+# whitespace (✅ ignored)
+curl -s '/api/tasks/date-range/2025-08-19/2025-08-19?locationIds=  '
+
+# actual filter (✅ restricts)
+curl -s '/api/tasks/date-range/2025-08-19/2025-08-19?locationIds=101,202'
+Small guardrails to add (future-proofing)
+Type the storage signature so locationIds?: number[] (optional) not number[] | undefined, and treat empty arrays as undefined at the boundary (you already did this at the route).
+
+Throw on invalid dates (400) before hitting the DB so we don’t compute ETags for nonsense.
+
+Unit test the predicate builder:
+
+no locationIds → no location clause
+
+empty locationIds → no location clause
+
+[1,2] → inArray present
+
+single-day range uses half-open upper bound
+
+What you should see after this fix
+The yesterday/tomorrow calls return the expected tasks (no more empty arrays).
+
+Logs no longer show ANY('{}') for calls without locationIds.
+
+Bootstrap remains ~400ms; date-range calls return in ~10–60ms (and ~5–20ms on 304).
+
+If anything still returns empty after this, paste the generated SQL (redacted) for one of the failing calls and I’ll zero in on the exact predicate.

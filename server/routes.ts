@@ -815,10 +815,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return Number.isInteger(n) ? n : undefined;
       };
       const toIntArray = (s?: string) =>
-        (s ?? "")
-          .split(",")
-          .map(x => Number(x))
-          .filter(n => Number.isInteger(n));
+        !s?.trim() 
+          ? []
+          : s.split(",").map(x => Number(x.trim())).filter(Number.isInteger);
 
       const from = toISO(startDate);
       const to = toISO(endDate);
@@ -826,6 +825,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!from || !to) {
         console.log('Invalid date parameters received:', { startDate, endDate });
         return res.status(400).json({ error: "Invalid from/to dates (YYYY-MM-DD required)" });
+      }
+      
+      // Additional date validation - ensure from <= to
+      if (from > to) {
+        return res.status(400).json({ error: "Start date must be before or equal to end date" });
       }
 
       // Optional filters - only pass locationIds if there are actual IDs to filter by
