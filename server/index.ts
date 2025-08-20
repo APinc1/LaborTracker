@@ -18,6 +18,17 @@ server.requestTimeout = 15000;   // 15 seconds
 // Add healthcheck endpoint FIRST for fast startup
 app.get('/healthz', (_req, res) => res.status(200).send('ok'));
 
+// Add request logging middleware
+app.use((req, _res, next) => {
+  console.log(`[REQ] ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Add V2 health check endpoint
+app.get("/api/dashboard/v2/health", (_req, res) => {
+  res.json({ ok: true, route: "/api/dashboard/v2/health" });
+});
+
 // Add timing middleware for performance monitoring
 app.use(timing());
 
