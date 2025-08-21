@@ -1069,7 +1069,9 @@ export default function AssignmentManagement() {
                         };
                       };
 
-                      const employeesWithAvailability = (employees as any[]).map(calculateEmployeeAvailability);
+                      const employeesWithAvailability = (employees as any[])
+                        .filter((employee: any) => !employee.isInactive)
+                        .map(calculateEmployeeAvailability);
                       
                       const filteredEmployees = employeesWithAvailability.filter((employee: any) =>
                         employee.name.toLowerCase().includes(employeeSearchTerm.toLowerCase()) ||

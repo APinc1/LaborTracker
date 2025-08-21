@@ -527,7 +527,7 @@ export default function ScheduleManagement() {
     
     // Get foremen from assigned employees
     const assignedForemen = assignedEmployees.filter((emp: any) => emp.isForeman);
-    const allForemen = employees.filter((emp: any) => emp.isForeman);
+    const allForemen = employees.filter((emp: any) => emp.isForeman && !emp.isInactive);
     
     // Add superintendent first if exists
     if (task.superintendentId) {

@@ -23,7 +23,7 @@ export function useForemanLogic({ task, assignments, employees, onTaskUpdate }: 
   const queryClient = useQueryClient();
 
   // Static calculations without useEffect to prevent loops
-  const allForemen = employees.filter(emp => emp.isForeman === true);
+  const allForemen = employees.filter(emp => emp.isForeman === true && !emp.isInactive);
   
   const taskAssignments = assignments.filter(assignment => 
     assignment.taskId === task.id || assignment.taskId === task.taskId
