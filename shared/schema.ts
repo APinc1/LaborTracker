@@ -139,7 +139,79 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
   defaultSuperintendent: z.number().optional().nullable(),
   defaultProjectManager: z.number().optional().nullable()
 });
-export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true });
+export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true }).extend({
+  // Transform empty strings to null for optional numeric fields
+  actualQty: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  convertedQty: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  conversionFactor: z.union([
+    z.string().transform(val => val === "" ? "1" : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  productionRate: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  hours: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  billing: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  laborCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  equipmentCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  truckingCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  dumpFeesCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  materialCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  subcontractorCost: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  convertedUnitOfMeasure: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  notes: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.null(),
+    z.undefined()
+  ]).optional()
+});
 export const insertLocationSchema = createInsertSchema(locations).omit({ id: true }).extend({
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable()
