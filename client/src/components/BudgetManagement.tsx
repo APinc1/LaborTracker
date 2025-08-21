@@ -499,19 +499,19 @@ export default function BudgetManagement() {
   useEffect(() => {
     const [unconvertedQty, unitCost, convertedQty, productionRate, unitOfMeasure, equipment, trucking, dump, material, sub] = watchedValues;
     
-    // Recalculate when quantity changes, or when unit cost changes (for Hours unit)
-    if (unconvertedQty && (unitOfMeasure !== 'Hours' || unitCost)) {
+    // Recalculate when quantity changes (always), or when any other field changes
+    if (unconvertedQty || unitOfMeasure) {
       const calculated = calculateFormTotals({
-        unconvertedQty,
+        unconvertedQty: unconvertedQty || "0",
         unitCost: unitCost || "0",
-        convertedQty: convertedQty || unconvertedQty,
-        productionRate,
-        unconvertedUnitOfMeasure: unitOfMeasure,
-        equipmentCost: equipment,
-        truckingCost: trucking,
-        dumpFeesCost: dump,
-        materialCost: material,
-        subcontractorCost: sub,
+        convertedQty: convertedQty || unconvertedQty || "0",
+        productionRate: productionRate || "0",
+        unconvertedUnitOfMeasure: unitOfMeasure || "",
+        equipmentCost: equipment || "0",
+        truckingCost: trucking || "0",
+        dumpFeesCost: dump || "0",
+        materialCost: material || "0",
+        subcontractorCost: sub || "0",
       });
       
       form.setValue('unitTotal', calculated.unitTotal, { shouldValidate: false });
