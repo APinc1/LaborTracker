@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -152,10 +152,17 @@ export default function ScheduleManagement() {
   });
 
   // Fetch tasks for budget calculation (extended range around current month for better context)
-  const budgetDateRange = {
-    start: new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 3, 1), // 3 months before
-    end: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 4, 0)    // 3 months after
-  };
+  const budgetDateRange = useMemo(() => {
+    // Ensure selectedDate is valid before using it
+    const baseDate = selectedDate instanceof Date && !isNaN(selectedDate.getTime()) 
+      ? selectedDate 
+      : new Date(); // fallback to current date
+    
+    return {
+      start: new Date(baseDate.getFullYear(), baseDate.getMonth() - 3, 1), // 3 months before
+      end: new Date(baseDate.getFullYear(), baseDate.getMonth() + 4, 0)    // 3 months after
+    };
+  }, [selectedDate]);
   
   const { data: allTasksForBudget = [] } = useQuery({
     queryKey: ["/api/tasks/date-range", format(budgetDateRange.start, 'yyyy-MM-dd'), format(budgetDateRange.end, 'yyyy-MM-dd')],
