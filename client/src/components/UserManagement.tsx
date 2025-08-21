@@ -385,7 +385,7 @@ export default function UserManagement() {
         <CardHeader>
           <CardTitle>All Users</CardTitle>
         </CardHeader>
-        <CardContent className="max-h-96 overflow-y-auto">
+        <CardContent className="max-h-[600px] overflow-y-auto">
           {isLoading ? (
             <div className="text-center py-4">Loading users...</div>
           ) : (
