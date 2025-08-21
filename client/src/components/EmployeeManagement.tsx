@@ -33,6 +33,7 @@ const employeeFormSchema = insertEmployeeSchema.extend({
   tertiaryTrade: z.string().optional(), // Optional field
   isForeman: z.boolean().optional().default(false),
   isUnion: z.boolean().optional().default(false),
+  isInactive: z.boolean().optional().default(false),
 });
 
 // Validation schema for creating user from employee
@@ -301,6 +302,7 @@ export default function EmployeeManagement() {
       apprenticeLevel: null,
       isForeman: false,
       isUnion: false,
+      isInactive: false,
       primaryTrade: '',
       secondaryTrade: '',
       tertiaryTrade: '',
@@ -332,6 +334,7 @@ export default function EmployeeManagement() {
       apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
       isForeman: data.employeeType === "Core" ? Boolean(data.isForeman) : false,
       isUnion: Boolean(data.isUnion),
+      isInactive: Boolean(data.isInactive),
       primaryTrade: data.primaryTrade || null,
       secondaryTrade: data.secondaryTrade === "none" || !data.secondaryTrade ? null : data.secondaryTrade,
       tertiaryTrade: data.tertiaryTrade === "none" || !data.tertiaryTrade ? null : data.tertiaryTrade,
@@ -388,6 +391,7 @@ export default function EmployeeManagement() {
       apprenticeLevel: employee.apprenticeLevel,
       isForeman: Boolean(employee.isForeman),
       isUnion: Boolean(employee.isUnion),
+      isInactive: Boolean(employee.isInactive),
       primaryTrade: employee.primaryTrade || '',
       secondaryTrade: employee.secondaryTrade || '',
       tertiaryTrade: employee.tertiaryTrade || '',
@@ -426,6 +430,7 @@ export default function EmployeeManagement() {
       apprenticeLevel: null,
       isForeman: false,
       isUnion: false,
+      isInactive: false,
       primaryTrade: '',
       secondaryTrade: '',
       tertiaryTrade: '',
@@ -818,7 +823,7 @@ export default function EmployeeManagement() {
                         />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <FormField
                           control={employeeForm.control}
                           name="isForeman"
@@ -853,6 +858,23 @@ export default function EmployeeManagement() {
                               </FormControl>
                               <div className="space-y-1 leading-none">
                                 <FormLabel>Is Union</FormLabel>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={employeeForm.control}
+                          name="isInactive"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Mark as Inactive</FormLabel>
                               </div>
                             </FormItem>
                           )}

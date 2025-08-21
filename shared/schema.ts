@@ -95,6 +95,7 @@ export const employees = pgTable("employees", {
   secondaryTrade: text("secondary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
   tertiaryTrade: text("tertiary_trade"), // Mason, Formsetter, Laborer, Operator, Driver
   userId: integer("user_id").references(() => users.id), // Optional link to user account
+  isInactive: boolean("is_inactive").default(false),
 });
 
 export const tasks = pgTable("tasks", {
@@ -224,6 +225,7 @@ export const insertEmployeeSchema = createInsertSchema(employees).omit({ id: tru
   phone: z.string().optional().nullable(),
   isForeman: z.boolean().optional().default(false),
   isUnion: z.boolean().optional().default(false),
+  isInactive: z.boolean().optional().default(false),
 });
 export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).extend({
   taskDate: z.string(),
