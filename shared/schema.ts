@@ -138,7 +138,8 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
   defaultSuperintendent: z.number().optional().nullable(),
-  defaultProjectManager: z.number().optional().nullable()
+  defaultProjectManager: z.number().optional().nullable(),
+  isInactive: z.boolean().optional()
 });
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true }).extend({
   // Transform empty strings to null for optional numeric fields
