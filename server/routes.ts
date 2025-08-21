@@ -1061,14 +1061,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🗑️ DELETE ALL TASKS: Starting deletion for location ${locationParam}`);
       
-      // Look up the location by locationId string to get the numeric database ID
-      const location = await storage.getLocationByLocationId(locationParam);
-      if (!location) {
-        return res.status(404).json({ error: 'Location not found' });
+      // Handle both locationId string (e.g., "101_test") and pure database ID (e.g., "3")
+      let locationId: number;
+      if (/^\d+$/.test(locationParam)) {
+        // It's a pure numeric database ID
+        locationId = parseInt(locationParam);
+      } else {
+        // It's a locationId string - find the location by locationId
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationId = location.id;
       }
-      
-      const locationId = location.id;
-      console.log(`🗑️ Found location "${location.name}" with database ID ${locationId}`);
+      console.log(`🗑️ Using location database ID ${locationId}`);
       
       // Get all tasks for this location
       const tasks = await storage.getTasks(locationId);
