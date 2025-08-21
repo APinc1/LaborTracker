@@ -211,7 +211,15 @@ export default function ProjectManagement() {
             if (!open) {
               setIsCreateDialogOpen(false);
               setEditingProject(null);
-              form.reset();
+              form.reset({
+                projectId: '',
+                name: '',
+                startDate: '',
+                endDate: '',
+                defaultSuperintendent: undefined,
+                defaultProjectManager: undefined,
+                isInactive: false,
+              });
             }
           }}>
             <DialogTrigger asChild>
