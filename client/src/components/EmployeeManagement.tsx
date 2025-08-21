@@ -330,7 +330,7 @@ export default function EmployeeManagement() {
     
     const processedData = {
       ...data,
-      crewId: data.crewId && data.crewId !== "none" ? parseInt(data.crewId) : null,
+      crewId: data.isInactive ? null : (data.crewId && data.crewId !== "none" ? parseInt(data.crewId) : null),
       apprenticeLevel: data.employeeType === "Apprentice" ? data.apprenticeLevel : null,
       isForeman: data.employeeType === "Core" ? Boolean(data.isForeman) : false,
       isUnion: Boolean(data.isUnion),
