@@ -1066,6 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (/^\d+$/.test(locationParam)) {
         // It's a pure numeric database ID
         locationId = parseInt(locationParam);
+        console.log(`🗑️ Using numeric location database ID ${locationId}`);
       } else {
         // It's a locationId string - find the location by locationId
         const location = await storage.getLocation(locationParam);
@@ -1073,8 +1074,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: 'Location not found' });
         }
         locationId = location.id;
+        console.log(`🗑️ Found location "${location.name}" with database ID ${locationId}`);
       }
-      console.log(`🗑️ Using location database ID ${locationId}`);
       
       // Get all tasks for this location
       const tasks = await storage.getTasks(locationId);
