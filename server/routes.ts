@@ -1057,9 +1057,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/locations/:locationId/tasks', async (req, res) => {
     try {
       const storage = await getStorage();
-      const locationId = parseInt(req.params.locationId);
+      const locationParam = req.params.locationId;
       
-      console.log(`🗑️ DELETE ALL TASKS: Starting deletion for location ${locationId}`);
+      console.log(`🗑️ DELETE ALL TASKS: Starting deletion for location ${locationParam}`);
+      
+      // Look up the location by locationId string to get the numeric database ID
+      const location = await storage.getLocationByLocationId(locationParam);
+      if (!location) {
+        return res.status(404).json({ error: 'Location not found' });
+      }
+      
+      const locationId = location.id;
+      console.log(`🗑️ Found location "${location.name}" with database ID ${locationId}`);
       
       // Get all tasks for this location
       const tasks = await storage.getTasks(locationId);
