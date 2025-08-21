@@ -443,7 +443,22 @@ export default function ScheduleManagement() {
         );
         
         if (isParent || (!isChild && !hasChildren)) {
-          return total + (parseFloat(item.hours) || 0);
+          // Debug log for General Labor budget items
+          if (costCode === 'GENERAL LABOR' && (itemCostCode.includes('GENERAL') || itemCostCode.includes('GNRL'))) {
+            console.log('🔍 DEBUG Budget item match:', {
+              itemId: item.id,
+              itemCostCode,
+              taskCostCode,
+              hours: item.hours,
+              totalHours: item.totalHours,
+              quantity: item.quantity,
+              allFields: Object.keys(item)
+            });
+          }
+          
+          // Try multiple possible field names for hours
+          const hours = parseFloat(item.hours) || parseFloat(item.totalHours) || parseFloat(item.quantity) || 0;
+          return total + hours;
         }
       }
       return total;
