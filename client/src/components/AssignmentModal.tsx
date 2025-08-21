@@ -366,7 +366,7 @@ export default function AssignmentModal({ isOpen, onClose, taskId, taskDate }: A
       
       // Also invalidate the schedule queries to refresh task displays
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       
       toast({ title: "Success", description: "Assignments created successfully" });
       onClose();

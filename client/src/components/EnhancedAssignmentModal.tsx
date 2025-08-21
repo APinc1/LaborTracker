@@ -375,7 +375,7 @@ export default function EnhancedAssignmentModal({
       queryClient.invalidateQueries({ queryKey: ["/api/assignments", "date"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
       
       // Force refresh of specific task to show updated foreman

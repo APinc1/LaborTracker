@@ -807,6 +807,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate } = req.params;
       
+      // Debug logging for NaN error investigation
+      console.log('🔍 DEBUG date-range endpoint called:', {
+        fullUrl: req.url,
+        startDate,
+        endDate,
+        params: req.params,
+        query: req.query
+      });
+      
       // Bulletproof date validation
       const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
       const toISO = (s: any) => (typeof s === "string" && ISO_DATE.test(s) ? s : null);

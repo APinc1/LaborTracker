@@ -195,7 +195,7 @@ export default function CreateTaskModal({
       
       // Also refetch the current location tasks immediately
       await queryClient.refetchQueries({ queryKey: ["/api/locations", selectedLocationData?.locationId, "tasks"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      await queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       
       console.log('Cache invalidated and refetched after task creation');
       toast({ title: "Success", description: successMsg });

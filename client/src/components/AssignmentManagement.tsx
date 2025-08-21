@@ -148,10 +148,10 @@ export default function AssignmentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       toast({ title: "Success", description: "Assignment updated successfully" });
       setEditingAssignment(null);
       setHasUnsavedChanges(false);
@@ -219,7 +219,7 @@ export default function AssignmentManagement() {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
       queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       toast({ title: "Success", description: "Actual hours updated successfully" });
       setBulkEditMode(false);
       setEditingActualHours({});
