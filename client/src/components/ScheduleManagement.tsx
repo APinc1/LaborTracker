@@ -151,9 +151,14 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
-  // Fetch ALL tasks for remaining hours calculation (very wide date range)
+  // Fetch tasks for budget calculation (extended range around current month for better context)
+  const budgetDateRange = {
+    start: new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 3, 1), // 3 months before
+    end: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 4, 0)    // 3 months after
+  };
+  
   const { data: allTasksForBudget = [] } = useQuery({
-    queryKey: ["/api/tasks/date-range", "2020-01-01", "2030-12-31"],
+    queryKey: ["/api/tasks/date-range", format(budgetDateRange.start, 'yyyy-MM-dd'), format(budgetDateRange.end, 'yyyy-MM-dd')],
     staleTime: 30000,
   });
 
