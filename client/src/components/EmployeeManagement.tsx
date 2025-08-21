@@ -1048,7 +1048,13 @@ export default function EmployeeManagement() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      employees.map((employee: any) => (
+                      employees
+                        .sort((a: any, b: any) => {
+                          const lastNameA = a.name.split(' ').pop()?.toLowerCase() || '';
+                          const lastNameB = b.name.split(' ').pop()?.toLowerCase() || '';
+                          return lastNameA.localeCompare(lastNameB);
+                        })
+                        .map((employee: any) => (
                         <TableRow key={employee.id} className={employee.isInactive ? "opacity-50" : ""}>
                           <TableCell>
                             <div className="flex items-center space-x-3">
