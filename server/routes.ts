@@ -310,10 +310,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      const validated = insertBudgetLineItemSchema.parse({
+      // Clean up the data before validation - convert empty strings to null for numeric fields
+      const cleanedData = {
         ...req.body,
-        locationId: locationDbId
-      });
+        locationId: locationDbId,
+        // Convert empty strings to null for optional numeric fields
+        actualQty: req.body.actualQty === "" ? null : req.body.actualQty,
+        convertedQty: req.body.convertedQty === "" ? null : req.body.convertedQty,
+        conversionFactor: req.body.conversionFactor === "" ? "1" : req.body.conversionFactor,
+        productionRate: req.body.productionRate === "" ? null : req.body.productionRate,
+        hours: req.body.hours === "" ? null : req.body.hours,
+        billing: req.body.billing === "" ? null : req.body.billing,
+        laborCost: req.body.laborCost === "" ? null : req.body.laborCost,
+        equipmentCost: req.body.equipmentCost === "" ? null : req.body.equipmentCost,
+        truckingCost: req.body.truckingCost === "" ? null : req.body.truckingCost,
+        dumpFeesCost: req.body.dumpFeesCost === "" ? null : req.body.dumpFeesCost,
+        materialCost: req.body.materialCost === "" ? null : req.body.materialCost,
+        subcontractorCost: req.body.subcontractorCost === "" ? null : req.body.subcontractorCost,
+        convertedUnitOfMeasure: req.body.convertedUnitOfMeasure === "" ? null : req.body.convertedUnitOfMeasure,
+        notes: req.body.notes === "" ? null : req.body.notes,
+      };
+      
+      console.log('Budget create - cleaned data:', JSON.stringify(cleanedData, null, 2));
+      
+      const validated = insertBudgetLineItemSchema.parse(cleanedData);
       const budgetItem = await storage.createBudgetLineItem(validated);
       res.status(201).json(budgetItem);
     } catch (error) {
