@@ -55,7 +55,7 @@ export default function ScheduleManagement() {
         description: "Task deleted successfully"
       });
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/tasks/date-range"] 
+        predicate: (query) => query.queryKey[0] === "/api/tasks/date-range"
       });
       setDeleteConfirmOpen(false);
       setTaskToDelete(null);
@@ -1094,7 +1094,7 @@ export default function ScheduleManagement() {
           task={editingTask}
           onTaskUpdate={() => {
             queryClient.invalidateQueries({ 
-              queryKey: ["/api/tasks/date-range"] 
+              predicate: (query) => query.queryKey[0] === "/api/tasks/date-range"
             });
           }}
         />
@@ -1111,7 +1111,7 @@ export default function ScheduleManagement() {
               queryKey: ["/api/assignments"] 
             });
             queryClient.invalidateQueries({ 
-              queryKey: ["/api/tasks/date-range"] 
+              predicate: (query) => query.queryKey[0] === "/api/tasks/date-range"
             });
           }}
           taskId={selectedTaskForAssignment.id}
