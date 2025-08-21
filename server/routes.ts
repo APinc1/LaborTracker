@@ -785,19 +785,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // IMPORTANT: More specific routes must come before generic routes!
+  app.get('/api/tasks/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const task = await withFastTimeout(storage.getTask(parseInt(req.params.id)));
+      if (!task) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+      res.json(task);
+    } catch (error: any) {
+      console.error('Error fetching task:', error);
+      if (error.message?.includes('timeout')) {
+        res.status(408).json({ error: 'Request timeout - please try again' });
+      } else {
+        res.status(500).json({ error: 'Failed to fetch task' });
+      }
+    }
+  });
+
   app.get('/api/tasks/date-range/:startDate?/:endDate?', async (req, res) => {
     try {
       const { startDate, endDate } = req.params;
-      
-      // Debug logging for NaN error investigation
-      console.log('🔍 DEBUG date-range endpoint called:', {
-        fullUrl: req.url,
-        startDate,
-        endDate,
-        params: req.params,
-        query: req.query
-      });
       
       // Bulletproof date validation
       const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -835,54 +843,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Optimize enrichment: batch load locations and projects to avoid N+1 queries
       const uniqueLocationIds = [...new Set(tasks.map(task => task.locationId))];
-      const uniqueProjectIds = [...new Set(tasks.map(task => task.projectId))];
+      const locationsPromises = uniqueLocationIds.map(id => storage.getLocation(id));
+      const locationsResults = await Promise.allSettled(locationsPromises);
       
-      const [locations, projects] = await Promise.all([
-        Promise.all(uniqueLocationIds.map(async (locId) => {
-          const location = await storage.getLocation(locId);
-          return { id: locId, data: location };
-        })),
-        Promise.all(uniqueProjectIds.map(async (projId) => {
-          const project = await storage.getProject(projId);  
-          return { id: projId, data: project };
-        }))
-      ]);
+      const locationMap = new Map();
+      locationsResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          locationMap.set(uniqueLocationIds[index], result.value);
+        }
+      });
       
-      const locationMap = new Map(locations.map(l => [l.id, l.data]));
-      const projectMap = new Map(projects.map(p => [p.id, p.data]));
+      // Get unique project IDs from locations
+      const uniqueProjectIds = [...new Set(
+        Array.from(locationMap.values())
+          .map(loc => loc.projectId)
+          .filter(Boolean)
+      )];
       
-      // Enrich tasks with location and project data
-      const enrichedTasks = tasks.map(task => ({
-        ...task,
-        location: locationMap.get(task.locationId) || null,
-        project: projectMap.get(task.projectId) || null
-      }));
+      const projectsPromises = uniqueProjectIds.map(id => storage.getProject(id));
+      const projectsResults = await Promise.allSettled(projectsPromises);
+      
+      const projectMap = new Map();
+      projectsResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          projectMap.set(uniqueProjectIds[index], result.value);
+        }
+      });
+      
+      // Enrich tasks using the pre-loaded data
+      const enrichedTasks = tasks.map(task => {
+        const location = locationMap.get(task.locationId);
+        const project = location ? projectMap.get(location.projectId) : null;
+        
+        return {
+          ...task,
+          projectName: project?.name || 'Unknown Project',
+          locationName: location?.name || 'Unknown Location'
+        };
+      });
       
       res.json(enrichedTasks);
     } catch (error: any) {
-      console.error('Error fetching task:', error);
-      if (error.message?.includes('timeout')) {
-        res.status(408).json({ error: 'Tasks loading timeout - please refresh' });
-      } else {
-        res.status(500).json({ error: 'Failed to fetch task' });
-      }
-    }
-  });
-
-  app.get('/api/tasks/:id', async (req, res) => {
-    try {
-      const storage = await getStorage();
-      const task = await withFastTimeout(storage.getTask(parseInt(req.params.id)));
-      if (!task) {
-        return res.status(404).json({ error: 'Task not found' });
-      }
-      res.json(task);
-    } catch (error: any) {
-      console.error('Error fetching task:', error);
+      console.error('[tasks/date-range] error', {
+        startDate: req.params.startDate, 
+        endDate: req.params.endDate,
+        locationIds: req.query.locationIds, 
+        limit: req.query.limit, 
+        offset: req.query.offset, 
+        err: error
+      });
       if (error.message?.includes('timeout')) {
         res.status(408).json({ error: 'Request timeout - please try again' });
       } else {
-        res.status(500).json({ error: 'Failed to fetch task' });
+        res.status(500).json({ error: 'Failed to fetch tasks' });
       }
     }
   });

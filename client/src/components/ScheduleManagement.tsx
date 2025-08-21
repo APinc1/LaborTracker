@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,11 +55,7 @@ export default function ScheduleManagement() {
         description: "Task deleted successfully"
       });
       queryClient.invalidateQueries({ 
-        predicate: (query) => 
-          query.queryKey[0] === "/api/tasks/date-range" && 
-          query.queryKey.length >= 3 && 
-          query.queryKey[1] && 
-          query.queryKey[2]
+        queryKey: ["/api/tasks/date-range"] 
       });
       setDeleteConfirmOpen(false);
       setTaskToDelete(null);
@@ -156,17 +152,10 @@ export default function ScheduleManagement() {
   });
 
   // Fetch tasks for budget calculation (extended range around current month for better context)
-  const budgetDateRange = useMemo(() => {
-    // Ensure selectedDate is valid before using it
-    const baseDate = selectedDate instanceof Date && !isNaN(selectedDate.getTime()) 
-      ? selectedDate 
-      : new Date(); // fallback to current date
-    
-    return {
-      start: new Date(baseDate.getFullYear(), baseDate.getMonth() - 3, 1), // 3 months before
-      end: new Date(baseDate.getFullYear(), baseDate.getMonth() + 4, 0)    // 3 months after
-    };
-  }, [selectedDate]);
+  const budgetDateRange = {
+    start: new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 3, 1), // 3 months before
+    end: new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 4, 0)    // 3 months after
+  };
   
   const { data: allTasksForBudget = [] } = useQuery({
     queryKey: ["/api/tasks/date-range", format(budgetDateRange.start, 'yyyy-MM-dd'), format(budgetDateRange.end, 'yyyy-MM-dd')],
@@ -413,23 +402,6 @@ export default function ScheduleManagement() {
       item.locationId === task.locationId
     );
 
-    // Debug logging for General Labor budget filtering
-    if (costCode === 'GENERAL LABOR') {
-      console.log('🔍 DEBUG General Labor budget filtering:', {
-        taskCostCode: costCode,
-        taskLocationId: task.locationId,
-        totalBudgetItems: budgetItems.length,
-        locationSpecificCount: locationSpecificBudgetItems.length,
-        sampleLocationItems: locationSpecificBudgetItems.slice(0, 5).map(item => ({
-          id: item.id,
-          locationId: item.locationId,
-          costCode: item.costCode,
-          hours: item.hours,
-          quantity: item.quantity
-        }))
-      });
-    }
-
     // Get total budget hours for this cost code from location-specific budget items
     const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
       let itemCostCode = item.costCode || 'UNCATEGORIZED';
@@ -441,24 +413,12 @@ export default function ScheduleManagement() {
         itemCostCode = 'Demo/Ex + Base/Grading';
       }
       
-      // Normalize GNRL LBR to GENERAL LABOR
-      if (itemCostCode === 'GNRL LBR' || itemCostCode === 'GENERAL LABOR' || itemCostCode === 'GENERAL' ||
-          itemCostCode === 'General Labor' || itemCostCode === 'GENERAL LBR') {
-        itemCostCode = 'GENERAL LABOR';
-      }
-      
       // Handle current task cost code in the same way
       let taskCostCode = costCode;
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      // Normalize GNRL LBR to GENERAL LABOR
-      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL' ||
-          taskCostCode === 'General Labor' || taskCostCode === 'GENERAL LBR') {
-        taskCostCode = 'GENERAL LABOR';
       }
       
       if (itemCostCode === taskCostCode) {
@@ -471,22 +431,7 @@ export default function ScheduleManagement() {
         );
         
         if (isParent || (!isChild && !hasChildren)) {
-          // Debug log for General Labor budget items
-          if (costCode === 'GENERAL LABOR' && (itemCostCode.includes('GENERAL') || itemCostCode.includes('GNRL'))) {
-            console.log('🔍 DEBUG Budget item match:', {
-              itemId: item.id,
-              itemCostCode,
-              taskCostCode,
-              hours: item.hours,
-              totalHours: item.totalHours,
-              quantity: item.quantity,
-              allFields: Object.keys(item)
-            });
-          }
-          
-          // Try multiple possible field names for hours
-          const hours = parseFloat(item.hours) || parseFloat(item.totalHours) || parseFloat(item.quantity) || 0;
-          return total + hours;
+          return total + (parseFloat(item.hours) || 0);
         }
       }
       return total;
@@ -512,22 +457,10 @@ export default function ScheduleManagement() {
         tCostCode = 'Demo/Ex + Base/Grading';
       }
       
-      // Normalize GNRL LBR to GENERAL LABOR
-      if (tCostCode === 'GNRL LBR' || tCostCode === 'GENERAL LABOR' || tCostCode === 'GENERAL' ||
-          tCostCode === 'General Labor' || tCostCode === 'GENERAL LBR') {
-        tCostCode = 'GENERAL LABOR';
-      }
-      
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      // Normalize GNRL LBR to GENERAL LABOR
-      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL' ||
-          taskCostCode === 'General Labor' || taskCostCode === 'GENERAL LBR') {
-        taskCostCode = 'GENERAL LABOR';
       }
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
@@ -1024,37 +957,9 @@ export default function ScheduleManagement() {
                                 )}
                               </div>
                               {(() => {
-                                // Debug logging for ALL General Labor tasks (before calculation)
-                                if (task.costCode === 'GENERAL LABOR') {
-                                  console.log('🔍 DEBUG Before calculation for General Labor:', {
-                                    taskId: task.id,
-                                    taskLocationId: task.locationId,
-                                    costCode: task.costCode,
-                                    budgetItemsCount: allBudgetItems.length,
-                                    allTasksForBudgetCount: allTasksForBudget.length,
-                                    sampleBudgetItems: allBudgetItems.slice(0, 3).map(item => ({
-                                      id: item.id,
-                                      locationId: item.locationId,
-                                      costCode: item.costCode,
-                                      hours: item.hours,
-                                      quantity: item.quantity
-                                    }))
-                                  });
-                                }
-                                
                                 const result = calculateRemainingHours(task, allTasksForBudget, allBudgetItems);
                                 const remainingHours = result?.remainingHours;
                                 const totalBudgetHours = result?.totalBudgetHours || 0;
-                                
-                                // Debug logging for General Labor (after calculation)
-                                if (task.costCode === 'GENERAL LABOR') {
-                                  console.log('🔍 DEBUG After calculation for General Labor:', {
-                                    taskId: task.id,
-                                    remainingHours,
-                                    totalBudgetHours,
-                                    result
-                                  });
-                                }
                                 
                                 return remainingHours !== null && (
                                   <div className="flex items-center space-x-2 mt-1">
@@ -1115,11 +1020,7 @@ export default function ScheduleManagement() {
           task={editingTask}
           onTaskUpdate={() => {
             queryClient.invalidateQueries({ 
-              predicate: (query) => 
-                query.queryKey[0] === "/api/tasks/date-range" && 
-                query.queryKey.length >= 3 && 
-                query.queryKey[1] && 
-                query.queryKey[2]
+              queryKey: ["/api/tasks/date-range"] 
             });
           }}
         />
@@ -1136,11 +1037,7 @@ export default function ScheduleManagement() {
               queryKey: ["/api/assignments"] 
             });
             queryClient.invalidateQueries({ 
-              predicate: (query) => 
-                query.queryKey[0] === "/api/tasks/date-range" && 
-                query.queryKey.length >= 3 && 
-                query.queryKey[1] && 
-                query.queryKey[2]
+              queryKey: ["/api/tasks/date-range"] 
             });
           }}
           taskId={selectedTaskForAssignment.id}
