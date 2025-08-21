@@ -94,7 +94,7 @@ export default function AssignmentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", selectedDate, selectedDate] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       toast({ title: "Success", description: "Assignment created successfully" });
       setIsCreateDialogOpen(false);
       setHasUnsavedChanges(false);
@@ -122,7 +122,7 @@ export default function AssignmentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments/date", selectedDate] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks/date-range", selectedDate, selectedDate] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/tasks/date-range" });
       toast({ title: "Success", description: "Assignments created successfully" });
       setIsCreateDialogOpen(false);
       setHasUnsavedChanges(false);
