@@ -703,6 +703,10 @@ export default function EmployeeManagement() {
                                     <SelectItem value="1">Level 1</SelectItem>
                                     <SelectItem value="2">Level 2</SelectItem>
                                     <SelectItem value="3">Level 3</SelectItem>
+                                    <SelectItem value="4">Level 4</SelectItem>
+                                    <SelectItem value="5">Level 5</SelectItem>
+                                    <SelectItem value="6">Level 6</SelectItem>
+                                    <SelectItem value="7">Level 7</SelectItem>
                                   </SelectContent>
                                 </Select>
                                 <FormMessage />
