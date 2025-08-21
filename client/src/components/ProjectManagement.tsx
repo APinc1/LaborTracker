@@ -373,8 +373,11 @@ export default function ProjectManagement() {
       </header>
 
       <main className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project: any) => (
+        {/* Active Projects */}
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Active Projects</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.filter((project: any) => !project.isInactive).map((project: any) => (
             <Card key={project.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -432,8 +435,82 @@ export default function ProjectManagement() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))}
+          </div>
         </div>
+
+        {/* Inactive Projects */}
+        {projects.some((project: any) => project.isInactive) && (
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Inactive Projects</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.filter((project: any) => project.isInactive).map((project: any) => (
+                <Card key={project.id} className="hover:shadow-md transition-shadow opacity-60">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <Link href={`/projects/${project.id}`}>
+                        <CardTitle className="text-lg hover:text-blue-600 cursor-pointer transition-colors">
+                          {project.name}
+                        </CardTitle>
+                      </Link>
+                      <div className="flex space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(project)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(project)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="w-fit">
+                        {project.projectId}
+                      </Badge>
+                      <Badge variant="secondary" className="w-fit text-xs">
+                        Inactive
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {project.startDate ? format(new Date(project.startDate + 'T00:00:00'), 'MMM d, yyyy') : 'No start date'} - {project.endDate ? format(new Date(project.endDate + 'T00:00:00'), 'MMM d, yyyy') : 'No end date'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <User className="w-4 h-4" />
+                        <span>
+                          Super: {project.defaultSuperintendent 
+                            ? (users as any[]).find(u => u.id === project.defaultSuperintendent)?.name || `ID: ${project.defaultSuperintendent}`
+                            : 'Unassigned'}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <User className="w-4 h-4" />
+                        <span>
+                          PM: {project.defaultProjectManager 
+                            ? (users as any[]).find(u => u.id === project.defaultProjectManager)?.name || `ID: ${project.defaultProjectManager}`
+                            : 'Unassigned'}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Delete Confirmation Dialog */}

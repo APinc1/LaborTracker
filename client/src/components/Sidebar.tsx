@@ -127,6 +127,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
           <ScrollArea className="h-full px-4 pb-4">
             <div className="space-y-2">
               {(projects as any[])
+                .filter((project: any) => !project.isInactive)
                 .sort((a: any, b: any) => a.name.localeCompare(b.name))
                 .map((project: any) => (
                 <ProtectedNavLink 
