@@ -1063,9 +1063,9 @@ export default function Dashboard() {
                             .filter(([_, data]) => data.budgetHours > 0 || data.actualHours > 0 || data.scheduledHours > 0)
                             .sort(([_, a], [__, b]) => b.budgetHours - a.budgetHours) // Sort by budget hours descending
                             .map(([costCode, data]) => {
-                              const remainingHours = Math.max(0, data.budgetHours - data.actualHours);
-                              const overageHours = Math.max(0, data.actualHours - data.budgetHours);
                               const totalHours = data.actualHours + data.scheduledHours;
+                              const remainingHours = Math.max(0, data.budgetHours - totalHours);
+                              const overageHours = Math.max(0, data.actualHours - data.budgetHours);
                               const totalOverageHours = Math.max(0, totalHours - data.budgetHours);
                               
                               // Calculate percentages based on the maximum of budget or total hours for proper scaling
@@ -1074,12 +1074,12 @@ export default function Dashboard() {
                               const scheduledPercentage = maxHours > 0 ? (data.scheduledHours / maxHours) * 100 : 0;
                               const budgetPercentage = maxHours > 0 ? (data.budgetHours / maxHours) * 100 : 100;
                               
-                              // Color coding based on remaining hours percentage
+                              // Color coding based on remaining hours percentage (including scheduled hours)
                               let progressColor = 'bg-green-500'; // Default green for actual hours
                               if (data.budgetHours > 0) {
                                 const remainingPercentage = (remainingHours / data.budgetHours) * 100;
-                                if (remainingPercentage <= 0) {
-                                  progressColor = 'bg-red-500'; // Red if over budget
+                                if (totalHours > data.budgetHours) {
+                                  progressColor = 'bg-red-500'; // Red if over budget (actual + scheduled)
                                 } else if (remainingPercentage <= 15) {
                                   progressColor = 'bg-yellow-500'; // Yellow if 15% or less remaining
                                 }
