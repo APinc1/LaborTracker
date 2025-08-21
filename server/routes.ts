@@ -310,10 +310,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         locationDbId = location.id;
       }
       
-      // Clean up the data before validation - convert empty strings to null for numeric fields
+      // Clean up the data before validation - convert empty strings to null/defaults for numeric fields
       const cleanedData = {
         ...req.body,
         locationId: locationDbId,
+        // Convert empty strings to defaults for required fields
+        unitCost: req.body.unitCost === "" ? "0" : req.body.unitCost,
+        unconvertedQty: req.body.unconvertedQty === "" ? "0" : req.body.unconvertedQty,
+        unitTotal: req.body.unitTotal === "" ? "0" : req.body.unitTotal,
+        budgetTotal: req.body.budgetTotal === "" ? "0" : req.body.budgetTotal,
         // Convert empty strings to null for optional numeric fields
         actualQty: req.body.actualQty === "" ? null : req.body.actualQty,
         convertedQty: req.body.convertedQty === "" ? null : req.body.convertedQty,
