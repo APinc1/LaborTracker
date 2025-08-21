@@ -369,8 +369,8 @@ export default function BudgetManagement() {
 
   // Fetch current project details for breadcrumbs
   const { data: currentProject, isLoading: projectLoading } = useQuery({
-    queryKey: ["/api/projects", currentLocation?.projectId],
-    enabled: !!currentLocation?.projectId,
+    queryKey: ["/api/projects", (currentLocation as any)?.projectId],
+    enabled: !!(currentLocation as any)?.projectId,
     staleTime: 30000,
   });
 
@@ -388,8 +388,8 @@ export default function BudgetManagement() {
 
   // Auto-set project when accessing via direct location access
   useEffect(() => {
-    if (isDirectAccess && currentLocation?.projectId && !selectedProject) {
-      setSelectedProject(currentLocation.projectId.toString());
+    if (isDirectAccess && (currentLocation as any)?.projectId && !selectedProject) {
+      setSelectedProject((currentLocation as any).projectId.toString());
     }
   }, [isDirectAccess, currentLocation, selectedProject]);
 
@@ -1129,13 +1129,13 @@ export default function BudgetManagement() {
               <>
                 <button
                   onClick={() => {
-                    console.log(`🏗️ Breadcrumb: Navigating to Project ${currentProject.id}`);
-                    setLocation(`/projects/${currentProject.id}`);
+                    console.log(`🏗️ Breadcrumb: Navigating to Project ${(currentProject as any).id}`);
+                    setLocation(`/projects/${(currentProject as any).id}`);
                   }}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <Building2 className="w-4 h-4 mr-1" />
-                  {currentProject.name}
+                  {(currentProject as any).name}
                 </button>
                 <span>/</span>
               </>
@@ -1153,13 +1153,13 @@ export default function BudgetManagement() {
               <>
                 <button
                   onClick={() => {
-                    console.log(`📍 Breadcrumb: Navigating to Location ${currentLocation.locationId}`);
-                    setLocation(`/locations/${currentLocation.locationId}`);
+                    console.log(`📍 Breadcrumb: Navigating to Location ${(currentLocation as any).locationId}`);
+                    setLocation(`/locations/${(currentLocation as any).locationId}`);
                   }}
                   className="p-1 h-auto hover:bg-gray-100 text-blue-600 hover:text-blue-800 rounded flex items-center"
                 >
                   <MapPin className="w-4 h-4 mr-1" />
-                  {currentLocation.name}
+                  {(currentLocation as any).name}
                 </button>
                 <span>/</span>
               </>
@@ -1695,7 +1695,7 @@ export default function BudgetManagement() {
                       return groups;
                     }, {});
 
-                    return Object.entries(costCodeGroups).map(([costCode, items]: [string, any[]]) => {
+                    return Object.entries(costCodeGroups).map(([costCode, items]) => {
                       try {
                         const totalConvertedQty = items.reduce((sum, item) => sum + (parseFloat(item.convertedQty) || 0), 0);
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);

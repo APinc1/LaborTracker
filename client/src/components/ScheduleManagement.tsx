@@ -71,7 +71,7 @@ export default function ScheduleManagement() {
 
   const confirmDeleteTask = () => {
     if (taskToDelete) {
-      handleDeleteTask.mutate(taskToDelete.id.toString());
+      handleDeleteTask.mutate((taskToDelete as any).id.toString());
     }
   };
 
@@ -103,7 +103,7 @@ export default function ScheduleManagement() {
       if (selectedProject === "ALL_PROJECTS") {
         // When viewing all projects, get locations from all projects
         const locationArrays = await Promise.all(
-          projects.map(async (project: any) => {
+          (projects as any[]).map(async (project: any) => {
             try {
               const response = await fetch(`/api/projects/${project.id}/locations`);
               if (response.ok) {
@@ -125,7 +125,7 @@ export default function ScheduleManagement() {
         return [];
       }
     },
-    enabled: !!selectedProject && projects.length > 0,
+    enabled: !!selectedProject && (projects as any[]).length > 0,
     staleTime: 30000,
   });
 
@@ -186,7 +186,7 @@ export default function ScheduleManagement() {
       
       if (selectedProject === "ALL_PROJECTS") {
         // When viewing all projects, get locations from all projects
-        const projectPromises = projects.map(async (project: any) => {
+        const projectPromises = (projects as any[]).map(async (project: any) => {
           try {
             const response = await fetch(`/api/projects/${project.id}/locations`);
             if (response.ok) {
@@ -218,7 +218,7 @@ export default function ScheduleManagement() {
       const budgetArrays = await Promise.all(budgetPromises);
       return budgetArrays.flat();
     },
-    enabled: projects.length > 0,
+    enabled: (projects as any[]).length > 0,
     staleTime: 30000,
   });
 
@@ -231,17 +231,17 @@ export default function ScheduleManagement() {
 
   const getTasksForDay = (day: Date) => {
     const dayStr = format(day, 'yyyy-MM-dd');
-    let filteredTasks = tasks.filter((task: any) => task.taskDate === dayStr);
+    let filteredTasks = (tasks as any[]).filter((task: any) => task.taskDate === dayStr);
     
     // Filter by project if a specific project is selected
     if (selectedProject && selectedProject !== "ALL_PROJECTS") {
-      const projectLocationIds = locations.map((loc: any) => loc.id);
+      const projectLocationIds = (locations as any[]).map((loc: any) => loc.id);
       filteredTasks = filteredTasks.filter((task: any) => projectLocationIds.includes(task.locationId));
       
       // Filter by location if a specific location is selected within the project
       if (selectedLocation && selectedLocation !== "ALL_LOCATIONS") {
         // selectedLocation is a locationId string, need to find the corresponding database ID
-        const selectedLocationObject = locations.find((loc: any) => loc.locationId === selectedLocation);
+        const selectedLocationObject = (locations as any[]).find((loc: any) => loc.locationId === selectedLocation);
         if (selectedLocationObject) {
           filteredTasks = filteredTasks.filter((task: any) => task.locationId === selectedLocationObject.id);
         }

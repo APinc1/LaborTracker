@@ -841,27 +841,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       const tasks = await withQuickTimeout(storage.getTasksByDateRange(from, to, locationIds, limit, offset));
       
-      // Enrich tasks with project and location names for assignment dropdown
-      const enrichedTasks = await Promise.all(
-        tasks.map(async (task) => {
-          try {
-            const location = await storage.getLocation(task.locationId);
-            const project = location ? await storage.getProject(location.projectId) : null;
-            return {
-              ...task,
-              projectName: project?.name || 'Unknown Project',
-              locationName: location?.name || 'Unknown Location'
-            };
-          } catch (error) {
-            console.error(`Error enriching task ${task.id}:`, error);
-            return {
-              ...task,
-              projectName: 'Unknown Project',
-              locationName: 'Unknown Location'
-            };
-          }
-        })
-      );
+      // Optimize enrichment: batch load locations and projects to avoid N+1 queries
+      const uniqueLocationIds = [...new Set(tasks.map(task => task.locationId))];
+      const locationsPromises = uniqueLocationIds.map(id => storage.getLocation(id));
+      const locationsResults = await Promise.allSettled(locationsPromises);
+      
+      const locationMap = new Map();
+      locationsResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          locationMap.set(uniqueLocationIds[index], result.value);
+        }
+      });
+      
+      // Get unique project IDs from locations
+      const uniqueProjectIds = [...new Set(
+        Array.from(locationMap.values())
+          .map(loc => loc.projectId)
+          .filter(Boolean)
+      )];
+      
+      const projectsPromises = uniqueProjectIds.map(id => storage.getProject(id));
+      const projectsResults = await Promise.allSettled(projectsPromises);
+      
+      const projectMap = new Map();
+      projectsResults.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value) {
+          projectMap.set(uniqueProjectIds[index], result.value);
+        }
+      });
+      
+      // Enrich tasks using the pre-loaded data
+      const enrichedTasks = tasks.map(task => {
+        const location = locationMap.get(task.locationId);
+        const project = location ? projectMap.get(location.projectId) : null;
+        
+        return {
+          ...task,
+          projectName: project?.name || 'Unknown Project',
+          locationName: location?.name || 'Unknown Location'
+        };
+      });
       
       res.json(enrichedTasks);
     } catch (error: any) {
