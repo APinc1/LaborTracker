@@ -413,6 +413,23 @@ export default function ScheduleManagement() {
       item.locationId === task.locationId
     );
 
+    // Debug logging for General Labor budget filtering
+    if (costCode === 'GENERAL LABOR') {
+      console.log('🔍 DEBUG General Labor budget filtering:', {
+        taskCostCode: costCode,
+        taskLocationId: task.locationId,
+        totalBudgetItems: budgetItems.length,
+        locationSpecificCount: locationSpecificBudgetItems.length,
+        sampleLocationItems: locationSpecificBudgetItems.slice(0, 5).map(item => ({
+          id: item.id,
+          locationId: item.locationId,
+          costCode: item.costCode,
+          hours: item.hours,
+          quantity: item.quantity
+        }))
+      });
+    }
+
     // Get total budget hours for this cost code from location-specific budget items
     const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
       let itemCostCode = item.costCode || 'UNCATEGORIZED';
