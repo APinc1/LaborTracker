@@ -365,7 +365,15 @@ export default function ProjectManagement() {
                     <Button type="button" variant="outline" onClick={() => {
                       setIsCreateDialogOpen(false);
                       setEditingProject(null);
-                      form.reset();
+                      form.reset({
+                        projectId: '',
+                        name: '',
+                        startDate: '',
+                        endDate: '',
+                        defaultSuperintendent: undefined,
+                        defaultProjectManager: undefined,
+                        isInactive: false,
+                      });
                     }}>
                       Cancel
                     </Button>
