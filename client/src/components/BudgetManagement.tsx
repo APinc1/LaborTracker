@@ -421,7 +421,7 @@ export default function BudgetManagement() {
     let hours = 0;
     
     if (unitOfMeasure === "Hours") {
-      // For Hours unit: Quantity directly represents hours, no conversion needed
+      // For Hours unit: Quantity directly represents hours, PX automatically = 1
       hours = unconvertedQty;
       unitTotal = hours * unitCost; // Unit cost per hour if provided
     } else {
@@ -436,8 +436,8 @@ export default function BudgetManagement() {
       hours = convertedQty * productionRate;
     }
     
-    // Labor Cost = Hours × labor rate ($50/hr default - configurable)
-    const laborRate = 50; // Standard labor rate per hour
+    // Labor Cost calculation: Different rates for Hours vs other units
+    const laborRate = unitOfMeasure === "Hours" ? 80 : 50; // $80/hr for Hours unit, $50/hr for others
     const laborCost = hours * laborRate;
     
     // Budget Total = Labor + Equipment + Trucking + Dump + Material + Sub
@@ -1408,6 +1408,12 @@ export default function BudgetManagement() {
                             <FormControl>
                               <Input placeholder="50.00" {...field} readOnly className="bg-gray-50" />
                             </FormControl>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {isHoursUnit 
+                                ? "Hours = Quantity (PX automatically = 1)" 
+                                : "Hours = Converted Qty × PX"
+                              }
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1439,7 +1445,7 @@ export default function BudgetManagement() {
                             </FormControl>
                             <div className="text-xs text-gray-500 mt-1">
                               {isHoursUnit 
-                                ? "Labor Cost = Quantity (hours) × $50/hour" 
+                                ? "Labor Cost = Quantity (hours) × $80/hour" 
                                 : "Labor Cost = Hours × $50/hour (where Hours = Converted Qty × PX)"
                               }
                             </div>
