@@ -996,24 +996,35 @@ export default function ScheduleManagement() {
                                 )}
                               </div>
                               {(() => {
-                                const result = calculateRemainingHours(task, allTasksForBudget, allBudgetItems);
-                                const remainingHours = result?.remainingHours;
-                                const totalBudgetHours = result?.totalBudgetHours || 0;
-                                
-                                // Debug logging for General Labor
+                                // Debug logging for ALL General Labor tasks (before calculation)
                                 if (task.costCode === 'GENERAL LABOR') {
-                                  console.log('🔍 DEBUG General Labor calculation:', {
+                                  console.log('🔍 DEBUG Before calculation for General Labor:', {
                                     taskId: task.id,
                                     taskLocationId: task.locationId,
                                     costCode: task.costCode,
                                     budgetItemsCount: allBudgetItems.length,
+                                    allTasksForBudgetCount: allTasksForBudget.length,
+                                    sampleBudgetItems: allBudgetItems.slice(0, 3).map(item => ({
+                                      id: item.id,
+                                      locationId: item.locationId,
+                                      costCode: item.costCode,
+                                      hours: item.hours,
+                                      quantity: item.quantity
+                                    }))
+                                  });
+                                }
+                                
+                                const result = calculateRemainingHours(task, allTasksForBudget, allBudgetItems);
+                                const remainingHours = result?.remainingHours;
+                                const totalBudgetHours = result?.totalBudgetHours || 0;
+                                
+                                // Debug logging for General Labor (after calculation)
+                                if (task.costCode === 'GENERAL LABOR') {
+                                  console.log('🔍 DEBUG After calculation for General Labor:', {
+                                    taskId: task.id,
                                     remainingHours,
                                     totalBudgetHours,
-                                    sampleBudgetItem: allBudgetItems[0] && {
-                                      id: allBudgetItems[0].id,
-                                      locationId: allBudgetItems[0].locationId,
-                                      costCode: allBudgetItems[0].costCode
-                                    }
+                                    result
                                   });
                                 }
                                 
