@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash2, Calendar, User } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -70,6 +71,7 @@ export default function ProjectManagement() {
         endDate: '',
         defaultSuperintendent: undefined,
         defaultProjectManager: undefined,
+        isInactive: false,
       });
     },
     onError: (error: any) => {
@@ -131,6 +133,7 @@ export default function ProjectManagement() {
       endDate: '',
       defaultSuperintendent: undefined,
       defaultProjectManager: undefined,
+      isInactive: false,
     },
   });
 
@@ -167,6 +170,7 @@ export default function ProjectManagement() {
       endDate: project.endDate || '',
       defaultSuperintendent: project.defaultSuperintendent || undefined,
       defaultProjectManager: project.defaultProjectManager || undefined,
+      isInactive: Boolean(project.isInactive),
     });
   };
 
@@ -330,6 +334,25 @@ export default function ProjectManagement() {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name="isInactive"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Mark as Inactive
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={() => {
                       setIsCreateDialogOpen(false);

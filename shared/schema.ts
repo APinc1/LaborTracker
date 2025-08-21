@@ -23,6 +23,7 @@ export const projects = pgTable("projects", {
   endDate: date("end_date"),
   defaultSuperintendent: integer("default_superintendent").references(() => users.id),
   defaultProjectManager: integer("default_project_manager").references(() => users.id),
+  isInactive: boolean("is_inactive").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
