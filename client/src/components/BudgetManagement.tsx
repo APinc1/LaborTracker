@@ -420,14 +420,19 @@ export default function BudgetManagement() {
     
     let unitTotal = 0;
     let hours = 0;
+    let convertedQty = 0;
+    let conversionFactor = 1;
     
     if (unitOfMeasure === "Hours") {
-      // For Hours unit: Quantity directly represents hours, PX automatically = 1
+      // For Hours unit: Converted qty equals unconverted qty, PX automatically = 1
+      convertedQty = unconvertedQty;
+      conversionFactor = 1;
       hours = unconvertedQty;
       unitTotal = hours * unitCost; // Unit cost per hour if provided
     } else {
-      // For other units: Use traditional conversion calculation
-      const convertedQty = parseFloat(formData.convertedQty) || unconvertedQty;
+      // For other units: Use conversion factor if provided
+      conversionFactor = parseFloat(formData.conversionFactor) || 1;
+      convertedQty = unconvertedQty * conversionFactor;
       const productionRate = parseFloat(formData.productionRate) || 0;
       
       // Calculate Unit Total = Unconverted Qty × Unit Cost
@@ -438,7 +443,7 @@ export default function BudgetManagement() {
     }
     
     // Labor Cost calculation: Different rates for Hours vs other units
-    const laborRate = unitOfMeasure === "Hours" ? 80 : 50; // $80/hr for Hours unit, $50/hr for others
+    const laborRate = unitOfMeasure === "Hours" ? 80 : 90; // $80/hr for Hours unit, $90/hr for others
     const laborCost = hours * laborRate;
     
     // Budget Total = Labor + Equipment + Trucking + Dump + Material + Sub
@@ -450,12 +455,27 @@ export default function BudgetManagement() {
     
     const budgetTotal = laborCost + equipment + trucking + dump + material + sub;
     
+    // Return complete data object with calculated fields
     return {
+      ...formData,
+      // Override calculated fields
       unitTotal: unitTotal.toFixed(2),
+      convertedQty: convertedQty.toFixed(2),
+      conversionFactor: conversionFactor.toString(),
       hours: hours.toFixed(2),
       laborCost: laborCost.toFixed(2),
       budgetTotal: budgetTotal.toFixed(2),
       billing: unitTotal.toFixed(2), // Billing should equal Unit Total
+      // Convert empty strings to null for optional fields
+      actualQty: formData.actualQty || null,
+      convertedUnitOfMeasure: (unitOfMeasure === "Hours") ? "Hours" : (formData.convertedUnitOfMeasure || null),
+      productionRate: (unitOfMeasure === "Hours") ? "1" : (formData.productionRate || null),
+      equipmentCost: formData.equipmentCost || null,
+      truckingCost: formData.truckingCost || null,
+      dumpFeesCost: formData.dumpFeesCost || null,
+      materialCost: formData.materialCost || null,
+      subcontractorCost: formData.subcontractorCost || null,
+      notes: formData.notes || null,
     };
   };
 
@@ -1097,7 +1117,9 @@ export default function BudgetManagement() {
   };
 
   const onSubmit = (data: z.infer<typeof budgetLineItemSchema>) => {
-    createBudgetItemMutation.mutate(data);
+    // Calculate all derived fields before submitting
+    const calculatedData = calculateFormTotals(data);
+    createBudgetItemMutation.mutate(calculatedData);
   };
 
   if (projectsLoading) {
