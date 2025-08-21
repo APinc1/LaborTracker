@@ -63,7 +63,7 @@ export default function AssignmentManagement() {
   });
 
   const { data: tasks = [], refetch: refetchTasks } = useQuery({
-    queryKey: ["/api/tasks/date-range", selectedDate, selectedDate],
+    queryKey: ["/api/tasks/date-range", format(selectedDate, 'yyyy-MM-dd'), format(selectedDate, 'yyyy-MM-dd')],
     staleTime: 0, // Don't cache task data so it updates immediately when date changes
   });
 
