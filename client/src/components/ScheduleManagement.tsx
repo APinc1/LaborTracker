@@ -985,6 +985,23 @@ export default function ScheduleManagement() {
                                 const remainingHours = result?.remainingHours;
                                 const totalBudgetHours = result?.totalBudgetHours || 0;
                                 
+                                // Debug logging for General Labor
+                                if (task.costCode === 'GENERAL LABOR') {
+                                  console.log('🔍 DEBUG General Labor calculation:', {
+                                    taskId: task.id,
+                                    taskLocationId: task.locationId,
+                                    costCode: task.costCode,
+                                    budgetItemsCount: allBudgetItems.length,
+                                    remainingHours,
+                                    totalBudgetHours,
+                                    sampleBudgetItem: allBudgetItems[0] && {
+                                      id: allBudgetItems[0].id,
+                                      locationId: allBudgetItems[0].locationId,
+                                      costCode: allBudgetItems[0].costCode
+                                    }
+                                  });
+                                }
+                                
                                 return remainingHours !== null && (
                                   <div className="flex items-center space-x-2 mt-1">
                                     <Clock className="w-4 h-4 text-gray-500" />
