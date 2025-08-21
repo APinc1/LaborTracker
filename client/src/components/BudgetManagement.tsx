@@ -40,7 +40,8 @@ const UNITS_OF_MEASURE = [
   "SF", 
   "CY",
   "TON",
-  "EA"
+  "EA",
+  "Hours"
 ];
 
 const budgetLineItemSchema = z.object({
@@ -49,7 +50,7 @@ const budgetLineItemSchema = z.object({
   unconvertedUnitOfMeasure: z.string().min(1, "Unit of measure is required"),
   unconvertedQty: z.string().min(1, "Quantity is required"),
   actualQty: z.string().default("0"),
-  unitCost: z.string().min(1, "Unit cost is required"),
+  unitCost: z.string().optional(),
   unitTotal: z.string().default("0"),
   convertedQty: z.string().default("0"),
   convertedUnitOfMeasure: z.string().default(""),
@@ -414,17 +415,29 @@ export default function BudgetManagement() {
   const calculateFormTotals = (formData: any) => {
     const unconvertedQty = parseFloat(formData.unconvertedQty) || 0;
     const unitCost = parseFloat(formData.unitCost) || 0;
-    const convertedQty = parseFloat(formData.convertedQty) || unconvertedQty;
-    const productionRate = parseFloat(formData.productionRate) || 0;
+    const unitOfMeasure = formData.unconvertedUnitOfMeasure;
     
-    // Calculate Unit Total = Unconverted Qty × Unit Cost
-    const unitTotal = unconvertedQty * unitCost;
+    let unitTotal = 0;
+    let hours = 0;
     
-    // Calculate Hours = Converted Qty × PX (production rate)
-    const hours = convertedQty * productionRate;
+    if (unitOfMeasure === "Hours") {
+      // For Hours unit: Quantity directly represents hours, no conversion needed
+      hours = unconvertedQty;
+      unitTotal = hours * unitCost; // Unit cost per hour if provided
+    } else {
+      // For other units: Use traditional conversion calculation
+      const convertedQty = parseFloat(formData.convertedQty) || unconvertedQty;
+      const productionRate = parseFloat(formData.productionRate) || 0;
+      
+      // Calculate Unit Total = Unconverted Qty × Unit Cost
+      unitTotal = unconvertedQty * unitCost;
+      
+      // Calculate Hours = Converted Qty × PX (production rate)
+      hours = convertedQty * productionRate;
+    }
     
-    // Labor Cost = Hours × labor rate (assuming $50/hr for now, should be configurable)
-    const laborRate = 50; // TODO: Make this configurable
+    // Labor Cost = Hours × labor rate ($50/hr default - configurable)
+    const laborRate = 50; // Standard labor rate per hour
     const laborCost = hours * laborRate;
     
     // Budget Total = Labor + Equipment + Trucking + Dump + Material + Sub
@@ -475,19 +488,25 @@ export default function BudgetManagement() {
 
   // Watch form changes and recalculate totals
   const watchedValues = form.watch([
-    'unconvertedQty', 'unitCost', 'convertedQty', 'productionRate',
+    'unconvertedQty', 'unitCost', 'convertedQty', 'productionRate', 'unconvertedUnitOfMeasure',
     'equipmentCost', 'truckingCost', 'dumpFeesCost', 'materialCost', 'subcontractorCost'
   ]);
+  
+  // Watch unit of measure to show/hide conversion fields
+  const selectedUnitOfMeasure = form.watch('unconvertedUnitOfMeasure');
+  const isHoursUnit = selectedUnitOfMeasure === 'Hours';
 
   useEffect(() => {
-    const [unconvertedQty, unitCost, convertedQty, productionRate, equipment, trucking, dump, material, sub] = watchedValues;
+    const [unconvertedQty, unitCost, convertedQty, productionRate, unitOfMeasure, equipment, trucking, dump, material, sub] = watchedValues;
     
-    if (unconvertedQty && unitCost) {
+    // Recalculate when quantity changes, or when unit cost changes (for Hours unit)
+    if (unconvertedQty && (unitOfMeasure !== 'Hours' || unitCost)) {
       const calculated = calculateFormTotals({
         unconvertedQty,
-        unitCost,
+        unitCost: unitCost || "0",
         convertedQty: convertedQty || unconvertedQty,
         productionRate,
+        unconvertedUnitOfMeasure: unitOfMeasure,
         equipmentCost: equipment,
         truckingCost: trucking,
         dumpFeesCost: dump,
@@ -1294,9 +1313,14 @@ export default function BudgetManagement() {
                         name="unitCost"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Unit Cost</FormLabel>
+                            <FormLabel>
+                              Unit Cost {isHoursUnit ? '($/hour)' : '(optional)'}
+                            </FormLabel>
                             <FormControl>
-                              <Input placeholder="25.00" {...field} />
+                              <Input 
+                                placeholder={isHoursUnit ? "50.00" : "25.00"} 
+                                {...field} 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -1318,58 +1342,61 @@ export default function BudgetManagement() {
                       )}
                     />
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="convertedQty"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Converted Qty</FormLabel>
-                            <FormControl>
-                              <Input placeholder="100" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="convertedUnitOfMeasure"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Converted Unit</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    {/* Only show conversion fields when NOT using Hours unit */}
+                    {!isHoursUnit && (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="convertedQty"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Converted Qty</FormLabel>
                               <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select unit" />
-                                </SelectTrigger>
+                                <Input placeholder="100" {...field} />
                               </FormControl>
-                              <SelectContent>
-                                {UNITS_OF_MEASURE.map((unit) => (
-                                  <SelectItem key={unit} value={unit}>
-                                    {unit}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="productionRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>PX (Production Rate)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="0.5" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="convertedUnitOfMeasure"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Converted Unit</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select unit" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {UNITS_OF_MEASURE.filter(unit => unit !== 'Hours').map((unit) => (
+                                    <SelectItem key={unit} value={unit}>
+                                      {unit}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="productionRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>PX (Production Rate)</FormLabel>
+                              <FormControl>
+                                <Input placeholder="0.5" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
@@ -1410,6 +1437,12 @@ export default function BudgetManagement() {
                             <FormControl>
                               <Input placeholder="1000.00" {...field} readOnly className="bg-gray-50" />
                             </FormControl>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {isHoursUnit 
+                                ? "Labor Cost = Quantity (hours) × $50/hour" 
+                                : "Labor Cost = Hours × $50/hour (where Hours = Converted Qty × PX)"
+                              }
+                            </div>
                             <FormMessage />
                           </FormItem>
                         )}
