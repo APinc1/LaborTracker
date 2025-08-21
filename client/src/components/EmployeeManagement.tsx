@@ -1049,7 +1049,7 @@ export default function EmployeeManagement() {
                       </TableRow>
                     ) : (
                       employees.map((employee: any) => (
-                        <TableRow key={employee.id}>
+                        <TableRow key={employee.id} className={employee.isInactive ? "opacity-50" : ""}>
                           <TableCell>
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
