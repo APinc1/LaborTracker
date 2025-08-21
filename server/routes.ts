@@ -1053,6 +1053,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all tasks for a location
+  app.delete('/api/locations/:locationId/tasks', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const locationId = parseInt(req.params.locationId);
+      
+      console.log(`🗑️ DELETE ALL TASKS: Starting deletion for location ${locationId}`);
+      
+      // Get all tasks for this location
+      const tasks = await storage.getTasks(locationId);
+      console.log(`🗑️ Found ${tasks.length} tasks to delete for location ${locationId}`);
+      
+      if (tasks.length === 0) {
+        return res.status(200).json({ message: 'No tasks to delete' });
+      }
+      
+      // Check if any tasks are complete or have assignments
+      const assignments = await storage.getAllEmployeeAssignments();
+      const taskIds = tasks.map(task => task.id);
+      
+      // Check for complete tasks
+      const completeTasks = tasks.filter(task => 
+        task.status === 'complete' || (task.actualHours && parseFloat(task.actualHours.toString()) > 0)
+      );
+      
+      if (completeTasks.length > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete tasks: Some tasks are marked as complete' 
+        });
+      }
+      
+      // Check for assignments
+      const taskAssignments = assignments.filter((assignment: any) => 
+        taskIds.includes(assignment.taskId)
+      );
+      
+      if (taskAssignments.length > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete tasks: Some tasks have assignments' 
+        });
+      }
+      
+      // Delete all tasks
+      console.log(`🗑️ All validation passed. Deleting ${tasks.length} tasks...`);
+      for (const task of tasks) {
+        await storage.deleteTask(task.id);
+        console.log(`🗑️ Deleted task: ${task.name} (ID: ${task.id})`);
+      }
+      
+      console.log(`✅ Successfully deleted all ${tasks.length} tasks for location ${locationId}`);
+      res.status(200).json({ 
+        message: `Successfully deleted ${tasks.length} tasks`,
+        deletedCount: tasks.length
+      });
+      
+    } catch (error) {
+      console.error('Delete all tasks error:', error);
+      res.status(500).json({ error: 'Failed to delete all tasks' });
+    }
+  });
+
   app.delete('/api/tasks/:id', async (req, res) => {
     try {
       const storage = await getStorage();

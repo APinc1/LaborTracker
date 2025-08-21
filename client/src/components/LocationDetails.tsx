@@ -69,6 +69,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
+  const [deleteAllTasksOpen, setDeleteAllTasksOpen] = useState(false);
+  const [isDeletingAllTasks, setIsDeletingAllTasks] = useState(false);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -85,6 +87,55 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const handleAssignTaskClick = (task: any) => {
     setSelectedTaskForAssignment(task);
     setAssignmentModalOpen(true);
+  };
+
+  // Check if Delete All Tasks button should be enabled
+  const canDeleteAllTasks = () => {
+    if (!tasks || tasks.length === 0) return false;
+    
+    // Check if any tasks are complete
+    const hasCompleteTasks = (tasks as any[]).some((task: any) => 
+      task.status === 'complete' || (task.actualHours && parseFloat(task.actualHours) > 0)
+    );
+    
+    if (hasCompleteTasks) return false;
+    
+    // Check if any tasks have assignments
+    const taskIds = (tasks as any[]).map((task: any) => task.id);
+    const hasAssignments = (assignments as any[]).some((assignment: any) => 
+      taskIds.includes(assignment.taskId)
+    );
+    
+    return !hasAssignments;
+  };
+
+  const handleDeleteAllTasks = async () => {
+    setIsDeletingAllTasks(true);
+    try {
+      const response = await fetch(`/api/locations/${locationId}/tasks`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        // Invalidate queries to refresh the task list
+        queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
+        setDeleteAllTasksOpen(false);
+        toast({
+          title: "Success",
+          description: "All tasks have been deleted successfully",
+        });
+      } else {
+        throw new Error('Failed to delete tasks');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete all tasks. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingAllTasks(false);
+    }
   };
 
   const handleDeleteTask = async (taskToDelete: any) => {
@@ -1368,6 +1419,15 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                   <Plus className="w-4 h-4 mr-2" />
                   {isGeneratingTasks ? 'Generating...' : 'Generate Tasks'}
                 </Button>
+                <Button 
+                  onClick={() => setDeleteAllTasksOpen(true)}
+                  size="sm"
+                  variant="destructive"
+                  disabled={!canDeleteAllTasks() || isDeletingAllTasks}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {isDeletingAllTasks ? 'Deleting...' : 'Delete All Tasks'}
+                </Button>
               </div>
             </CardTitle>
           </CardHeader>
@@ -1710,6 +1770,29 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Tasks Confirmation Dialog */}
+      <AlertDialog open={deleteAllTasksOpen} onOpenChange={setDeleteAllTasksOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Tasks</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete all {tasks.length} tasks for this location? This action cannot be undone.
+              This will only work if no tasks are complete and none have assignments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllTasks}
+              disabled={isDeletingAllTasks}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeletingAllTasks ? 'Deleting...' : 'Delete All Tasks'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
