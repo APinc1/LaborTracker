@@ -199,7 +199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: req.body.startDate && req.body.startDate.trim() !== '' ? req.body.startDate : null,
         endDate: req.body.endDate && req.body.endDate.trim() !== '' ? req.body.endDate : null,
         defaultSuperintendent: req.body.defaultSuperintendent || null,
-        defaultProjectManager: req.body.defaultProjectManager || null
+        defaultProjectManager: req.body.defaultProjectManager || null,
+        isInactive: Boolean(req.body.isInactive)
       };
       
       const project = await withTimeout(storage.createProject(projectData), 10000);
