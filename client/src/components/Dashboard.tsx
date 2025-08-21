@@ -357,12 +357,24 @@ export default function Dashboard() {
         itemCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (itemCostCode === 'GNRL LBR' || itemCostCode === 'GENERAL LABOR' || itemCostCode === 'GENERAL' ||
+          itemCostCode === 'General Labor' || itemCostCode === 'GENERAL LBR') {
+        itemCostCode = 'GENERAL LABOR';
+      }
+      
       // Handle current task cost code in the same way
       let taskCostCode = costCode;
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL' ||
+          taskCostCode === 'General Labor' || taskCostCode === 'GENERAL LBR') {
+        taskCostCode = 'GENERAL LABOR';
       }
       
       if (itemCostCode === taskCostCode) {
@@ -396,11 +408,23 @@ export default function Dashboard() {
         relevantTaskCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (relevantTaskCostCode === 'GNRL LBR' || relevantTaskCostCode === 'GENERAL LABOR' || relevantTaskCostCode === 'GENERAL' ||
+          relevantTaskCostCode === 'General Labor' || relevantTaskCostCode === 'GENERAL LBR') {
+        relevantTaskCostCode = 'GENERAL LABOR';
+      }
+      
       let currentTaskCostCode = costCode;
       if (currentTaskCostCode === 'DEMO/EX' || currentTaskCostCode === 'Demo/Ex' || 
           currentTaskCostCode === 'BASE/GRADING' || currentTaskCostCode === 'Base/Grading' || 
           currentTaskCostCode === 'Demo/Ex + Base/Grading' || currentTaskCostCode === 'DEMO/EX + BASE/GRADING') {
         currentTaskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (currentTaskCostCode === 'GNRL LBR' || currentTaskCostCode === 'GENERAL LABOR' || currentTaskCostCode === 'GENERAL' ||
+          currentTaskCostCode === 'General Labor' || currentTaskCostCode === 'GENERAL LBR') {
+        currentTaskCostCode = 'GENERAL LABOR';
       }
       
       if (relevantTaskCostCode !== currentTaskCostCode) return false;

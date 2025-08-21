@@ -413,12 +413,24 @@ export default function ScheduleManagement() {
         itemCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (itemCostCode === 'GNRL LBR' || itemCostCode === 'GENERAL LABOR' || itemCostCode === 'GENERAL' ||
+          itemCostCode === 'General Labor' || itemCostCode === 'GENERAL LBR') {
+        itemCostCode = 'GENERAL LABOR';
+      }
+      
       // Handle current task cost code in the same way
       let taskCostCode = costCode;
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL' ||
+          taskCostCode === 'General Labor' || taskCostCode === 'GENERAL LBR') {
+        taskCostCode = 'GENERAL LABOR';
       }
       
       if (itemCostCode === taskCostCode) {
@@ -457,10 +469,22 @@ export default function ScheduleManagement() {
         tCostCode = 'Demo/Ex + Base/Grading';
       }
       
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (tCostCode === 'GNRL LBR' || tCostCode === 'GENERAL LABOR' || tCostCode === 'GENERAL' ||
+          tCostCode === 'General Labor' || tCostCode === 'GENERAL LBR') {
+        tCostCode = 'GENERAL LABOR';
+      }
+      
       if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
           taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
           taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
         taskCostCode = 'Demo/Ex + Base/Grading';
+      }
+      
+      // Normalize GNRL LBR to GENERAL LABOR
+      if (taskCostCode === 'GNRL LBR' || taskCostCode === 'GENERAL LABOR' || taskCostCode === 'GENERAL' ||
+          taskCostCode === 'General Labor' || taskCostCode === 'GENERAL LBR') {
+        taskCostCode = 'GENERAL LABOR';
       }
       
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
