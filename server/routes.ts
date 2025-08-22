@@ -339,6 +339,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('Budget create - cleaned data:', JSON.stringify(cleanedData, null, 2));
       
+      // Check for duplicate line item number in the same location
+      const existingBudgetItems = await storage.getBudgetLineItems(locationDbId);
+      const duplicateLineItem = existingBudgetItems.find(
+        item => item.lineItemNumber === cleanedData.lineItemNumber
+      );
+      
+      if (duplicateLineItem) {
+        return res.status(400).json({ 
+          error: `Line item number "${cleanedData.lineItemNumber}" already exists for this location` 
+        });
+      }
+      
       const validated = insertBudgetLineItemSchema.parse(cleanedData);
       const budgetItem = await storage.createBudgetLineItem(validated);
       res.status(201).json(budgetItem);
