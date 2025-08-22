@@ -24,7 +24,7 @@ import { useNavigationProtection } from "@/contexts/NavigationProtectionContext"
 export default function AssignmentManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { setHasUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
+  const { hasUnsavedChanges, setHasUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -751,8 +751,8 @@ export default function AssignmentManagement() {
                 setHasUnsavedChanges(false);
                 // Reset form to default values
                 form.reset({
-                  taskId: '',
-                  employeeId: '',
+                  taskId: undefined,
+                  employeeId: undefined,
                   assignmentDate: selectedDate,
                   assignedHours: '8',
                   actualHours: null,
@@ -770,10 +770,10 @@ export default function AssignmentManagement() {
                 {editingAssignment && (
                   <div className="mt-2 pb-4 border-b border-gray-200">
                     <h3 className="text-lg font-semibold text-gray-800">
-                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.name || 'Unknown Employee'}
+                      {(employees as any[]).find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.name || 'Unknown Employee'}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {employees.find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.teamMemberId || 'N/A'}
+                      {(employees as any[]).find((emp: any) => emp.id.toString() === form.getValues('employeeId'))?.teamMemberId || 'N/A'}
                     </p>
                   </div>
                 )}
