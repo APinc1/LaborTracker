@@ -1242,18 +1242,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         const realignedTasks = realignDependentTasks(tasksToProcess);
         
-        // Find tasks that need date updates
+        // Find tasks that need updates (date OR sequential status changes)
         const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
           const originalTask = tasksToProcess[index];
-          return originalTask && originalTask.taskDate !== realignedTask.taskDate;
+          return originalTask && (
+            originalTask.taskDate !== realignedTask.taskDate ||
+            originalTask.dependentOnPrevious !== realignedTask.dependentOnPrevious
+          );
         });
         
         // Update tasks if cascading is needed
         if (tasksToUpdate.length > 0) {
           console.log(`🔄 Cascading ${tasksToUpdate.length} tasks after deletion with enhanced sequential logic`);
-          const updatePromises = tasksToUpdate.map(task => 
-            storage.updateTask(task.id, { taskDate: task.taskDate })
-          );
+          const updatePromises = tasksToUpdate.map(task => {
+            const updateData: any = { taskDate: task.taskDate };
+            // Also update sequential status if it changed
+            updateData.dependentOnPrevious = task.dependentOnPrevious;
+            console.log(`Updating task "${task.name}" (ID: ${task.id}) with:`, updateData);
+            return storage.updateTask(task.id, updateData);
+          });
           await Promise.all(updatePromises);
         } else {
           console.log('✅ No sequential date updates needed after deletion');
