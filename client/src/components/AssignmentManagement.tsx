@@ -639,8 +639,7 @@ export default function AssignmentManagement() {
       const employee = getEmployee(assignment.employeeId);
       const crew = getCrew(employee?.crewId);
       const task = getTask(assignment.taskId);
-      const location = getLocation(task?.locationId);
-      const project = getProject(location?.projectId);
+      const project = getProject(task);
       
       if (filterCrew && filterCrew !== "all" && crew?.name !== filterCrew) return false;
       if (filterProject && filterProject !== "all" && project?.name !== filterProject) return false;
@@ -665,8 +664,7 @@ export default function AssignmentManagement() {
   const projectsWithAssignments = Array.from(new Set(
     (assignments as any[]).map((assignment: any) => {
       const task = getTask(assignment.taskId);
-      const location = getLocation(task?.locationId);
-      const project = getProject(location?.projectId);
+      const project = getProject(task);
       return project;
     }).filter(Boolean)
   )).sort((a: any, b: any) => a.name.localeCompare(b.name));
