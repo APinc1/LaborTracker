@@ -1216,6 +1216,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Process sequential cascading for remaining tasks (including newly unlinked ones)
       const remainingTasks = locationTasks.filter(t => t.id !== taskId);
       
+      console.log('🗑️ DELETION: remainingTasks check:', {
+        originalTasksCount: locationTasks.length,
+        deletedTaskId: taskId,
+        remainingTasksCount: remainingTasks.length,
+        remainingTaskNames: remainingTasks.map(t => t.name)
+      });
+      
       if (remainingTasks.length > 0) {
         // Apply unlinking updates to remaining tasks
         let updatedRemainingTasks = [...remainingTasks];
