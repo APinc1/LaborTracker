@@ -660,6 +660,16 @@ export default function AssignmentManagement() {
 
   const uniqueCrews = Array.from(new Set((crews as any[]).map((crew: any) => crew.name)));
   const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
+  
+  // Get projects that have assignments for the selected date
+  const projectsWithAssignments = Array.from(new Set(
+    (assignments as any[]).map((assignment: any) => {
+      const task = getTask(assignment.taskId);
+      const location = getLocation(task?.locationId);
+      const project = getProject(location?.projectId);
+      return project;
+    }).filter(Boolean)
+  )).sort((a: any, b: any) => a.name.localeCompare(b.name));
 
   if (assignmentsLoading) {
     return (
@@ -1391,7 +1401,7 @@ export default function AssignmentManagement() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All projects</SelectItem>
-                      {projects.map((project: any) => (
+                      {projectsWithAssignments.map((project: any) => (
                         <SelectItem key={project.id} value={project.name}>
                           {project.name}
                         </SelectItem>
