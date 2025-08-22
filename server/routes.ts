@@ -1211,7 +1211,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Delete the task with timeout for better performance
+      console.log('🗑️ DELETION: About to delete task:', taskId);
       await withTimeout(storage.deleteTask(taskId), 5000);
+      console.log('🗑️ DELETION: Task deleted successfully, starting realignment logic');
       
       // Process sequential cascading for remaining tasks (including newly unlinked ones)
       const remainingTasks = locationTasks.filter(t => t.id !== taskId);
