@@ -968,6 +968,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let startDate = body.startDate ?? todayISO;
       let finishDate = body.finishDate ?? startDate;
 
+      // Calculate proper order number if not provided
+      let orderValue = body.order;
+      if (!orderValue) {
+        // Get existing tasks for this location to find the next order number
+        const existingTasks = await storage.getTasksByLocation(locationId);
+        const maxOrder = existingTasks.length > 0 
+          ? Math.max(...existingTasks.map(t => parseFloat(t.order as string) || 0))
+          : 0;
+        orderValue = (maxOrder + 1).toFixed(2);
+        console.log(`📋 Assigning order ${orderValue} for new task "${body.name}" (${existingTasks.length} existing tasks, max order was ${maxOrder})`);
+      }
+
       // Validate (sync)
       mark('v0');
       const candidate = {
@@ -980,7 +992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         costCode: body.costCode || 'GEN',
         status: body.status || 'upcoming',
         scheduledHours: body.scheduledHours || '0.00',
-        order: body.order || '999.00',
+        order: orderValue,
         linkedTaskGroup: body.linkedTaskGroup || null,
         workDescription: body.workDescription || null,
         notes: body.notes || null
