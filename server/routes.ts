@@ -1240,15 +1240,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Sort tasks by order for proper sequential processing
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
+        
+        console.log('🗑️ BEFORE REALIGN: Tasks to process:', tasksToProcess.map(t => ({
+          name: t.name,
+          order: t.order,
+          sequential: t.dependentOnPrevious,
+          date: t.taskDate
+        })));
+        
         const realignedTasks = realignDependentTasks(tasksToProcess);
+        
+        console.log('🗑️ AFTER REALIGN: Realigned tasks:', realignedTasks.map(t => ({
+          name: t.name,
+          order: t.order,
+          sequential: t.dependentOnPrevious,
+          date: t.taskDate
+        })));
         
         // Find tasks that need updates (date OR sequential status changes)
         const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
           const originalTask = tasksToProcess[index];
-          return originalTask && (
+          const hasChanges = originalTask && (
             originalTask.taskDate !== realignedTask.taskDate ||
             originalTask.dependentOnPrevious !== realignedTask.dependentOnPrevious
           );
+          
+          if (hasChanges) {
+            console.log(`🔄 TASK NEEDS UPDATE: "${realignedTask.name}" - Date: ${originalTask.taskDate} → ${realignedTask.taskDate}, Sequential: ${originalTask.dependentOnPrevious} → ${realignedTask.dependentOnPrevious}`);
+          }
+          
+          return hasChanges;
         });
         
         // Update tasks if cascading is needed
