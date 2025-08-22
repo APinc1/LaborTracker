@@ -74,6 +74,20 @@ export default function AssignmentManagement() {
     refetchTasks();
   }, [selectedDate, refetchTasks]);
 
+  // Add beforeunload protection for browser navigation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (Object.keys(editingActualHours).length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved actual hours. Are you sure you want to leave?';
+        return 'You have unsaved actual hours. Are you sure you want to leave?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [editingActualHours]);
+
   const { data: projects = [] } = useQuery({
     queryKey: ["/api/projects"],
     staleTime: 30000,
