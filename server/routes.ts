@@ -1242,20 +1242,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Sort tasks by order for proper sequential processing
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         
-        // Use targeted realignment - only affect tasks that come after the deleted task
-        const realignedTasks = realignDependentTasksAfter(tasksToProcess, taskToDelete.taskId);
+        // For deletion, only update dates - never change order numbers to preserve visual stability
+        let tasksToUpdate = [];
         
-        // Find tasks that need updates (date OR sequential status changes)
-        const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
-          const originalTask = tasksToProcess[index];
-          const hasChanges = originalTask && (
-            originalTask.taskDate !== realignedTask.taskDate ||
-            originalTask.dependentOnPrevious !== realignedTask.dependentOnPrevious
-          );
+        // Handle first task becoming non-sequential if needed
+        if (tasksToProcess.length > 0 && tasksToProcess[0].dependentOnPrevious) {
+          console.log(`🗑️ Making new first task "${tasksToProcess[0].name}" non-sequential`);
+          tasksToUpdate.push({
+            ...tasksToProcess[0],
+            dependentOnPrevious: false
+          });
+        }
+        
+        // Update dates for sequential tasks that come after the deleted task
+        const deletedTaskOrder = parseFloat(taskToDelete.order as string) || 0;
+        for (let i = 0; i < tasksToProcess.length - 1; i++) {
+          const currentTask = tasksToProcess[i];
+          const nextTask = tasksToProcess[i + 1];
           
-          
-          return hasChanges;
-        });
+          // Only process if current task comes after deleted task and next task is sequential
+          const currentOrder = parseFloat(currentTask.order as string) || 0;
+          if (currentOrder > deletedTaskOrder && nextTask.dependentOnPrevious) {
+            const currentDate = new Date(currentTask.taskDate);
+            const nextWorkday = new Date(currentDate);
+            nextWorkday.setDate(nextWorkday.getDate() + 1);
+            
+            // Skip weekends
+            while (nextWorkday.getDay() === 0 || nextWorkday.getDay() === 6) {
+              nextWorkday.setDate(nextWorkday.getDate() + 1);
+            }
+            
+            const newDateString = nextWorkday.toISOString().split('T')[0];
+            
+            if (nextTask.taskDate !== newDateString) {
+              console.log(`🗑️ Updating sequential task "${nextTask.name}" date: ${nextTask.taskDate} → ${newDateString}`);
+              tasksToUpdate.push({
+                ...nextTask,
+                taskDate: newDateString
+              });
+            }
+          }
+        }
         
         // Update tasks if cascading is needed
         if (tasksToUpdate.length > 0) {
