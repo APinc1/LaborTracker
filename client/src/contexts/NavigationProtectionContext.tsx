@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, ReactNode } from "react";
 import { useLocation } from "wouter";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 interface NavigationProtectionContextType {
   hasUnsavedChanges: boolean;
@@ -17,6 +19,9 @@ export function NavigationProtectionProvider({ children }: { children: ReactNode
   const [onSave, setOnSave] = useState<(() => Promise<void>) | undefined>();
   const [onCancel, setOnCancel] = useState<(() => void) | undefined>();
   const [, setLocation] = useLocation();
+  const [showNavigationDialog, setShowNavigationDialog] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string>('');
+  const [dialogStep, setDialogStep] = useState<'save' | 'discard'>('save');
 
   const setNavigationHandlers = (handlers: { onSave: () => Promise<void>; onCancel: () => void }) => {
     setOnSave(() => handlers.onSave);
@@ -25,31 +30,46 @@ export function NavigationProtectionProvider({ children }: { children: ReactNode
 
   const protectedNavigate = (path: string) => {
     if (hasUnsavedChanges && onSave && onCancel) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Do you want to save before leaving this page?'
-      );
-      
-      if (confirmed) {
-        // Save changes then navigate
-        onSave().then(() => {
-          setLocation(path);
-          setHasUnsavedChanges(false);
-        }).catch(() => {
-          // Handle save error
-        });
-      } else {
-        // Ask if they want to discard changes
-        const discard = window.confirm('Are you sure you want to discard your changes?');
-        if (discard) {
-          onCancel();
-          setLocation(path);
-          setHasUnsavedChanges(false);
-        }
-      }
+      setPendingPath(path);
+      setDialogStep('save');
+      setShowNavigationDialog(true);
     } else {
       // No unsaved changes, navigate normally
       setLocation(path);
     }
+  };
+
+  const handleSaveAndNavigate = () => {
+    if (onSave && pendingPath) {
+      onSave().then(() => {
+        setLocation(pendingPath);
+        setHasUnsavedChanges(false);
+        setShowNavigationDialog(false);
+        setPendingPath('');
+      }).catch(() => {
+        // Handle save error - keep dialog open
+      });
+    }
+  };
+
+  const handleDiscardAndNavigate = () => {
+    if (onCancel && pendingPath) {
+      onCancel();
+      setLocation(pendingPath);
+      setHasUnsavedChanges(false);
+      setShowNavigationDialog(false);
+      setPendingPath('');
+    }
+  };
+
+  const handleCancel = () => {
+    setShowNavigationDialog(false);
+    setPendingPath('');
+    setDialogStep('save');
+  };
+
+  const handleDontSave = () => {
+    setDialogStep('discard');
   };
 
   return (
@@ -64,6 +84,50 @@ export function NavigationProtectionProvider({ children }: { children: ReactNode
       }}
     >
       {children}
+      
+      {/* Navigation Protection Dialog */}
+      <AlertDialog open={showNavigationDialog} onOpenChange={setShowNavigationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {dialogStep === 'save' ? 'Save Changes?' : 'Discard Changes?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dialogStep === 'save' 
+                ? 'You have unsaved changes. Would you like to save them before leaving this page?'
+                : 'Are you sure you want to discard your unsaved changes? This action cannot be undone.'
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {dialogStep === 'save' ? (
+              <>
+                <AlertDialogCancel onClick={handleCancel}>
+                  Stay on Page
+                </AlertDialogCancel>
+                <Button variant="outline" onClick={handleDontSave}>
+                  Don't Save
+                </Button>
+                <AlertDialogAction onClick={handleSaveAndNavigate}>
+                  Save & Continue
+                </AlertDialogAction>
+              </>
+            ) : (
+              <>
+                <AlertDialogCancel onClick={() => setDialogStep('save')}>
+                  Go Back
+                </AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleDiscardAndNavigate}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Discard Changes
+                </AlertDialogAction>
+              </>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </NavigationProtectionContext.Provider>
   );
 }
