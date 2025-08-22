@@ -1731,7 +1731,9 @@ export default function AssignmentManagement() {
                                   min="0"
                                   max="24"
                                   placeholder={assignment.actualHours?.toString() || "0"}
-                                  value={editingActualHours[assignment.id] || assignment.actualHours?.toString() || ''}
+                                  value={editingActualHours.hasOwnProperty(assignment.id) 
+                                    ? editingActualHours[assignment.id] 
+                                    : assignment.actualHours?.toString() || ''}
                                   onChange={(e) => updateActualHours(assignment.id, e.target.value)}
                                   onKeyDown={(e) => handleActualHoursKeyDown(e, assignment.id)}
                                   className="w-20 h-8"
