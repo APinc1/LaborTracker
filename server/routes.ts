@@ -972,7 +972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let orderValue = body.order;
       if (!orderValue) {
         // Get existing tasks for this location to find the next order number
-        const existingTasks = await storage.getTasksByLocation(locationId);
+        const existingTasks = await storage.getTasks(locationId);
         const maxOrder = existingTasks.length > 0 
           ? Math.max(...existingTasks.map(t => parseFloat(t.order as string) || 0))
           : 0;
