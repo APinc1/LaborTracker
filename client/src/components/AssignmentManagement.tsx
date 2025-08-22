@@ -275,7 +275,7 @@ export default function AssignmentManagement() {
       employeeId: undefined,
       employeeIds: [] as string[],
       assignmentDate: selectedDate,
-      assignedHours: '8',
+      assignedHours: '0',
       actualHours: null,
     },
   });
@@ -754,7 +754,7 @@ export default function AssignmentManagement() {
                   taskId: undefined,
                   employeeId: undefined,
                   assignmentDate: selectedDate,
-                  assignedHours: '8',
+                  assignedHours: '0',
                   actualHours: null,
                 });
               }} className="bg-primary hover:bg-primary/90">
@@ -1362,7 +1362,7 @@ export default function AssignmentManagement() {
                       );
                     }}
                   />
-                  <div className={`grid gap-4 ${editingAssignment ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className="grid gap-4 grid-cols-2">
                     <FormField
                       control={form.control}
                       name="assignedHours"
@@ -1376,21 +1376,19 @@ export default function AssignmentManagement() {
                         </FormItem>
                       )}
                     />
-                    {editingAssignment && (
-                      <FormField
-                        control={form.control}
-                        name="actualHours"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Actual Hours</FormLabel>
-                            <FormControl>
-                              <Input type="number" step="0.5" min="0" max="24" {...field} value={field.value || ''} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                    <FormField
+                      control={form.control}
+                      name="actualHours"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Actual Hours</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.5" min="0" max="24" {...field} value={field.value || ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={handleDialogClose}>
