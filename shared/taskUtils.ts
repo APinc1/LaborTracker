@@ -318,12 +318,17 @@ export function realignDependentTasks(tasks: any[]): any[] {
   const updatedTasks = [...logicallyOrderedTasks];
   
   // CRITICAL: Ensure the first task is never sequential (no previous task to depend on)
-  if (updatedTasks.length > 0 && updatedTasks[0].dependentOnPrevious) {
-    console.log(`🔧 MAKING FIRST TASK NON-SEQUENTIAL: "${updatedTasks[0].name}" was sequential but is now first`);
-    updatedTasks[0] = {
-      ...updatedTasks[0],
-      dependentOnPrevious: false
-    };
+  if (updatedTasks.length > 0) {
+    console.log(`🔧 FIRST TASK CHECK: "${updatedTasks[0].name}" order:${updatedTasks[0].order} sequential:${updatedTasks[0].dependentOnPrevious}`);
+    if (updatedTasks[0].dependentOnPrevious) {
+      console.log(`🔧 MAKING FIRST TASK NON-SEQUENTIAL: "${updatedTasks[0].name}" was sequential but is now first`);
+      updatedTasks[0] = {
+        ...updatedTasks[0],
+        dependentOnPrevious: false
+      };
+    } else {
+      console.log(`🔧 FIRST TASK ALREADY NON-SEQUENTIAL: "${updatedTasks[0].name}"`);
+    }
   }
   
   for (let i = 1; i < updatedTasks.length; i++) {
