@@ -310,31 +310,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         locationDbId = location.id;
       }
-
-      // Generate unique line item number
-      const existingItems = await storage.getBudgetLineItems(locationDbId);
-      let nextLineItemNumber = "1";
-      
-      if (existingItems.length > 0) {
-        // Find the highest numeric line item number
-        const numericLineItems = existingItems
-          .map(item => {
-            const num = parseInt(item.lineItemNumber);
-            return isNaN(num) ? 0 : num;
-          })
-          .filter(num => num > 0);
-        
-        if (numericLineItems.length > 0) {
-          const maxNumber = Math.max(...numericLineItems);
-          nextLineItemNumber = (maxNumber + 1).toString();
-        }
-      }
       
       // Clean up the data before validation - convert empty strings to null/defaults for numeric fields
       const cleanedData = {
         ...req.body,
         locationId: locationDbId,
-        lineItemNumber: nextLineItemNumber, // Always use generated unique number
         // Convert empty strings to defaults for required fields
         unitCost: req.body.unitCost === "" ? "0" : req.body.unitCost,
         unconvertedQty: req.body.unconvertedQty === "" ? "0" : req.body.unconvertedQty,
@@ -358,7 +338,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log('Budget create - cleaned data:', JSON.stringify(cleanedData, null, 2));
-      console.log('Generated unique line item number:', nextLineItemNumber);
       
       const validated = insertBudgetLineItemSchema.parse(cleanedData);
       const budgetItem = await storage.createBudgetLineItem(validated);
