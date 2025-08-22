@@ -44,6 +44,7 @@ export default function AssignmentManagement() {
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
+  const [pendingDateChange, setPendingDateChange] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
   const actualHoursInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -359,20 +360,29 @@ export default function AssignmentManagement() {
   };
 
   const confirmCloseDialog = () => {
-    setIsCreateDialogOpen(false);
-    setEditingAssignment(null);
-    setSelectedEmployeeIds([]);
-    setSelectedCrews([]);
-    setEmployeeSearchTerm('');
-    setCrewSearchTerm('');
+    if (pendingDateChange) {
+      // Handle date change confirmation
+      setSelectedDate(pendingDateChange);
+      setPendingDateChange(null);
+      setEditingActualHours({});
+    } else {
+      // Handle dialog close confirmation
+      setIsCreateDialogOpen(false);
+      setEditingAssignment(null);
+      setSelectedEmployeeIds([]);
+      setSelectedCrews([]);
+      setEmployeeSearchTerm('');
+      setCrewSearchTerm('');
+      form.reset();
+    }
     setHasUnsavedChanges(false);
     setPendingDialogClose(false);
     setShowUnsavedChangesDialog(false);
-    form.reset();
   };
 
   const cancelCloseDialog = () => {
     setPendingDialogClose(false);
+    setPendingDateChange(null);
     setShowUnsavedChangesDialog(false);
   };
 
@@ -678,8 +688,6 @@ export default function AssignmentManagement() {
     return projects.sort((a: any, b: any) => a.name.localeCompare(b.name));
   })();
   
-  console.log('🔍 DEBUG: assignments:', assignments.length);
-  console.log('🔍 DEBUG: projectsWithAssignments:', projectsWithAssignments);
 
   if (assignmentsLoading) {
     return (
@@ -1371,7 +1379,10 @@ export default function AssignmentManagement() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
                 <AlertDialogDescription>
-                  You have unsaved changes. Are you sure you want to close this dialog? Your changes will be lost.
+                  {pendingDateChange 
+                    ? "You have unsaved actual hours. Are you sure you want to change the date? Your changes will be lost."
+                    : "You have unsaved changes. Are you sure you want to close this dialog? Your changes will be lost."
+                  }
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -1399,7 +1410,15 @@ export default function AssignmentManagement() {
                     id="date"
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      if (Object.keys(editingActualHours).length > 0) {
+                        setPendingDateChange(newDate);
+                        setShowUnsavedChangesDialog(true);
+                      } else {
+                        setSelectedDate(newDate);
+                      }
+                    }}
                     className="w-48"
                   />
                 </div>
@@ -1489,7 +1508,15 @@ export default function AssignmentManagement() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedDate(format(subDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'))}
+                    onClick={() => {
+                      const newDate = format(subDays(parseISO(selectedDate), 1), 'yyyy-MM-dd');
+                      if (Object.keys(editingActualHours).length > 0) {
+                        setPendingDateChange(newDate);
+                        setShowUnsavedChangesDialog(true);
+                      } else {
+                        setSelectedDate(newDate);
+                      }
+                    }}
                     className="h-8 w-8 p-0"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -1500,7 +1527,15 @@ export default function AssignmentManagement() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setSelectedDate(format(addDays(parseISO(selectedDate), 1), 'yyyy-MM-dd'))}
+                    onClick={() => {
+                      const newDate = format(addDays(parseISO(selectedDate), 1), 'yyyy-MM-dd');
+                      if (Object.keys(editingActualHours).length > 0) {
+                        setPendingDateChange(newDate);
+                        setShowUnsavedChangesDialog(true);
+                      } else {
+                        setSelectedDate(newDate);
+                      }
+                    }}
                     className="h-8 w-8 p-0"
                   >
                     <ChevronRight className="w-4 h-4" />
