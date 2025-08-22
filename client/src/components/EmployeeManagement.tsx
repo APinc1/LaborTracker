@@ -1050,9 +1050,9 @@ export default function EmployeeManagement() {
                     ) : (
                       employees
                         .sort((a: any, b: any) => {
-                          const lastNameA = a.name.split(' ').pop()?.toLowerCase() || '';
-                          const lastNameB = b.name.split(' ').pop()?.toLowerCase() || '';
-                          return lastNameA.localeCompare(lastNameB);
+                          const firstNameA = a.name.split(' ')[0]?.toLowerCase() || '';
+                          const firstNameB = b.name.split(' ')[0]?.toLowerCase() || '';
+                          return firstNameA.localeCompare(firstNameB);
                         })
                         .map((employee: any) => (
                         <TableRow key={employee.id} className={employee.isInactive ? "opacity-50" : ""}>
