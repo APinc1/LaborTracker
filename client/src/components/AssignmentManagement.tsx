@@ -27,6 +27,7 @@ export default function AssignmentManagement() {
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [filterCrew, setFilterCrew] = useState<string>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
   const [filterEmployeeType, setFilterEmployeeType] = useState<string>("all");
   const [bulkEditMode, setBulkEditMode] = useState(false);
   const [editingActualHours, setEditingActualHours] = useState<Record<number, string>>({});
@@ -637,8 +638,12 @@ export default function AssignmentManagement() {
     .filter((assignment: any) => {
       const employee = getEmployee(assignment.employeeId);
       const crew = getCrew(employee?.crewId);
+      const task = getTask(assignment.taskId);
+      const location = getLocation(task?.locationId);
+      const project = getProject(location?.projectId);
       
       if (filterCrew && filterCrew !== "all" && crew?.name !== filterCrew) return false;
+      if (filterProject && filterProject !== "all" && project?.name !== filterProject) return false;
       if (filterEmployeeType && filterEmployeeType !== "all" && employee?.employeeType !== filterEmployeeType) return false;
       
       return true;
@@ -1379,6 +1384,22 @@ export default function AssignmentManagement() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="project">Project</Label>
+                  <Select value={filterProject} onValueChange={setFilterProject}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="All projects" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All projects</SelectItem>
+                      {projects.map((project: any) => (
+                        <SelectItem key={project.id} value={project.name}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="crew">Crew</Label>
                   <Select value={filterCrew} onValueChange={setFilterCrew}>
                     <SelectTrigger className="w-48">
@@ -1414,6 +1435,7 @@ export default function AssignmentManagement() {
                   variant="outline" 
                   onClick={() => {
                     setFilterCrew("all");
+                    setFilterProject("all");
                     setFilterEmployeeType("all");
                   }}
                 >
