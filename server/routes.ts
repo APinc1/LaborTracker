@@ -1235,14 +1235,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0);
         });
         
-        // Apply enhanced sequential realignment using the comprehensive function
-        console.log('🗑️ DELETION: Applying sequential realignment after task deletion');
-        const { realignDependentTasks } = await import('../shared/taskUtils.js');
+        // Apply targeted sequential realignment - only update tasks AFTER the deleted task
+        console.log('🗑️ DELETION: Applying targeted sequential realignment after task deletion');
+        const { realignDependentTasksAfter } = await import('../shared/taskUtils.js');
         
         // Sort tasks by order for proper sequential processing
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         
-        const realignedTasks = realignDependentTasks(tasksToProcess);
+        // Use targeted realignment - only affect tasks that come after the deleted task
+        const realignedTasks = realignDependentTasksAfter(tasksToProcess, taskToDelete.taskId);
         
         // Find tasks that need updates (date OR sequential status changes)
         const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
