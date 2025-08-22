@@ -1370,7 +1370,7 @@ export default function AssignmentManagement() {
                         <FormItem>
                           <FormLabel>Assigned Hours</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.5" min="0" max="24" {...field} />
+                            <Input type="number" step="0.01" min="0" max="24" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -1383,7 +1383,7 @@ export default function AssignmentManagement() {
                         <FormItem>
                           <FormLabel>Actual Hours</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.5" min="0" max="24" {...field} value={field.value || ''} />
+                            <Input type="number" step="0.01" min="0" max="24" {...field} value={field.value || ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
