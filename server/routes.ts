@@ -1211,19 +1211,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Delete the task with timeout for better performance
-      console.log('🗑️ DELETION: About to delete task:', taskId);
       await withTimeout(storage.deleteTask(taskId), 5000);
-      console.log('🗑️ DELETION: Task deleted successfully, starting realignment logic');
       
       // Process sequential cascading for remaining tasks (including newly unlinked ones)
       const remainingTasks = locationTasks.filter(t => t.id !== taskId);
       
-      console.log('🗑️ DELETION: remainingTasks check:', {
-        originalTasksCount: locationTasks.length,
-        deletedTaskId: taskId,
-        remainingTasksCount: remainingTasks.length,
-        remainingTaskNames: remainingTasks.map(t => t.name)
-      });
       
       if (remainingTasks.length > 0) {
         // Apply unlinking updates to remaining tasks
@@ -1250,21 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Sort tasks by order for proper sequential processing
         const tasksToProcess = [...updatedRemainingTasks].sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
         
-        console.log('🗑️ BEFORE REALIGN: Tasks to process:', tasksToProcess.map(t => ({
-          name: t.name,
-          order: t.order,
-          sequential: t.dependentOnPrevious,
-          date: t.taskDate
-        })));
-        
         const realignedTasks = realignDependentTasks(tasksToProcess);
-        
-        console.log('🗑️ AFTER REALIGN: Realigned tasks:', realignedTasks.map(t => ({
-          name: t.name,
-          order: t.order,
-          sequential: t.dependentOnPrevious,
-          date: t.taskDate
-        })));
         
         // Find tasks that need updates (date OR sequential status changes)
         const tasksToUpdate = realignedTasks.filter((realignedTask, index) => {
@@ -1274,9 +1252,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             originalTask.dependentOnPrevious !== realignedTask.dependentOnPrevious
           );
           
-          if (hasChanges) {
-            console.log(`🔄 TASK NEEDS UPDATE: "${realignedTask.name}" - Date: ${originalTask.taskDate} → ${realignedTask.taskDate}, Sequential: ${originalTask.dependentOnPrevious} → ${realignedTask.dependentOnPrevious}`);
-          }
           
           return hasChanges;
         });
@@ -1288,7 +1263,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const updateData: any = { taskDate: task.taskDate };
             // Also update sequential status if it changed
             updateData.dependentOnPrevious = task.dependentOnPrevious;
-            console.log(`Updating task "${task.name}" (ID: ${task.id}) with:`, updateData);
             return storage.updateTask(task.id, updateData);
           });
           await Promise.all(updatePromises);
