@@ -19,10 +19,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertEmployeeAssignmentSchema } from "@shared/schema";
+import { useNavigationProtection } from "@/contexts/NavigationProtectionContext";
 
 export default function AssignmentManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { setHasUnsavedChanges, setNavigationHandlers } = useNavigationProtection();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -40,11 +42,10 @@ export default function AssignmentManagement() {
   const [selectedCrews, setSelectedCrews] = useState<string[]>([]);
   const [crewSearchTerm, setCrewSearchTerm] = useState('');
   const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingDialogClose, setPendingDialogClose] = useState(false);
+  const [pendingDateChange, setPendingDateChange] = useState<string | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
   const [assignmentToDelete, setAssignmentToDelete] = useState<number | null>(null);
-  const [pendingDateChange, setPendingDateChange] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const crewDropdownRef = useRef<HTMLDivElement>(null);
   const actualHoursInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
@@ -73,6 +74,23 @@ export default function AssignmentManagement() {
   useEffect(() => {
     refetchTasks();
   }, [selectedDate, refetchTasks]);
+
+  // Set up navigation protection handlers
+  useEffect(() => {
+    const hasChanges = Object.keys(editingActualHours).length > 0;
+    setHasUnsavedChanges(hasChanges);
+    
+    if (hasChanges) {
+      setNavigationHandlers({
+        onSave: async () => {
+          handleBulkSave();
+        },
+        onCancel: () => {
+          setEditingActualHours({});
+        }
+      });
+    }
+  }, [editingActualHours, setHasUnsavedChanges, setNavigationHandlers]);
 
   // Add beforeunload protection for browser navigation
   useEffect(() => {
