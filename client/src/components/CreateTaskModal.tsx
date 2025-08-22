@@ -25,7 +25,7 @@ interface CreateTaskModalProps {
 
 // Task type to cost code mapping
 const TASK_TYPE_TO_COST_CODE = {
-  "Traffic Control": "TRAFFIC",
+  "Traffic Control": "TRAFFIC CONTROL",
   "Demo/Ex": "Demo/Ex + Base/Grading",
   "Base/Grading": "Demo/Ex + Base/Grading", 
   "Demo/Ex + Base/Grading": "Demo/Ex + Base/Grading",
