@@ -661,13 +661,25 @@ export default function AssignmentManagement() {
   const uniqueEmployeeTypes = Array.from(new Set((employees as any[]).map((emp: any) => emp.employeeType)));
   
   // Get projects that have assignments for the selected date
-  const projectsWithAssignments = Array.from(new Set(
-    (assignments as any[]).map((assignment: any) => {
+  const projectsWithAssignments = (() => {
+    const projectIds = new Set<number>();
+    const projects: any[] = [];
+    
+    (assignments as any[]).forEach((assignment: any) => {
       const task = getTask(assignment.taskId);
       const project = getProject(task);
-      return project;
-    }).filter(Boolean)
-  )).sort((a: any, b: any) => a.name.localeCompare(b.name));
+      
+      if (project && !projectIds.has(project.id)) {
+        projectIds.add(project.id);
+        projects.push(project);
+      }
+    });
+    
+    return projects.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  })();
+  
+  console.log('🔍 DEBUG: assignments:', assignments.length);
+  console.log('🔍 DEBUG: projectsWithAssignments:', projectsWithAssignments);
 
   if (assignmentsLoading) {
     return (
