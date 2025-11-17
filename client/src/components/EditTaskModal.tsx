@@ -892,8 +892,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const allRelevantTasks = [task, ...linkedTasks];
         const sortedTasks = allRelevantTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
         
+        console.log('🚀 AUTO-SELECT CHECK - START');
+        console.log('🚀 All relevant tasks:', sortedTasks.map((t: any) => ({ 
+          name: t.name, 
+          order: t.order, 
+          sequential: t.dependentOnPrevious 
+        })));
+        
         // Check if all tasks are sequential
         const allSequential = sortedTasks.every((t: any) => t.dependentOnPrevious);
+        console.log('🚀 All sequential?', allSequential);
         
         // Check if tasks are consecutive in order
         let areConsecutive = true;
@@ -901,17 +909,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           for (let i = 1; i < sortedTasks.length; i++) {
             const prevOrder = sortedTasks[i - 1].order || 0;
             const currOrder = sortedTasks[i].order || 0;
+            console.log(`🚀 Checking consecutiveness: task[${i-1}] order=${prevOrder}, task[${i}] order=${currOrder}, diff=${currOrder - prevOrder}`);
             if (currOrder !== prevOrder + 1) {
               areConsecutive = false;
+              console.log(`🚀 NOT consecutive: expected ${prevOrder + 1}, got ${currOrder}`);
               break;
             }
           }
         }
+        console.log('🚀 Are consecutive?', areConsecutive);
         
-        console.log('🔗 Auto-select check:', {
+        console.log('🚀 AUTO-SELECT CHECK RESULT:', {
           allSequential,
           areConsecutive,
-          taskOrders: sortedTasks.map((t: any) => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious }))
+          willAutoSelect: allSequential && areConsecutive && sortedTasks.length > 1
         });
         
         // If all tasks are sequential and consecutive, auto-select the first task's position
