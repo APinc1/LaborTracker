@@ -402,7 +402,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               tasks: sequentialGroup,
               names: sequentialGroup.map(t => t.name),
               name: sequentialGroup.map(t => t.name).join(", "),
-              description: 'Sequential tasks (will make first linked task sequential)',
+              description: `${sequentialGroup[0].taskDate} (will make first linked task sequential)`,
               date: sequentialGroup[0].taskDate,
               position: i
             });
@@ -419,7 +419,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           type: 'sequential-single',
           task: currentTask,
           name: currentTask.name,
-          description: 'Sequential task (will make first linked task sequential)',
+          description: `${currentTask.taskDate} (will make first linked task sequential)`,
           date: currentTask.taskDate,
           position: i
         });
