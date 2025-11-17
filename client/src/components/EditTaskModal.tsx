@@ -806,12 +806,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Check for special case: non-consecutive task (not first) + sequential task after it
         const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
         
+        console.log('🔍 LINKING DEBUG: Analyzing tasks to link:', allTasksSorted.map(t => ({
+          name: t.name,
+          order: t.order,
+          dependentOnPrevious: t.dependentOnPrevious,
+          date: t.taskDate
+        })));
+        
         // NEW SPECIAL CASE: Check if all tasks being linked are sequential AND consecutive
         const areAllTasksSequential = allTasksSorted.every(t => t.dependentOnPrevious);
         const areAllTasksConsecutive = allTasksSorted.every((t, idx) => {
           if (idx === 0) return true; // First task is always "consecutive"
           const prevTask = allTasksSorted[idx - 1];
-          return (t.order || 0) === (prevTask.order || 0) + 1;
+          const isConsecutive = (t.order || 0) === (prevTask.order || 0) + 1;
+          console.log(`🔍 Task "${t.name}" (order ${t.order}) consecutive to "${prevTask.name}" (order ${prevTask.order})? ${isConsecutive}`);
+          return isConsecutive;
+        });
+        
+        console.log('🔍 LINKING DETECTION RESULTS:', {
+          areAllTasksSequential,
+          areAllTasksConsecutive,
+          willAutoLink: areAllTasksSequential && areAllTasksConsecutive
         });
         
         if (areAllTasksSequential && areAllTasksConsecutive) {
