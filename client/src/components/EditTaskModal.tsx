@@ -2593,9 +2593,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     const isFirstTask = i === 0;
                     
                     // CORRECTED RULE:
-                    // - If ANY linked task was sequential → ALL unlinked tasks become sequential (including first)
-                    // - If ALL linked tasks were unsequential → ALL unlinked tasks become sequential (except first)
-                    const shouldBeSequential = anyTaskSequential ? true : !isFirstTask;
+                    // When unlinking, first task (by order) stays/becomes unsequential
+                    // All subsequent tasks become sequential to form a proper chain
+                    const shouldBeSequential = !isFirstTask;
                     
                     let newDate = currentTask.taskDate;
                     
