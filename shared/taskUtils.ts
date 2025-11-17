@@ -248,7 +248,14 @@ export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string)
     const currentTask = updatedTasks[i];
     const previousTask = updatedTasks[i - 1];
     
-    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (order: ${currentTask.order}, sequential: ${currentTask.dependentOnPrevious})`);
+    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (order: ${currentTask.order}, sequential: ${currentTask.dependentOnPrevious}, linked: ${!!currentTask.linkedTaskGroup})`);
+    
+    // CRITICAL: Skip realignment if this task is part of a linked group with the previous task
+    // Linked tasks must ALWAYS stay on the same date
+    if (currentTask.linkedTaskGroup && currentTask.linkedTaskGroup === previousTask.linkedTaskGroup) {
+      console.log(`🔗 SKIPPING LINKED: "${currentTask.name}" is linked with "${previousTask.name}", both stay on ${currentTask.taskDate}`);
+      continue;
+    }
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
@@ -329,7 +336,14 @@ export function realignDependentTasks(tasks: any[]): any[] {
     const currentTask = updatedTasks[i];
     const previousTask = updatedTasks[i - 1];
     
-    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious})`);
+    console.log(`🔍 Checking task ${i}: "${currentTask.name}" (sequential: ${currentTask.dependentOnPrevious}, linked: ${!!currentTask.linkedTaskGroup})`);
+    
+    // CRITICAL: Skip realignment if this task is part of a linked group with the previous task
+    // Linked tasks must ALWAYS stay on the same date
+    if (currentTask.linkedTaskGroup && currentTask.linkedTaskGroup === previousTask.linkedTaskGroup) {
+      console.log(`🔗 SKIPPING LINKED: "${currentTask.name}" is linked with "${previousTask.name}", both stay on ${currentTask.taskDate}`);
+      continue;
+    }
     
     // Only re-align if current task is dependent on previous
     if (currentTask.dependentOnPrevious) {
