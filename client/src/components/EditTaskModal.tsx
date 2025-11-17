@@ -818,6 +818,74 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const isFirstTaskNonSequentialNotFirst = !firstTask.dependentOnPrevious && firstTaskOrder > 0;
           const isSecondTaskSequential = secondTask.dependentOnPrevious;
           
+          // Special case 1: Both tasks are sequential and consecutive - auto-link without position dialog
+          const isBothSequential = firstTask.dependentOnPrevious && secondTask.dependentOnPrevious;
+          
+          if (isBothSequential && isConsecutiveOrder) {
+            console.log('🔗 SPECIAL CASE: Both sequential consecutive tasks - auto-linking as sequential');
+            
+            // Auto-link them as sequential at the first task's date (keep them sequential)
+            const linkedTaskGroup = generateLinkedTaskGroupId();
+            const targetDate = firstTask.taskDate;
+            
+            const tasksToUpdate = allTasksSorted.map(taskToUpdate => ({
+              ...taskToUpdate,
+              linkedTaskGroup: linkedTaskGroup,
+              taskDate: targetDate,
+              dependentOnPrevious: true // Both stay sequential
+            }));
+            
+            console.log('Both sequential case auto-linking:', tasksToUpdate.map(t => ({ 
+              name: t.name, 
+              date: t.taskDate, 
+              sequential: t.dependentOnPrevious 
+            })));
+            
+            // CRITICAL: After linking tasks, we need to realign subsequent sequential tasks
+            const allTasks = [...(existingTasks as any[])];
+            
+            // Update the linked tasks in the full task list
+            tasksToUpdate.forEach(updatedTask => {
+              const existingIndex = allTasks.findIndex(t => 
+                (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+              );
+              if (existingIndex >= 0) {
+                allTasks[existingIndex] = {
+                  ...allTasks[existingIndex],
+                  linkedTaskGroup: updatedTask.linkedTaskGroup,
+                  taskDate: updatedTask.taskDate,
+                  dependentOnPrevious: updatedTask.dependentOnPrevious
+                };
+              }
+            });
+            
+            allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            console.log('🔧 Using targeted realignment for linking task updates');
+            const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
+            
+            const finalTasksToUpdate = realignedTasks.filter(task => {
+              const originalTask = (existingTasks as any[]).find(t => 
+                (t.taskId || t.id) === (task.taskId || task.id)
+              );
+              return !originalTask || 
+                     originalTask.taskDate !== task.taskDate ||
+                     originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
+                     originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
+                     originalTask.order !== task.order;
+            });
+            
+            console.log('Final linking updates (both sequential):', finalTasksToUpdate.map(t => ({ 
+              name: t.name, 
+              date: t.taskDate, 
+              sequential: t.dependentOnPrevious 
+            })));
+            
+            batchUpdateTasksMutation.mutate(finalTasksToUpdate);
+            return;
+          }
+          
+          // Special case 2: Non-sequential + sequential consecutive tasks
           if (isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder) {
             console.log('🔗 SPECIAL CASE: Non-consecutive + sequential consecutive tasks - auto-linking as unsequential');
             
