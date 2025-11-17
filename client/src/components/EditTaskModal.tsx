@@ -547,10 +547,16 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         }
       });
       
-      // Sort by order and apply targeted realignment (only tasks after the edited one)
+      // Sort by order and apply FULL realignment when tasks move positions
       allTasksWithUpdates.sort((a, b) => (a.order || 0) - (b.order || 0));
-      console.log('🔄 REALIGNING: Sequential tasks after simple linking');
-      const realignedTasks = realignDependentTasksAfter(allTasksWithUpdates, task.taskId || task.id);
+      console.log('🔄 REALIGNING: ALL sequential tasks after position-based linking');
+      
+      // CRITICAL: When tasks move to a new position, realign from the START to fix gaps
+      // Find the first sequential task and use it as the anchor for full realignment
+      const firstSequentialTask = allTasksWithUpdates.find(t => t.dependentOnPrevious);
+      const realignedTasks = firstSequentialTask 
+        ? realignDependentTasksAfter(allTasksWithUpdates, firstSequentialTask.taskId || firstSequentialTask.id)
+        : allTasksWithUpdates;
       
       // Find all tasks that changed (linking + realignment)
       const finalTasksToUpdate = realignedTasks.filter(task => {
