@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, realignDependentTasksAfter, getTaskStatus } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, realignDependentTasksAfter, getTaskStatus, parseDateString, getNextWeekday, formatDateToString } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -464,102 +464,144 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Process task edit with chosen position for linking
   const processTaskEditWithPosition = (data: any, selectedOption: any) => {
-    console.log('processTaskEditWithPosition called with:', { data, selectedOption });
+    console.log('🎯 processTaskEditWithPosition called with:', { data, selectedOption });
     
     const linkedTasks = (existingTasks as any[]).filter((t: any) => 
       data.linkedTaskIds?.includes((t.taskId || t.id).toString())
     );
     
-    console.log('Linked tasks found:', linkedTasks);
+    console.log('🎯 Linked tasks found:', linkedTasks);
     
     if (linkedTasks.length > 0) {
-      // Create new linked group or use existing one from any of the linked tasks
+      // Step 1: Assemble context - load all tasks and normalize
+      const allLocationTasks = [...(locationTasks || [])];
+      allLocationTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
+      
       const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
-      console.log('Using linked task group:', linkedTaskGroup);
-      
-      // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
-      console.log('All tasks to update:', allTasksToUpdate.map(t => t.name));
       
-      // Determine the base date and sequential status based on position choice
-      let baseDate = selectedOption.date;
-      let makeSequential = false;
+      console.log('🎯 All tasks to link:', allTasksToUpdate.map(t => ({ name: t.name, order: t.order })));
       
-      if (selectedOption.type === 'sequential-group' || selectedOption.type === 'sequential-single') {
-        // Position with sequential tasks - make first linked task sequential
-        makeSequential = true;
-        baseDate = selectedOption.date;
-      } else if (selectedOption.type === 'unsequential' || selectedOption.type === 'special-unsequential-pair') {
-        // Position with unsequential task or special pair - make all linked tasks unsequential
-        makeSequential = false;
-        baseDate = selectedOption.date;
+      // Step 2: Find the predecessor task (the task before the chosen position)
+      // The chosen position is represented by selectedOption.tasks or selectedOption.task
+      const positionTasks = selectedOption.tasks || [selectedOption.task];
+      const firstPositionTask = positionTasks[0];
+      
+      console.log('🎯 Position tasks:', positionTasks.map(t => ({ name: t.name, order: t.order })));
+      console.log('🎯 First position task:', firstPositionTask.name);
+      
+      // Find the task immediately before the first position task in order
+      const firstPositionIndex = allLocationTasks.findIndex(t => 
+        (t.taskId || t.id) === (firstPositionTask.taskId || firstPositionTask.id)
+      );
+      
+      console.log('🎯 First position index:', firstPositionIndex);
+      
+      // Step 3: Determine if predecessor needs updating
+      let predecessorTask = firstPositionIndex > 0 ? allLocationTasks[firstPositionIndex - 1] : null;
+      let predecessorUpdates: any = null;
+      
+      console.log('🎯 Predecessor task:', predecessorTask?.name);
+      
+      // If the position task was sequential, the predecessor should become sequential too
+      if (predecessorTask && firstPositionTask.dependentOnPrevious) {
+        // Find the task before the predecessor
+        const predecessorIndex = allLocationTasks.findIndex(t => 
+          (t.taskId || t.id) === (predecessorTask.taskId || predecessorTask.id)
+        );
+        const taskBeforePredecessor = predecessorIndex > 0 ? allLocationTasks[predecessorIndex - 1] : null;
+        
+        console.log('🎯 Task before predecessor:', taskBeforePredecessor?.name);
+        
+        // Predecessor should be sequential if there's a task before it
+        if (taskBeforePredecessor && !predecessorTask.dependentOnPrevious) {
+          console.log('🎯 Making predecessor sequential to:', taskBeforePredecessor.name);
+          
+          // Calculate predecessor's new date (next weekday after its predecessor)
+          const predecessorDate = parseDateString(taskBeforePredecessor.taskDate);
+          const newPredecessorDate = getNextWeekday(predecessorDate);
+          const newPredecessorDateStr = formatDateToString(newPredecessorDate);
+          
+          console.log('🎯 Predecessor date shift:', taskBeforePredecessor.taskDate, '→', newPredecessorDateStr);
+          
+          predecessorUpdates = {
+            ...(predecessorTask.taskId ? { taskId: predecessorTask.taskId } : { id: predecessorTask.id }),
+            dependentOnPrevious: true,
+            taskDate: newPredecessorDateStr
+          };
+        }
       }
       
-      console.log('Linking configuration:', { baseDate, makeSequential, linkedTaskGroup });
+      // Step 4: Calculate linked group date based on predecessor
+      let linkedGroupDate: string;
       
-      // Sort all tasks to update by their original order to determine which should be first
-      const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) {
-          return a.order - b.order;
-        }
-        if (a.order !== undefined) return -1;
-        if (b.order !== undefined) return 1;
-        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
-      });
-      
-      // Update all tasks with the chosen position data
-      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate) => {
-        // Find if this is the first task in the chronologically sorted linked group
-        const isFirstInGroup = sortedTasksToUpdate[0] === taskToUpdate;
+      if (predecessorTask) {
+        // Use predecessor's date (updated or original) and add weekdays
+        const predDate = predecessorUpdates?.taskDate || predecessorTask.taskDate;
+        const predDateParsed = parseDateString(predDate);
         
-        if (taskToUpdate === task) {
-          // Current task being edited
-          const updatedTask = {
-            ...task,
-            ...data,
-            taskDate: baseDate,
-            linkedTaskGroup: linkedTaskGroup,
-            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
-          };
-          console.log('Updated main task:', updatedTask);
-          return updatedTask;
-        } else {
-          // Linked task
-          const updatedLinkedTask = {
-            ...taskToUpdate,
-            linkedTaskGroup: linkedTaskGroup,
-            taskDate: baseDate,
-            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
-          };
-          console.log('Updated linked task:', updatedLinkedTask);
-          return updatedLinkedTask;
-        }
+        // Linked group starts the next weekday after predecessor
+        // For multiple-day linked groups, we need to account for the group size
+        const linkedGroupStartDate = getNextWeekday(predDateParsed);
+        linkedGroupDate = formatDateToString(linkedGroupStartDate);
+        
+        console.log('🎯 Linked group date calculated from predecessor:', predDate, '→', linkedGroupDate);
+      } else {
+        // No predecessor, use the first position task's date
+        linkedGroupDate = firstPositionTask.taskDate;
+        console.log('🎯 Linked group date from position task:', linkedGroupDate);
+      }
+      
+      // Step 5: Create linked group with proper sequential flags
+      const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const isFirstTaskInGroup = (taskToCheck: any) => sortedTasksToUpdate[0] === taskToCheck;
+      
+      const linkedGroupUpdates = allTasksToUpdate.map((taskToUpdate) => {
+        const isFirst = isFirstTaskInGroup(taskToUpdate);
+        
+        return {
+          ...(taskToUpdate.taskId ? { taskId: taskToUpdate.taskId } : { id: taskToUpdate.id }),
+          ...(taskToUpdate === task ? data : {}),
+          taskDate: linkedGroupDate,
+          linkedTaskGroup: linkedTaskGroup,
+          dependentOnPrevious: isFirst && !!predecessorTask, // First task sequential to predecessor if exists
+        };
       });
       
-      const mainTask = tasksToUpdate.find(t => t === task || (t.taskId || t.id) === (task.taskId || task.id));
-      const updatedTasks = tasksToUpdate.filter(t => t !== task && (t.taskId || t.id) !== (task.taskId || task.id));
+      console.log('🎯 Linked group updates:', linkedGroupUpdates.map(u => ({ 
+        name: allTasksToUpdate.find(t => (t.taskId || t.id) === (u.taskId || u.id))?.name,
+        date: u.taskDate, 
+        sequential: u.dependentOnPrevious 
+      })));
       
-      console.log('Submitting updates:', { mainTask, updatedTasks });
+      // Step 6: Apply all updates and realign the entire chain
+      const tasksWithUpdates = [...allLocationTasks];
       
-      // CRITICAL: Apply sequential realignment after linking to update downstream tasks
-      const allTasksWithUpdates = [...(locationTasks || [])];
-      
-      // Update the tasks with linking changes
-      [mainTask, ...updatedTasks].forEach(updatedTask => {
-        const existingIndex = allTasksWithUpdates.findIndex(t => 
-          (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+      // Apply predecessor update
+      if (predecessorUpdates) {
+        const predIndex = tasksWithUpdates.findIndex(t => 
+          (t.taskId || t.id) === (predecessorUpdates.taskId || predecessorUpdates.id)
         );
-        if (existingIndex >= 0) {
-          allTasksWithUpdates[existingIndex] = updatedTask;
+        if (predIndex >= 0) {
+          tasksWithUpdates[predIndex] = { ...tasksWithUpdates[predIndex], ...predecessorUpdates };
+        }
+      }
+      
+      // Apply linked group updates
+      linkedGroupUpdates.forEach(update => {
+        const updateIndex = tasksWithUpdates.findIndex(t => 
+          (t.taskId || t.id) === (update.taskId || update.id)
+        );
+        if (updateIndex >= 0) {
+          tasksWithUpdates[updateIndex] = { ...tasksWithUpdates[updateIndex], ...update };
         }
       });
       
-      // Sort by order and apply targeted realignment (only tasks after the edited one)
-      allTasksWithUpdates.sort((a, b) => (a.order || 0) - (b.order || 0));
-      console.log('🔄 REALIGNING: Sequential tasks after simple linking');
-      const realignedTasks = realignDependentTasksAfter(allTasksWithUpdates, task.taskId || task.id);
+      // Step 7: Realign all dependent tasks to cascade changes
+      console.log('🔄 REALIGNING: All sequential tasks after updates');
+      const realignedTasks = realignDependentTasks(tasksWithUpdates);
       
-      // Find all tasks that changed (linking + realignment)
+      // Step 8: Find all changed tasks
       const finalTasksToUpdate = realignedTasks.filter(task => {
         const originalTask = (locationTasks || []).find(orig => 
           (orig.taskId || orig.id) === (task.taskId || task.id)
@@ -571,8 +613,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                originalTask.order !== task.order;
       });
       
-      console.log('Simple linking - final updates with realignment:', finalTasksToUpdate.map(t => ({ 
-        name: t.name, date: t.taskDate, sequential: t.dependentOnPrevious 
+      console.log('🎯 Final updates with realignment:', finalTasksToUpdate.map(t => ({ 
+        name: t.name, date: t.taskDate, sequential: t.dependentOnPrevious, order: t.order
       })));
       
       // Submit the updates using batch mutation
