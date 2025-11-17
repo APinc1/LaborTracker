@@ -2583,9 +2583,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   const allTasks = uniqueTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
                   const updatedTasks = [];
                   
-                  console.log('🔗 UNLINK LOGIC:');
+                  console.log('🔗 ========== UNLINK LOGIC START ==========');
                   console.log('🔗 anyTaskSequential =', anyTaskSequential);
                   console.log('🔗 All tasks sorted by order:', allTasks.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious })));
+                  console.log('🔗 Number of tasks to unlink:', allTasks.length);
                   
                   // Calculate new dates for tasks that become sequential
                   for (let i = 0; i < allTasks.length; i++) {
@@ -2648,7 +2649,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                       shouldBeSequential
                     });
                     
-                    console.log('🔗 Task', i + 1, ':', currentTask.name, '-> sequential:', shouldBeSequential, 'date:', newDate);
+                    console.log(`🔗 Task ${i + 1}/${allTasks.length}:`, currentTask.name, '-> isFirst:', isFirstTask, 'shouldBeSequential:', shouldBeSequential, 'date:', newDate);
                   }
                   
                   console.log('🔗 Calculated unlink updates:', updatedTasks.map(u => ({
@@ -2657,6 +2658,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                     newDate: u.newDate,
                     sequential: u.shouldBeSequential
                   })));
+                  console.log('🔗 ========== SENDING UNLINK REQUESTS ==========');
                   
                   // Update all tasks including the current one
                   const unlinkPromises = updatedTasks.map((updateInfo) => 
