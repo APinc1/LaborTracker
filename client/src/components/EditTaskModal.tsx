@@ -842,9 +842,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           });
           
           if (isBothSequential && isConsecutiveOrder) {
-            console.log('🔗 SPECIAL CASE: Both sequential consecutive tasks - auto-linking as sequential');
+            console.log('🔗 SPECIAL CASE: Both sequential consecutive tasks - auto-linking as NON-sequential');
             
-            // Auto-link them as sequential at the first task's date (keep them sequential)
+            // Auto-link them as NON-sequential at the first task's date
             const linkedTaskGroup = generateLinkedTaskGroupId();
             const targetDate = firstTask.taskDate;
             
@@ -852,7 +852,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               ...taskToUpdate,
               linkedTaskGroup: linkedTaskGroup,
               taskDate: targetDate,
-              dependentOnPrevious: true // Both stay sequential
+              dependentOnPrevious: false // Both become NON-sequential (linked tasks work on same day)
             }));
             
             console.log('Both sequential case auto-linking:', tasksToUpdate.map(t => ({ 
