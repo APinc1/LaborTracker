@@ -493,15 +493,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       });
       
       // Update all tasks with the chosen position data AND move them to chosen position
-      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
+      // Map sortedTasksToUpdate to get their index in sorted order
+      const tasksToUpdate = sortedTasksToUpdate.map((taskToUpdate, sortedIndex) => {
         // Find if this is the first task in the sorted linked group
-        const isFirstInGroup = sortedTasksToUpdate[0] === taskToUpdate;
+        const isFirstInGroup = sortedIndex === 0;
         
         // Calculate the new order for this task at the chosen position
+        // CRITICAL: Use sortedIndex to preserve original task order (earlier tasks get lower order values)
         // Place linked tasks at the chosen position (e.g., if position order is 6.00, tasks become 6.00, 6.01, 6.02...)
-        const newOrder = chosenPositionOrder + (index * 0.01);
+        const newOrder = chosenPositionOrder + (sortedIndex * 0.01);
         
-        if (taskToUpdate === task) {
+        if (taskToUpdate === task || (taskToUpdate.taskId || taskToUpdate.id) === (task.taskId || task.id)) {
           // Current task being edited
           const updatedTask = {
             ...task,
@@ -511,7 +513,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
             order: newOrder  // CRITICAL: Move to chosen position
           };
-          console.log('Updated main task:', updatedTask.name, 'new order:', newOrder);
+          console.log('Updated main task:', updatedTask.name, 'new order:', newOrder, 'isFirst:', isFirstInGroup);
           return updatedTask;
         } else {
           // Linked task
@@ -522,7 +524,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
             order: newOrder  // CRITICAL: Move to chosen position
           };
-          console.log('Updated linked task:', updatedLinkedTask.name, 'new order:', newOrder);
+          console.log('Updated linked task:', updatedLinkedTask.name, 'new order:', newOrder, 'isFirst:', isFirstInGroup);
           return updatedLinkedTask;
         }
       });
