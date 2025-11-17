@@ -815,11 +815,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         // NEW SPECIAL CASE: Check if all tasks being linked are sequential AND consecutive
         const areAllTasksSequential = allTasksSorted.every(t => t.dependentOnPrevious);
+        
+        // Check if tasks are visually consecutive (no other tasks between them)
         const areAllTasksConsecutive = allTasksSorted.every((t, idx) => {
           if (idx === 0) return true; // First task is always "consecutive"
           const prevTask = allTasksSorted[idx - 1];
-          const isConsecutive = (t.order || 0) === (prevTask.order || 0) + 1;
-          console.log(`🔍 Task "${t.name}" (order ${t.order}) consecutive to "${prevTask.name}" (order ${prevTask.order})? ${isConsecutive}`);
+          const prevOrder = prevTask.order || 0;
+          const currentOrder = t.order || 0;
+          
+          // Check if there are any OTHER tasks (not in linking group) between these two
+          const tasksBetween = (existingTasks as any[]).filter((otherTask: any) => {
+            const otherOrder = otherTask.order || 0;
+            const isNotInLinkingGroup = !allTasksSorted.some(linkTask => 
+              (linkTask.taskId || linkTask.id) === (otherTask.taskId || otherTask.id)
+            );
+            const isBetween = otherOrder > prevOrder && otherOrder < currentOrder;
+            return isNotInLinkingGroup && isBetween;
+          });
+          
+          const isConsecutive = tasksBetween.length === 0;
+          console.log(`🔍 Task "${t.name}" (order ${currentOrder}) consecutive to "${prevTask.name}" (order ${prevOrder})? ${isConsecutive} (tasks between: ${tasksBetween.length})`);
           return isConsecutive;
         });
         
