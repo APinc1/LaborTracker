@@ -1041,57 +1041,31 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         linkingChanged = true;
       } else if (groupTasks.length === 1) {
         // Two-task group - auto-unlink both tasks directly
-        console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
+        console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks, PRESERVING VISUAL ORDER');
         const otherTask = groupTasks[0];
         
-        // CRITICAL: When unlinking, we need to change the order value to preserve the visual position
-        // Find which task was moved during linking (has higher order but should stay in linked position)
+        // CRITICAL: Keep exact current order values - don't recalculate!
+        // Only remove linkedTaskGroup and set dependentOnPrevious appropriately
         
-        // Based on the scenario: Demo/Ex (order 1) + GL tester (order 4) 
-        // When linked, GL tester moves visually after Demo/Ex
-        // When unlinked, GL tester should stay after Demo/Ex and get order 1.5 or next available
+        const bothTasks = [task, otherTask].map(t => ({
+          ...t,
+          linkedTaskGroup: null,
+          // First task (order 0) stays non-sequential, others become sequential
+          dependentOnPrevious: (t.order === 0 || t.order === '0' || parseFloat(String(t.order)) === 0) ? false : true,
+          // CRITICAL: Keep exact same order - don't change it!
+          order: t.order
+        }));
         
-        const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
-        const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
+        console.log('🔗 UNLINKING (preserving order):', bothTasks.map(t => ({
+          name: t.name,
+          order: t.order,
+          sequential: t.dependentOnPrevious
+        })));
         
-        console.log('🔗 UNLINK ORDER PRESERVATION:', {
-          firstTask: firstTask.name,
-          firstOrder: firstTask.order,
-          secondTask: secondTask.name, 
-          secondOrder: secondTask.order
-        });
-        
-        // The key insight: secondTask (GL tester) should get a new order that places it right after firstTask
-        // Convert orders to numbers for calculation
-        const firstOrder = typeof firstTask.order === 'string' ? parseFloat(firstTask.order) : (firstTask.order || 0);
-        const newOrderForSecondTask = firstOrder + 0.1; // Fractional order to insert between existing orders
-        
-        console.log('🔗 ASSIGNING NEW ORDER:', {
-          secondTaskName: secondTask.name,
-          oldOrder: secondTask.order,
-          firstOrderParsed: firstOrder,
-          newOrder: newOrderForSecondTask
-        });
-        
-        // Both tasks become unlinked but with preserved visual positioning
-        const bothTasks = [
-          {
-            ...firstTask,
-            linkedTaskGroup: null,
-            dependentOnPrevious: firstTask.order === 0 ? false : true
-          },
-          {
-            ...secondTask,
-            linkedTaskGroup: null,
-            dependentOnPrevious: true, // Second task becomes sequential to first
-            order: newOrderForSecondTask // CRITICAL: New order value to preserve position
-          }
-        ];
-        
-        // Trigger cascading for all subsequent tasks
+        // Trigger cascading for all subsequent tasks  
         const allTasks = [...(existingTasks as any[])];
         
-        // Update the unlinked tasks with new order values
+        // Update the unlinked tasks - keeping same order
         bothTasks.forEach(updatedTask => {
           const existingIndex = allTasks.findIndex(t => 
             (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
@@ -1100,17 +1074,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             allTasks[existingIndex] = {
               ...allTasks[existingIndex],
               linkedTaskGroup: null,
-              dependentOnPrevious: updatedTask.dependentOnPrevious,
-              order: updatedTask.order // CRITICAL: Apply the new order value
+              dependentOnPrevious: updatedTask.dependentOnPrevious
+              // DON'T change order - keep it exactly as is
             };
           }
         });
         
-        // Use targeted realignment to only shift tasks after the modified one
-        console.log('🔧 Using targeted realignment for two-task unlink');
+        // Use targeted realignment to only shift dates for subsequent sequential tasks
+        console.log('🔧 Using targeted realignment for two-task unlink (dates only, not order)');
         const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
         
-        // Find tasks that changed
+        // Find tasks that changed (dates or linking status, NOT order)
         const finalTasksToUpdate = realignedTasks.filter(task => {
           const originalTask = (existingTasks as any[]).find(t => 
             (t.taskId || t.id) === (task.taskId || task.id)
@@ -1118,11 +1092,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           return !originalTask || 
                  originalTask.taskDate !== task.taskDate ||
                  originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-                 originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
-                 originalTask.order !== task.order; // CRITICAL: Include order changes
+                 originalTask.dependentOnPrevious !== task.dependentOnPrevious;
+          // DON'T include order in change detection - we're not changing it!
         });
         
-        console.log('🔗 Two-task unlink with cascading:', finalTasksToUpdate.map(t => ({ 
+        console.log('🔗 Two-task unlink updates (order preserved):', finalTasksToUpdate.map(t => ({ 
           name: t.name, 
           date: t.taskDate,
           order: t.order,
