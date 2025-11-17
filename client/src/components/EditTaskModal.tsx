@@ -888,6 +888,54 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
         }
         
+        // Check if we can auto-select position (all tasks are sequential and consecutive)
+        const allRelevantTasks = [task, ...linkedTasks];
+        const sortedTasks = allRelevantTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+        
+        // Check if all tasks are sequential
+        const allSequential = sortedTasks.every((t: any) => t.dependentOnPrevious);
+        
+        // Check if tasks are consecutive in order
+        let areConsecutive = true;
+        if (sortedTasks.length > 1) {
+          for (let i = 1; i < sortedTasks.length; i++) {
+            const prevOrder = sortedTasks[i - 1].order || 0;
+            const currOrder = sortedTasks[i].order || 0;
+            if (currOrder !== prevOrder + 1) {
+              areConsecutive = false;
+              break;
+            }
+          }
+        }
+        
+        console.log('🔗 Auto-select check:', {
+          allSequential,
+          areConsecutive,
+          taskOrders: sortedTasks.map((t: any) => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious }))
+        });
+        
+        // If all tasks are sequential and consecutive, auto-select the first task's position
+        if (allSequential && areConsecutive && sortedTasks.length > 1) {
+          console.log('🚀 AUTO-SELECTING: All tasks are sequential and consecutive - skipping dialog');
+          
+          // Auto-select the sequential group option
+          const autoSelectedOption = {
+            type: 'sequential-group',
+            tasks: sortedTasks,
+            names: sortedTasks.map((t: any) => t.name),
+            name: sortedTasks.map((t: any) => t.name).join(", "),
+            description: 'Sequential tasks (will make first linked task sequential)',
+            date: sortedTasks[0].taskDate,
+            position: 0
+          };
+          
+          console.log('🚀 Auto-selected option:', autoSelectedOption);
+          
+          // Process directly without showing dialog
+          processTaskEditWithPosition(data, autoSelectedOption);
+          return;
+        }
+        
         // Show position dialog for other linking cases
         console.log('🔗 Linking tasks - showing position choice dialog');
         console.log('🔗 Current task:', task.name);
