@@ -478,20 +478,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('Linking configuration:', { baseDate, makeSequential, linkedTaskGroup });
       
+      // CRITICAL: Get the order value of the chosen position to place linked tasks there
+      const chosenPositionOrder = selectedOption.type === 'sequential-group' 
+        ? parseFloat(selectedOption.tasks[0].order || 0)  // Use first task's order in group
+        : parseFloat(selectedOption.task?.order || selectedOption.tasks?.[0]?.order || 0);
+      
+      console.log('Chosen position order:', chosenPositionOrder, 'from option:', selectedOption);
+      
       // Sort all tasks to update by their original order to determine which should be first
       const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => {
-        if (a.order !== undefined && b.order !== undefined) {
-          return a.order - b.order;
-        }
-        if (a.order !== undefined) return -1;
-        if (b.order !== undefined) return 1;
-        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+        const aOrder = parseFloat(String(a.order || 0));
+        const bOrder = parseFloat(String(b.order || 0));
+        return aOrder - bOrder;
       });
       
-      // Update all tasks with the chosen position data
-      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate) => {
-        // Find if this is the first task in the chronologically sorted linked group
+      // Update all tasks with the chosen position data AND move them to chosen position
+      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate, index) => {
+        // Find if this is the first task in the sorted linked group
         const isFirstInGroup = sortedTasksToUpdate[0] === taskToUpdate;
+        
+        // Calculate the new order for this task at the chosen position
+        // Place linked tasks at the chosen position (e.g., if position order is 6.00, tasks become 6.00, 6.01, 6.02...)
+        const newOrder = chosenPositionOrder + (index * 0.01);
         
         if (taskToUpdate === task) {
           // Current task being edited
@@ -501,8 +509,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             taskDate: baseDate,
             linkedTaskGroup: linkedTaskGroup,
             dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
+            order: newOrder  // CRITICAL: Move to chosen position
           };
-          console.log('Updated main task:', updatedTask);
+          console.log('Updated main task:', updatedTask.name, 'new order:', newOrder);
           return updatedTask;
         } else {
           // Linked task
@@ -511,8 +520,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             linkedTaskGroup: linkedTaskGroup,
             taskDate: baseDate,
             dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
+            order: newOrder  // CRITICAL: Move to chosen position
           };
-          console.log('Updated linked task:', updatedLinkedTask);
+          console.log('Updated linked task:', updatedLinkedTask.name, 'new order:', newOrder);
           return updatedLinkedTask;
         }
       });
