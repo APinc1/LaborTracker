@@ -806,6 +806,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Check for special case: non-consecutive task (not first) + sequential task after it
         const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
         
+        console.log('🔍 SPECIAL CASE CHECK:', {
+          taskCount: allTasksSorted.length,
+          tasks: allTasksSorted.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious }))
+        });
+        
         if (allTasksSorted.length === 2) {
           const firstTask = allTasksSorted[0];
           const secondTask = allTasksSorted[1];
@@ -817,6 +822,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const isConsecutiveOrder = secondTaskOrder === firstTaskOrder + 1;
           const isFirstTaskNonSequentialNotFirst = !firstTask.dependentOnPrevious && firstTaskOrder > 0;
           const isSecondTaskSequential = secondTask.dependentOnPrevious;
+          
+          console.log('🔍 SPECIAL CASE CONDITIONS:', {
+            isConsecutiveOrder,
+            isFirstTaskNonSequentialNotFirst,
+            isSecondTaskSequential,
+            willTriggerSpecialCase: isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder
+          });
           
           if (isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder) {
             console.log('🔗 SPECIAL CASE: Non-consecutive + sequential consecutive tasks - auto-linking as unsequential');
