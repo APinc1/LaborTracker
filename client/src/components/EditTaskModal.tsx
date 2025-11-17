@@ -13,7 +13,7 @@ import { Calendar, Clock, Edit, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
-import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, realignDependentTasksAfter, getTaskStatus, parseDateString, getNextWeekday, formatDateToString } from "@shared/taskUtils";
+import { updateTaskDependenciesEnhanced, unlinkTask, getLinkedTasks, generateLinkedTaskGroupId, findLinkedTaskGroups, getLinkedGroupTaskIds, realignDependentTasks, realignDependentTasksAfter, getTaskStatus } from "@shared/taskUtils";
 import { z } from "zod";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -351,45 +351,26 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Check if this task is sequential and part of a group with the next task
       if (currentTask.dependentOnPrevious && i + 1 < sortedTargetTasks.length) {
-        // Check if next task is also sequential and visually consecutive (no tasks between them)
+        // Check if next task is also sequential and consecutive
         const nextTask = sortedTargetTasks[i + 1];
         if (nextTask.dependentOnPrevious) {
-          // Check if they're visually consecutive (no other tasks in between)
-          const currentOrder = currentTask.order || 0;
-          const nextOrder = nextTask.order || 0;
+          // Check if they're consecutive (same or next day)
+          const currDate = new Date(currentTask.taskDate);
+          const nextDate = new Date(nextTask.taskDate);
+          const dayDiff = (nextDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
           
-          // Get all tasks from existingTasks to check for tasks in between
-          const allTasksInLocation = existingTasks as any[];
-          const tasksBetween = allTasksInLocation.filter((t: any) => {
-            const tOrder = t.order || 0;
-            const isNotCurrentOrNext = 
-              (t.taskId || t.id) !== (currentTask.taskId || currentTask.id) &&
-              (t.taskId || t.id) !== (nextTask.taskId || nextTask.id);
-            return isNotCurrentOrNext && tOrder > currentOrder && tOrder < nextOrder;
-          });
-          
-          if (tasksBetween.length === 0) {
-            // Collect consecutive sequential tasks (visually adjacent)
+          if (dayDiff <= 1) {
+            // Collect consecutive sequential tasks
             const sequentialGroup = [currentTask];
             let j = i + 1;
             
             while (j < sortedTargetTasks.length && sortedTargetTasks[j].dependentOnPrevious) {
-              const prevTask = sortedTargetTasks[j - 1];
-              const currTask = sortedTargetTasks[j];
-              const prevTaskOrder = prevTask.order || 0;
-              const currTaskOrder = currTask.order || 0;
+              const prevDate = new Date(sortedTargetTasks[j-1].taskDate);
+              const currTaskDate = new Date(sortedTargetTasks[j].taskDate);
+              const dayDifference = (currTaskDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
               
-              // Check if there are tasks between prev and current
-              const betweenTasks = allTasksInLocation.filter((t: any) => {
-                const tOrder = t.order || 0;
-                const isNotInGroup = !sequentialGroup.some(gTask => 
-                  (gTask.taskId || gTask.id) === (t.taskId || t.id)
-                ) && (t.taskId || t.id) !== (currTask.taskId || currTask.id);
-                return isNotInGroup && tOrder > prevTaskOrder && tOrder < currTaskOrder;
-              });
-              
-              if (betweenTasks.length === 0) {
-                sequentialGroup.push(currTask);
+              if (dayDifference <= 1) {
+                sequentialGroup.push(sortedTargetTasks[j]);
                 j++;
               } else {
                 break;
@@ -402,7 +383,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               tasks: sequentialGroup,
               names: sequentialGroup.map(t => t.name),
               name: sequentialGroup.map(t => t.name).join(", "),
-              description: `${sequentialGroup[0].taskDate} (will make first linked task sequential)`,
+              description: 'Sequential tasks (will make first linked task sequential)',
               date: sequentialGroup[0].taskDate,
               position: i
             });
@@ -419,7 +400,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           type: 'sequential-single',
           task: currentTask,
           name: currentTask.name,
-          description: `${currentTask.taskDate} (will make first linked task sequential)`,
+          description: 'Sequential task (will make first linked task sequential)',
           date: currentTask.taskDate,
           position: i
         });
@@ -464,153 +445,102 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
 
   // Process task edit with chosen position for linking
   const processTaskEditWithPosition = (data: any, selectedOption: any) => {
-    console.log('🎯 processTaskEditWithPosition called with:', { data, selectedOption });
+    console.log('processTaskEditWithPosition called with:', { data, selectedOption });
     
     const linkedTasks = (existingTasks as any[]).filter((t: any) => 
       data.linkedTaskIds?.includes((t.taskId || t.id).toString())
     );
     
-    console.log('🎯 Linked tasks found:', linkedTasks);
+    console.log('Linked tasks found:', linkedTasks);
     
     if (linkedTasks.length > 0) {
-      // Step 1: Assemble context - load all tasks and normalize
-      const allLocationTasks = [...(locationTasks || [])];
-      allLocationTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-      
+      // Create new linked group or use existing one from any of the linked tasks
       const linkedTaskGroup = linkedTasks.find(t => t.linkedTaskGroup)?.linkedTaskGroup || generateLinkedTaskGroupId();
+      console.log('Using linked task group:', linkedTaskGroup);
+      
+      // Get all tasks to be updated (current task + linked tasks)
       const allTasksToUpdate = [task, ...linkedTasks];
+      console.log('All tasks to update:', allTasksToUpdate.map(t => t.name));
       
-      console.log('🎯 All tasks to link:', allTasksToUpdate.map(t => ({ name: t.name, order: t.order })));
+      // Determine the base date and sequential status based on position choice
+      let baseDate = selectedOption.date;
+      let makeSequential = false;
       
-      // Step 2: Find where to insert the linked group
-      // The chosen position represents where in the task list the linked group should go
-      // We need to find the task that will come immediately BEFORE the linked group
-      const positionTasks = selectedOption.tasks || [selectedOption.task];
-      const firstPositionTask = positionTasks[0];
+      if (selectedOption.type === 'sequential-group' || selectedOption.type === 'sequential-single') {
+        // Position with sequential tasks - make first linked task sequential
+        makeSequential = true;
+        baseDate = selectedOption.date;
+      } else if (selectedOption.type === 'unsequential' || selectedOption.type === 'special-unsequential-pair') {
+        // Position with unsequential task or special pair - make all linked tasks unsequential
+        makeSequential = false;
+        baseDate = selectedOption.date;
+      }
       
-      console.log('🎯 Position tasks:', positionTasks.map((t: any) => ({ name: t.name, order: t.order })));
-      console.log('🎯 First position task:', firstPositionTask.name, 'order:', firstPositionTask.order);
+      console.log('Linking configuration:', { baseDate, makeSequential, linkedTaskGroup });
       
-      // Find the insertion point in the ordered task list
-      // We need to find which task will be RIGHT BEFORE the linked group after insertion
-      // This is the task with the highest order that's less than firstPositionTask.order
-      // BUT exclude tasks that are being linked (they're moving)
-      const tasksNotBeingLinked = allLocationTasks.filter(t => 
-        !allTasksToUpdate.some(linkedTask => 
-          (linkedTask.taskId || linkedTask.id) === (t.taskId || t.id)
-        )
-      );
+      // Sort all tasks to update by their original order to determine which should be first
+      const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+      });
       
-      const firstPositionOrder = firstPositionTask.order || 0;
-      const tasksBefore = tasksNotBeingLinked.filter(t => (t.order || 0) < firstPositionOrder);
-      
-      console.log('🎯 Tasks before position (not being linked):', tasksBefore.map((t: any) => ({ name: t.name, order: t.order })));
-      
-      // Step 3: Determine the predecessor
-      let predecessorTask = tasksBefore.length > 0 ? tasksBefore[tasksBefore.length - 1] : null;
-      let predecessorUpdates: any = null;
-      
-      console.log('🎯 Predecessor task:', predecessorTask?.name, 'order:', predecessorTask?.order);
-      
-      // If the position task was sequential, the predecessor should become sequential too
-      if (predecessorTask && firstPositionTask.dependentOnPrevious) {
-        // Find the task before the predecessor
-        const predecessorIndex = allLocationTasks.findIndex(t => 
-          (t.taskId || t.id) === (predecessorTask.taskId || predecessorTask.id)
-        );
-        const taskBeforePredecessor = predecessorIndex > 0 ? allLocationTasks[predecessorIndex - 1] : null;
+      // Update all tasks with the chosen position data
+      const tasksToUpdate = allTasksToUpdate.map((taskToUpdate) => {
+        // Find if this is the first task in the chronologically sorted linked group
+        const isFirstInGroup = sortedTasksToUpdate[0] === taskToUpdate;
         
-        console.log('🎯 Task before predecessor:', taskBeforePredecessor?.name);
-        
-        // Predecessor should be sequential if there's a task before it
-        if (taskBeforePredecessor && !predecessorTask.dependentOnPrevious) {
-          console.log('🎯 Making predecessor sequential to:', taskBeforePredecessor.name);
-          
-          // Calculate predecessor's new date (next weekday after its predecessor)
-          const predecessorDate = parseDateString(taskBeforePredecessor.taskDate);
-          const newPredecessorDate = getNextWeekday(predecessorDate);
-          const newPredecessorDateStr = formatDateToString(newPredecessorDate);
-          
-          console.log('🎯 Predecessor date shift:', taskBeforePredecessor.taskDate, '→', newPredecessorDateStr);
-          
-          predecessorUpdates = {
-            ...(predecessorTask.taskId ? { taskId: predecessorTask.taskId } : { id: predecessorTask.id }),
-            dependentOnPrevious: true,
-            taskDate: newPredecessorDateStr
+        if (taskToUpdate === task) {
+          // Current task being edited
+          const updatedTask = {
+            ...task,
+            ...data,
+            taskDate: baseDate,
+            linkedTaskGroup: linkedTaskGroup,
+            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
           };
-        }
-      }
-      
-      // Step 4: Calculate linked group date based on predecessor
-      let linkedGroupDate: string;
-      
-      if (predecessorTask) {
-        // Use predecessor's date (updated or original) and add weekdays
-        const predDate = predecessorUpdates?.taskDate || predecessorTask.taskDate;
-        const predDateParsed = parseDateString(predDate);
-        
-        // Linked group starts the next weekday after predecessor
-        // For multiple-day linked groups, we need to account for the group size
-        const linkedGroupStartDate = getNextWeekday(predDateParsed);
-        linkedGroupDate = formatDateToString(linkedGroupStartDate);
-        
-        console.log('🎯 Linked group date calculated from predecessor:', predDate, '→', linkedGroupDate);
-      } else {
-        // No predecessor, use the first position task's date
-        linkedGroupDate = firstPositionTask.taskDate;
-        console.log('🎯 Linked group date from position task:', linkedGroupDate);
-      }
-      
-      // Step 5: Create linked group with proper sequential flags
-      const sortedTasksToUpdate = [...allTasksToUpdate].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const isFirstTaskInGroup = (taskToCheck: any) => sortedTasksToUpdate[0] === taskToCheck;
-      
-      const linkedGroupUpdates = allTasksToUpdate.map((taskToUpdate) => {
-        const isFirst = isFirstTaskInGroup(taskToUpdate);
-        
-        return {
-          ...(taskToUpdate.taskId ? { taskId: taskToUpdate.taskId } : { id: taskToUpdate.id }),
-          ...(taskToUpdate === task ? data : {}),
-          taskDate: linkedGroupDate,
-          linkedTaskGroup: linkedTaskGroup,
-          dependentOnPrevious: isFirst && !!predecessorTask, // First task sequential to predecessor if exists
-        };
-      });
-      
-      console.log('🎯 Linked group updates:', linkedGroupUpdates.map(u => ({ 
-        name: allTasksToUpdate.find(t => (t.taskId || t.id) === (u.taskId || u.id))?.name,
-        date: u.taskDate, 
-        sequential: u.dependentOnPrevious 
-      })));
-      
-      // Step 6: Apply all updates and realign the entire chain
-      const tasksWithUpdates = [...allLocationTasks];
-      
-      // Apply predecessor update
-      if (predecessorUpdates) {
-        const predIndex = tasksWithUpdates.findIndex(t => 
-          (t.taskId || t.id) === (predecessorUpdates.taskId || predecessorUpdates.id)
-        );
-        if (predIndex >= 0) {
-          tasksWithUpdates[predIndex] = { ...tasksWithUpdates[predIndex], ...predecessorUpdates };
-        }
-      }
-      
-      // Apply linked group updates
-      linkedGroupUpdates.forEach(update => {
-        const updateIndex = tasksWithUpdates.findIndex(t => 
-          (t.taskId || t.id) === (update.taskId || update.id)
-        );
-        if (updateIndex >= 0) {
-          tasksWithUpdates[updateIndex] = { ...tasksWithUpdates[updateIndex], ...update };
+          console.log('Updated main task:', updatedTask);
+          return updatedTask;
+        } else {
+          // Linked task
+          const updatedLinkedTask = {
+            ...taskToUpdate,
+            linkedTaskGroup: linkedTaskGroup,
+            taskDate: baseDate,
+            dependentOnPrevious: makeSequential && isFirstInGroup, // Only first task in group can be sequential
+          };
+          console.log('Updated linked task:', updatedLinkedTask);
+          return updatedLinkedTask;
         }
       });
       
-      // Step 7: Realign all dependent tasks to cascade changes
-      console.log('🔄 REALIGNING: All sequential tasks after updates');
-      const realignedTasks = realignDependentTasks(tasksWithUpdates);
+      const mainTask = tasksToUpdate.find(t => t === task || (t.taskId || t.id) === (task.taskId || task.id));
+      const updatedTasks = tasksToUpdate.filter(t => t !== task && (t.taskId || t.id) !== (task.taskId || task.id));
       
-      // Step 8: Find all changed tasks
+      console.log('Submitting updates:', { mainTask, updatedTasks });
+      
+      // CRITICAL: Apply sequential realignment after linking to update downstream tasks
+      const allTasksWithUpdates = [...(locationTasks || [])];
+      
+      // Update the tasks with linking changes
+      [mainTask, ...updatedTasks].forEach(updatedTask => {
+        const existingIndex = allTasksWithUpdates.findIndex(t => 
+          (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
+        );
+        if (existingIndex >= 0) {
+          allTasksWithUpdates[existingIndex] = updatedTask;
+        }
+      });
+      
+      // Sort by order and apply targeted realignment (only tasks after the edited one)
+      allTasksWithUpdates.sort((a, b) => (a.order || 0) - (b.order || 0));
+      console.log('🔄 REALIGNING: Sequential tasks after simple linking');
+      const realignedTasks = realignDependentTasksAfter(allTasksWithUpdates, task.taskId || task.id);
+      
+      // Find all tasks that changed (linking + realignment)
       const finalTasksToUpdate = realignedTasks.filter(task => {
         const originalTask = (locationTasks || []).find(orig => 
           (orig.taskId || orig.id) === (task.taskId || task.id)
@@ -622,8 +552,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                originalTask.order !== task.order;
       });
       
-      console.log('🎯 Final updates with realignment:', finalTasksToUpdate.map(t => ({ 
-        name: t.name, date: t.taskDate, sequential: t.dependentOnPrevious, order: t.order
+      console.log('Simple linking - final updates with realignment:', finalTasksToUpdate.map(t => ({ 
+        name: t.name, date: t.taskDate, sequential: t.dependentOnPrevious 
       })));
       
       // Submit the updates using batch mutation
@@ -875,112 +805,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         
         // Check for special case: non-consecutive task (not first) + sequential task after it
         const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
-        
-        console.log('🔍 LINKING DEBUG: Analyzing tasks to link:', allTasksSorted.map(t => ({
-          name: t.name,
-          order: t.order,
-          dependentOnPrevious: t.dependentOnPrevious,
-          date: t.taskDate
-        })));
-        
-        // NEW SPECIAL CASE: Check if all tasks being linked are sequential AND consecutive
-        const areAllTasksSequential = allTasksSorted.every(t => t.dependentOnPrevious);
-        
-        // Check if tasks are visually consecutive (no other tasks between them)
-        const areAllTasksConsecutive = allTasksSorted.every((t, idx) => {
-          if (idx === 0) return true; // First task is always "consecutive"
-          const prevTask = allTasksSorted[idx - 1];
-          const prevOrder = prevTask.order || 0;
-          const currentOrder = t.order || 0;
-          
-          // Check if there are any OTHER tasks (not in linking group) between these two
-          const tasksBetween = (existingTasks as any[]).filter((otherTask: any) => {
-            const otherOrder = otherTask.order || 0;
-            const isNotInLinkingGroup = !allTasksSorted.some(linkTask => 
-              (linkTask.taskId || linkTask.id) === (otherTask.taskId || otherTask.id)
-            );
-            const isBetween = otherOrder > prevOrder && otherOrder < currentOrder;
-            return isNotInLinkingGroup && isBetween;
-          });
-          
-          const isConsecutive = tasksBetween.length === 0;
-          console.log(`🔍 Task "${t.name}" (order ${currentOrder}) consecutive to "${prevTask.name}" (order ${prevOrder})? ${isConsecutive} (tasks between: ${tasksBetween.length})`);
-          return isConsecutive;
-        });
-        
-        console.log('🔍 LINKING DETECTION RESULTS:', {
-          areAllTasksSequential,
-          areAllTasksConsecutive,
-          willAutoLink: areAllTasksSequential && areAllTasksConsecutive
-        });
-        
-        if (areAllTasksSequential && areAllTasksConsecutive) {
-          console.log('🔗 SPECIAL CASE: All tasks are sequential AND consecutive - auto-linking as sequential');
-          
-          // Auto-link them as sequential at the first task's date
-          const linkedTaskGroup = generateLinkedTaskGroupId();
-          const firstTask = allTasksSorted[0];
-          const targetDate = firstTask.taskDate;
-          
-          // First task becomes sequential, rest become unsequential (but part of the linked group)
-          const tasksToUpdate = allTasksSorted.map((taskToUpdate, idx) => ({
-            ...taskToUpdate,
-            linkedTaskGroup: linkedTaskGroup,
-            taskDate: targetDate,
-            dependentOnPrevious: idx === 0 // Only first task in group is sequential
-          }));
-          
-          console.log('Special case auto-linking (all sequential):', tasksToUpdate.map(t => ({ 
-            name: t.name, 
-            date: t.taskDate, 
-            sequential: t.dependentOnPrevious 
-          })));
-          
-          // CRITICAL: After linking tasks, we need to realign subsequent sequential tasks
-          const allTasks = [...(existingTasks as any[])];
-          
-          // Update the linked tasks in the full task list
-          tasksToUpdate.forEach(updatedTask => {
-            const existingIndex = allTasks.findIndex(t => 
-              (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
-            );
-            if (existingIndex >= 0) {
-              allTasks[existingIndex] = {
-                ...allTasks[existingIndex],
-                linkedTaskGroup: updatedTask.linkedTaskGroup,
-                taskDate: updatedTask.taskDate,
-                dependentOnPrevious: updatedTask.dependentOnPrevious
-              };
-            }
-          });
-          
-          // Sort by original order to maintain visual positions
-          allTasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-          
-          // Realign subsequent tasks
-          const realignedTasks = realignDependentTasksAfter(allTasks, task.taskId || task.id);
-          
-          // Find all tasks that changed
-          const finalTasksToUpdate = realignedTasks.filter(task => {
-            const originalTask = (existingTasks as any[]).find(t => 
-              (t.taskId || t.id) === (task.taskId || task.id)
-            );
-            return !originalTask || 
-                   originalTask.taskDate !== task.taskDate ||
-                   originalTask.linkedTaskGroup !== task.linkedTaskGroup ||
-                   originalTask.dependentOnPrevious !== task.dependentOnPrevious ||
-                   originalTask.order !== task.order;
-          });
-          
-          console.log('Final linking updates (all sequential case):', finalTasksToUpdate.map(t => ({ 
-            name: t.name, 
-            date: t.taskDate, 
-            sequential: t.dependentOnPrevious 
-          })));
-          
-          batchUpdateTasksMutation.mutate(finalTasksToUpdate);
-          return;
-        }
         
         if (allTasksSorted.length === 2) {
           const firstTask = allTasksSorted[0];
