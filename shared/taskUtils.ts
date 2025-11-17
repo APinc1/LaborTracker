@@ -270,6 +270,20 @@ export function realignDependentTasksAfter(tasks: any[], modifiedTaskId: string)
         taskDate: newDateString
       };
       actualChanges++;
+      
+      // CRITICAL: If this task is part of a linked group, update ALL tasks in that group to the same date
+      if (currentTask.linkedTaskGroup) {
+        console.log(`🔗 LINKED GROUP UPDATE: Moving all tasks in group "${currentTask.linkedTaskGroup}" to ${newDateString}`);
+        for (let j = 0; j < updatedTasks.length; j++) {
+          if (j !== i && updatedTasks[j].linkedTaskGroup === currentTask.linkedTaskGroup) {
+            console.log(`  🔗 Moving "${updatedTasks[j].name}" from ${updatedTasks[j].taskDate} to ${newDateString}`);
+            updatedTasks[j] = {
+              ...updatedTasks[j],
+              taskDate: newDateString
+            };
+          }
+        }
+      }
     } else {
       console.log(`⏭️ SKIPPING: "${currentTask.name}" is not sequential, keeping date ${currentTask.taskDate}`);
     }
