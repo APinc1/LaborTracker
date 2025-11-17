@@ -1913,16 +1913,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               });
                               
                               // Both tasks become unlinked with preserved visual positioning
+                              // RULE: First task (by order) becomes unsequential, second becomes sequential
                               const bothTasks = [
                                 {
                                   ...firstTask,
                                   linkedTaskGroup: null,
-                                  dependentOnPrevious: firstTask.order === 0 ? false : true
+                                  dependentOnPrevious: false // First task is always unsequential
                                 },
                                 {
                                   ...secondTask,
                                   linkedTaskGroup: null,
-                                  dependentOnPrevious: true,
+                                  dependentOnPrevious: true, // Second task is always sequential
                                   order: newOrderForSecondTask // CRITICAL: Preserve position with fractional order
                                 }
                               ];
