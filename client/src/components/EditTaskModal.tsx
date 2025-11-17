@@ -482,26 +482,35 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       console.log('🎯 All tasks to link:', allTasksToUpdate.map(t => ({ name: t.name, order: t.order })));
       
-      // Step 2: Find the predecessor task (the task before the chosen position)
-      // The chosen position is represented by selectedOption.tasks or selectedOption.task
+      // Step 2: Find where to insert the linked group
+      // The chosen position represents where in the task list the linked group should go
+      // We need to find the task that will come immediately BEFORE the linked group
       const positionTasks = selectedOption.tasks || [selectedOption.task];
       const firstPositionTask = positionTasks[0];
       
-      console.log('🎯 Position tasks:', positionTasks.map(t => ({ name: t.name, order: t.order })));
-      console.log('🎯 First position task:', firstPositionTask.name);
+      console.log('🎯 Position tasks:', positionTasks.map((t: any) => ({ name: t.name, order: t.order })));
+      console.log('🎯 First position task:', firstPositionTask.name, 'order:', firstPositionTask.order);
       
-      // Find the task immediately before the first position task in order
-      const firstPositionIndex = allLocationTasks.findIndex(t => 
-        (t.taskId || t.id) === (firstPositionTask.taskId || firstPositionTask.id)
+      // Find the insertion point in the ordered task list
+      // We need to find which task will be RIGHT BEFORE the linked group after insertion
+      // This is the task with the highest order that's less than firstPositionTask.order
+      // BUT exclude tasks that are being linked (they're moving)
+      const tasksNotBeingLinked = allLocationTasks.filter(t => 
+        !allTasksToUpdate.some(linkedTask => 
+          (linkedTask.taskId || linkedTask.id) === (t.taskId || t.id)
+        )
       );
       
-      console.log('🎯 First position index:', firstPositionIndex);
+      const firstPositionOrder = firstPositionTask.order || 0;
+      const tasksBefore = tasksNotBeingLinked.filter(t => (t.order || 0) < firstPositionOrder);
       
-      // Step 3: Determine if predecessor needs updating
-      let predecessorTask = firstPositionIndex > 0 ? allLocationTasks[firstPositionIndex - 1] : null;
+      console.log('🎯 Tasks before position (not being linked):', tasksBefore.map((t: any) => ({ name: t.name, order: t.order })));
+      
+      // Step 3: Determine the predecessor
+      let predecessorTask = tasksBefore.length > 0 ? tasksBefore[tasksBefore.length - 1] : null;
       let predecessorUpdates: any = null;
       
-      console.log('🎯 Predecessor task:', predecessorTask?.name);
+      console.log('🎯 Predecessor task:', predecessorTask?.name, 'order:', predecessorTask?.order);
       
       // If the position task was sequential, the predecessor should become sequential too
       if (predecessorTask && firstPositionTask.dependentOnPrevious) {
