@@ -915,17 +915,29 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const allSequential = sortedTasks.every((t: any) => t.dependentOnPrevious);
         console.log('🚀 All sequential?', allSequential);
         
-        // Check if tasks are consecutive in order
+        // Check if tasks are visually consecutive (no other tasks between them in the full task list)
         let areConsecutive = true;
         if (sortedTasks.length > 1) {
+          // Get all tasks sorted by order
+          const allTasksSortedByOrder = [...(existingTasks as any[])].sort((a, b) => (a.order || 0) - (b.order || 0));
+          
           for (let i = 1; i < sortedTasks.length; i++) {
-            const prevOrder = sortedTasks[i - 1].order || 0;
-            const currOrder = sortedTasks[i].order || 0;
-            console.log(`🚀 Checking consecutiveness: task[${i-1}] order=${prevOrder}, task[${i}] order=${currOrder}, diff=${currOrder - prevOrder}`);
-            if (currOrder !== prevOrder + 1) {
+            const prevTask = sortedTasks[i - 1];
+            const currTask = sortedTasks[i];
+            
+            // Find these tasks in the full list
+            const prevIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === (prevTask.taskId || prevTask.id));
+            const currIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === (currTask.taskId || currTask.id));
+            
+            console.log(`🚀 Checking consecutiveness: "${prevTask.name}" at index ${prevIndex}, "${currTask.name}" at index ${currIndex}`);
+            
+            // They're consecutive if there's no other task between them
+            if (currIndex !== prevIndex + 1) {
               areConsecutive = false;
-              console.log(`🚀 NOT consecutive: expected ${prevOrder + 1}, got ${currOrder}`);
+              console.log(`🚀 NOT consecutive: found ${currIndex - prevIndex - 1} task(s) between them`);
               break;
+            } else {
+              console.log(`🚀 ✓ Consecutive: no tasks between them`);
             }
           }
         }
