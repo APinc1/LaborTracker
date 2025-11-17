@@ -806,11 +806,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         // Check for special case: non-consecutive task (not first) + sequential task after it
         const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
         
-        console.log('🔍 SPECIAL CASE CHECK:', {
-          taskCount: allTasksSorted.length,
-          tasks: allTasksSorted.map(t => ({ name: t.name, order: t.order, sequential: t.dependentOnPrevious }))
-        });
-        
         if (allTasksSorted.length === 2) {
           const firstTask = allTasksSorted[0];
           const secondTask = allTasksSorted[1];
@@ -822,13 +817,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           const isConsecutiveOrder = secondTaskOrder === firstTaskOrder + 1;
           const isFirstTaskNonSequentialNotFirst = !firstTask.dependentOnPrevious && firstTaskOrder > 0;
           const isSecondTaskSequential = secondTask.dependentOnPrevious;
-          
-          console.log('🔍 SPECIAL CASE CONDITIONS:', {
-            isConsecutiveOrder,
-            isFirstTaskNonSequentialNotFirst,
-            isSecondTaskSequential,
-            willTriggerSpecialCase: isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder
-          });
           
           if (isFirstTaskNonSequentialNotFirst && isSecondTaskSequential && isConsecutiveOrder) {
             console.log('🔗 SPECIAL CASE: Non-consecutive + sequential consecutive tasks - auto-linking as unsequential');
@@ -898,77 +886,6 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
             batchUpdateTasksMutation.mutate(finalTasksToUpdate);
             return;
           }
-        }
-        
-        // Check if we can auto-select position (all tasks are sequential and consecutive)
-        const allRelevantTasks = [task, ...linkedTasks];
-        const sortedTasks = allRelevantTasks.sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-        
-        console.log('🚀 AUTO-SELECT CHECK - START');
-        console.log('🚀 All relevant tasks:', sortedTasks.map((t: any) => ({ 
-          name: t.name, 
-          order: t.order, 
-          sequential: t.dependentOnPrevious 
-        })));
-        
-        // Check if all tasks are sequential
-        const allSequential = sortedTasks.every((t: any) => t.dependentOnPrevious);
-        console.log('🚀 All sequential?', allSequential);
-        
-        // Check if tasks are visually consecutive (no other tasks between them in the full task list)
-        let areConsecutive = true;
-        if (sortedTasks.length > 1) {
-          // Get all tasks sorted by order
-          const allTasksSortedByOrder = [...(existingTasks as any[])].sort((a, b) => (a.order || 0) - (b.order || 0));
-          
-          for (let i = 1; i < sortedTasks.length; i++) {
-            const prevTask = sortedTasks[i - 1];
-            const currTask = sortedTasks[i];
-            
-            // Find these tasks in the full list
-            const prevIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === (prevTask.taskId || prevTask.id));
-            const currIndex = allTasksSortedByOrder.findIndex(t => (t.taskId || t.id) === (currTask.taskId || currTask.id));
-            
-            console.log(`🚀 Checking consecutiveness: "${prevTask.name}" at index ${prevIndex}, "${currTask.name}" at index ${currIndex}`);
-            
-            // They're consecutive if there's no other task between them
-            if (currIndex !== prevIndex + 1) {
-              areConsecutive = false;
-              console.log(`🚀 NOT consecutive: found ${currIndex - prevIndex - 1} task(s) between them`);
-              break;
-            } else {
-              console.log(`🚀 ✓ Consecutive: no tasks between them`);
-            }
-          }
-        }
-        console.log('🚀 Are consecutive?', areConsecutive);
-        
-        console.log('🚀 AUTO-SELECT CHECK RESULT:', {
-          allSequential,
-          areConsecutive,
-          willAutoSelect: allSequential && areConsecutive && sortedTasks.length > 1
-        });
-        
-        // If all tasks are sequential and consecutive, auto-select the first task's position
-        if (allSequential && areConsecutive && sortedTasks.length > 1) {
-          console.log('🚀 AUTO-SELECTING: All tasks are sequential and consecutive - skipping dialog');
-          
-          // Auto-select the sequential group option
-          const autoSelectedOption = {
-            type: 'sequential-group',
-            tasks: sortedTasks,
-            names: sortedTasks.map((t: any) => t.name),
-            name: sortedTasks.map((t: any) => t.name).join(", "),
-            description: 'Sequential tasks (will make first linked task sequential)',
-            date: sortedTasks[0].taskDate,
-            position: 0
-          };
-          
-          console.log('🚀 Auto-selected option:', autoSelectedOption);
-          
-          // Process directly without showing dialog
-          processTaskEditWithPosition(data, autoSelectedOption);
-          return;
         }
         
         // Show position dialog for other linking cases
