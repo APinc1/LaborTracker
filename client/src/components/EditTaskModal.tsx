@@ -804,7 +804,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         );
         
         // Check for special case: non-consecutive task (not first) + sequential task after it
-        const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (a.order || 0) - (b.order || 0));
+        const allTasksSorted = [task, ...linkedTasks].sort((a, b) => (parseFloat(a.order) || 0) - (parseFloat(b.order) || 0));
+        
+        console.log('🔍 ALL TASKS SORTED FOR LINKING:', allTasksSorted.map(t => ({
+          name: t.name,
+          order: t.order,
+          orderParsed: parseFloat(t.order) || 0,
+          sequential: t.dependentOnPrevious
+        })));
         
         if (allTasksSorted.length === 2) {
           const firstTask = allTasksSorted[0];
@@ -812,14 +819,27 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           
           // Check if first task is unsequential and not the first task in the entire list
           // AND second task is sequential and comes right after the first
-          const firstTaskOrder = firstTask.order || 0;
-          const secondTaskOrder = secondTask.order || 0;
+          const firstTaskOrder = parseFloat(firstTask.order) || 0;
+          const secondTaskOrder = parseFloat(secondTask.order) || 0;
           const isConsecutiveOrder = secondTaskOrder === firstTaskOrder + 1;
           const isFirstTaskNonSequentialNotFirst = !firstTask.dependentOnPrevious && firstTaskOrder > 0;
           const isSecondTaskSequential = secondTask.dependentOnPrevious;
           
+          console.log('🔍 LINKING DEBUG - Task details:', {
+            firstTask: { name: firstTask.name, order: firstTaskOrder, sequential: firstTask.dependentOnPrevious },
+            secondTask: { name: secondTask.name, order: secondTaskOrder, sequential: secondTask.dependentOnPrevious },
+            isConsecutiveOrder,
+            orderDifference: secondTaskOrder - firstTaskOrder
+          });
+          
           // Special case 1: Both tasks are sequential and consecutive - auto-link without position dialog
           const isBothSequential = firstTask.dependentOnPrevious && secondTask.dependentOnPrevious;
+          
+          console.log('🔍 SPECIAL CASE CHECK:', {
+            isBothSequential,
+            isConsecutiveOrder,
+            shouldAutoLink: isBothSequential && isConsecutiveOrder
+          });
           
           if (isBothSequential && isConsecutiveOrder) {
             console.log('🔗 SPECIAL CASE: Both sequential consecutive tasks - auto-linking as sequential');
