@@ -351,26 +351,45 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       
       // Check if this task is sequential and part of a group with the next task
       if (currentTask.dependentOnPrevious && i + 1 < sortedTargetTasks.length) {
-        // Check if next task is also sequential and consecutive
+        // Check if next task is also sequential and visually consecutive (no tasks between them)
         const nextTask = sortedTargetTasks[i + 1];
         if (nextTask.dependentOnPrevious) {
-          // Check if they're consecutive (same or next day)
-          const currDate = new Date(currentTask.taskDate);
-          const nextDate = new Date(nextTask.taskDate);
-          const dayDiff = (nextDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
+          // Check if they're visually consecutive (no other tasks in between)
+          const currentOrder = currentTask.order || 0;
+          const nextOrder = nextTask.order || 0;
           
-          if (dayDiff <= 1) {
-            // Collect consecutive sequential tasks
+          // Get all tasks from existingTasks to check for tasks in between
+          const allTasksInLocation = existingTasks as any[];
+          const tasksBetween = allTasksInLocation.filter((t: any) => {
+            const tOrder = t.order || 0;
+            const isNotCurrentOrNext = 
+              (t.taskId || t.id) !== (currentTask.taskId || currentTask.id) &&
+              (t.taskId || t.id) !== (nextTask.taskId || nextTask.id);
+            return isNotCurrentOrNext && tOrder > currentOrder && tOrder < nextOrder;
+          });
+          
+          if (tasksBetween.length === 0) {
+            // Collect consecutive sequential tasks (visually adjacent)
             const sequentialGroup = [currentTask];
             let j = i + 1;
             
             while (j < sortedTargetTasks.length && sortedTargetTasks[j].dependentOnPrevious) {
-              const prevDate = new Date(sortedTargetTasks[j-1].taskDate);
-              const currTaskDate = new Date(sortedTargetTasks[j].taskDate);
-              const dayDifference = (currTaskDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+              const prevTask = sortedTargetTasks[j - 1];
+              const currTask = sortedTargetTasks[j];
+              const prevTaskOrder = prevTask.order || 0;
+              const currTaskOrder = currTask.order || 0;
               
-              if (dayDifference <= 1) {
-                sequentialGroup.push(sortedTargetTasks[j]);
+              // Check if there are tasks between prev and current
+              const betweenTasks = allTasksInLocation.filter((t: any) => {
+                const tOrder = t.order || 0;
+                const isNotInGroup = !sequentialGroup.some(gTask => 
+                  (gTask.taskId || gTask.id) === (t.taskId || t.id)
+                ) && (t.taskId || t.id) !== (currTask.taskId || currTask.id);
+                return isNotInGroup && tOrder > prevTaskOrder && tOrder < currTaskOrder;
+              });
+              
+              if (betweenTasks.length === 0) {
+                sequentialGroup.push(currTask);
                 j++;
               } else {
                 break;
