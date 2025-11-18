@@ -1075,17 +1075,28 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         linkingChanged = true;
       } else if (groupTasks.length === 1) {
         // Two-task group - auto-unlink both tasks directly
-        console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks, PRESERVING VISUAL ORDER');
+        console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
         const otherTask = groupTasks[0];
         
-        // CRITICAL: Keep exact current order values - don't recalculate!
-        // Only remove linkedTaskGroup and set dependentOnPrevious appropriately
+        // Check if both tasks were sequential before unlinking
+        const bothWereSequential = task.dependentOnPrevious && otherTask.dependentOnPrevious;
+        
+        console.log('🔗 UNLINKING DEBUG:', {
+          taskName: task.name,
+          taskSequential: task.dependentOnPrevious,
+          otherTaskName: otherTask.name,
+          otherTaskSequential: otherTask.dependentOnPrevious,
+          bothWereSequential
+        });
         
         const bothTasks = [task, otherTask].map(t => ({
           ...t,
           linkedTaskGroup: null,
-          // First task (order 0) stays non-sequential, others become sequential
-          dependentOnPrevious: (t.order === 0 || t.order === '0' || parseFloat(String(t.order)) === 0) ? false : true,
+          // If both were sequential, both stay sequential
+          // If not, first task (order 0) stays non-sequential, others become sequential
+          dependentOnPrevious: bothWereSequential 
+            ? true 
+            : ((t.order === 0 || t.order === '0' || parseFloat(String(t.order)) === 0) ? false : true),
           // CRITICAL: Keep exact same order - don't change it!
           order: t.order
         }));
@@ -1911,6 +1922,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               console.log('🔗 CHECKBOX TWO-TASK GROUP - auto-unlinking both tasks');
                               const otherTask = groupTasks[0];
                               
+                              // Check if both tasks were sequential before unlinking
+                              const bothWereSequential = task.dependentOnPrevious && otherTask.dependentOnPrevious;
+                              
                               // CRITICAL: Apply the same fractional order logic as the form submission path
                               const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
                               const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
@@ -1925,16 +1939,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 firstOrderParsed: firstOrder,
                                 secondTask: secondTask.name, 
                                 secondOrder: secondTask.order,
-                                newOrder: newOrderForSecondTask
+                                newOrder: newOrderForSecondTask,
+                                bothWereSequential
                               });
                               
                               // Both tasks become unlinked with preserved visual positioning
-                              // RULE: First task (by order) becomes unsequential, second becomes sequential
+                              // RULE: If both were sequential, both stay sequential
+                              // Otherwise: First task (by order) becomes unsequential, second becomes sequential
                               const bothTasks = [
                                 {
                                   ...firstTask,
                                   linkedTaskGroup: null,
-                                  dependentOnPrevious: false // First task is always unsequential
+                                  dependentOnPrevious: bothWereSequential ? true : false // If both sequential, first stays sequential
                                 },
                                 {
                                   ...secondTask,
