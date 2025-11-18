@@ -944,18 +944,18 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           }
           
           if (isBothSequential && isConsecutiveOrder) {
-            console.log('🔗 SPECIAL CASE: Both sequential adjacent tasks - auto-linking (both stay sequential)');
+            console.log('🔗 SPECIAL CASE: Both sequential adjacent tasks - auto-linking (first sequential, second unsequential)');
             
-            // Auto-link them at the first task's date, both stay sequential
+            // Auto-link them at the first task's date
             const linkedTaskGroup = generateLinkedTaskGroupId();
             const targetDate = firstTask.taskDate;
             
-            const tasksToUpdate = allTasksSorted.map(taskToUpdate => ({
+            const tasksToUpdate = allTasksSorted.map((taskToUpdate, index) => ({
               ...taskToUpdate,
               linkedTaskGroup: linkedTaskGroup,
               taskDate: targetDate,
-              // Both stay sequential
-              dependentOnPrevious: true
+              // First task stays sequential, second becomes unsequential (linked on same date)
+              dependentOnPrevious: index === 0 ? true : false
             }));
             
             console.log('Both sequential case auto-linking:', tasksToUpdate.map(t => ({ 
