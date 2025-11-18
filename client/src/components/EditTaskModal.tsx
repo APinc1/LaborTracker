@@ -1078,23 +1078,24 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         console.log('🔗 TWO-TASK GROUP - auto-unlinking both tasks');
         const otherTask = groupTasks[0];
         
-        // Check if both tasks were sequential before unlinking
-        const bothWereSequential = task.dependentOnPrevious && otherTask.dependentOnPrevious;
+        // Check if ANY task in the linked group was sequential
+        // (When linking sequential tasks, first stays sequential, second becomes unsequential)
+        const anyWasSequential = task.dependentOnPrevious || otherTask.dependentOnPrevious;
         
         console.log('🔗 UNLINKING DEBUG:', {
           taskName: task.name,
           taskSequential: task.dependentOnPrevious,
           otherTaskName: otherTask.name,
           otherTaskSequential: otherTask.dependentOnPrevious,
-          bothWereSequential
+          anyWasSequential
         });
         
         const bothTasks = [task, otherTask].map(t => ({
           ...t,
           linkedTaskGroup: null,
-          // If both were sequential, both stay sequential
-          // If not, first task (order 0) stays non-sequential, others become sequential
-          dependentOnPrevious: bothWereSequential 
+          // If any was sequential, both become sequential (restore sequential workflow)
+          // If none were sequential, first task (order 0) stays non-sequential, others become sequential
+          dependentOnPrevious: anyWasSequential 
             ? true 
             : ((t.order === 0 || t.order === '0' || parseFloat(String(t.order)) === 0) ? false : true),
           // CRITICAL: Keep exact same order - don't change it!
@@ -1922,8 +1923,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               console.log('🔗 CHECKBOX TWO-TASK GROUP - auto-unlinking both tasks');
                               const otherTask = groupTasks[0];
                               
-                              // Check if both tasks were sequential before unlinking
-                              const bothWereSequential = task.dependentOnPrevious && otherTask.dependentOnPrevious;
+                              // Check if ANY task in the linked group was sequential
+                              // (When linking sequential tasks, first stays sequential, second becomes unsequential)
+                              const anyWasSequential = task.dependentOnPrevious || otherTask.dependentOnPrevious;
                               
                               // CRITICAL: Apply the same fractional order logic as the form submission path
                               const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
@@ -1940,17 +1942,17 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 secondTask: secondTask.name, 
                                 secondOrder: secondTask.order,
                                 newOrder: newOrderForSecondTask,
-                                bothWereSequential
+                                anyWasSequential
                               });
                               
                               // Both tasks become unlinked with preserved visual positioning
-                              // RULE: If both were sequential, both stay sequential
+                              // RULE: If any was sequential, both become sequential (restore sequential workflow)
                               // Otherwise: First task (by order) becomes unsequential, second becomes sequential
                               const bothTasks = [
                                 {
                                   ...firstTask,
                                   linkedTaskGroup: null,
-                                  dependentOnPrevious: bothWereSequential ? true : false // If both sequential, first stays sequential
+                                  dependentOnPrevious: anyWasSequential ? true : false // If any sequential, first becomes sequential
                                 },
                                 {
                                   ...secondTask,
