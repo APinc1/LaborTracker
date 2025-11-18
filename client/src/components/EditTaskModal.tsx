@@ -1090,17 +1090,43 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           anyWasSequential
         });
         
-        const bothTasks = [task, otherTask].map(t => ({
-          ...t,
-          linkedTaskGroup: null,
-          // If any was sequential, both become sequential (restore sequential workflow)
-          // If none were sequential, first task (order 0) stays non-sequential, others become sequential
-          dependentOnPrevious: anyWasSequential 
-            ? true 
-            : ((t.order === 0 || t.order === '0' || parseFloat(String(t.order)) === 0) ? false : true),
-          // CRITICAL: Keep exact same order - don't change it!
-          order: t.order
-        }));
+        // Sort by order to identify first and second task
+        const firstTask = (task.order || 0) < (otherTask.order || 0) ? task : otherTask;
+        const secondTask = (task.order || 0) < (otherTask.order || 0) ? otherTask : task;
+        
+        // If making sequential, calculate date for second task
+        let secondTaskDate = secondTask.taskDate;
+        if (anyWasSequential) {
+          // Calculate next day after first task
+          const baseDate = new Date(firstTask.taskDate + 'T00:00:00');
+          const nextDate = new Date(baseDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          // Skip weekends
+          while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+            nextDate.setDate(nextDate.getDate() + 1);
+          }
+          secondTaskDate = nextDate.toISOString().split('T')[0];
+        }
+        
+        const bothTasks = [
+          {
+            ...firstTask,
+            linkedTaskGroup: null,
+            // If any was sequential, both become sequential (restore sequential workflow)
+            // If none were sequential, first task (order 0) stays non-sequential, others become sequential
+            dependentOnPrevious: anyWasSequential 
+              ? true 
+              : ((firstTask.order === 0 || firstTask.order === '0' || parseFloat(String(firstTask.order)) === 0) ? false : true),
+            order: firstTask.order
+          },
+          {
+            ...secondTask,
+            linkedTaskGroup: null,
+            dependentOnPrevious: true, // Second task always becomes sequential
+            taskDate: secondTaskDate, // Updated date when made sequential
+            order: secondTask.order
+          }
+        ];
         
         console.log('🔗 UNLINKING (preserving order):', bothTasks.map(t => ({
           name: t.name,
@@ -1935,6 +1961,20 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               const firstOrder = typeof firstTask.order === 'string' ? parseFloat(firstTask.order) : (firstTask.order || 0);
                               const newOrderForSecondTask = firstOrder + 0.1;
                               
+                              // If making sequential, calculate date for second task
+                              let secondTaskDate = secondTask.taskDate;
+                              if (anyWasSequential) {
+                                // Calculate next day after first task
+                                const baseDate = new Date(firstTask.taskDate + 'T00:00:00');
+                                const nextDate = new Date(baseDate);
+                                nextDate.setDate(nextDate.getDate() + 1);
+                                // Skip weekends
+                                while (nextDate.getDay() === 0 || nextDate.getDay() === 6) {
+                                  nextDate.setDate(nextDate.getDate() + 1);
+                                }
+                                secondTaskDate = nextDate.toISOString().split('T')[0];
+                              }
+                              
                               console.log('🔗 CHECKBOX UNLINK ORDER PRESERVATION:', {
                                 firstTask: firstTask.name,
                                 firstOrder: firstTask.order,
@@ -1942,7 +1982,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 secondTask: secondTask.name, 
                                 secondOrder: secondTask.order,
                                 newOrder: newOrderForSecondTask,
-                                anyWasSequential
+                                anyWasSequential,
+                                secondTaskNewDate: secondTaskDate
                               });
                               
                               // Both tasks become unlinked with preserved visual positioning
@@ -1958,6 +1999,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                   ...secondTask,
                                   linkedTaskGroup: null,
                                   dependentOnPrevious: true, // Second task is always sequential
+                                  taskDate: secondTaskDate, // Updated date when made sequential
                                   order: newOrderForSecondTask // CRITICAL: Preserve position with fractional order
                                 }
                               ];
@@ -1965,7 +2007,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               // Trigger cascading for all subsequent tasks
                               const allTasks = [...(existingTasks as any[])];
                               
-                              // Update the unlinked tasks with new order values
+                              // Update the unlinked tasks with new order and date values
                               bothTasks.forEach(updatedTask => {
                                 const existingIndex = allTasks.findIndex(t => 
                                   (t.taskId || t.id) === (updatedTask.taskId || updatedTask.id)
@@ -1975,6 +2017,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                     ...allTasks[existingIndex],
                                     linkedTaskGroup: null,
                                     dependentOnPrevious: updatedTask.dependentOnPrevious,
+                                    taskDate: updatedTask.taskDate, // CRITICAL: Update date for sequential tasks
                                     order: updatedTask.order // CRITICAL: Apply the new order value
                                   };
                                 }
