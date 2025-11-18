@@ -92,7 +92,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     availableDates: {date: string, taskName: string}[],
     currentIsSequential?: boolean,
     linkedIsSequential?: boolean,
-    areAdjacent?: boolean
+    areAdjacent?: boolean,
+    formData?: any // Form data with updated task date/sequential status
   } | null>(null);
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [unlinkingGroupSize, setUnlinkingGroupSize] = useState(0);
@@ -308,9 +309,23 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   };
 
   // Function to create position-based options based on the target tasks being linked to
-  const createPositionOptions = (targetTasks: any[]) => {
+  const createPositionOptions = (targetTasks: any[], formData?: any) => {
     // Include the current task as well as the target tasks for position options
-    const allRelevantTasks = [task, ...targetTasks];
+    // If formData is provided, use the updated task data from the form
+    const currentTaskWithFormData = formData ? {
+      ...task,
+      taskDate: formData.taskDate || task.taskDate,
+      dependentOnPrevious: formData.dependentOnPrevious ?? task.dependentOnPrevious
+    } : task;
+    
+    console.log('🎯 createPositionOptions called with:', {
+      formData: formData ? { taskDate: formData.taskDate, dependentOnPrevious: formData.dependentOnPrevious } : null,
+      currentTaskOriginal: { name: task.name, date: task.taskDate, sequential: task.dependentOnPrevious },
+      currentTaskUpdated: { name: currentTaskWithFormData.name, date: currentTaskWithFormData.taskDate, sequential: currentTaskWithFormData.dependentOnPrevious },
+      targetTasks: targetTasks.map(t => ({ name: t.name, date: t.taskDate }))
+    });
+    
+    const allRelevantTasks = [currentTaskWithFormData, ...targetTasks];
     
     // Sort all tasks (current + target) by date and order
     const sortedTargetTasks = allRelevantTasks
@@ -1005,10 +1020,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         const linkingOptionsData = {
           currentTask: task,
           targetTasks: linkedTasks,
-          availableDates: [] // No longer used, but keeping for compatibility
+          availableDates: [], // No longer used, but keeping for compatibility
+          formData: data // CRITICAL: Pass form data to use updated task date/sequential status
         };
         
         console.log('🔗 Setting linking options:', linkingOptionsData);
+        console.log('🔗 Form data being passed:', { taskDate: data.taskDate, dependentOnPrevious: data.dependentOnPrevious });
         setLinkingOptions(linkingOptionsData);
         setShowLinkDateDialog(true);
         setPendingFormData(data);
@@ -2499,7 +2516,12 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
           <AlertDialogFooter className="flex-col space-y-3 sm:flex-col">
             {(() => {
               if (!linkingOptions?.targetTasks) return null;
-              const positionOptions = createPositionOptions(linkingOptions.targetTasks);
+              const positionOptions = createPositionOptions(linkingOptions.targetTasks, linkingOptions.formData);
+              console.log('🎯 Position options generated:', positionOptions.map(o => ({ 
+                name: o.name, 
+                date: o.date, 
+                type: o.type 
+              })));
               return positionOptions.map((option, idx) => (
                 <Button 
                   key={idx}
