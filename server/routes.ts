@@ -823,7 +823,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/tasks/:id', async (req, res) => {
+  app.get('/api/tasks/:id(\\d+)', async (req, res) => {
     try {
       const storage = await getStorage();
       const task = await withFastTimeout(storage.getTask(parseInt(req.params.id)));
