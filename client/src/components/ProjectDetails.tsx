@@ -18,7 +18,8 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DialogDescription } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
-import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
+import { parseSW62ExcelRow } from "@/lib/customExcelParser";
+import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -245,7 +246,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     }
   };
 
-  // Handle project budget Excel upload
+  // Handle project budget Excel upload - uses same logic as location budget import
   const handleProjectBudgetUpload = async () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -259,43 +260,55 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
         
-        // Find header row and parse data (using SW62 format)
-        let headerRowIndex = -1;
-        for (let i = 0; i < Math.min(20, jsonData.length); i++) {
-          const row = jsonData[i];
-          if (row && row.length > 0) {
-            const rowStr = row.join(' ').toLowerCase();
-            if (rowStr.includes('line item') || rowStr.includes('description') || rowStr.includes('cost code')) {
-              headerRowIndex = i;
-              break;
-            }
-          }
+        // Use the "full location" sheet, "Line Items" sheet, or first sheet (same as location budget)
+        let sheetName = workbook.SheetNames[0];
+        if (workbook.SheetNames.includes('full location')) {
+          sheetName = 'full location';
+        } else if (workbook.SheetNames.includes('Line Items')) {
+          sheetName = 'Line Items';
         }
-
-        if (headerRowIndex === -1) {
-          headerRowIndex = 0;
-        }
-
-        const dataRows = jsonData.slice(headerRowIndex + 1);
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // Convert to JSON array
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // Skip header row and process data (same as location budget)
         const parsedItems: any[] = [];
-
-        for (const row of dataRows) {
-          if (!row || row.length === 0 || !row[0]) continue;
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = jsonData[i] as any[];
           
-          const lineItemNumber = String(row[0] || '').trim();
-          if (!lineItemNumber || lineItemNumber === '') continue;
-
-          try {
-            const parsedItem = parseSW62ExcelRowForProject(row);
-            if (parsedItem) {
-              parsedItems.push(parsedItem);
-            }
-          } catch (err) {
-            console.warn('Failed to parse row:', row, err);
+          // Try SW62 format first, then fall back to standard format (same as location budget)
+          let budgetItem = parseSW62ExcelRow(row, 0); // Use 0 as placeholder locationId
+          if (!budgetItem) {
+            budgetItem = parseExcelRowToBudgetItem(row, 0);
+          }
+          
+          if (budgetItem) {
+            // Convert to project budget format (remove locationId, add isGroup flag)
+            const projectItem = {
+              lineItemNumber: budgetItem.lineItemNumber,
+              lineItemName: budgetItem.lineItemName,
+              costCode: budgetItem.costCode,
+              unconvertedUnitOfMeasure: budgetItem.unconvertedUnitOfMeasure,
+              unconvertedQty: budgetItem.unconvertedQty,
+              unitCost: budgetItem.unitCost,
+              unitTotal: budgetItem.unitTotal,
+              convertedUnitOfMeasure: budgetItem.convertedUnitOfMeasure,
+              convertedQty: budgetItem.convertedQty,
+              productionRate: budgetItem.productionRate,
+              hours: budgetItem.hours,
+              laborCost: budgetItem.laborCost,
+              equipmentCost: budgetItem.equipmentCost,
+              truckingCost: budgetItem.truckingCost,
+              dumpFeesCost: budgetItem.dumpFeesCost,
+              materialCost: budgetItem.materialCost,
+              subcontractorCost: budgetItem.subcontractorCost,
+              budgetTotal: budgetItem.budgetTotal,
+              billing: budgetItem.billing,
+              isGroup: false,
+            };
+            parsedItems.push(projectItem);
           }
         }
 
