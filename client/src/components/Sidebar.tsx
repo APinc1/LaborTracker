@@ -59,7 +59,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
     { name: "Dashboard", href: "/", icon: ChartLine, key: "dashboard" },
     { name: "Projects", href: "/projects", icon: FolderOpen, key: "projects" },
     { name: "Locations", href: "/locations", icon: MapPin, key: "locations" },
-    { name: "Budgets", href: "/budgets", icon: Calculator, key: "budgets" },
+    { name: "Location Budgets", href: "/budgets", icon: Calculator, key: "budgets" },
     { name: "Schedule", href: "/schedule", icon: Calendar, key: "schedule" },
     {
       name: "Assignments",
