@@ -703,32 +703,32 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
                 {/* Full budget items table with frozen columns */}
                 <div className="border rounded-md overflow-hidden">
-                  <div className="overflow-x-auto max-h-[250px] overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-gray-50 border-b">
-                          <TableHead className="whitespace-nowrap sticky top-0 left-0 bg-gray-100 z-30 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 left-[80px] bg-gray-100 z-30 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 font-medium text-gray-600">Cost Code</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Unit</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Qty</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Cost</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Total</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Conv.<br/>Qty</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">PX</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Hours</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Labor Cost</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Equipment</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Trucking</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Dump Fees</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Material</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Sub</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Budget</TableHead>
-                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Billings</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                  <div className="overflow-auto max-h-[250px]">
+                    <table className="w-full min-w-[1400px] border-collapse sticky-table">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
+                        <tr className="border-b">
+                          <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                          <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                          <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Cost Code</th>
+                          <th className="w-16 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit</th>
+                          <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Qty</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit Cost</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit Total</th>
+                          <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Conv. UM</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Conv. Qty</th>
+                          <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>PX</th>
+                          <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Hours</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Labor Cost</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Equipment</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Trucking</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Dump Fees</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Material</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Sub</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Budget</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Billings</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {getFilteredBudgetItems()
                           .filter((item: any) => isItemVisible(item, getFilteredBudgetItems()))
                           .map((item: any) => {
@@ -739,13 +739,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             const isParent = itemHasChildren || item.isGroup;
                             
                             return (
-                              <TableRow 
+                              <tr 
                                 key={item.id} 
                                 className={`${isParent ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 border-b`}
                               >
-                                <TableCell 
-                                  className={`font-medium whitespace-nowrap sticky left-0 z-10 text-center ${isParent ? 'bg-gray-50' : 'bg-white'}`}
-                                  style={{ paddingLeft: `${8 + indent}px` }}
+                                <td 
+                                  className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100' : 'bg-gray-100'}`}
+                                  style={{ position: 'sticky', left: '0px', paddingLeft: `${16 + indent}px` }}
                                 >
                                   <div className="flex items-center">
                                     {itemHasChildren && (
@@ -759,32 +759,36 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                     {!itemHasChildren && <span className="w-5" />}
                                     <span className={isParent ? 'font-semibold' : ''}>{item.lineItemNumber}</span>
                                   </div>
-                                </TableCell>
-                                <TableCell className={`max-w-[250px] sticky left-[80px] z-10 border-r ${isParent ? 'bg-gray-50 font-semibold' : 'bg-white'}`}>
+                                </td>
+                                <td 
+                                  className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100 font-semibold' : 'bg-gray-100'}`}
+                                  style={{ position: 'sticky', left: '80px' }}
+                                  title={item.lineItemName}
+                                >
                                   {item.lineItemName}
-                                </TableCell>
-                                <TableCell className={isParent ? 'font-semibold' : ''}>{item.costCode || '-'}</TableCell>
-                                <TableCell className="text-center">{item.unconvertedUnitOfMeasure || '-'}</TableCell>
-                                <TableCell className="text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-center">{item.convertedUnitOfMeasure || '-'}</TableCell>
-                                <TableCell className="text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                              </TableRow>
+                                </td>
+                                <td className={`px-4 py-3 ${isParent ? 'font-semibold' : ''}`}>{item.costCode || '-'}</td>
+                                <td className="px-4 py-3 text-center">{item.unconvertedUnitOfMeasure || '-'}</td>
+                                <td className="px-4 py-3 text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-center">{item.convertedUnitOfMeasure || '-'}</td>
+                                <td className="px-4 py-3 text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td className="px-4 py-3 text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              </tr>
                             );
                           })}
-                      </TableBody>
-                    </Table>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -1074,32 +1078,32 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               <DialogTitle>Budget Line Items - Full View</DialogTitle>
             </DialogHeader>
             <div className="border rounded-md overflow-hidden">
-              <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-50 border-b">
-                      <TableHead className="whitespace-nowrap sticky top-0 left-0 bg-gray-100 z-30 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 left-[80px] bg-gray-100 z-30 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 font-medium text-gray-600">Cost Code</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Unit</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Qty</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Cost</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Total</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Conv.<br/>Qty</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">PX</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Hours</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Labor Cost</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Equipment</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Trucking</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Dump Fees</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Material</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Sub</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Budget</TableHead>
-                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Billings</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="overflow-auto max-h-[70vh]">
+                <table className="w-full min-w-[1400px] border-collapse sticky-table">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr className="border-b">
+                      <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                      <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                      <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Cost Code</th>
+                      <th className="w-16 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit</th>
+                      <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Qty</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit Cost</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit Total</th>
+                      <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Conv. UM</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Conv. Qty</th>
+                      <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>PX</th>
+                      <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Hours</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Labor Cost</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Equipment</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Trucking</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Dump Fees</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Material</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Sub</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Budget</th>
+                      <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Billings</th>
+                    </tr>
+                  </thead>
+                  <tbody>
                     {getFilteredBudgetItems()
                       .filter((item: any) => isItemVisible(item, getFilteredBudgetItems()))
                       .map((item: any) => {
@@ -1110,13 +1114,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                         const isParent = itemHasChildren || item.isGroup;
                         
                         return (
-                          <TableRow 
+                          <tr 
                             key={`expanded-${item.id}`} 
                             className={`${isParent ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 border-b`}
                           >
-                            <TableCell 
-                              className={`font-medium whitespace-nowrap sticky left-0 z-10 text-center ${isParent ? 'bg-gray-50' : 'bg-white'}`}
-                              style={{ paddingLeft: `${8 + indent}px` }}
+                            <td 
+                              className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100' : 'bg-gray-100'}`}
+                              style={{ position: 'sticky', left: '0px', paddingLeft: `${16 + indent}px` }}
                             >
                               <div className="flex items-center">
                                 {itemHasChildren && (
@@ -1130,32 +1134,36 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                 {!itemHasChildren && <span className="w-5" />}
                                 <span className={isParent ? 'font-semibold' : ''}>{item.lineItemNumber}</span>
                               </div>
-                            </TableCell>
-                            <TableCell className={`max-w-[250px] sticky left-[80px] z-10 border-r ${isParent ? 'bg-gray-50 font-semibold' : 'bg-white'}`}>
+                            </td>
+                            <td 
+                              className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100 font-semibold' : 'bg-gray-100'}`}
+                              style={{ position: 'sticky', left: '80px' }}
+                              title={item.lineItemName}
+                            >
                               {item.lineItemName}
-                            </TableCell>
-                            <TableCell className={isParent ? 'font-semibold' : ''}>{item.costCode || '-'}</TableCell>
-                            <TableCell className="text-center">{item.unconvertedUnitOfMeasure || '-'}</TableCell>
-                            <TableCell className="text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-center">{item.convertedUnitOfMeasure || '-'}</TableCell>
-                            <TableCell className="text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                            <TableCell className="text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          </TableRow>
+                            </td>
+                            <td className={`px-4 py-3 ${isParent ? 'font-semibold' : ''}`}>{item.costCode || '-'}</td>
+                            <td className="px-4 py-3 text-center">{item.unconvertedUnitOfMeasure || '-'}</td>
+                            <td className="px-4 py-3 text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-center">{item.convertedUnitOfMeasure || '-'}</td>
+                            <td className="px-4 py-3 text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="px-4 py-3 text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          </tr>
                         );
                       })}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             </div>
           </DialogContent>
