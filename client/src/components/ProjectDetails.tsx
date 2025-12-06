@@ -18,7 +18,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DialogDescription } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
-import { parseSW62ExcelRow } from "@/lib/customExcelParser";
+import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -290,7 +290,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           if (!lineItemNumber || lineItemNumber === '') continue;
 
           try {
-            const parsedItem = parseSW62ExcelRow(row);
+            const parsedItem = parseSW62ExcelRowForProject(row);
             if (parsedItem) {
               parsedItems.push(parsedItem);
             }

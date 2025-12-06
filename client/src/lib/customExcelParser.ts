@@ -49,7 +49,7 @@ export interface ProjectBudgetItem {
   isGroup: boolean;
 }
 
-export const parseSW62ExcelRow = (row: any[]): ProjectBudgetItem | null => {
+const parseRowToProjectBudgetItem = (row: any[]): ProjectBudgetItem | null => {
   // Skip rows where line item number is blank or undefined
   if (!row[SW62_COLUMN_MAPPING.lineItemNumber] || 
       row[SW62_COLUMN_MAPPING.lineItemNumber].toString().trim() === '') {
@@ -102,16 +102,19 @@ export const parseSW62ExcelRow = (row: any[]): ProjectBudgetItem | null => {
   };
 };
 
-export const parseSW62ExcelRowForLocation = (row: any[], locationId: number): BudgetLineItem | null => {
-  const parsed = parseSW62ExcelRow(row);
-  if (!parsed || parsed.isGroup) return null;
+export const parseSW62ExcelRow = (row: any[], locationId?: number): BudgetLineItem | null => {
+  const parsed = parseRowToProjectBudgetItem(row);
+  if (!parsed) return null;
+  
+  // For location budget, skip group items
+  if (parsed.isGroup) return null;
   
   const unconvertedQty = parseFloat(parsed.unconvertedQty);
   const convertedQty = parseFloat(parsed.convertedQty);
   const conversionFactor = unconvertedQty !== 0 ? convertedQty / unconvertedQty : 1;
 
   return {
-    locationId,
+    locationId: locationId || 0,
     lineItemNumber: parsed.lineItemNumber,
     lineItemName: parsed.lineItemName,
     unconvertedUnitOfMeasure: parsed.unconvertedUnitOfMeasure,
@@ -135,4 +138,8 @@ export const parseSW62ExcelRowForLocation = (row: any[], locationId: number): Bu
     subcontractorCost: parsed.subcontractorCost,
     notes: "",
   };
+};
+
+export const parseSW62ExcelRowForProject = (row: any[]): ProjectBudgetItem | null => {
+  return parseRowToProjectBudgetItem(row);
 };
