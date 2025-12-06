@@ -10,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
@@ -84,6 +85,10 @@ export default function BudgetManagement() {
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [budgetMode, setBudgetMode] = useState<'project' | 'location'>('location');
+  const [showDeriveFromMasterDialog, setShowDeriveFromMasterDialog] = useState(false);
+  const [selectedMasterItems, setSelectedMasterItems] = useState<Set<number>>(new Set());
+  const [showProjectImportConfirmDialog, setShowProjectImportConfirmDialog] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -386,6 +391,13 @@ export default function BudgetManagement() {
     staleTime: 30000,
   });
 
+  // Fetch project budget items (master budget)
+  const { data: projectBudgetItems = [], isLoading: projectBudgetLoading } = useQuery({
+    queryKey: ["/api/projects", (currentProject as any)?.id, "budget"],
+    enabled: !!(currentProject as any)?.id,
+    staleTime: 30000,
+  });
+
   // Auto-set project when accessing via direct location access
   useEffect(() => {
     if (isDirectAccess && (currentLocation as any)?.projectId && !selectedProject) {
@@ -637,6 +649,39 @@ export default function BudgetManagement() {
     },
   });
 
+  const deriveFromMasterMutation = useMutation({
+    mutationFn: async (projectBudgetItemIds: number[]) => {
+      const response = await fetch(`/api/locations/${selectedLocation}/budget/derive`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ projectBudgetItemIds }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      setShowDeriveFromMasterDialog(false);
+      setSelectedMasterItems(new Set());
+      toast({
+        title: "Success",
+        description: `${data.length} budget line items added from project master`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to derive budget from master",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteBudgetItem = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this budget item?')) {
       try {
@@ -837,8 +882,61 @@ export default function BudgetManagement() {
     );
   };
 
+  // Helper functions for master budget selection
+  const getProjectChildren = (parentItem: any) => {
+    const items = projectBudgetItems as any[];
+    return items.filter(child => 
+      child.lineItemNumber?.includes('.') && 
+      child.lineItemNumber?.split('.')[0] === parentItem.lineItemNumber
+    );
+  };
 
+  const handleMasterItemSelection = (item: any, isSelected: boolean) => {
+    const newSelection = new Set(selectedMasterItems);
+    const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+    const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+    
+    if (isSelected) {
+      newSelection.add(item.id);
+      
+      if (isParent) {
+        // If selecting a parent, select all its children
+        const children = getProjectChildren(item);
+        children.forEach((child: any) => newSelection.add(child.id));
+      } else if (isChild) {
+        // If selecting a child, also select its parent
+        const parentLineItem = item.lineItemNumber.split('.')[0];
+        const parent = (projectBudgetItems as any[]).find(
+          (p: any) => p.lineItemNumber === parentLineItem
+        );
+        if (parent) {
+          newSelection.add(parent.id);
+        }
+      }
+    } else {
+      newSelection.delete(item.id);
+      
+      if (isParent) {
+        // If deselecting a parent, deselect all its children
+        const children = getProjectChildren(item);
+        children.forEach((child: any) => newSelection.delete(child.id));
+      }
+    }
+    
+    setSelectedMasterItems(newSelection);
+  };
 
+  const handleDeriveFromMaster = () => {
+    if (selectedMasterItems.size === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one line item from the master budget",
+        variant: "destructive",
+      });
+      return;
+    }
+    deriveFromMasterMutation.mutate(Array.from(selectedMasterItems));
+  };
 
 
   const updateChildrenPXRate = useCallback(async (parentItem: any, newPX: string) => {
@@ -1223,6 +1321,16 @@ export default function BudgetManagement() {
                   <span>Import Excel</span>
                 </>
               )}
+            </Button>
+            <Button 
+              variant="outline" 
+              className="flex items-center space-x-2"
+              onClick={() => setShowDeriveFromMasterDialog(true)}
+              disabled={!selectedLocation || (projectBudgetItems as any[]).length === 0}
+              data-testid="button-add-from-master"
+            >
+              <FolderDown className="w-4 h-4" />
+              <span>Add from Project Budget</span>
             </Button>
             <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
               <DialogTrigger asChild>
@@ -2462,6 +2570,105 @@ export default function BudgetManagement() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Derive from Project Master Dialog */}
+      <Dialog open={showDeriveFromMasterDialog} onOpenChange={setShowDeriveFromMasterDialog}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Line Items from Project Master Budget</DialogTitle>
+            <DialogDescription>
+              Select line items from the project's master budget to add to this location.
+              When you select a parent item, all its children will be automatically selected.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {projectBudgetLoading ? (
+            <Skeleton className="h-40" />
+          ) : (projectBudgetItems as any[]).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>No master budget items found for this project.</p>
+              <p className="text-sm mt-2">Upload a master budget to the project first.</p>
+            </div>
+          ) : (
+            <>
+              <div className="border rounded-md max-h-96 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">Select</TableHead>
+                      <TableHead>Line Item</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="text-right">PX</TableHead>
+                      <TableHead>Cost Code</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(projectBudgetItems as any[]).map((item: any) => {
+                      const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
+                      const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
+                      const isSelected = selectedMasterItems.has(item.id);
+                      
+                      return (
+                        <TableRow 
+                          key={item.id}
+                          className={isParent ? "bg-gray-50 font-medium" : ""}
+                          data-testid={`row-master-item-${item.id}`}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleMasterItemSelection(item, checked as boolean)}
+                              data-testid={`checkbox-master-item-${item.id}`}
+                            />
+                          </TableCell>
+                          <TableCell className={isChild ? "pl-8" : ""}>
+                            {item.lineItemNumber}
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate">
+                            {item.lineItemName}
+                          </TableCell>
+                          <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
+                          <TableCell className="text-right">{item.productionRate || "-"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {item.costCode}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              <div className="flex items-center justify-between pt-4">
+                <span className="text-sm text-gray-500">
+                  {selectedMasterItems.size} item(s) selected
+                </span>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowDeriveFromMasterDialog(false);
+                      setSelectedMasterItems(new Set());
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleDeriveFromMaster}
+                    disabled={selectedMasterItems.size === 0 || deriveFromMasterMutation.isPending}
+                    data-testid="button-confirm-derive"
+                  >
+                    {deriveFromMasterMutation.isPending ? "Adding..." : "Add Selected Items"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

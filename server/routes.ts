@@ -4,7 +4,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import { getStorage } from "./storage";
 import { 
   insertProjectSchema, insertBudgetLineItemSchema, insertLocationSchema, insertCrewSchema, 
-  insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema 
+  insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema,
+  insertProjectBudgetLineItemSchema
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 import { timing, validateLimit } from "./middleware/timing";
@@ -251,6 +252,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: 'Failed to delete project' });
+    }
+  });
+
+  // Project Budget routes
+  app.get('/api/projects/:projectId/budget', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const projectId = parseInt(req.params.projectId);
+      const items = await storage.getProjectBudgetLineItems(projectId);
+      res.json(items);
+    } catch (error) {
+      console.error('Error fetching project budget:', error);
+      res.status(500).json({ error: 'Failed to fetch project budget' });
+    }
+  });
+
+  app.post('/api/projects/:projectId/budget', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const projectId = parseInt(req.params.projectId);
+      
+      // Clean up the data before validation
+      const cleanedData = {
+        ...req.body,
+        projectId,
+        unitCost: req.body.unitCost === "" ? "0" : req.body.unitCost,
+        unconvertedQty: req.body.unconvertedQty === "" ? "0" : req.body.unconvertedQty,
+        unitTotal: req.body.unitTotal === "" ? "0" : req.body.unitTotal,
+        budgetTotal: req.body.budgetTotal === "" ? "0" : req.body.budgetTotal,
+        actualQty: req.body.actualQty === "" ? null : req.body.actualQty,
+        convertedQty: req.body.convertedQty === "" ? null : req.body.convertedQty,
+        conversionFactor: req.body.conversionFactor === "" ? "1" : req.body.conversionFactor,
+        productionRate: req.body.productionRate === "" ? null : req.body.productionRate,
+        hours: req.body.hours === "" ? null : req.body.hours,
+        billing: req.body.billing === "" ? null : req.body.billing,
+        laborCost: req.body.laborCost === "" ? null : req.body.laborCost,
+        equipmentCost: req.body.equipmentCost === "" ? null : req.body.equipmentCost,
+        truckingCost: req.body.truckingCost === "" ? null : req.body.truckingCost,
+        dumpFeesCost: req.body.dumpFeesCost === "" ? null : req.body.dumpFeesCost,
+        materialCost: req.body.materialCost === "" ? null : req.body.materialCost,
+        subcontractorCost: req.body.subcontractorCost === "" ? null : req.body.subcontractorCost,
+        convertedUnitOfMeasure: req.body.convertedUnitOfMeasure === "" ? null : req.body.convertedUnitOfMeasure,
+        notes: req.body.notes === "" ? null : req.body.notes,
+      };
+      
+      const validated = insertProjectBudgetLineItemSchema.parse(cleanedData);
+      const item = await storage.createProjectBudgetLineItem(validated);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error('Error creating project budget item:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Invalid project budget item data' });
+      }
+    }
+  });
+
+  // Bulk import project budget items (replaces existing)
+  app.post('/api/projects/:projectId/budget/import', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const projectId = parseInt(req.params.projectId);
+      const { items } = req.body;
+      
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: 'items array is required' });
+      }
+      
+      // Delete existing budget items for this project
+      await storage.deleteAllProjectBudgetLineItems(projectId);
+      
+      // Create all new items
+      const createdItems = [];
+      for (const item of items) {
+        const cleanedData = {
+          ...item,
+          projectId,
+          unitCost: item.unitCost === "" || item.unitCost === null ? "0" : String(item.unitCost),
+          unconvertedQty: item.unconvertedQty === "" || item.unconvertedQty === null ? "0" : String(item.unconvertedQty),
+          unitTotal: item.unitTotal === "" || item.unitTotal === null ? "0" : String(item.unitTotal),
+          budgetTotal: item.budgetTotal === "" || item.budgetTotal === null ? "0" : String(item.budgetTotal),
+          actualQty: item.actualQty === "" ? null : item.actualQty,
+          convertedQty: item.convertedQty === "" ? null : item.convertedQty,
+          conversionFactor: item.conversionFactor === "" || item.conversionFactor === null ? "1" : String(item.conversionFactor),
+          productionRate: item.productionRate === "" ? null : item.productionRate,
+          hours: item.hours === "" ? null : item.hours,
+          billing: item.billing === "" ? null : item.billing,
+          laborCost: item.laborCost === "" ? null : item.laborCost,
+          equipmentCost: item.equipmentCost === "" ? null : item.equipmentCost,
+          truckingCost: item.truckingCost === "" ? null : item.truckingCost,
+          dumpFeesCost: item.dumpFeesCost === "" ? null : item.dumpFeesCost,
+          materialCost: item.materialCost === "" ? null : item.materialCost,
+          subcontractorCost: item.subcontractorCost === "" ? null : item.subcontractorCost,
+          convertedUnitOfMeasure: item.convertedUnitOfMeasure === "" ? null : item.convertedUnitOfMeasure,
+          notes: item.notes === "" ? null : item.notes,
+        };
+        
+        try {
+          const validated = insertProjectBudgetLineItemSchema.parse(cleanedData);
+          const created = await storage.createProjectBudgetLineItem(validated);
+          createdItems.push(created);
+        } catch (err) {
+          console.warn('Failed to create budget item:', cleanedData.lineItemNumber, err);
+        }
+      }
+      
+      res.status(201).json({ created: createdItems.length, items: createdItems });
+    } catch (error) {
+      console.error('Error importing project budget:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Failed to import project budget' });
+      }
+    }
+  });
+
+  app.put('/api/project-budget/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const itemId = parseInt(req.params.id);
+      const validated = insertProjectBudgetLineItemSchema.partial().parse(req.body);
+      
+      // Update the project budget item
+      const item = await storage.updateProjectBudgetLineItem(itemId, validated);
+      
+      // Propagate changes to linked location budget items
+      await storage.propagateProjectBudgetUpdate(itemId, validated);
+      
+      res.json(item);
+    } catch (error) {
+      console.error('Error updating project budget item:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Invalid project budget item data' });
+      }
+    }
+  });
+
+  app.delete('/api/project-budget/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      await storage.deleteProjectBudgetLineItem(parseInt(req.params.id));
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting project budget item:', error);
+      res.status(500).json({ error: 'Failed to delete project budget item' });
+    }
+  });
+
+  app.delete('/api/projects/:projectId/budget', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const projectId = parseInt(req.params.projectId);
+      await storage.deleteAllProjectBudgetLineItems(projectId);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting all project budget items:', error);
+      res.status(500).json({ error: 'Failed to delete project budget' });
+    }
+  });
+
+  // Derive location budget from project budget
+  app.post('/api/locations/:locationId/budget/derive', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      let locationDbId: number;
+      
+      const locationParam = req.params.locationId;
+      if (/^\d+$/.test(locationParam)) {
+        locationDbId = parseInt(locationParam);
+      } else {
+        const location = await storage.getLocation(locationParam);
+        if (!location) {
+          return res.status(404).json({ error: 'Location not found' });
+        }
+        locationDbId = location.id;
+      }
+      
+      const { projectBudgetItemIds } = req.body;
+      if (!Array.isArray(projectBudgetItemIds) || projectBudgetItemIds.length === 0) {
+        return res.status(400).json({ error: 'projectBudgetItemIds array is required' });
+      }
+      
+      const createdItems = await storage.createLocationBudgetFromProjectItems(locationDbId, projectBudgetItemIds);
+      res.status(201).json(createdItems);
+    } catch (error) {
+      console.error('Error deriving location budget:', error);
+      if (error instanceof Error) {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(400).json({ error: 'Failed to derive location budget' });
+      }
     }
   });
 

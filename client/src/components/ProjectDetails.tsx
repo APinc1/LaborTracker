@@ -10,11 +10,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DialogDescription } from "@/components/ui/dialog";
+import * as XLSX from 'xlsx';
+import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -30,6 +34,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [editingLocation, setEditingLocation] = useState<any>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
+  const [showBudgetUploadDialog, setShowBudgetUploadDialog] = useState(false);
+  const [isUploadingBudget, setIsUploadingBudget] = useState(false);
   const { toast } = useToast();
   
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -48,7 +54,11 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     staleTime: 30000,
   });
 
-
+  // Fetch project master budget items
+  const { data: projectBudgetItems = [], isLoading: projectBudgetLoading } = useQuery({
+    queryKey: ["/api/projects", projectId, "budget"],
+    staleTime: 30000,
+  });
 
   // Fetch tasks for all locations to calculate accurate date ranges
   const locationTaskQueries = useQuery({
@@ -235,6 +245,97 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     }
   };
 
+  // Handle project budget Excel upload
+  const handleProjectBudgetUpload = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      setIsUploadingBudget(true);
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' }) as any[][];
+        
+        // Find header row and parse data (using SW62 format)
+        let headerRowIndex = -1;
+        for (let i = 0; i < Math.min(20, jsonData.length); i++) {
+          const row = jsonData[i];
+          if (row && row.length > 0) {
+            const rowStr = row.join(' ').toLowerCase();
+            if (rowStr.includes('line item') || rowStr.includes('description') || rowStr.includes('cost code')) {
+              headerRowIndex = i;
+              break;
+            }
+          }
+        }
+
+        if (headerRowIndex === -1) {
+          headerRowIndex = 0;
+        }
+
+        const dataRows = jsonData.slice(headerRowIndex + 1);
+        const parsedItems: any[] = [];
+
+        for (const row of dataRows) {
+          if (!row || row.length === 0 || !row[0]) continue;
+          
+          const lineItemNumber = String(row[0] || '').trim();
+          if (!lineItemNumber || lineItemNumber === '') continue;
+
+          try {
+            const parsedItem = parseSW62ExcelRow(row);
+            if (parsedItem) {
+              parsedItems.push(parsedItem);
+            }
+          } catch (err) {
+            console.warn('Failed to parse row:', row, err);
+          }
+        }
+
+        if (parsedItems.length === 0) {
+          toast({
+            title: "No data found",
+            description: "The Excel file did not contain valid budget data.",
+            variant: "destructive",
+          });
+          setIsUploadingBudget(false);
+          return;
+        }
+
+        // Upload to API
+        const response = await apiRequest(`/api/projects/${projectId}/budget/import`, {
+          method: "POST",
+          body: JSON.stringify({ items: parsedItems }),
+        });
+
+        queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "budget"] });
+        setShowBudgetUploadDialog(false);
+        
+        toast({
+          title: "Budget imported",
+          description: `Successfully imported ${parsedItems.length} budget items to project master budget.`,
+        });
+      } catch (error: any) {
+        console.error('Budget upload error:', error);
+        toast({
+          title: "Import failed",
+          description: error?.message || "Failed to import budget file.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsUploadingBudget(false);
+      }
+    };
+    input.click();
+  };
+
   const handleSubmitLocation = () => {
     if (!newLocationName.trim()) {
       toast({
@@ -374,6 +475,113 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Master Budget */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5" />
+                Master Budget
+                {projectBudgetItems.length > 0 && (
+                  <Badge variant="secondary">{projectBudgetItems.length} items</Badge>
+                )}
+              </CardTitle>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setShowBudgetUploadDialog(true)}
+                  size="sm"
+                  variant="outline"
+                  className="flex items-center gap-2"
+                  data-testid="button-upload-master-budget"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Budget
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {projectBudgetLoading ? (
+              <Skeleton className="h-20 w-full" />
+            ) : projectBudgetItems.length === 0 ? (
+              <div className="text-center py-8">
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500">No master budget uploaded</p>
+                <p className="text-sm text-gray-400 mt-2">
+                  Upload an Excel file to set up the project's master budget
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <FolderOpen className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Total Line Items</p>
+                      <p className="font-medium">{projectBudgetItems.length}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <DollarSign className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Total Budget</p>
+                      <p className="font-medium">
+                        ${projectBudgetItems.reduce((sum: number, item: any) => 
+                          sum + (parseFloat(item.budgetTotal) || 0), 0
+                        ).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    <div>
+                      <p className="text-sm text-gray-600">Cost Codes</p>
+                      <p className="font-medium">
+                        {new Set(projectBudgetItems.map((item: any) => item.costCode).filter(Boolean)).size} unique
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Preview of budget items */}
+                <div className="border rounded-md max-h-64 overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Line Item</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Unit</TableHead>
+                        <TableHead className="text-right">Budget Total</TableHead>
+                        <TableHead>Cost Code</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {projectBudgetItems.slice(0, 10).map((item: any) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
+                          <TableCell className="max-w-[200px] truncate">{item.lineItemName}</TableCell>
+                          <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
+                          <TableCell className="text-right">
+                            ${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">{item.costCode}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {projectBudgetItems.length > 10 && (
+                    <div className="text-center py-2 text-sm text-gray-500 border-t">
+                      ...and {projectBudgetItems.length - 10} more items
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -598,6 +806,59 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Budget Upload Dialog */}
+        <Dialog open={showBudgetUploadDialog} onOpenChange={setShowBudgetUploadDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Master Budget</DialogTitle>
+              <DialogDescription>
+                Upload an Excel file containing the project's master budget. 
+                This will be used as the source for location budgets.
+                The file should follow the SW62 Excel format (21 columns).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-4">
+                  Click the button below to select an Excel file
+                </p>
+                <Button 
+                  onClick={handleProjectBudgetUpload}
+                  disabled={isUploadingBudget}
+                  data-testid="button-select-budget-file"
+                >
+                  {isUploadingBudget ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Select Excel File
+                    </>
+                  )}
+                </Button>
+              </div>
+              {projectBudgetItems.length > 0 && (
+                <p className="text-sm text-amber-600 mt-4">
+                  Note: Uploading a new budget will replace the existing {projectBudgetItems.length} items.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowBudgetUploadDialog(false)}
+                disabled={isUploadingBudget}
+              >
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

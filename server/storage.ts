@@ -1,8 +1,9 @@
 import { 
-  users, projects, budgetLineItems, locations, locationBudgets, crews, employees, tasks, employeeAssignments,
+  users, projects, budgetLineItems, locations, locationBudgets, crews, employees, tasks, employeeAssignments, projectBudgetLineItems,
   type User, type InsertUser, type Project, type InsertProject, type BudgetLineItem, type InsertBudgetLineItem,
   type Location, type InsertLocation, type LocationBudget, type InsertLocationBudget, type Crew, type InsertCrew,
-  type Employee, type InsertEmployee, type Task, type InsertTask, type EmployeeAssignment, type InsertEmployeeAssignment
+  type Employee, type InsertEmployee, type Task, type InsertTask, type EmployeeAssignment, type InsertEmployeeAssignment,
+  type ProjectBudgetLineItem, type InsertProjectBudgetLineItem
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
@@ -29,11 +30,22 @@ export interface IStorage {
   updateProject(id: number, project: Partial<InsertProject>): Promise<Project>;
   deleteProject(id: number): Promise<void>;
   
+  // Project Budget methods
+  getProjectBudgetLineItems(projectId: number): Promise<ProjectBudgetLineItem[]>;
+  getProjectBudgetLineItem(id: number): Promise<ProjectBudgetLineItem | undefined>;
+  createProjectBudgetLineItem(item: InsertProjectBudgetLineItem): Promise<ProjectBudgetLineItem>;
+  updateProjectBudgetLineItem(id: number, item: Partial<InsertProjectBudgetLineItem>): Promise<ProjectBudgetLineItem>;
+  deleteProjectBudgetLineItem(id: number): Promise<void>;
+  deleteAllProjectBudgetLineItems(projectId: number): Promise<void>;
+  getLinkedLocationBudgetItems(projectBudgetItemId: number): Promise<BudgetLineItem[]>;
+  propagateProjectBudgetUpdate(projectBudgetItemId: number, updates: Partial<InsertProjectBudgetLineItem>): Promise<void>;
+  
   // Budget methods
   getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]>;
   createBudgetLineItem(budgetLineItem: InsertBudgetLineItem): Promise<BudgetLineItem>;
   updateBudgetLineItem(id: number, budgetLineItem: Partial<InsertBudgetLineItem>): Promise<BudgetLineItem>;
   deleteBudgetLineItem(id: number): Promise<void>;
+  createLocationBudgetFromProjectItems(locationId: number, projectBudgetItemIds: number[]): Promise<BudgetLineItem[]>;
   
   // Location methods
   getLocations(projectId: number): Promise<Location[]>;
@@ -1497,6 +1509,58 @@ class DatabaseStorage implements IStorage {
     console.log(`🗑️ CASCADE DELETE: Deleted project ${id}`);
   }
 
+  // Project Budget methods
+  async getProjectBudgetLineItems(projectId: number): Promise<ProjectBudgetLineItem[]> {
+    return await this.db.select().from(projectBudgetLineItems).where(eq(projectBudgetLineItems.projectId, projectId)).orderBy(asc(projectBudgetLineItems.lineItemNumber));
+  }
+
+  async getProjectBudgetLineItem(id: number): Promise<ProjectBudgetLineItem | undefined> {
+    const result = await this.db.select().from(projectBudgetLineItems).where(eq(projectBudgetLineItems.id, id));
+    return result[0];
+  }
+
+  async createProjectBudgetLineItem(item: InsertProjectBudgetLineItem): Promise<ProjectBudgetLineItem> {
+    const result = await this.db.insert(projectBudgetLineItems).values(item).returning();
+    return result[0];
+  }
+
+  async updateProjectBudgetLineItem(id: number, item: Partial<InsertProjectBudgetLineItem>): Promise<ProjectBudgetLineItem> {
+    const result = await this.db.update(projectBudgetLineItems).set(item).where(eq(projectBudgetLineItems.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteProjectBudgetLineItem(id: number): Promise<void> {
+    await this.db.delete(projectBudgetLineItems).where(eq(projectBudgetLineItems.id, id));
+  }
+
+  async deleteAllProjectBudgetLineItems(projectId: number): Promise<void> {
+    await this.db.delete(projectBudgetLineItems).where(eq(projectBudgetLineItems.projectId, projectId));
+  }
+
+  async getLinkedLocationBudgetItems(projectBudgetItemId: number): Promise<BudgetLineItem[]> {
+    return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.projectBudgetItemId, projectBudgetItemId));
+  }
+
+  async propagateProjectBudgetUpdate(projectBudgetItemId: number, updates: Partial<InsertProjectBudgetLineItem>): Promise<void> {
+    // Get all linked location budget items
+    const linkedItems = await this.getLinkedLocationBudgetItems(projectBudgetItemId);
+    
+    // Only propagate certain fields (not QTY or location-specific data)
+    const propagatableFields: Partial<InsertBudgetLineItem> = {};
+    if (updates.lineItemName !== undefined) propagatableFields.lineItemName = updates.lineItemName;
+    if (updates.unconvertedUnitOfMeasure !== undefined) propagatableFields.unconvertedUnitOfMeasure = updates.unconvertedUnitOfMeasure;
+    if (updates.unitCost !== undefined) propagatableFields.unitCost = updates.unitCost;
+    if (updates.convertedUnitOfMeasure !== undefined) propagatableFields.convertedUnitOfMeasure = updates.convertedUnitOfMeasure;
+    if (updates.costCode !== undefined) propagatableFields.costCode = updates.costCode;
+    
+    // Update each linked item
+    for (const item of linkedItems) {
+      if (Object.keys(propagatableFields).length > 0) {
+        await this.db.update(budgetLineItems).set(propagatableFields).where(eq(budgetLineItems.id, item.id));
+      }
+    }
+  }
+
   // Budget methods
   async getBudgetLineItems(locationId: number): Promise<BudgetLineItem[]> {
     return await this.db.select().from(budgetLineItems).where(eq(budgetLineItems.locationId, locationId)).orderBy(asc(budgetLineItems.lineItemNumber));
@@ -1514,6 +1578,47 @@ class DatabaseStorage implements IStorage {
 
   async deleteBudgetLineItem(id: number): Promise<void> {
     await this.db.delete(budgetLineItems).where(eq(budgetLineItems.id, id));
+  }
+
+  async createLocationBudgetFromProjectItems(locationId: number, projectBudgetItemIds: number[]): Promise<BudgetLineItem[]> {
+    const createdItems: BudgetLineItem[] = [];
+    
+    for (const projectBudgetItemId of projectBudgetItemIds) {
+      const projectItem = await this.getProjectBudgetLineItem(projectBudgetItemId);
+      if (!projectItem) continue;
+      
+      // Create location budget item with inherited fields and default QTY = 0
+      const newItem: InsertBudgetLineItem = {
+        locationId,
+        projectBudgetItemId,
+        lineItemNumber: projectItem.lineItemNumber,
+        lineItemName: projectItem.lineItemName,
+        unconvertedUnitOfMeasure: projectItem.unconvertedUnitOfMeasure,
+        unconvertedQty: "0", // Default to 0 for location
+        unitCost: projectItem.unitCost,
+        unitTotal: "0",
+        convertedQty: "0",
+        convertedUnitOfMeasure: projectItem.convertedUnitOfMeasure,
+        conversionFactor: projectItem.conversionFactor,
+        costCode: projectItem.costCode,
+        productionRate: projectItem.productionRate, // PX defaults to master value
+        hours: "0",
+        budgetTotal: "0",
+        billing: "0",
+        laborCost: "0",
+        equipmentCost: "0",
+        truckingCost: "0",
+        dumpFeesCost: "0",
+        materialCost: "0",
+        subcontractorCost: "0",
+        notes: null
+      };
+      
+      const result = await this.db.insert(budgetLineItems).values(newItem).returning();
+      createdItems.push(result[0]);
+    }
+    
+    return createdItems;
   }
 
   // Location methods
