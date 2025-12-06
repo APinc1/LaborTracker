@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown, Maximize2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
@@ -89,6 +89,7 @@ export default function BudgetManagement() {
   const [showDeriveFromMasterDialog, setShowDeriveFromMasterDialog] = useState(false);
   const [selectedMasterItems, setSelectedMasterItems] = useState<Set<number>>(new Set());
   const [showProjectImportConfirmDialog, setShowProjectImportConfirmDialog] = useState(false);
+  const [showExpandedTableDialog, setShowExpandedTableDialog] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1939,6 +1940,15 @@ export default function BudgetManagement() {
                           </SelectContent>
                         </Select>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowExpandedTableDialog(true)}
+                        className="flex items-center gap-1"
+                        title="Expand table"
+                      >
+                        <Maximize2 className="w-4 h-4" />
+                      </Button>
                       {!isEditMode ? (
                         <Button
                           variant="outline"
@@ -1990,7 +2000,7 @@ export default function BudgetManagement() {
                     </div>
                   ) : (
               <div className="w-full border rounded-lg">
-                <div className="overflow-auto max-h-[500px] relative">
+                <div className="overflow-auto max-h-[250px] relative">
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                           <tr className="border-b">
@@ -2714,6 +2724,98 @@ export default function BudgetManagement() {
             >
               Yes, Replace Budget
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Expanded Table Dialog */}
+      <Dialog open={showExpandedTableDialog} onOpenChange={setShowExpandedTableDialog}>
+        <DialogContent className="max-w-[95vw] w-full max-h-[90vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Budget Line Items - Full View</DialogTitle>
+          </DialogHeader>
+          <div className="w-full border rounded-lg">
+            <div className="overflow-auto max-h-[70vh] relative">
+              <table className="w-full min-w-[1400px] border-collapse sticky-table">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr className="border-b">
+                    <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                    <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-900" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                    <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Cost Code</th>
+                    <th className="w-16 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit</th>
+                    <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Qty</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Cost</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Unit Total</th>
+                    <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. UM</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Conv. Qty</th>
+                    <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">PX</th>
+                    <th className="w-20 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Hours</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Labor Cost</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Equipment</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Trucking</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Dump Fees</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Material</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Sub</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Budget</th>
+                    <th className="w-24 sticky top-0 bg-gray-50 px-4 py-3 text-left font-medium text-gray-900">Billings</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getVisibleItems().map((item: any) => {
+                    const isParent = isParentItem(item);
+                    const isChild = isChildItem(item);
+                    const formatNumber = (value: string | number) => {
+                      const num = parseFloat(value?.toString() || '0');
+                      return num % 1 === 0 ? num.toString() : num.toFixed(2);
+                    };
+                    
+                    return (
+                      <tr key={`expanded-${item.id}-${item.lineItemNumber}`} className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+                        <td className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-100' : 'bg-gray-100'}`} style={{position: 'sticky', left: '0px'}}>
+                          <div className="flex items-center">
+                            {isParent && hasChildren(item) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleExpanded(item.lineItemNumber)}
+                                className="p-0 h-auto w-4 mr-2"
+                              >
+                                {expandedItems.has(item.lineItemNumber) ? 
+                                  <ChevronDown className="w-4 h-4" /> : 
+                                  <ChevronRight className="w-4 h-4" />
+                                }
+                              </Button>
+                            )}
+                            {isChild && <span className="ml-6" />}
+                            <span className={isParent ? "font-bold" : ""}>{item.lineItemNumber}</span>
+                          </div>
+                        </td>
+                        <td className={`sticky border-r z-10 px-4 py-3 ${isChild ? 'bg-gray-50' : 'bg-gray-50'}`} style={{position: 'sticky', left: '80px'}}>
+                          <span className={isParent ? "font-bold" : ""}>{item.lineItemName}</span>
+                        </td>
+                        <td className="px-4 py-3">{item.costCode}</td>
+                        <td className="px-4 py-3">{item.unconvertedUnitOfMeasure}</td>
+                        <td className="px-4 py-3">{formatNumber(item.unconvertedQty)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.unitCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.unitTotal)}</td>
+                        <td className="px-4 py-3">{item.convertedUnitOfMeasure}</td>
+                        <td className="px-4 py-3">{formatNumber(item.convertedQty)}</td>
+                        <td className="px-4 py-3">{formatNumber(item.productionRate)}</td>
+                        <td className="px-4 py-3">{formatNumber(item.hours)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.laborCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.equipmentCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.truckingCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.dumpFeesCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.materialCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.subcontractorCost)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.budgetTotal)}</td>
+                        <td className="px-4 py-3">${formatNumber(item.billing)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
