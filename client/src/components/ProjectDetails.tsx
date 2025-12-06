@@ -707,8 +707,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                     <table className="w-full min-w-[1400px] border-collapse sticky-table">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr className="border-b">
-                          <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-30 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                          <th className="min-w-60 sticky left-[80px] top-0 bg-gray-100 border-r z-30 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                          <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                          <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
                           <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Cost Code</th>
                           <th className="w-16 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit</th>
                           <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Qty</th>
@@ -744,7 +744,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                 className={`${isParent ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 border-b`}
                               >
                                 <td 
-                                  className={`font-medium sticky left-0 border-r z-20 px-4 py-3 ${isParent ? 'bg-gray-50' : 'bg-white'}`}
+                                  className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100' : 'bg-gray-100'}`}
                                   style={{ position: 'sticky', left: '0px', paddingLeft: `${16 + indent}px` }}
                                 >
                                   <div className="flex items-center">
@@ -761,7 +761,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                   </div>
                                 </td>
                                 <td 
-                                  className={`max-w-60 sticky left-[80px] border-r z-20 px-4 py-3 ${isParent ? 'bg-gray-50 font-semibold' : 'bg-white'}`}
+                                  className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100 font-semibold' : 'bg-gray-100'}`}
                                   style={{ position: 'sticky', left: '80px' }}
                                   title={item.lineItemName}
                                 >
@@ -1082,8 +1082,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <table className="w-full min-w-[1400px] border-collapse sticky-table">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr className="border-b">
-                      <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-30 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
-                      <th className="min-w-60 sticky left-[80px] top-0 bg-gray-100 border-r z-30 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
+                      <th className="w-20 sticky left-0 top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '0px', top: '0px'}}>Line Item</th>
+                      <th className="min-w-60 sticky top-0 bg-gray-100 border-r z-20 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', left: '80px', top: '0px'}}>Description</th>
                       <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-left font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Cost Code</th>
                       <th className="w-16 sticky top-0 bg-gray-100 px-4 py-3 text-center font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Unit</th>
                       <th className="w-20 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Qty</th>
@@ -1119,7 +1119,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             className={`${isParent ? 'bg-gray-50' : 'bg-white'} hover:bg-blue-50 border-b`}
                           >
                             <td 
-                              className={`font-medium sticky left-0 border-r z-20 px-4 py-3 ${isParent ? 'bg-gray-50' : 'bg-white'}`}
+                              className={`font-medium sticky left-0 border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100' : 'bg-gray-100'}`}
                               style={{ position: 'sticky', left: '0px', paddingLeft: `${16 + indent}px` }}
                             >
                               <div className="flex items-center">
@@ -1136,7 +1136,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               </div>
                             </td>
                             <td 
-                              className={`max-w-60 sticky left-[80px] border-r z-20 px-4 py-3 ${isParent ? 'bg-gray-50 font-semibold' : 'bg-white'}`}
+                              className={`max-w-60 sticky border-r z-10 px-4 py-3 ${isParent ? 'bg-gray-100 font-semibold' : 'bg-gray-100'}`}
                               style={{ position: 'sticky', left: '80px' }}
                               title={item.lineItemName}
                             >
