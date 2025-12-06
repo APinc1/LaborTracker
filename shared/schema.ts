@@ -32,26 +32,25 @@ export const projectBudgetLineItems = pgTable("project_budget_line_items", {
   projectId: integer("project_id").references(() => projects.id).notNull(),
   lineItemNumber: text("line_item_number").notNull(),
   lineItemName: text("line_item_name").notNull(),
-  unconvertedUnitOfMeasure: text("unconverted_unit_of_measure").notNull(),
-  unconvertedQty: decimal("unconverted_qty", { precision: 10, scale: 2 }).notNull(),
-  actualQty: decimal("actual_qty", { precision: 10, scale: 2 }).default("0"),
-  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).notNull(),
-  unitTotal: decimal("unit_total", { precision: 10, scale: 2 }).notNull(),
-  convertedQty: decimal("converted_qty", { precision: 10, scale: 2 }),
+  unconvertedUnitOfMeasure: text("unconverted_unit_of_measure"),
+  unconvertedQty: decimal("unconverted_qty", { precision: 10, scale: 2 }).default("0"),
+  unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).default("0"),
+  unitTotal: decimal("unit_total", { precision: 10, scale: 2 }).default("0"),
+  convertedQty: decimal("converted_qty", { precision: 10, scale: 2 }).default("0"),
   convertedUnitOfMeasure: text("converted_unit_of_measure"),
-  conversionFactor: decimal("conversion_factor", { precision: 10, scale: 6 }).default("1"),
-  costCode: text("cost_code").notNull(),
-  productionRate: decimal("production_rate", { precision: 10, scale: 2 }),
-  hours: decimal("hours", { precision: 10, scale: 2 }),
-  budgetTotal: decimal("budget_total", { precision: 10, scale: 2 }).notNull(),
-  billing: decimal("billing", { precision: 10, scale: 2 }),
-  laborCost: decimal("labor_cost", { precision: 10, scale: 2 }),
-  equipmentCost: decimal("equipment_cost", { precision: 10, scale: 2 }),
-  truckingCost: decimal("trucking_cost", { precision: 10, scale: 2 }),
-  dumpFeesCost: decimal("dump_fees_cost", { precision: 10, scale: 2 }),
-  materialCost: decimal("material_cost", { precision: 10, scale: 2 }),
-  subcontractorCost: decimal("subcontractor_cost", { precision: 10, scale: 2 }),
+  costCode: text("cost_code"),
+  productionRate: decimal("production_rate", { precision: 10, scale: 2 }).default("0"),
+  hours: decimal("hours", { precision: 10, scale: 2 }).default("0"),
+  budgetTotal: decimal("budget_total", { precision: 10, scale: 2 }).default("0"),
+  billing: decimal("billing", { precision: 10, scale: 2 }).default("0"),
+  laborCost: decimal("labor_cost", { precision: 10, scale: 2 }).default("0"),
+  equipmentCost: decimal("equipment_cost", { precision: 10, scale: 2 }).default("0"),
+  truckingCost: decimal("trucking_cost", { precision: 10, scale: 2 }).default("0"),
+  dumpFeesCost: decimal("dump_fees_cost", { precision: 10, scale: 2 }).default("0"),
+  materialCost: decimal("material_cost", { precision: 10, scale: 2 }).default("0"),
+  subcontractorCost: decimal("subcontractor_cost", { precision: 10, scale: 2 }).default("0"),
   notes: text("notes"),
+  isGroup: boolean("is_group").default(false),
 });
 
 export const budgetLineItems = pgTable("budget_line_items", {
@@ -170,77 +169,32 @@ export const insertProjectSchema = createInsertSchema(projects).omit({ id: true,
   defaultProjectManager: z.number().optional().nullable(),
   isInactive: z.boolean().optional()
 });
+const optionalStringField = z.union([
+  z.string().transform(val => val === "" ? null : val),
+  z.null(),
+  z.undefined()
+]).optional();
+
 export const insertProjectBudgetLineItemSchema = createInsertSchema(projectBudgetLineItems).omit({ id: true }).extend({
-  actualQty: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  convertedQty: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  conversionFactor: z.union([
-    z.string().transform(val => val === "" ? "1" : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  productionRate: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  hours: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  billing: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  laborCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  equipmentCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  truckingCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  dumpFeesCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  materialCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  subcontractorCost: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  convertedUnitOfMeasure: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional(),
-  notes: z.union([
-    z.string().transform(val => val === "" ? null : val),
-    z.null(),
-    z.undefined()
-  ]).optional()
+  unconvertedUnitOfMeasure: optionalStringField,
+  unconvertedQty: optionalStringField,
+  unitCost: optionalStringField,
+  unitTotal: optionalStringField,
+  convertedQty: optionalStringField,
+  convertedUnitOfMeasure: optionalStringField,
+  costCode: optionalStringField,
+  productionRate: optionalStringField,
+  hours: optionalStringField,
+  budgetTotal: optionalStringField,
+  billing: optionalStringField,
+  laborCost: optionalStringField,
+  equipmentCost: optionalStringField,
+  truckingCost: optionalStringField,
+  dumpFeesCost: optionalStringField,
+  materialCost: optionalStringField,
+  subcontractorCost: optionalStringField,
+  notes: optionalStringField,
+  isGroup: z.boolean().optional()
 });
 export const insertBudgetLineItemSchema = createInsertSchema(budgetLineItems).omit({ id: true }).extend({
   projectBudgetItemId: z.number().optional().nullable(),

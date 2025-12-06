@@ -546,39 +546,58 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   </div>
                 </div>
                 
-                {/* Preview of budget items */}
-                <div className="border rounded-md max-h-64 overflow-y-auto">
+                {/* Full budget items table */}
+                <div className="border rounded-md overflow-x-auto max-h-[500px] overflow-y-auto">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 bg-white z-10">
                       <TableRow>
-                        <TableHead>Line Item</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Unit</TableHead>
-                        <TableHead className="text-right">Budget Total</TableHead>
-                        <TableHead>Cost Code</TableHead>
+                        <TableHead className="whitespace-nowrap sticky left-0 bg-white z-20">Line Item</TableHead>
+                        <TableHead className="whitespace-nowrap min-w-[200px]">Description</TableHead>
+                        <TableHead className="whitespace-nowrap">Cost Code</TableHead>
+                        <TableHead className="whitespace-nowrap">Unit</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Qty</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Unit Cost</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Unit Total</TableHead>
+                        <TableHead className="whitespace-nowrap">Conv UM</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Conv Qty</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">PX</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Hours</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Labor Cost</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Equipment</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Trucking</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Dump Fees</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Material</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Sub</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Budget</TableHead>
+                        <TableHead className="whitespace-nowrap text-right">Billings</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {projectBudgetItems.slice(0, 10).map((item: any) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{item.lineItemName}</TableCell>
-                          <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
-                          <TableCell className="text-right">
-                            ${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className="text-xs">{item.costCode}</Badge>
-                          </TableCell>
+                      {projectBudgetItems.map((item: any) => (
+                        <TableRow key={item.id} className={item.isGroup ? 'bg-gray-50 font-semibold' : ''}>
+                          <TableCell className="font-medium whitespace-nowrap sticky left-0 bg-inherit">{item.lineItemNumber}</TableCell>
+                          <TableCell className="max-w-[300px]">{item.lineItemName}</TableCell>
+                          <TableCell>{item.costCode || '-'}</TableCell>
+                          <TableCell>{item.unconvertedUnitOfMeasure || '-'}</TableCell>
+                          <TableCell className="text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
+                          <TableCell className="text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                          <TableCell className="text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                  {projectBudgetItems.length > 10 && (
-                    <div className="text-center py-2 text-sm text-gray-500 border-t">
-                      ...and {projectBudgetItems.length - 10} more items
-                    </div>
-                  )}
                 </div>
               </div>
             )}

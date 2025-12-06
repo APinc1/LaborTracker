@@ -26,87 +26,113 @@ export const SW62_COLUMN_MAPPING = {
   billing: 20             // "BILLINGS"
 };
 
-export const parseSW62ExcelRow = (row: any[], locationId: number): BudgetLineItem | null => {
+export interface ProjectBudgetItem {
+  lineItemNumber: string;
+  lineItemName: string;
+  costCode: string;
+  unconvertedUnitOfMeasure: string;
+  unconvertedQty: string;
+  unitCost: string;
+  unitTotal: string;
+  convertedUnitOfMeasure: string;
+  convertedQty: string;
+  productionRate: string;
+  hours: string;
+  laborCost: string;
+  equipmentCost: string;
+  truckingCost: string;
+  dumpFeesCost: string;
+  materialCost: string;
+  subcontractorCost: string;
+  budgetTotal: string;
+  billing: string;
+  isGroup: boolean;
+}
+
+export const parseSW62ExcelRow = (row: any[]): ProjectBudgetItem | null => {
   // Skip rows where line item number is blank or undefined
   if (!row[SW62_COLUMN_MAPPING.lineItemNumber] || 
       row[SW62_COLUMN_MAPPING.lineItemNumber].toString().trim() === '') {
     return null;
   }
 
-  // Skip header/category rows (these usually have no quantity or cost data)
-  const hasQuantity = row[SW62_COLUMN_MAPPING.unconvertedQty] && 
-                     row[SW62_COLUMN_MAPPING.unconvertedQty].toString().trim() !== '';
-  const hasConvertedQty = row[SW62_COLUMN_MAPPING.convertedQty] && 
-                         row[SW62_COLUMN_MAPPING.convertedQty].toString().trim() !== '';
+  const lineItemNumber = row[SW62_COLUMN_MAPPING.lineItemNumber].toString().trim();
+  
+  // Helper to get raw value as string (preserve exact Excel data)
+  const getRawValue = (index: number): string => {
+    const val = row[index];
+    if (val === null || val === undefined || val === '') return '';
+    return val.toString().trim();
+  };
+  
+  // Helper to get numeric value as string
+  const getNumericValue = (index: number): string => {
+    const val = row[index];
+    if (val === null || val === undefined || val === '') return '0';
+    const num = parseFloat(val.toString());
+    return isNaN(num) ? '0' : num.toString();
+  };
 
-  if (!hasQuantity && !hasConvertedQty) {
-    return null;
-  }
+  // Check if this is a group/category row (no quantities)
+  const hasQuantity = getRawValue(SW62_COLUMN_MAPPING.unconvertedQty) !== '';
+  const hasConvertedQty = getRawValue(SW62_COLUMN_MAPPING.convertedQty) !== '';
+  const isGroup = !hasQuantity && !hasConvertedQty;
 
-  // Parse values with defaults
-  const unconvertedQty = parseFloat(row[SW62_COLUMN_MAPPING.unconvertedQty]?.toString() || "0");
-  const convertedQty = parseFloat(row[SW62_COLUMN_MAPPING.convertedQty]?.toString() || "0");
-  const unitCost = parseFloat(row[SW62_COLUMN_MAPPING.unitCost]?.toString() || "0");
-  const productionRate = parseFloat(row[SW62_COLUMN_MAPPING.productionRate]?.toString() || "0");
+  return {
+    lineItemNumber,
+    lineItemName: getRawValue(SW62_COLUMN_MAPPING.lineItemName),
+    costCode: getRawValue(SW62_COLUMN_MAPPING.costCode),
+    unconvertedUnitOfMeasure: getRawValue(SW62_COLUMN_MAPPING.unconvertedUnit),
+    unconvertedQty: getNumericValue(SW62_COLUMN_MAPPING.unconvertedQty),
+    unitCost: getNumericValue(SW62_COLUMN_MAPPING.unitCost),
+    unitTotal: getNumericValue(SW62_COLUMN_MAPPING.unitTotal),
+    convertedUnitOfMeasure: getRawValue(SW62_COLUMN_MAPPING.convertedUnit),
+    convertedQty: getNumericValue(SW62_COLUMN_MAPPING.convertedQty),
+    productionRate: getNumericValue(SW62_COLUMN_MAPPING.productionRate),
+    hours: getNumericValue(SW62_COLUMN_MAPPING.hours),
+    laborCost: getNumericValue(SW62_COLUMN_MAPPING.laborCost),
+    equipmentCost: getNumericValue(SW62_COLUMN_MAPPING.equipmentCost),
+    truckingCost: getNumericValue(SW62_COLUMN_MAPPING.truckingCost),
+    dumpFeesCost: getNumericValue(SW62_COLUMN_MAPPING.dumpFeesCost),
+    materialCost: getNumericValue(SW62_COLUMN_MAPPING.materialCost),
+    subcontractorCost: getNumericValue(SW62_COLUMN_MAPPING.subcontractorCost),
+    budgetTotal: getNumericValue(SW62_COLUMN_MAPPING.budgetTotal),
+    billing: getNumericValue(SW62_COLUMN_MAPPING.billing),
+    isGroup,
+  };
+};
 
-  // Calculate conversion factor
+export const parseSW62ExcelRowForLocation = (row: any[], locationId: number): BudgetLineItem | null => {
+  const parsed = parseSW62ExcelRow(row);
+  if (!parsed || parsed.isGroup) return null;
+  
+  const unconvertedQty = parseFloat(parsed.unconvertedQty);
+  const convertedQty = parseFloat(parsed.convertedQty);
   const conversionFactor = unconvertedQty !== 0 ? convertedQty / unconvertedQty : 1;
-
-  // Calculate unit total if not provided
-  const unitTotal = row[SW62_COLUMN_MAPPING.unitTotal] ? 
-    parseFloat(row[SW62_COLUMN_MAPPING.unitTotal].toString()) : 
-    convertedQty * unitCost;
-
-  // Calculate hours if not provided
-  const hours = row[SW62_COLUMN_MAPPING.hours] ? 
-    parseFloat(row[SW62_COLUMN_MAPPING.hours].toString()) : 
-    convertedQty * productionRate;
-
-  // Calculate labor cost if not provided
-  const laborCost = row[SW62_COLUMN_MAPPING.laborCost] ? 
-    parseFloat(row[SW62_COLUMN_MAPPING.laborCost].toString()) : 
-    hours * 90; // $90/hour
-
-  // Parse other costs
-  const equipmentCost = parseFloat(row[SW62_COLUMN_MAPPING.equipmentCost]?.toString() || "0");
-  const truckingCost = parseFloat(row[SW62_COLUMN_MAPPING.truckingCost]?.toString() || "0");
-  const dumpFeesCost = parseFloat(row[SW62_COLUMN_MAPPING.dumpFeesCost]?.toString() || "0");
-  const materialCost = parseFloat(row[SW62_COLUMN_MAPPING.materialCost]?.toString() || "0");
-  const subcontractorCost = parseFloat(row[SW62_COLUMN_MAPPING.subcontractorCost]?.toString() || "0");
-
-  // Calculate budget total if not provided
-  const budgetTotal = row[SW62_COLUMN_MAPPING.budgetTotal] ? 
-    parseFloat(row[SW62_COLUMN_MAPPING.budgetTotal].toString()) : 
-    laborCost + equipmentCost + truckingCost + dumpFeesCost + materialCost + subcontractorCost;
-
-  // Billing equals unit total
-  const billing = row[SW62_COLUMN_MAPPING.billing] ? 
-    parseFloat(row[SW62_COLUMN_MAPPING.billing].toString()) : 
-    unitTotal;
 
   return {
     locationId,
-    lineItemNumber: row[SW62_COLUMN_MAPPING.lineItemNumber].toString(),
-    lineItemName: row[SW62_COLUMN_MAPPING.lineItemName]?.toString() || "",
-    unconvertedUnitOfMeasure: row[SW62_COLUMN_MAPPING.unconvertedUnit]?.toString() || "",
-    unconvertedQty: unconvertedQty.toString(),
-    actualQty: row[SW62_COLUMN_MAPPING.actualQty]?.toString() || "0",
-    unitCost: unitCost.toString(),
-    unitTotal: unitTotal.toFixed(2),
-    convertedQty: convertedQty.toString(),
-    convertedUnitOfMeasure: row[SW62_COLUMN_MAPPING.convertedUnit]?.toString() || "",
+    lineItemNumber: parsed.lineItemNumber,
+    lineItemName: parsed.lineItemName,
+    unconvertedUnitOfMeasure: parsed.unconvertedUnitOfMeasure,
+    unconvertedQty: parsed.unconvertedQty,
+    actualQty: "0",
+    unitCost: parsed.unitCost,
+    unitTotal: parsed.unitTotal,
+    convertedQty: parsed.convertedQty,
+    convertedUnitOfMeasure: parsed.convertedUnitOfMeasure,
     conversionFactor: conversionFactor.toString(),
-    costCode: row[SW62_COLUMN_MAPPING.costCode]?.toString() || "",
-    productionRate: productionRate.toString(),
-    hours: hours.toFixed(2),
-    budgetTotal: budgetTotal.toFixed(2),
-    billing: billing.toFixed(2),
-    laborCost: laborCost.toFixed(2),
-    equipmentCost: equipmentCost.toFixed(2),
-    truckingCost: truckingCost.toFixed(2),
-    dumpFeesCost: dumpFeesCost.toFixed(2),
-    materialCost: materialCost.toFixed(2),
-    subcontractorCost: subcontractorCost.toFixed(2),
+    costCode: parsed.costCode,
+    productionRate: parsed.productionRate,
+    hours: parsed.hours,
+    budgetTotal: parsed.budgetTotal,
+    billing: parsed.billing,
+    laborCost: parsed.laborCost,
+    equipmentCost: parsed.equipmentCost,
+    truckingCost: parsed.truckingCost,
+    dumpFeesCost: parsed.dumpFeesCost,
+    materialCost: parsed.materialCost,
+    subcontractorCost: parsed.subcontractorCost,
     notes: "",
   };
 };
