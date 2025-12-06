@@ -1695,7 +1695,7 @@ class DatabaseStorage implements IStorage {
   }
 
   // Task methods
-  async getTasks(locationId: number, limit: number = 50, after?: string): Promise<Task[]> {
+  async getTasks(locationId: number, limit: number = 1000, after?: string): Promise<Task[]> {
     // Optimized query: only select needed fields, use keyset pagination, proper ordering
     const whereCondition = after 
       ? and(eq(tasks.locationId, locationId), gt(tasks.order, after))
