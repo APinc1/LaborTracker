@@ -1300,7 +1300,7 @@ export default function BudgetManagement() {
         
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-strong">Budget Management</h2>
+            <h2 className="text-2xl font-bold text-strong">Location Budget Management</h2>
             <p className="text-subtle mt-1">Track project budgets and line items</p>
           </div>
           <div className="flex items-center space-x-4">
