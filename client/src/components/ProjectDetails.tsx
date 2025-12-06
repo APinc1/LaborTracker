@@ -705,27 +705,27 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <div className="border rounded-md overflow-hidden">
                   <div className="overflow-x-auto max-h-[250px] overflow-y-auto">
                     <Table>
-                      <TableHeader className="sticky top-0 z-10">
+                      <TableHeader>
                         <TableRow className="bg-gray-50 border-b">
-                          <TableHead className="whitespace-nowrap sticky left-0 bg-gray-50 z-20 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
-                          <TableHead className="whitespace-nowrap sticky left-[80px] bg-gray-50 z-20 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
-                          <TableHead className="whitespace-nowrap bg-gray-50 font-medium text-gray-600">Cost Code</TableHead>
-                          <TableHead className="whitespace-nowrap bg-gray-50 text-center font-medium text-gray-600">Unit</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Qty</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Unit Cost</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Unit Total</TableHead>
-                          <TableHead className="whitespace-nowrap bg-gray-50 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Conv.<br/>Qty</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">PX</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Hours</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Labor Cost</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Equipment</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Trucking</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Dump Fees</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Material</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Sub</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Budget</TableHead>
-                          <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Billings</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 left-0 bg-gray-100 z-30 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 left-[80px] bg-gray-100 z-30 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 font-medium text-gray-600">Cost Code</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Unit</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Qty</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Cost</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Total</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Conv.<br/>Qty</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">PX</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Hours</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Labor Cost</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Equipment</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Trucking</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Dump Fees</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Material</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Sub</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Budget</TableHead>
+                          <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Billings</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1076,27 +1076,27 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             <div className="border rounded-md overflow-hidden">
               <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                 <Table>
-                  <TableHeader className="sticky top-0 z-10">
+                  <TableHeader>
                     <TableRow className="bg-gray-50 border-b">
-                      <TableHead className="whitespace-nowrap sticky left-0 bg-gray-50 z-20 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
-                      <TableHead className="whitespace-nowrap sticky left-[80px] bg-gray-50 z-20 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
-                      <TableHead className="whitespace-nowrap bg-gray-50 font-medium text-gray-600">Cost Code</TableHead>
-                      <TableHead className="whitespace-nowrap bg-gray-50 text-center font-medium text-gray-600">Unit</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Qty</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Unit Cost</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Unit Total</TableHead>
-                      <TableHead className="whitespace-nowrap bg-gray-50 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Conv.<br/>Qty</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">PX</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Hours</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Labor Cost</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Equipment</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Trucking</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Dump Fees</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Material</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Sub</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Budget</TableHead>
-                      <TableHead className="whitespace-nowrap text-right bg-gray-50 font-medium text-gray-600">Billings</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 left-0 bg-gray-100 z-30 min-w-[80px] text-center font-medium text-gray-600">Line<br/>Item</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 left-[80px] bg-gray-100 z-30 min-w-[200px] border-r font-medium text-gray-600">Description</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 font-medium text-gray-600">Cost Code</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Unit</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Qty</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Cost</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Unit Total</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-center font-medium text-gray-600">Conv.<br/>UM</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Conv.<br/>Qty</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">PX</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Hours</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Labor Cost</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Equipment</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Trucking</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Dump Fees</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Material</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Sub</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Budget</TableHead>
+                      <TableHead className="whitespace-nowrap sticky top-0 bg-gray-100 z-20 text-right font-medium text-gray-600">Billings</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
