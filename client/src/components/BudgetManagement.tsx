@@ -2586,12 +2586,29 @@ export default function BudgetManagement() {
           
           {projectBudgetLoading ? (
             <Skeleton className="h-40" />
-          ) : (projectBudgetItems as any[]).length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No master budget items found for this project.</p>
-              <p className="text-sm mt-2">Upload a master budget to the project first.</p>
-            </div>
-          ) : (
+          ) : (() => {
+            const existingLineItems = new Set((budgetItems as any[]).map((item: any) => item.lineItemNumber));
+            const availableItems = (projectBudgetItems as any[]).filter((item: any) => !existingLineItems.has(item.lineItemNumber));
+            
+            if ((projectBudgetItems as any[]).length === 0) {
+              return (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No master budget items found for this project.</p>
+                  <p className="text-sm mt-2">Upload a master budget to the project first.</p>
+                </div>
+              );
+            }
+            
+            if (availableItems.length === 0) {
+              return (
+                <div className="text-center py-8 text-gray-500">
+                  <p>All master budget items are already in this location's budget.</p>
+                  <p className="text-sm mt-2">There are no new items to add.</p>
+                </div>
+              );
+            }
+            
+            return (
             <>
               <div className="border rounded-md max-h-96 overflow-y-auto">
                 <Table>
@@ -2606,7 +2623,7 @@ export default function BudgetManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(projectBudgetItems as any[]).map((item: any) => {
+                    {availableItems.map((item: any) => {
                       const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
                       const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
                       const isSelected = selectedMasterItems.has(item.id);
@@ -2668,7 +2685,8 @@ export default function BudgetManagement() {
                 </div>
               </div>
             </>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
