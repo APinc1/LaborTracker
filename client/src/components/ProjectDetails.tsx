@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, FolderOpen } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +37,63 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [showBudgetUploadDialog, setShowBudgetUploadDialog] = useState(false);
   const [isUploadingBudget, setIsUploadingBudget] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const toggleGroupCollapse = (lineItemNumber: string) => {
+    setCollapsedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(lineItemNumber)) {
+        newSet.delete(lineItemNumber);
+      } else {
+        newSet.add(lineItemNumber);
+      }
+      return newSet;
+    });
+  };
+
+  const isChildOf = (childLineItem: string, parentLineItem: string): boolean => {
+    return childLineItem.startsWith(parentLineItem + '.');
+  };
+
+  const getParentLineItem = (lineItem: string): string | null => {
+    const parts = lineItem.split('.');
+    if (parts.length > 1) {
+      return parts.slice(0, -1).join('.');
+    }
+    return null;
+  };
+
+  const isItemVisible = (item: any, allItems: any[]): boolean => {
+    const parent = getParentLineItem(item.lineItemNumber);
+    if (!parent) return true;
+    
+    if (collapsedGroups.has(parent)) return false;
+    
+    const parentItem = allItems.find((i: any) => i.lineItemNumber === parent);
+    if (parentItem) {
+      return isItemVisible(parentItem, allItems);
+    }
+    return true;
+  };
+
+  const hasChildren = (lineItem: string, allItems: any[]): boolean => {
+    return allItems.some((item: any) => isChildOf(item.lineItemNumber, lineItem));
+  };
+
+  const getCostCodeSummary = () => {
+    const summary: Record<string, { hours: number; budget: number; lineItems: number }> = {};
+    projectBudgetItems.forEach((item: any) => {
+      const costCode = item.costCode || 'Uncategorized';
+      if (!summary[costCode]) {
+        summary[costCode] = { hours: 0, budget: 0, lineItems: 0 };
+      }
+      summary[costCode].hours += parseFloat(item.hours) || 0;
+      summary[costCode].budget += parseFloat(item.budgetTotal) || 0;
+      summary[costCode].lineItems += 1;
+    });
+    return Object.entries(summary).sort((a, b) => b[1].budget - a[1].budget);
+  };
   
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["/api/projects", projectId],
@@ -529,7 +585,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex items-center space-x-2">
                     <FolderOpen className="w-4 h-4 text-gray-500" />
                     <div>
@@ -549,59 +606,108 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Cost Code Summary */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-700 mb-3">Cost Code Summary</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {getCostCodeSummary().map(([costCode, data]) => (
+                      <div key={costCode} className="bg-white rounded-md p-3 border shadow-sm">
+                        <p className="text-sm font-medium text-gray-800 truncate" title={costCode}>{costCode}</p>
+                        <div className="mt-1 space-y-0.5">
+                          <p className="text-xs text-gray-500">{data.lineItems} items</p>
+                          <p className="text-xs text-gray-600">{data.hours.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hrs</p>
+                          <p className="text-sm font-medium text-green-600">${data.budget.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 
-                {/* Full budget items table */}
-                <div className="border rounded-md overflow-x-auto max-h-[500px] overflow-y-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-white z-10">
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap sticky left-0 bg-white z-20">Line Item</TableHead>
-                        <TableHead className="whitespace-nowrap min-w-[200px]">Description</TableHead>
-                        <TableHead className="whitespace-nowrap">Cost Code</TableHead>
-                        <TableHead className="whitespace-nowrap">Unit</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Qty</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Unit Cost</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Unit Total</TableHead>
-                        <TableHead className="whitespace-nowrap">Conv UM</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Conv Qty</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">PX</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Hours</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Labor Cost</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Equipment</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Trucking</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Dump Fees</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Material</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Sub</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Budget</TableHead>
-                        <TableHead className="whitespace-nowrap text-right">Billings</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {projectBudgetItems.map((item: any) => (
-                        <TableRow key={item.id} className={item.isGroup ? 'bg-gray-50 font-semibold' : ''}>
-                          <TableCell className="font-medium whitespace-nowrap sticky left-0 bg-inherit">{item.lineItemNumber}</TableCell>
-                          <TableCell className="max-w-[300px]">{item.lineItemName}</TableCell>
-                          <TableCell>{item.costCode || '-'}</TableCell>
-                          <TableCell>{item.unconvertedUnitOfMeasure || '-'}</TableCell>
-                          <TableCell className="text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
-                          <TableCell className="text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                          <TableCell className="text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                {/* Full budget items table with frozen columns */}
+                <div className="border rounded-md overflow-hidden">
+                  <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 z-10">
+                        <TableRow className="bg-gray-100">
+                          <TableHead className="whitespace-nowrap sticky left-0 bg-gray-100 z-20 min-w-[100px]">Line Item</TableHead>
+                          <TableHead className="whitespace-nowrap sticky left-[100px] bg-gray-100 z-20 min-w-[250px] border-r">Description</TableHead>
+                          <TableHead className="whitespace-nowrap bg-gray-100">Cost Code</TableHead>
+                          <TableHead className="whitespace-nowrap bg-gray-100">Unit</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Qty</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Unit Cost</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Unit Total</TableHead>
+                          <TableHead className="whitespace-nowrap bg-gray-100">Conv UM</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Conv Qty</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">PX</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Hours</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Labor Cost</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Equipment</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Trucking</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Dump Fees</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Material</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Sub</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Budget</TableHead>
+                          <TableHead className="whitespace-nowrap text-right bg-gray-100">Billings</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {projectBudgetItems
+                          .filter((item: any) => isItemVisible(item, projectBudgetItems))
+                          .map((item: any) => {
+                            const itemHasChildren = hasChildren(item.lineItemNumber, projectBudgetItems);
+                            const isCollapsed = collapsedGroups.has(item.lineItemNumber);
+                            const indent = (item.lineItemNumber.split('.').length - 1) * 16;
+                            const isParent = itemHasChildren || item.isGroup;
+                            
+                            return (
+                              <TableRow 
+                                key={item.id} 
+                                className={`${isParent ? 'bg-gray-50 font-semibold' : 'bg-white'} hover:bg-blue-50`}
+                              >
+                                <TableCell 
+                                  className={`font-medium whitespace-nowrap sticky left-0 z-10 ${isParent ? 'bg-gray-50' : 'bg-white'}`}
+                                  style={{ paddingLeft: `${8 + indent}px` }}
+                                >
+                                  <div className="flex items-center">
+                                    {itemHasChildren && (
+                                      <button 
+                                        onClick={() => toggleGroupCollapse(item.lineItemNumber)}
+                                        className="mr-1 p-0.5 hover:bg-gray-200 rounded"
+                                      >
+                                        {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                      </button>
+                                    )}
+                                    {!itemHasChildren && <span className="w-5" />}
+                                    {item.lineItemNumber}
+                                  </div>
+                                </TableCell>
+                                <TableCell className={`max-w-[300px] sticky left-[100px] z-10 border-r ${isParent ? 'bg-gray-50' : 'bg-white'}`}>
+                                  {item.lineItemName}
+                                </TableCell>
+                                <TableCell>{item.costCode || '-'}</TableCell>
+                                <TableCell>{item.unconvertedUnitOfMeasure || '-'}</TableCell>
+                                <TableCell className="text-right">{parseFloat(item.unconvertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.unitCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.unitTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell>{item.convertedUnitOfMeasure || '-'}</TableCell>
+                                <TableCell className="text-right">{parseFloat(item.convertedQty || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">{parseFloat(item.productionRate || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">{parseFloat(item.hours || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.laborCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.equipmentCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.truckingCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.dumpFeesCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.materialCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.subcontractorCost || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.budgetTotal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                <TableCell className="text-right">${parseFloat(item.billing || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             )}
