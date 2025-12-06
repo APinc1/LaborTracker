@@ -548,15 +548,6 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Cost Codes</p>
-                      <p className="font-medium">
-                        {new Set(projectBudgetItems.map((item: any) => item.costCode).filter(Boolean)).size} unique
-                      </p>
-                    </div>
-                  </div>
                 </div>
                 
                 {/* Full budget items table */}
