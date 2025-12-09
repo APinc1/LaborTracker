@@ -9,6 +9,7 @@ import { NavigationProtectionProvider } from "@/contexts/NavigationProtectionCon
 import Home from "@/pages/Home";
 import ProjectManagement from "@/components/ProjectManagement";
 import ProjectDetails from "@/components/ProjectDetails";
+import ProjectBudgets from "@/components/ProjectBudgets";
 import BudgetManagement from "@/components/BudgetManagement";
 import LocationManagement from "@/components/LocationManagement";
 import LocationDetails from "@/components/LocationDetails";
@@ -29,6 +30,7 @@ function Router() {
       <Route path="/projects/:projectId">
         {(params) => <ProjectDetails projectId={params.projectId} />}
       </Route>
+      <Route path="/project-budgets" component={ProjectBudgets} />
       <Route path="/budgets" component={BudgetManagement} />
       <Route path="/locations" component={LocationManagement} />
       <Route path="/locations/:locationId">

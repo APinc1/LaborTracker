@@ -58,6 +58,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
   const navigation = [
     { name: "Dashboard", href: "/", icon: ChartLine, key: "dashboard" },
     { name: "Projects", href: "/projects", icon: FolderOpen, key: "projects" },
+    { name: "Project Budgets", href: "/project-budgets", icon: Calculator, key: "project-budgets" },
     { name: "Locations", href: "/locations", icon: MapPin, key: "locations" },
     { name: "Location Budgets", href: "/budgets", icon: Calculator, key: "budgets" },
     { name: "Schedule", href: "/schedule", icon: Calendar, key: "schedule" },
