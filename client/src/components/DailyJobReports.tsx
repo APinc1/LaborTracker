@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -43,7 +44,7 @@ export default function DailyJobReports() {
       if (!groupMap.has(groupKey)) {
         groupMap.set(groupKey, {
           key: groupKey,
-          label: task.name,
+          label: "",
           taskDate: task.taskDate || "",
           tasks: []
         });
@@ -53,12 +54,31 @@ export default function DailyJobReports() {
       group.tasks.push(task);
     });
 
-    return Array.from(groupMap.values()).map(group => {
-      if (group.tasks.length > 1) {
-        group.label = `${group.tasks[0].name} (+${group.tasks.length - 1} linked)`;
-      }
-      return group;
+    const groups = Array.from(groupMap.values());
+    
+    // Sort by date (newest first)
+    groups.sort((a, b) => {
+      if (!a.taskDate && !b.taskDate) return 0;
+      if (!a.taskDate) return 1;
+      if (!b.taskDate) return -1;
+      return b.taskDate.localeCompare(a.taskDate);
     });
+
+    // Generate labels with date prefix
+    groups.forEach(group => {
+      const dateStr = group.taskDate 
+        ? format(parseISO(group.taskDate), "MMM d, yyyy")
+        : "No date";
+      const primaryTask = group.tasks[0];
+      
+      if (group.tasks.length > 1) {
+        group.label = `${dateStr} • ${primaryTask.name} (${group.tasks.length} linked tasks)`;
+      } else {
+        group.label = `${dateStr} • ${primaryTask.name}`;
+      }
+    });
+
+    return groups;
   }, [tasks]);
 
   const selectedGroup = taskGroups.find(g => g.key === selectedTaskGroupKey);
@@ -80,6 +100,15 @@ export default function DailyJobReports() {
 
   const selectedProject = projects.find((p: any) => p.id.toString() === selectedProjectId);
   const selectedLocation = locations.find((l: any) => l.locationId === selectedLocationId);
+
+  const formatDisplayDate = (dateStr: string | null) => {
+    if (!dateStr) return "-";
+    try {
+      return format(parseISO(dateStr), "MMMM d, yyyy");
+    } catch {
+      return dateStr;
+    }
+  };
 
   return (
     <div className="p-6">
@@ -165,7 +194,7 @@ export default function DailyJobReports() {
               )}
             </div>
 
-            {/* Task Dropdown */}
+            {/* Task Dropdown - Date oriented */}
             <div className="space-y-2">
               <Label htmlFor="task-select">Task</Label>
               {tasksLoading ? (
@@ -177,7 +206,7 @@ export default function DailyJobReports() {
                   disabled={!selectedLocationId}
                 >
                   <SelectTrigger id="task-select" data-testid="select-task">
-                    <SelectValue placeholder={selectedLocationId ? "Select a task" : "Select a location first"} />
+                    <SelectValue placeholder={selectedLocationId ? "Select a task by date" : "Select a location first"} />
                   </SelectTrigger>
                   <SelectContent>
                     {taskGroups.map((group) => (
@@ -210,7 +239,7 @@ export default function DailyJobReports() {
                     </span>
                   </div>
                   <div className="text-xl font-bold text-blue-600" data-testid="report-task-date">
-                    Task Date: {selectedGroup.taskDate}
+                    {formatDisplayDate(selectedGroup.taskDate)}
                   </div>
                 </div>
 
@@ -227,7 +256,9 @@ export default function DailyJobReports() {
                       data-testid={`task-detail-${task.id}`}
                     >
                       {selectedGroup.tasks.length > 1 && (
-                        <div className="text-sm text-gray-500 mb-2">Task {index + 1} of {selectedGroup.tasks.length}</div>
+                        <div className="text-sm font-medium text-blue-600 mb-2">
+                          Task {index + 1}: {task.name}
+                        </div>
                       )}
                       
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
