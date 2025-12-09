@@ -131,27 +131,26 @@ export default function ProjectBudgets() {
           </span>
         </Link>
         <span>/</span>
-        <Link href="/projects">
-          <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer">
-            <FolderOpen className="w-4 h-4" />
-            Project
-          </span>
-        </Link>
-        {selectedProject && (
+        {selectedProject ? (
           <>
-            <span>/</span>
             <Link href={`/projects/${selectedProjectId}`}>
-              <span className="hover:text-gray-900 cursor-pointer">
+              <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer">
+                <FolderOpen className="w-4 h-4" />
                 {selectedProject.name}
               </span>
             </Link>
+            <span>/</span>
+            <span className="flex items-center gap-1 font-medium text-gray-900">
+              <Calculator className="w-4 h-4" />
+              Budget
+            </span>
           </>
+        ) : (
+          <span className="flex items-center gap-1 font-medium text-gray-900">
+            <Calculator className="w-4 h-4" />
+            Budget
+          </span>
         )}
-        <span>/</span>
-        <span className="flex items-center gap-1 font-medium text-gray-900">
-          <Calculator className="w-4 h-4" />
-          Budget
-        </span>
       </nav>
 
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Project Budget Management</h1>
