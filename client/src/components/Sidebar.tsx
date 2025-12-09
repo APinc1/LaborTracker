@@ -15,6 +15,7 @@ import {
   HardHat,
   User,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 
 // Protected navigation component
@@ -62,6 +63,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
     { name: "Locations", href: "/locations", icon: MapPin, key: "locations" },
     { name: "Location Budgets", href: "/budgets", icon: Calculator, key: "budgets" },
     { name: "Schedule", href: "/schedule", icon: Calendar, key: "schedule" },
+    { name: "Daily Job Reports", href: "/daily-reports", icon: ClipboardList, key: "daily-reports" },
     {
       name: "Assignments",
       href: "/assignments",

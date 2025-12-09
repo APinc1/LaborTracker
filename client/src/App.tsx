@@ -14,6 +14,7 @@ import BudgetManagement from "@/components/BudgetManagement";
 import LocationManagement from "@/components/LocationManagement";
 import LocationDetails from "@/components/LocationDetails";
 import ScheduleManagement from "@/components/ScheduleManagement";
+import DailyJobReports from "@/components/DailyJobReports";
 import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
 import UserManagement from "@/components/UserManagement";
@@ -37,6 +38,7 @@ function Router() {
         {(params) => <LocationDetails locationId={params.locationId} />}
       </Route>
       <Route path="/schedule" component={ScheduleManagement} />
+      <Route path="/daily-reports" component={DailyJobReports} />
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />
       <Route path="/users" component={UserManagement} />
