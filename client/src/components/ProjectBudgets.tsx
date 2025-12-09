@@ -3,25 +3,23 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calculator, Search, ChevronRight, FolderOpen } from "lucide-react";
+import { Calculator, ExternalLink } from "lucide-react";
 
 export default function ProjectBudgets() {
   const [, setLocation] = useLocation();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<any[]>({
     queryKey: ["/api/projects"],
   });
 
-  const filteredProjects = (projects as any[])
+  const activeProjects = (projects as any[])
     .filter((project: any) => !project.isInactive)
-    .filter((project: any) =>
-      project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (project.description && project.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
     .sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+  const selectedProject = activeProjects.find((p: any) => p.id.toString() === selectedProjectId);
 
   return (
     <div className="p-6">
@@ -32,69 +30,66 @@ export default function ProjectBudgets() {
         </div>
       </div>
 
-      <div className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-          <Input
-            placeholder="Search projects..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-projects"
-          />
-        </div>
-      </div>
-
-      {projectsLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-      ) : filteredProjects.length === 0 ? (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <FolderOpen className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600">No projects found</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredProjects.map((project: any) => (
-            <Card
-              key={project.id}
-              className="hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setLocation(`/projects/${project.id}?tab=budget`)}
-              data-testid={`card-project-${project.id}`}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-lg">
-                  <div className="flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-primary" />
-                    <span className="truncate">{project.name}</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600 line-clamp-2">
-                  {project.description || "No description"}
-                </p>
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calculator className="w-5 h-5" />
+            Select Project
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {projectsLoading ? (
+            <Skeleton className="h-10 w-full max-w-md" />
+          ) : (
+            <div className="flex items-center gap-4">
+              <Select
+                value={selectedProjectId}
+                onValueChange={setSelectedProjectId}
+              >
+                <SelectTrigger className="w-full max-w-md" data-testid="select-project">
+                  <SelectValue placeholder="Choose a project..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeProjects.map((project: any) => (
+                    <SelectItem key={project.id} value={project.id.toString()}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {selectedProject && (
                 <Button
-                  variant="link"
-                  className="p-0 h-auto mt-2 text-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setLocation(`/projects/${project.id}?tab=budget`);
-                  }}
-                  data-testid={`button-view-budget-${project.id}`}
+                  onClick={() => setLocation(`/projects/${selectedProjectId}?tab=budget`)}
+                  data-testid="button-view-budget"
                 >
+                  <ExternalLink className="w-4 h-4 mr-2" />
                   View Master Budget
                 </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedProject && (
+        <Card>
+          <CardContent className="py-6">
+            <div className="text-center">
+              <p className="text-gray-600 mb-4">
+                Selected: <span className="font-semibold">{selectedProject.name}</span>
+              </p>
+              <Button
+                size="lg"
+                onClick={() => setLocation(`/projects/${selectedProjectId}?tab=budget`)}
+                data-testid="button-open-budget"
+              >
+                <Calculator className="w-5 h-5 mr-2" />
+                Open Master Budget
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
