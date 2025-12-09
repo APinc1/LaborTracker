@@ -137,6 +137,16 @@ export default function ProjectBudgets() {
             Project
           </span>
         </Link>
+        {selectedProject && (
+          <>
+            <span>/</span>
+            <Link href={`/projects/${selectedProjectId}`}>
+              <span className="hover:text-gray-900 cursor-pointer">
+                {selectedProject.name}
+              </span>
+            </Link>
+          </>
+        )}
         <span>/</span>
         <span className="flex items-center gap-1 font-medium text-gray-900">
           <Calculator className="w-4 h-4" />
