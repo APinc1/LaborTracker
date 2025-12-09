@@ -268,7 +268,7 @@ export default function DailyJobReports() {
                         </div>
                       )}
                       
-                      <div className="grid grid-cols-5 gap-2 mb-2">
+                      <div className="flex flex-wrap gap-4 mb-2">
                         <div>
                           <span className="text-gray-500 text-xs">Cost Code</span>
                           <div className="font-medium" data-testid={`task-costcode-${task.id}`}>
@@ -287,33 +287,39 @@ export default function DailyJobReports() {
                             {task.unitOfMeasure || "-"}
                           </div>
                         </div>
-                        <div>
-                          <span className="text-gray-500 text-xs">Start</span>
-                          <div className="font-medium" data-testid={`task-starttime-${task.id}`}>
-                            {task.startTime || "-"}
+                        {task.startTime && (
+                          <div>
+                            <span className="text-gray-500 text-xs">Start</span>
+                            <div className="font-medium" data-testid={`task-starttime-${task.id}`}>
+                              {task.startTime}
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <span className="text-gray-500 text-xs">Finish</span>
-                          <div className="font-medium" data-testid={`task-finishtime-${task.id}`}>
-                            {task.finishTime || "-"}
+                        )}
+                        {task.finishTime && (
+                          <div>
+                            <span className="text-gray-500 text-xs">Finish</span>
+                            <div className="font-medium" data-testid={`task-finishtime-${task.id}`}>
+                              {task.finishTime}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
+                      <div className="flex flex-wrap gap-4">
+                        <div className="flex-1 min-w-[200px]">
                           <span className="text-gray-500 text-xs">Work Description</span>
                           <div className="font-medium" data-testid={`task-workdesc-${task.id}`}>
                             {task.workDescription || "-"}
                           </div>
                         </div>
-                        <div>
-                          <span className="text-gray-500 text-xs">Notes</span>
-                          <div className="font-medium" data-testid={`task-notes-${task.id}`}>
-                            {task.notes || "-"}
+                        {task.notes && (
+                          <div className="flex-1 min-w-[200px]">
+                            <span className="text-gray-500 text-xs">Notes</span>
+                            <div className="font-medium" data-testid={`task-notes-${task.id}`}>
+                              {task.notes}
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   ))}
