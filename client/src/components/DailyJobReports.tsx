@@ -118,7 +118,7 @@ export default function DailyJobReports() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-full overflow-y-auto">
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
         <Link href="/">
