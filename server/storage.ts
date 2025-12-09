@@ -1827,7 +1827,9 @@ class DatabaseStorage implements IStorage {
       status: tasks.status,
       order: tasks.order,
       dependentOnPrevious: tasks.dependentOnPrevious,
-      linkedTaskGroup: tasks.linkedTaskGroup
+      linkedTaskGroup: tasks.linkedTaskGroup,
+      qty: tasks.qty,
+      unitOfMeasure: tasks.unitOfMeasure
     }).from(tasks)
       .where(whereCondition)
       .orderBy(tasks.order) // Remove ::numeric cast for better performance
