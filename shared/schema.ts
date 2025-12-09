@@ -147,6 +147,8 @@ export const tasks = pgTable("tasks", {
   order: decimal("order", { precision: 10, scale: 2 }).notNull().default("0"),
   dependentOnPrevious: boolean("dependent_on_previous").notNull().default(true),
   linkedTaskGroup: text("linked_task_group"), // Tasks with same group ID occur on same date
+  qty: decimal("qty", { precision: 10, scale: 2 }), // Quantity for cost code tracking
+  unitOfMeasure: text("unit_of_measure"), // CY, Ton, LF, SF, Hours
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
@@ -302,7 +304,14 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
     .optional(),
   taskId: z.string().optional(),
   taskType: z.string().optional(),
-  costCode: z.string().optional()
+  costCode: z.string().optional(),
+  qty: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.number().transform(val => val.toString()),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  unitOfMeasure: z.string().optional().nullable()
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true }).extend({
   assignmentId: z.string().optional(),
