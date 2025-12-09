@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calculator, ChevronDown, ChevronRight, Upload } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Upload, Home, FolderOpen } from "lucide-react";
 
 export default function ProjectBudgets() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -122,12 +123,28 @@ export default function ProjectBudgets() {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Project Budgets</h1>
-          <p className="text-gray-600">Manage master budgets for each project</p>
-        </div>
-      </div>
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
+        <Link href="/">
+          <span className="flex items-center hover:text-gray-900 cursor-pointer">
+            <Home className="w-4 h-4" />
+          </span>
+        </Link>
+        <span>/</span>
+        <Link href="/projects">
+          <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer">
+            <FolderOpen className="w-4 h-4" />
+            Project
+          </span>
+        </Link>
+        <span>/</span>
+        <span className="flex items-center gap-1 font-medium text-gray-900">
+          <Calculator className="w-4 h-4" />
+          Budget
+        </span>
+      </nav>
+
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Project Budget Management</h1>
 
       {/* Project Selector */}
       <Card className="mb-6">
