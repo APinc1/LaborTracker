@@ -16,7 +16,12 @@ export default function ProjectBudgets() {
   });
 
   const { data: budgetItems = [], isLoading: budgetLoading } = useQuery<any[]>({
-    queryKey: ["/api/project-budget-line-items", selectedProjectId],
+    queryKey: ["/api/projects", selectedProjectId, "budget"],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${selectedProjectId}/budget`);
+      if (!response.ok) throw new Error('Failed to fetch budget');
+      return response.json();
+    },
     enabled: !!selectedProjectId,
   });
 
