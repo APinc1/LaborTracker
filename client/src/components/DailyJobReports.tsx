@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -36,9 +36,17 @@ export default function DailyJobReports() {
   });
 
   const taskGroups = useMemo(() => {
+    const today = startOfDay(new Date());
     const groupMap = new Map<string, TaskGroup>();
     
-    tasks.forEach((task: Task) => {
+    // Filter tasks to only include those up to current date
+    const filteredTasks = tasks.filter((task: Task) => {
+      if (!task.taskDate) return false;
+      const taskDate = startOfDay(parseISO(task.taskDate));
+      return !isAfter(taskDate, today);
+    });
+    
+    filteredTasks.forEach((task: Task) => {
       const groupKey = task.linkedTaskGroup || `single-${task.id}`;
       
       if (!groupMap.has(groupKey)) {
@@ -64,18 +72,17 @@ export default function DailyJobReports() {
       return b.taskDate.localeCompare(a.taskDate);
     });
 
-    // Generate labels with date prefix
+    // Generate labels with date prefix and all task names
     groups.forEach(group => {
       const dateStr = group.taskDate 
         ? format(parseISO(group.taskDate), "MMM d, yyyy")
         : "No date";
-      const primaryTask = group.tasks[0];
       
-      if (group.tasks.length > 1) {
-        group.label = `${dateStr} • ${primaryTask.name} (${group.tasks.length} linked tasks)`;
-      } else {
-        group.label = `${dateStr} • ${primaryTask.name}`;
-      }
+      // Get unique task names from the group
+      const taskNames = [...new Set(group.tasks.map(t => t.name))];
+      const namesStr = taskNames.join(" + ");
+      
+      group.label = `${dateStr} • ${namesStr}`;
     });
 
     return groups;
