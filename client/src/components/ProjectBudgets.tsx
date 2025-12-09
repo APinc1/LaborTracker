@@ -134,7 +134,7 @@ export default function ProjectBudgets() {
         {selectedProject ? (
           <>
             <Link href={`/projects/${selectedProjectId}`}>
-              <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer">
+              <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer text-[#1e40af]">
                 <FolderOpen className="w-4 h-4" />
                 {selectedProject.name}
               </span>
@@ -152,9 +152,7 @@ export default function ProjectBudgets() {
           </span>
         )}
       </nav>
-
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Project Budget Management</h1>
-
       {/* Project Selector */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -189,7 +187,6 @@ export default function ProjectBudgets() {
           )}
         </CardContent>
       </Card>
-
       {/* Budget Display */}
       {selectedProject && (
         <Card>
