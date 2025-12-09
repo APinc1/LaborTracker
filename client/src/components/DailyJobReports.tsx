@@ -251,68 +251,68 @@ export default function DailyJobReports() {
                 </div>
 
                 {/* Task Details */}
-                <div className="space-y-4">
-                  <h4 className="font-semibold text-gray-700">
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-gray-700 text-sm">
                     {selectedGroup.tasks.length > 1 ? `Linked Tasks (${selectedGroup.tasks.length})` : "Task Details"}
                   </h4>
                   
                   {selectedGroup.tasks.map((task, index) => (
                     <div 
                       key={task.id} 
-                      className="border rounded-lg p-4 bg-white"
+                      className="border rounded p-3 bg-white text-sm"
                       data-testid={`task-detail-${task.id}`}
                     >
                       {selectedGroup.tasks.length > 1 && (
-                        <div className="text-sm font-medium text-blue-600 mb-2">
+                        <div className="font-medium text-blue-600 mb-1">
                           Task {index + 1}: {task.name}
                         </div>
                       )}
                       
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                      <div className="grid grid-cols-5 gap-2 mb-2">
                         <div>
-                          <span className="text-gray-500 block">Cost Code</span>
-                          <span className="font-medium" data-testid={`task-costcode-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Cost Code</span>
+                          <div className="font-medium" data-testid={`task-costcode-${task.id}`}>
                             {task.costCode || "-"}
-                          </span>
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">Qty</span>
-                          <span className="font-medium" data-testid={`task-qty-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Qty</span>
+                          <div className="font-medium" data-testid={`task-qty-${task.id}`}>
                             {task.qty || "-"}
-                          </span>
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">Unit of Measure</span>
-                          <span className="font-medium" data-testid={`task-uom-${task.id}`}>
+                          <span className="text-gray-500 text-xs">UoM</span>
+                          <div className="font-medium" data-testid={`task-uom-${task.id}`}>
                             {task.unitOfMeasure || "-"}
-                          </span>
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">Start Time</span>
-                          <span className="font-medium" data-testid={`task-starttime-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Start</span>
+                          <div className="font-medium" data-testid={`task-starttime-${task.id}`}>
                             {task.startTime || "-"}
-                          </span>
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500 block">Finish Time</span>
-                          <span className="font-medium" data-testid={`task-finishtime-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Finish</span>
+                          <div className="font-medium" data-testid={`task-finishtime-${task.id}`}>
                             {task.finishTime || "-"}
-                          </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="mt-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <span className="text-gray-500 block text-sm">Work Description</span>
-                          <p className="font-medium" data-testid={`task-workdesc-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Work Description</span>
+                          <div className="font-medium" data-testid={`task-workdesc-${task.id}`}>
                             {task.workDescription || "-"}
-                          </p>
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-500 block text-sm">Notes</span>
-                          <p className="font-medium" data-testid={`task-notes-${task.id}`}>
+                          <span className="text-gray-500 text-xs">Notes</span>
+                          <div className="font-medium" data-testid={`task-notes-${task.id}`}>
                             {task.notes || "-"}
-                          </p>
+                          </div>
                         </div>
                       </div>
                     </div>
