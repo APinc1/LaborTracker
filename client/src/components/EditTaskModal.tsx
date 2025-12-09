@@ -54,6 +54,15 @@ const costCodes = [
   "PUNCHLIST GENERAL LABOR"
 ];
 
+// Unit of measure options for quantity tracking
+const unitOfMeasureOptions = [
+  { value: "CY", label: "CY (Cubic Yards)" },
+  { value: "Ton", label: "Ton" },
+  { value: "LF", label: "LF (Linear Feet)" },
+  { value: "SF", label: "SF (Square Feet)" },
+  { value: "Hours", label: "Hours" },
+];
+
 // Simplified schema for editing only the editable fields
 const editTaskSchema = z.object({
   name: z.string().min(1, "Task name is required"),
@@ -66,6 +75,8 @@ const editTaskSchema = z.object({
   dependentOnPrevious: z.boolean().optional(),
   linkToExistingTask: z.boolean().default(false),
   linkedTaskIds: z.array(z.string()).optional(),
+  qty: z.string().optional(),
+  unitOfMeasure: z.string().optional(),
 }).refine((data) => {
   // If linking is enabled, linkedTaskIds must have at least one item
   if (data.linkToExistingTask && (!data.linkedTaskIds || data.linkedTaskIds.length === 0)) {
@@ -170,6 +181,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       dependentOnPrevious: true,
       linkToExistingTask: false,
       linkedTaskIds: [],
+      qty: "",
+      unitOfMeasure: "",
     },
   });
 
@@ -211,6 +224,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         dependentOnPrevious: task.dependentOnPrevious ?? true,
         linkToExistingTask: !!task.linkedTaskGroup,
         linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id?.toString())),
+        qty: task.qty || "",
+        unitOfMeasure: task.unitOfMeasure || "",
       });
     }
   }, [task, form, existingTasks]);
@@ -2249,6 +2264,57 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 <Badge variant="secondary">{task.costCode}</Badge>
               </div>
               <p className="text-xs text-gray-500">Assigned based on task type</p>
+            </div>
+
+            {/* Quantity and Unit of Measure */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="qty"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        placeholder="Enter quantity"
+                        {...field} 
+                        data-testid="input-qty"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="unitOfMeasure"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit of Measure</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger data-testid="select-unit-of-measure">
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {unitOfMeasureOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Time */}
