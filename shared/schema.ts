@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, date, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -161,6 +161,32 @@ export const employeeAssignments = pgTable("employee_assignments", {
   assignedHours: decimal("assigned_hours", { precision: 10, scale: 2 }).default("8"),
   actualHours: decimal("actual_hours", { precision: 10, scale: 2 }),
   isDriverHours: boolean("is_driver_hours").default(false),
+});
+
+// Daily Job Reports - tracks reports for linked task groups
+export const dailyJobReports = pgTable("daily_job_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projects.id).notNull(),
+  locationId: integer("location_id").references(() => locations.id).notNull(),
+  linkedTaskGroup: text("linked_task_group").notNull(), // References tasks.linkedTaskGroup
+  taskDate: date("task_date").notNull(), // The date the tasks are for
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(), // When the DJR was submitted
+  submittedBy: integer("submitted_by").references(() => users.id),
+  weather7am: text("weather_7am"), // Weather conditions at 7am
+  weatherNoon: text("weather_noon"), // Weather conditions at noon
+  weather4pm: text("weather_4pm"), // Weather conditions at 4pm
+  notes: text("notes"),
+  editHistory: jsonb("edit_history").default([]), // JSON array of edit entries
+});
+
+// DJR Task Quantities - stores quantity for each task in a DJR
+export const djrTaskQuantities = pgTable("djr_task_quantities", {
+  id: serial("id").primaryKey(),
+  djrId: integer("djr_id").references(() => dailyJobReports.id, { onDelete: "cascade" }).notNull(),
+  taskId: integer("task_id").references(() => tasks.id).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }),
+  unitOfMeasure: text("unit_of_measure"),
+  notes: text("notes"),
 });
 
 // Insert schemas
@@ -330,6 +356,35 @@ export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignm
   ]).optional(),
 });
 
+// Edit history entry type for DJR
+export const djrEditHistoryEntrySchema = z.object({
+  userId: z.number().nullable(),
+  userName: z.string(),
+  timestamp: z.string(),
+  changes: z.string(),
+});
+
+export const insertDailyJobReportSchema = createInsertSchema(dailyJobReports).omit({ id: true, submittedAt: true }).extend({
+  taskDate: z.string(),
+  submittedBy: z.number().optional().nullable(),
+  weather7am: z.string().optional().nullable(),
+  weatherNoon: z.string().optional().nullable(),
+  weather4pm: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  editHistory: z.array(djrEditHistoryEntrySchema).optional(),
+});
+
+export const insertDjrTaskQuantitySchema = createInsertSchema(djrTaskQuantities).omit({ id: true }).extend({
+  quantity: z.union([
+    z.string().transform(val => val === "" ? null : val),
+    z.number().transform(val => val.toString()),
+    z.null(),
+    z.undefined()
+  ]).optional(),
+  unitOfMeasure: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -351,3 +406,8 @@ export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
 export type EmployeeAssignment = typeof employeeAssignments.$inferSelect;
 export type InsertEmployeeAssignment = z.infer<typeof insertEmployeeAssignmentSchema>;
+export type DailyJobReport = typeof dailyJobReports.$inferSelect;
+export type InsertDailyJobReport = z.infer<typeof insertDailyJobReportSchema>;
+export type DjrTaskQuantity = typeof djrTaskQuantities.$inferSelect;
+export type InsertDjrTaskQuantity = z.infer<typeof insertDjrTaskQuantitySchema>;
+export type DjrEditHistoryEntry = z.infer<typeof djrEditHistoryEntrySchema>;
