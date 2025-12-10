@@ -156,12 +156,38 @@ export default function DailyJobReports() {
           initializeTaskQuantities();
         }
       } else {
+        // New DJR - reset form and auto-fetch weather
         resetForm();
         initializeTaskQuantities();
+        autoFetchWeather();
       }
     } catch {
       resetForm();
       initializeTaskQuantities();
+    }
+  };
+
+  const autoFetchWeather = async () => {
+    const project = projects.find((p: any) => p.id.toString() === selectedProjectId);
+    const group = taskGroups.find(g => g.key === selectedTaskGroupKey);
+    
+    if (!project?.address || !group?.taskDate) return;
+
+    setIsLoadingWeather(true);
+    try {
+      const geoResponse = await fetch(`/api/geocode?address=${encodeURIComponent(project.address)}`);
+      if (!geoResponse.ok) return;
+      const geoData = await geoResponse.json();
+      
+      const weatherResponse = await fetch(`/api/weather/historical?lat=${geoData.latitude}&lon=${geoData.longitude}&date=${group.taskDate}`);
+      if (!weatherResponse.ok) return;
+      const weatherData = await weatherResponse.json();
+      
+      setWeather(weatherData);
+    } catch {
+      // Silent fail for auto-fetch - user can manually retry
+    } finally {
+      setIsLoadingWeather(false);
     }
   };
 
