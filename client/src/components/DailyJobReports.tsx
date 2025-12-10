@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Home, ClipboardList, Cloud, Sun, CloudRain, Loader2, Save, History, RefreshCw } from "lucide-react";
+import { Home, ClipboardList, Cloud, Sun, CloudRain, CloudSnow, CloudFog, CloudLightning, Loader2, Save, History, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { Task, DailyJobReport, DjrEditHistoryEntry } from "@shared/schema";
@@ -33,6 +33,33 @@ interface WeatherData {
   weatherNoon: string;
   weather4pm: string;
 }
+
+const getWeatherIcon = (weatherText: string) => {
+  const text = weatherText.toLowerCase();
+  
+  if (text.includes('thunder') || text.includes('lightning')) {
+    return <CloudLightning className="w-4 h-4 text-purple-500" />;
+  }
+  if (text.includes('snow') || text.includes('hail')) {
+    return <CloudSnow className="w-4 h-4 text-blue-300" />;
+  }
+  if (text.includes('rain') || text.includes('drizzle') || text.includes('shower')) {
+    return <CloudRain className="w-4 h-4 text-blue-500" />;
+  }
+  if (text.includes('fog') || text.includes('rime')) {
+    return <CloudFog className="w-4 h-4 text-gray-400" />;
+  }
+  if (text.includes('overcast')) {
+    return <Cloud className="w-4 h-4 text-gray-500" />;
+  }
+  if (text.includes('partly cloudy') || text.includes('mainly clear')) {
+    return <Cloud className="w-4 h-4 text-gray-400" />;
+  }
+  if (text.includes('clear') || text.includes('sunny')) {
+    return <Sun className="w-4 h-4 text-yellow-500" />;
+  }
+  return <Cloud className="w-4 h-4 text-gray-400" />;
+};
 
 export default function DailyJobReports() {
   const { toast } = useToast();
@@ -522,7 +549,7 @@ export default function DailyJobReports() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <Label className="flex items-center gap-1">
-                        <Sun className="w-3 h-3" /> 7:00 AM
+                        {getWeatherIcon(weather.weather7am)} 7:00 AM
                       </Label>
                       <Input
                         value={weather.weather7am}
@@ -533,7 +560,7 @@ export default function DailyJobReports() {
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-1">
-                        <Sun className="w-3 h-3" /> 12:00 PM
+                        {getWeatherIcon(weather.weatherNoon)} 12:00 PM
                       </Label>
                       <Input
                         value={weather.weatherNoon}
@@ -544,7 +571,7 @@ export default function DailyJobReports() {
                     </div>
                     <div className="space-y-1">
                       <Label className="flex items-center gap-1">
-                        <CloudRain className="w-3 h-3" /> 4:00 PM
+                        {getWeatherIcon(weather.weather4pm)} 4:00 PM
                       </Label>
                       <Input
                         value={weather.weather4pm}
