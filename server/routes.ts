@@ -139,6 +139,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Address validation using Shippo
+  app.post('/api/validate-address', async (req, res) => {
+    try {
+      const { street1, city, state, zip, country = 'US' } = req.body;
+      
+      if (!street1) {
+        return res.status(400).json({ error: 'Street address is required' });
+      }
+      
+      const shippoToken = process.env.SHIPPO_API_TOKEN;
+      if (!shippoToken) {
+        return res.status(500).json({ error: 'Address validation service not configured' });
+      }
+      
+      const response = await fetch('https://api.goshippo.com/addresses/', {
+        method: 'POST',
+        headers: {
+          'Authorization': `ShippoToken ${shippoToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          street1,
+          city: city || '',
+          state: state || '',
+          zip: zip || '',
+          country,
+          validate: true,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return res.status(400).json({ 
+          valid: false, 
+          error: data.error || 'Address validation failed' 
+        });
+      }
+      
+      const isValid = data.validation_results?.is_valid ?? false;
+      const messages = data.validation_results?.messages || [];
+      
+      res.json({
+        valid: isValid,
+        messages,
+        suggestedAddress: isValid ? {
+          street1: data.street1,
+          street2: data.street2,
+          city: data.city,
+          state: data.state,
+          zip: data.zip,
+          country: data.country,
+        } : null,
+        originalResponse: data,
+      });
+    } catch (error: any) {
+      console.error('Address validation error:', error);
+      res.status(500).json({ error: 'Failed to validate address' });
+    }
+  });
+
   // Project routes
   app.get('/api/projects', async (req, res) => {
     try {
@@ -197,6 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectData = {
         projectId: req.body.projectId,
         name: req.body.name,
+        address: req.body.address || null,
         startDate: req.body.startDate && req.body.startDate.trim() !== '' ? req.body.startDate : null,
         endDate: req.body.endDate && req.body.endDate.trim() !== '' ? req.body.endDate : null,
         defaultSuperintendent: req.body.defaultSuperintendent || null,

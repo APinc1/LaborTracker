@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Edit, Trash2, Calendar, User } from "lucide-react";
+import { Plus, Edit, Trash2, Calendar, User, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,8 @@ export default function ProjectManagement() {
   const [editingProject, setEditingProject] = useState<any>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<any>(null);
+  const [addressValidation, setAddressValidation] = useState<{ valid: boolean; message: string } | null>(null);
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["/api/projects"],
@@ -159,8 +161,52 @@ export default function ProjectManagement() {
     }
   };
 
+  const validateAddress = async () => {
+    const address = form.getValues('address');
+    if (!address) {
+      toast({ title: "Error", description: "Please enter an address first", variant: "destructive" });
+      return;
+    }
+    
+    setIsValidatingAddress(true);
+    setAddressValidation(null);
+    
+    try {
+      const response = await fetch('/api/validate-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ street1: address }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.valid) {
+        const suggested = result.suggestedAddress;
+        const formattedAddress = [
+          suggested.street1,
+          suggested.street2,
+          `${suggested.city}, ${suggested.state} ${suggested.zip}`
+        ].filter(Boolean).join(', ');
+        
+        form.setValue('address', formattedAddress);
+        setAddressValidation({ valid: true, message: 'Address verified and formatted' });
+        toast({ title: "Success", description: "Address validated successfully" });
+      } else {
+        const errorMsg = result.messages?.[0]?.text || 'Could not verify address';
+        setAddressValidation({ valid: false, message: errorMsg });
+        toast({ title: "Warning", description: errorMsg, variant: "destructive" });
+      }
+    } catch (error) {
+      setAddressValidation({ valid: false, message: 'Failed to validate address' });
+      toast({ title: "Error", description: "Failed to validate address", variant: "destructive" });
+    } finally {
+      setIsValidatingAddress(false);
+    }
+  };
+
   const handleEdit = (project: any) => {
     setEditingProject(project);
+    setAddressValidation(null);
     console.log('Editing project:', project);
     console.log('Available users:', users);
     
@@ -213,6 +259,7 @@ export default function ProjectManagement() {
             if (!open) {
               setIsCreateDialogOpen(false);
               setEditingProject(null);
+              setAddressValidation(null);
               form.reset({
                 projectId: '',
                 name: '',
@@ -271,9 +318,42 @@ export default function ProjectManagement() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="123 Main St, City, State 12345" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input 
+                              placeholder="123 Main St, City, State 12345" 
+                              {...field} 
+                              onChange={(e) => {
+                                field.onChange(e);
+                                setAddressValidation(null);
+                              }}
+                            />
+                          </FormControl>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            size="sm"
+                            onClick={validateAddress}
+                            disabled={isValidatingAddress}
+                            data-testid="btn-validate-address"
+                          >
+                            {isValidatingAddress ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              "Verify"
+                            )}
+                          </Button>
+                        </div>
+                        {addressValidation && (
+                          <div className={`flex items-center gap-1 text-sm ${addressValidation.valid ? 'text-green-600' : 'text-red-600'}`}>
+                            {addressValidation.valid ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
+                            )}
+                            {addressValidation.message}
+                          </div>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
