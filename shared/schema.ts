@@ -19,6 +19,7 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   projectId: text("project_id").notNull().unique(),
   name: text("name").notNull(),
+  address: text("address"),
   startDate: date("start_date"),
   endDate: date("end_date"),
   defaultSuperintendent: integer("default_superintendent").references(() => users.id),

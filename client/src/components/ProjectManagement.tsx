@@ -129,6 +129,7 @@ export default function ProjectManagement() {
     defaultValues: {
       projectId: '',
       name: '',
+      address: '',
       startDate: '',
       endDate: '',
       defaultSuperintendent: undefined,
@@ -166,6 +167,7 @@ export default function ProjectManagement() {
     form.reset({
       projectId: project.projectId,
       name: project.name,
+      address: project.address || '',
       startDate: project.startDate || '',
       endDate: project.endDate || '',
       defaultSuperintendent: project.defaultSuperintendent || undefined,
@@ -214,6 +216,7 @@ export default function ProjectManagement() {
               form.reset({
                 projectId: '',
                 name: '',
+                address: '',
                 startDate: '',
                 endDate: '',
                 defaultSuperintendent: undefined,
@@ -257,6 +260,19 @@ export default function ProjectManagement() {
                         <FormLabel>Project Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Main St Bridge Construction" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123 Main St, City, State 12345" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -368,6 +384,7 @@ export default function ProjectManagement() {
                       form.reset({
                         projectId: '',
                         name: '',
+                        address: '',
                         startDate: '',
                         endDate: '',
                         defaultSuperintendent: undefined,
