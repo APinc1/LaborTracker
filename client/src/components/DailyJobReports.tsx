@@ -451,8 +451,42 @@ export default function DailyJobReports() {
                       {selectedProject?.name} - {selectedLocation?.name}
                     </span>
                   </div>
-                  <div className="text-xl font-bold text-blue-600" data-testid="report-task-date">
+                  <div className="text-xl font-bold text-blue-600 mb-4" data-testid="report-task-date">
                     {formatDisplayDate(selectedGroup.taskDate)}
+                  </div>
+                  
+                  {/* Task Summary Table */}
+                  <div className="bg-white rounded border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-medium">Task</th>
+                          <th className="text-left px-3 py-2 font-medium">Cost Code</th>
+                          <th className="text-center px-3 py-2 font-medium">Scheduled Hrs</th>
+                          <th className="text-center px-3 py-2 font-medium">Scheduled Qty</th>
+                          <th className="text-center px-3 py-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedGroup.tasks.map((task, idx) => (
+                          <tr key={task.id} className={idx % 2 === 0 ? "" : "bg-gray-50"} data-testid={`summary-row-${task.id}`}>
+                            <td className="px-3 py-2">{task.name}</td>
+                            <td className="px-3 py-2 text-gray-600">{task.costCode || "-"}</td>
+                            <td className="px-3 py-2 text-center">{task.scheduledHours || 0}</td>
+                            <td className="px-3 py-2 text-center">{task.qty || "-"} {task.unitOfMeasure || ""}</td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                task.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                                task.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {task.status || "Not Started"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 

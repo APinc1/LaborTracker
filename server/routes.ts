@@ -2099,15 +2099,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'lat, lon, and date are required' });
       }
       
-      // Fetch historical weather from Open-Meteo
-      const weatherUrl = `https://api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&hourly=temperature_2m,weathercode,precipitation,windspeed_10m&timezone=auto`;
+      const dateStr = date as string;
+      const requestDate = new Date(dateStr);
+      const now = new Date();
+      const daysDiff = Math.floor((now.getTime() - requestDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let weatherUrl: string;
+      let data: any;
+      
+      // For recent dates (within 5 days), use forecast API with past_days
+      // For older dates, use archive API
+      if (daysDiff <= 5) {
+        // Use forecast API with past_days parameter for recent weather
+        weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&past_days=${Math.min(daysDiff + 1, 7)}&hourly=temperature_2m,weathercode&timezone=auto`;
+      } else {
+        // Use archive API for historical data (older than 5 days)
+        weatherUrl = `https://api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m,weathercode&timezone=auto`;
+      }
+      
+      console.log('Fetching weather from:', weatherUrl);
       
       const response = await fetch(weatherUrl);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Weather API error:', errorText);
         throw new Error('Failed to fetch weather data');
       }
       
-      const data = await response.json();
+      data = await response.json();
+      
+      // For forecast API, find the correct date's data
+      if (daysDiff <= 5 && data.hourly?.time) {
+        const targetDateStr = dateStr;
+        const timeIndex = data.hourly.time.findIndex((t: string) => t.startsWith(targetDateStr));
+        
+        if (timeIndex === -1) {
+          throw new Error('Date not found in weather data');
+        }
+        
+        // Slice the data to just the target date (24 hours starting from that index)
+        data.hourly.temperature_2m = data.hourly.temperature_2m.slice(timeIndex, timeIndex + 24);
+        data.hourly.weathercode = data.hourly.weathercode?.slice(timeIndex, timeIndex + 24);
+        data.hourly.time = data.hourly.time.slice(timeIndex, timeIndex + 24);
+      }
       
       // Extract weather for 7am, noon, and 4pm (hours 7, 12, 16)
       const hourlyData = data.hourly;
@@ -2169,21 +2203,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'address is required' });
       }
       
-      // Use Open-Meteo's geocoding API (free)
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(address as string)}&count=1&language=en&format=json`;
+      const fullAddress = address as string;
       
-      const response = await fetch(geoUrl);
-      if (!response.ok) {
-        throw new Error('Geocoding failed');
+      // Extract city from address - try multiple patterns
+      // Pattern: "Street, City, State ZIP" or "Street, City State ZIP"
+      let searchLocation = fullAddress;
+      
+      // Try to extract city and state from typical address format
+      const parts = fullAddress.split(',').map(p => p.trim());
+      if (parts.length >= 2) {
+        // Usually: [street, city, state+zip] or [street, city state zip]
+        // Take the city part (usually second element) and state
+        if (parts.length >= 3) {
+          // Format: "123 Main St, Los Angeles, CA 90001"
+          const city = parts[1];
+          const stateZip = parts[2];
+          const stateMatch = stateZip.match(/^([A-Z]{2})/);
+          if (stateMatch) {
+            searchLocation = `${city}, ${stateMatch[1]}`;
+          } else {
+            searchLocation = city;
+          }
+        } else {
+          // Format: "123 Main St, Los Angeles CA 90001"
+          const cityStateZip = parts[1];
+          // Extract city name (words before the state abbreviation)
+          const cityMatch = cityStateZip.match(/^(.+?)\s+[A-Z]{2}\s+\d/);
+          if (cityMatch) {
+            searchLocation = cityMatch[1].trim();
+          } else {
+            searchLocation = parts[1];
+          }
+        }
       }
       
-      const data = await response.json();
+      // Build list of search terms to try (city with state, then city only)
+      const searchTerms: string[] = [];
       
-      if (!data.results || data.results.length === 0) {
+      // Add extracted city,state
+      if (searchLocation !== fullAddress) {
+        searchTerms.push(searchLocation);
+        // Also try just the city name without state
+        const cityOnly = searchLocation.split(',')[0].trim();
+        if (cityOnly && cityOnly !== searchLocation) {
+          searchTerms.push(cityOnly);
+        }
+      } else {
+        searchTerms.push(searchLocation);
+      }
+      
+      console.log('Geocoding search terms:', searchTerms, 'from address:', fullAddress);
+      
+      // Try each search term until one works
+      let result = null;
+      for (const term of searchTerms) {
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=1&language=en&format=json`;
+        
+        const response = await fetch(geoUrl);
+        if (!response.ok) continue;
+        
+        const data = await response.json();
+        
+        if (data.results && data.results.length > 0) {
+          result = data.results[0];
+          console.log('Geocoding found match with term:', term);
+          break;
+        }
+      }
+      
+      if (!result) {
         return res.status(404).json({ error: 'Address not found' });
       }
-      
-      const result = data.results[0];
       res.json({
         latitude: result.latitude,
         longitude: result.longitude,
