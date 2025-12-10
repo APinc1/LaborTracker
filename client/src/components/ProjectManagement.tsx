@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertProjectSchema } from "@shared/schema";
 import { Link } from "wouter";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 export default function ProjectManagement() {
   const { toast } = useToast();
@@ -272,7 +273,11 @@ export default function ProjectManagement() {
                       <FormItem>
                         <FormLabel>Address</FormLabel>
                         <FormControl>
-                          <Input placeholder="123 Main St, City, State 12345" {...field} />
+                          <AddressAutocomplete
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            placeholder="Start typing an address..."
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
