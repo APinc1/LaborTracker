@@ -1,9 +1,11 @@
 import { 
   users, projects, budgetLineItems, locations, locationBudgets, crews, employees, tasks, employeeAssignments, projectBudgetLineItems,
+  dailyJobReports, djrTaskQuantities,
   type User, type InsertUser, type Project, type InsertProject, type BudgetLineItem, type InsertBudgetLineItem,
   type Location, type InsertLocation, type LocationBudget, type InsertLocationBudget, type Crew, type InsertCrew,
   type Employee, type InsertEmployee, type Task, type InsertTask, type EmployeeAssignment, type InsertEmployeeAssignment,
-  type ProjectBudgetLineItem, type InsertProjectBudgetLineItem
+  type ProjectBudgetLineItem, type InsertProjectBudgetLineItem,
+  type DailyJobReport, type InsertDailyJobReport, type DjrTaskQuantity, type InsertDjrTaskQuantity
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
@@ -94,6 +96,21 @@ export interface IStorage {
   updateEmployeeAssignment(id: number, assignment: Partial<InsertEmployeeAssignment>): Promise<EmployeeAssignment>;
   deleteEmployeeAssignment(id: number): Promise<void>;
   getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]>;
+  
+  // Daily Job Report methods
+  getDailyJobReports(locationId?: number): Promise<DailyJobReport[]>;
+  getDailyJobReport(id: number): Promise<DailyJobReport | undefined>;
+  getDailyJobReportByTaskGroup(linkedTaskGroup: string, taskDate: string): Promise<DailyJobReport | undefined>;
+  createDailyJobReport(djr: InsertDailyJobReport): Promise<DailyJobReport>;
+  updateDailyJobReport(id: number, djr: Partial<InsertDailyJobReport>): Promise<DailyJobReport>;
+  deleteDailyJobReport(id: number): Promise<void>;
+  
+  // DJR Task Quantity methods
+  getDjrTaskQuantities(djrId: number): Promise<DjrTaskQuantity[]>;
+  createDjrTaskQuantity(quantity: InsertDjrTaskQuantity): Promise<DjrTaskQuantity>;
+  updateDjrTaskQuantity(id: number, quantity: Partial<InsertDjrTaskQuantity>): Promise<DjrTaskQuantity>;
+  deleteDjrTaskQuantity(id: number): Promise<void>;
+  upsertDjrTaskQuantities(djrId: number, quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -1006,6 +1023,52 @@ export class MemStorage implements IStorage {
       assignment.assignmentDate === date
     );
   }
+
+  // Daily Job Report methods (stubs for in-memory storage)
+  async getDailyJobReports(_locationId?: number): Promise<DailyJobReport[]> {
+    return [];
+  }
+
+  async getDailyJobReport(_id: number): Promise<DailyJobReport | undefined> {
+    return undefined;
+  }
+
+  async getDailyJobReportByTaskGroup(_linkedTaskGroup: string, _taskDate: string): Promise<DailyJobReport | undefined> {
+    return undefined;
+  }
+
+  async createDailyJobReport(_djr: InsertDailyJobReport): Promise<DailyJobReport> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  async updateDailyJobReport(_id: number, _djr: Partial<InsertDailyJobReport>): Promise<DailyJobReport> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  async deleteDailyJobReport(_id: number): Promise<void> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  // DJR Task Quantity methods (stubs)
+  async getDjrTaskQuantities(_djrId: number): Promise<DjrTaskQuantity[]> {
+    return [];
+  }
+
+  async createDjrTaskQuantity(_quantity: InsertDjrTaskQuantity): Promise<DjrTaskQuantity> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  async updateDjrTaskQuantity(_id: number, _quantity: Partial<InsertDjrTaskQuantity>): Promise<DjrTaskQuantity> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  async deleteDjrTaskQuantity(_id: number): Promise<void> {
+    throw new Error('DJR not supported in memory storage');
+  }
+
+  async upsertDjrTaskQuantities(_djrId: number, _quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]> {
+    throw new Error('DJR not supported in memory storage');
+  }
 }
 
 // Global database connection - singleton pattern for deployment
@@ -1050,6 +1113,8 @@ function initializeDatabase() {
         employees,
         tasks,
         employeeAssignments,
+        dailyJobReports,
+        djrTaskQuantities,
       },
     });
     
@@ -2019,6 +2084,80 @@ class DatabaseStorage implements IStorage {
 
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
     return await this.db.select().from(employeeAssignments).where(eq(employeeAssignments.assignmentDate, date));
+  }
+
+  // Daily Job Report methods
+  async getDailyJobReports(locationId?: number): Promise<DailyJobReport[]> {
+    if (locationId) {
+      return await this.db.select().from(dailyJobReports).where(eq(dailyJobReports.locationId, locationId)).orderBy(desc(dailyJobReports.taskDate));
+    }
+    return await this.db.select().from(dailyJobReports).orderBy(desc(dailyJobReports.taskDate));
+  }
+
+  async getDailyJobReport(id: number): Promise<DailyJobReport | undefined> {
+    const result = await this.db.select().from(dailyJobReports).where(eq(dailyJobReports.id, id));
+    return result[0];
+  }
+
+  async getDailyJobReportByTaskGroup(linkedTaskGroup: string, taskDate: string): Promise<DailyJobReport | undefined> {
+    const result = await this.db.select().from(dailyJobReports)
+      .where(and(
+        eq(dailyJobReports.linkedTaskGroup, linkedTaskGroup),
+        eq(dailyJobReports.taskDate, taskDate)
+      ));
+    return result[0];
+  }
+
+  async createDailyJobReport(djr: InsertDailyJobReport): Promise<DailyJobReport> {
+    const result = await this.db.insert(dailyJobReports).values(djr).returning();
+    return result[0];
+  }
+
+  async updateDailyJobReport(id: number, djr: Partial<InsertDailyJobReport>): Promise<DailyJobReport> {
+    const result = await this.db.update(dailyJobReports).set(djr).where(eq(dailyJobReports.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteDailyJobReport(id: number): Promise<void> {
+    await this.db.delete(dailyJobReports).where(eq(dailyJobReports.id, id));
+  }
+
+  // DJR Task Quantity methods
+  async getDjrTaskQuantities(djrId: number): Promise<DjrTaskQuantity[]> {
+    return await this.db.select().from(djrTaskQuantities).where(eq(djrTaskQuantities.djrId, djrId));
+  }
+
+  async createDjrTaskQuantity(quantity: InsertDjrTaskQuantity): Promise<DjrTaskQuantity> {
+    const result = await this.db.insert(djrTaskQuantities).values(quantity).returning();
+    return result[0];
+  }
+
+  async updateDjrTaskQuantity(id: number, quantity: Partial<InsertDjrTaskQuantity>): Promise<DjrTaskQuantity> {
+    const result = await this.db.update(djrTaskQuantities).set(quantity).where(eq(djrTaskQuantities.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteDjrTaskQuantity(id: number): Promise<void> {
+    await this.db.delete(djrTaskQuantities).where(eq(djrTaskQuantities.id, id));
+  }
+
+  async upsertDjrTaskQuantities(djrId: number, quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]> {
+    // Delete existing quantities for this DJR
+    await this.db.delete(djrTaskQuantities).where(eq(djrTaskQuantities.djrId, djrId));
+    
+    // Insert new quantities
+    const results: DjrTaskQuantity[] = [];
+    for (const q of quantities) {
+      const result = await this.db.insert(djrTaskQuantities).values({
+        djrId,
+        taskId: q.taskId,
+        quantity: q.quantity,
+        unitOfMeasure: q.unitOfMeasure,
+        notes: q.notes || null
+      }).returning();
+      results.push(result[0]);
+    }
+    return results;
   }
 }
 

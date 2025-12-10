@@ -5,7 +5,8 @@ import { getStorage } from "./storage";
 import { 
   insertProjectSchema, insertBudgetLineItemSchema, insertLocationSchema, insertCrewSchema, 
   insertEmployeeSchema, insertTaskSchema, insertEmployeeAssignmentSchema,
-  insertProjectBudgetLineItemSchema
+  insertProjectBudgetLineItemSchema, insertDailyJobReportSchema,
+  type DjrEditHistoryEntry
 } from "@shared/schema";
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 import { timing, validateLimit } from "./middleware/timing";
@@ -1945,6 +1946,254 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: 'Failed to verify reset token' });
+    }
+  });
+
+  // Daily Job Report routes
+  app.get('/api/daily-job-reports', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const locationId = req.query.locationId ? parseInt(req.query.locationId as string) : undefined;
+      const djrs = await withFastTimeout(storage.getDailyJobReports(locationId));
+      res.json(djrs);
+    } catch (error: any) {
+      console.error('Error fetching DJRs:', error);
+      res.status(500).json({ error: 'Failed to fetch daily job reports' });
+    }
+  });
+
+  app.get('/api/daily-job-reports/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const djr = await withFastTimeout(storage.getDailyJobReport(parseInt(req.params.id)));
+      if (!djr) {
+        return res.status(404).json({ error: 'Daily job report not found' });
+      }
+      res.json(djr);
+    } catch (error: any) {
+      console.error('Error fetching DJR:', error);
+      res.status(500).json({ error: 'Failed to fetch daily job report' });
+    }
+  });
+
+  app.get('/api/daily-job-reports/by-task-group/:linkedTaskGroup/:taskDate', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const djr = await withFastTimeout(storage.getDailyJobReportByTaskGroup(
+        req.params.linkedTaskGroup,
+        req.params.taskDate
+      ));
+      if (!djr) {
+        return res.status(404).json({ error: 'Daily job report not found' });
+      }
+      // Also fetch task quantities
+      const quantities = await storage.getDjrTaskQuantities(djr.id);
+      res.json({ ...djr, taskQuantities: quantities });
+    } catch (error: any) {
+      console.error('Error fetching DJR by task group:', error);
+      res.status(500).json({ error: 'Failed to fetch daily job report' });
+    }
+  });
+
+  app.post('/api/daily-job-reports', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const validatedData = insertDailyJobReportSchema.parse(req.body);
+      
+      // Add initial edit history entry
+      const initialHistory: DjrEditHistoryEntry[] = [{
+        userId: req.body.submittedBy || null,
+        userName: req.body.submittedByName || 'System',
+        timestamp: new Date().toISOString(),
+        changes: 'Created DJR'
+      }];
+      
+      const djr = await withFastTimeout(storage.createDailyJobReport({
+        ...validatedData,
+        editHistory: initialHistory
+      }));
+      
+      // Create task quantities if provided
+      if (req.body.taskQuantities && Array.isArray(req.body.taskQuantities)) {
+        await storage.upsertDjrTaskQuantities(djr.id, req.body.taskQuantities);
+      }
+      
+      res.status(201).json(djr);
+    } catch (error: any) {
+      console.error('Error creating DJR:', error);
+      res.status(400).json({ error: error.message || 'Failed to create daily job report' });
+    }
+  });
+
+  app.patch('/api/daily-job-reports/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const djrId = parseInt(req.params.id);
+      
+      // Get existing DJR to update edit history
+      const existingDjr = await storage.getDailyJobReport(djrId);
+      if (!existingDjr) {
+        return res.status(404).json({ error: 'Daily job report not found' });
+      }
+      
+      // Add new entry to edit history
+      const existingHistory = (existingDjr.editHistory as DjrEditHistoryEntry[]) || [];
+      const newHistoryEntry: DjrEditHistoryEntry = {
+        userId: req.body.editedBy || null,
+        userName: req.body.editedByName || 'Unknown',
+        timestamp: new Date().toISOString(),
+        changes: req.body.changeDescription || 'Updated DJR'
+      };
+      
+      const updatedHistory = [...existingHistory, newHistoryEntry];
+      
+      // Remove tracking fields from update data
+      const { editedBy, editedByName, changeDescription, taskQuantities, ...updateData } = req.body;
+      
+      const djr = await withFastTimeout(storage.updateDailyJobReport(djrId, {
+        ...updateData,
+        editHistory: updatedHistory
+      }));
+      
+      // Update task quantities if provided
+      if (taskQuantities && Array.isArray(taskQuantities)) {
+        await storage.upsertDjrTaskQuantities(djrId, taskQuantities);
+      }
+      
+      res.json(djr);
+    } catch (error: any) {
+      console.error('Error updating DJR:', error);
+      res.status(400).json({ error: error.message || 'Failed to update daily job report' });
+    }
+  });
+
+  app.delete('/api/daily-job-reports/:id', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      await withFastTimeout(storage.deleteDailyJobReport(parseInt(req.params.id)));
+      res.status(204).send();
+    } catch (error: any) {
+      console.error('Error deleting DJR:', error);
+      res.status(500).json({ error: 'Failed to delete daily job report' });
+    }
+  });
+
+  // DJR Task Quantities
+  app.get('/api/daily-job-reports/:djrId/quantities', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const quantities = await withFastTimeout(storage.getDjrTaskQuantities(parseInt(req.params.djrId)));
+      res.json(quantities);
+    } catch (error: any) {
+      console.error('Error fetching DJR quantities:', error);
+      res.status(500).json({ error: 'Failed to fetch task quantities' });
+    }
+  });
+
+  // Weather API using Open-Meteo (free, no API key required)
+  app.get('/api/weather/historical', async (req, res) => {
+    try {
+      const { lat, lon, date } = req.query;
+      
+      if (!lat || !lon || !date) {
+        return res.status(400).json({ error: 'lat, lon, and date are required' });
+      }
+      
+      // Fetch historical weather from Open-Meteo
+      const weatherUrl = `https://api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&hourly=temperature_2m,weathercode,precipitation,windspeed_10m&timezone=auto`;
+      
+      const response = await fetch(weatherUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch weather data');
+      }
+      
+      const data = await response.json();
+      
+      // Extract weather for 7am, noon, and 4pm (hours 7, 12, 16)
+      const hourlyData = data.hourly;
+      const weatherCodes: Record<number, string> = {
+        0: 'Clear sky',
+        1: 'Mainly clear',
+        2: 'Partly cloudy',
+        3: 'Overcast',
+        45: 'Fog',
+        48: 'Depositing rime fog',
+        51: 'Light drizzle',
+        53: 'Moderate drizzle',
+        55: 'Dense drizzle',
+        61: 'Slight rain',
+        63: 'Moderate rain',
+        65: 'Heavy rain',
+        71: 'Slight snow',
+        73: 'Moderate snow',
+        75: 'Heavy snow',
+        77: 'Snow grains',
+        80: 'Slight rain showers',
+        81: 'Moderate rain showers',
+        82: 'Violent rain showers',
+        85: 'Slight snow showers',
+        86: 'Heavy snow showers',
+        95: 'Thunderstorm',
+        96: 'Thunderstorm with slight hail',
+        99: 'Thunderstorm with heavy hail'
+      };
+      
+      const formatWeather = (hour: number) => {
+        if (!hourlyData?.time || !hourlyData.temperature_2m) {
+          return 'No data';
+        }
+        const temp = hourlyData.temperature_2m[hour];
+        const code = hourlyData.weathercode?.[hour] || 0;
+        const condition = weatherCodes[code] || 'Unknown';
+        const tempF = Math.round((temp * 9/5) + 32);
+        return `${condition}, ${tempF}°F`;
+      };
+      
+      res.json({
+        weather7am: formatWeather(7),
+        weatherNoon: formatWeather(12),
+        weather4pm: formatWeather(16)
+      });
+    } catch (error: any) {
+      console.error('Error fetching weather:', error);
+      res.status(500).json({ error: 'Failed to fetch weather data' });
+    }
+  });
+
+  // Geocode address to get lat/lon for weather
+  app.get('/api/geocode', async (req, res) => {
+    try {
+      const { address } = req.query;
+      
+      if (!address) {
+        return res.status(400).json({ error: 'address is required' });
+      }
+      
+      // Use Open-Meteo's geocoding API (free)
+      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(address as string)}&count=1&language=en&format=json`;
+      
+      const response = await fetch(geoUrl);
+      if (!response.ok) {
+        throw new Error('Geocoding failed');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.results || data.results.length === 0) {
+        return res.status(404).json({ error: 'Address not found' });
+      }
+      
+      const result = data.results[0];
+      res.json({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        name: result.name,
+        country: result.country,
+        admin1: result.admin1
+      });
+    } catch (error: any) {
+      console.error('Error geocoding:', error);
+      res.status(500).json({ error: 'Failed to geocode address' });
     }
   });
 
