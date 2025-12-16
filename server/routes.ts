@@ -1475,38 +1475,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await Promise.all(unlinkingPromises);
       }
       
-      // First, delete any DJR task quantities that reference this task (to avoid foreign key constraint)
+      // Step 1: Delete any DJR task quantities that reference this task (to avoid foreign key constraint)
       console.log('🗑️ DELETION: Deleting DJR task quantities for task:', taskId);
       await storage.deleteDjrTaskQuantitiesByTaskId(taskId);
       console.log('✅ DJR task quantities deleted (if any existed)');
       
-      // Try to delete the task FIRST (before assignments) to catch any other foreign key issues
-      console.log('🗑️ DELETION: Attempting to delete task:', taskId);
-      try {
-        await withTimeout(storage.deleteTask(taskId), 5000);
-        console.log('✅ Task deleted successfully');
-      } catch (taskDeleteError: any) {
-        // If task deletion fails, don't delete assignments - return error immediately
-        console.error('Task deletion failed:', taskDeleteError);
-        return res.status(500).json({ 
-          error: 'Failed to delete task', 
-          details: taskDeleteError.message 
-        });
-      }
-      
-      // Only delete assignments AFTER task is successfully deleted (they're orphaned now anyway)
-      console.log('🗑️ DELETION: Cleaning up orphaned assignments for task:', taskId);
+      // Step 2: Delete employee assignments FIRST (before task) - they have a foreign key to the task
+      console.log('🗑️ DELETION: Deleting employee assignments for task:', taskId);
       const taskAssignments = await storage.getEmployeeAssignments(taskId);
       
       if (taskAssignments.length > 0) {
-        console.log(`🗑️ DELETION: Found ${taskAssignments.length} orphaned assignments to clean up`);
+        console.log(`🗑️ DELETION: Found ${taskAssignments.length} assignments to delete`);
         const assignmentDeletionPromises = taskAssignments.map(assignment => {
           console.log(`  └─ Deleting assignment ${assignment.id} for employee ${assignment.employeeId}`);
           return storage.deleteEmployeeAssignment(assignment.id);
         });
         
         await Promise.all(assignmentDeletionPromises);
-        console.log('✅ All orphaned assignments cleaned up');
+        console.log('✅ All assignments deleted');
+      }
+      
+      // Step 3: Delete the task AFTER all referencing data is removed
+      console.log('🗑️ DELETION: Attempting to delete task:', taskId);
+      try {
+        await withTimeout(storage.deleteTask(taskId), 5000);
+        console.log('✅ Task deleted successfully');
+      } catch (taskDeleteError: any) {
+        console.error('Task deletion failed:', taskDeleteError);
+        return res.status(500).json({ 
+          error: 'Failed to delete task', 
+          details: taskDeleteError.message 
+        });
       }
       
       // Process sequential cascading for remaining tasks (including newly unlinked ones)
