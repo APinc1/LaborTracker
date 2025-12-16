@@ -112,6 +112,7 @@ export interface IStorage {
   createDjrTaskQuantity(quantity: InsertDjrTaskQuantity): Promise<DjrTaskQuantity>;
   updateDjrTaskQuantity(id: number, quantity: Partial<InsertDjrTaskQuantity>): Promise<DjrTaskQuantity>;
   deleteDjrTaskQuantity(id: number): Promise<void>;
+  deleteDjrTaskQuantitiesByTaskId(taskId: number): Promise<void>;
   upsertDjrTaskQuantities(djrId: number, quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]>;
 }
 
@@ -1078,6 +1079,10 @@ export class MemStorage implements IStorage {
 
   async deleteDjrTaskQuantity(_id: number): Promise<void> {
     throw new Error('DJR not supported in memory storage');
+  }
+
+  async deleteDjrTaskQuantitiesByTaskId(_taskId: number): Promise<void> {
+    // DJR not supported in memory storage - no-op
   }
 
   async upsertDjrTaskQuantities(_djrId: number, _quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]> {
@@ -2170,6 +2175,10 @@ class DatabaseStorage implements IStorage {
 
   async deleteDjrTaskQuantity(id: number): Promise<void> {
     await this.db.delete(djrTaskQuantities).where(eq(djrTaskQuantities.id, id));
+  }
+
+  async deleteDjrTaskQuantitiesByTaskId(taskId: number): Promise<void> {
+    await this.db.delete(djrTaskQuantities).where(eq(djrTaskQuantities.taskId, taskId));
   }
 
   async upsertDjrTaskQuantities(djrId: number, quantities: { taskId: number; quantity: string | null; unitOfMeasure: string | null; notes?: string | null }[]): Promise<DjrTaskQuantity[]> {
