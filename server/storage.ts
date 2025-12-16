@@ -83,6 +83,7 @@ export interface IStorage {
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: number): Promise<void>;
   getTasksByDateRange(startDate: string, endDate: string, locationIds?: number[], limit?: number, offset?: number): Promise<Task[]>;
+  isFirstTaskInLocation(taskId: number, locationId: number): Promise<boolean>;
   
   // Optimized task helper methods
   createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious?: boolean): Promise<{ id: number }>;
@@ -96,6 +97,7 @@ export interface IStorage {
   updateEmployeeAssignment(id: number, assignment: Partial<InsertEmployeeAssignment>): Promise<EmployeeAssignment>;
   deleteEmployeeAssignment(id: number): Promise<void>;
   getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]>;
+  findAssignmentByTaskAndEmployee(taskId: number, employeeId: number): Promise<EmployeeAssignment | undefined>;
   
   // Daily Job Report methods
   getDailyJobReports(locationId?: number): Promise<DailyJobReport[]>;
@@ -985,6 +987,12 @@ export class MemStorage implements IStorage {
     return filteredTasks;
   }
 
+  async isFirstTaskInLocation(taskId: number, locationId: number): Promise<boolean> {
+    const locationTasks = Array.from(this.tasks.values()).filter(t => t.locationId === locationId);
+    locationTasks.sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
+    return locationTasks.length > 0 && locationTasks[0].id === taskId;
+  }
+
   // Employee assignment methods
   async getEmployeeAssignments(taskId: number): Promise<EmployeeAssignment[]> {
     return Array.from(this.employeeAssignments.values()).filter(assignment => assignment.taskId === taskId);
@@ -1021,6 +1029,12 @@ export class MemStorage implements IStorage {
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
     return Array.from(this.employeeAssignments.values()).filter(assignment => 
       assignment.assignmentDate === date
+    );
+  }
+
+  async findAssignmentByTaskAndEmployee(taskId: number, employeeId: number): Promise<EmployeeAssignment | undefined> {
+    return Array.from(this.employeeAssignments.values()).find(
+      a => a.taskId === taskId && a.employeeId === employeeId
     );
   }
 
@@ -1952,6 +1966,15 @@ class DatabaseStorage implements IStorage {
     return await query;
   }
 
+  async isFirstTaskInLocation(taskId: number, locationId: number): Promise<boolean> {
+    const result = await this.db.select({ id: tasks.id })
+      .from(tasks)
+      .where(eq(tasks.locationId, locationId))
+      .orderBy(asc(tasks.order))
+      .limit(1);
+    return result.length > 0 && result[0].id === taskId;
+  }
+
   // Single round-trip task creation with CTE
   async createTaskOptimized(locationId: number, candidate: any, dependentOnPrevious: boolean = false): Promise<{ id: number }> {
     const db = await this.db;
@@ -2084,6 +2107,14 @@ class DatabaseStorage implements IStorage {
 
   async getEmployeeAssignmentsByDate(date: string): Promise<EmployeeAssignment[]> {
     return await this.db.select().from(employeeAssignments).where(eq(employeeAssignments.assignmentDate, date));
+  }
+
+  async findAssignmentByTaskAndEmployee(taskId: number, employeeId: number): Promise<EmployeeAssignment | undefined> {
+    const result = await this.db.select()
+      .from(employeeAssignments)
+      .where(and(eq(employeeAssignments.taskId, taskId), eq(employeeAssignments.employeeId, employeeId)))
+      .limit(1);
+    return result[0];
   }
 
   // Daily Job Report methods

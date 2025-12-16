@@ -1299,9 +1299,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // CRITICAL: Only enforce first task rule in specific scenarios to avoid interfering with drag operations
       const currentTask = await storage.getTask(parseInt(req.params.id));
       if (currentTask && validated.dependentOnPrevious === true) {
-        const allTasks = await storage.getTasks(currentTask.locationId);
-        const sortedTasks = allTasks.sort((a, b) => (parseFloat(a.order as string) || 0) - (parseFloat(b.order as string) || 0));
-        const isFirstTask = sortedTasks.length > 0 && sortedTasks[0].id === currentTask.id;
+        // OPTIMIZED: Check if this is the first task with a single efficient query instead of fetching all tasks
+        const isFirstTask = await storage.isFirstTaskInLocation(currentTask.id, currentTask.locationId);
         
         // Only enforce if this is clearly a direct edit attempt (not a drag operation)
         if (isFirstTask && !req.body.order) {
@@ -1631,9 +1630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       console.log('Creating assignment:', req.body);
       
-      // Check if assignment already exists for this task and employee
-      const existingAssignments = await storage.getEmployeeAssignments(req.body.taskId);
-      const existingAssignment = existingAssignments.find(a => a.employeeId === req.body.employeeId);
+      // Check if assignment already exists for this task and employee (optimized single query)
+      const existingAssignment = await storage.findAssignmentByTaskAndEmployee(req.body.taskId, req.body.employeeId);
       
       if (existingAssignment) {
         // Update existing assignment instead of creating duplicate
@@ -1762,9 +1760,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const storage = await getStorage();
       const taskId = parseInt(req.params.taskId);
       
-      // Check if assignment already exists for this task and employee
-      const existingAssignments = await storage.getEmployeeAssignments(taskId);
-      const existingAssignment = existingAssignments.find(a => a.employeeId === req.body.employeeId);
+      // Check if assignment already exists for this task and employee (optimized single query)
+      const existingAssignment = await storage.findAssignmentByTaskAndEmployee(taskId, req.body.employeeId);
       
       if (existingAssignment) {
         // Update existing assignment
