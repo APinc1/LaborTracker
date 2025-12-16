@@ -38,7 +38,7 @@ function Router() {
         {(params) => <LocationDetails locationId={params.locationId} />}
       </Route>
       <Route path="/schedule" component={ScheduleManagement} />
-      <Route path="/daily-reports" component={DailyJobReports} />
+      {!import.meta.env.PROD && <Route path="/daily-reports" component={DailyJobReports} />}
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />
       <Route path="/users" component={UserManagement} />

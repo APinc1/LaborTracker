@@ -56,14 +56,14 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
 
   const { protectedNavigate } = useNavigationProtection();
 
-  const navigation = [
+  const allNavigation = [
     { name: "Dashboard", href: "/", icon: ChartLine, key: "dashboard" },
     { name: "Projects", href: "/projects", icon: FolderOpen, key: "projects" },
     { name: "Project Budgets", href: "/project-budgets", icon: Calculator, key: "project-budgets" },
     { name: "Locations", href: "/locations", icon: MapPin, key: "locations" },
     { name: "Location Budgets", href: "/budgets", icon: Calculator, key: "budgets" },
     { name: "Schedule", href: "/schedule", icon: Calendar, key: "schedule" },
-    { name: "Daily Job Reports", href: "/daily-reports", icon: ClipboardList, key: "daily-reports" },
+    { name: "Daily Job Reports", href: "/daily-reports", icon: ClipboardList, key: "daily-reports", devOnly: true },
     {
       name: "Assignments",
       href: "/assignments",
@@ -73,6 +73,10 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
     { name: "Employees", href: "/employees", icon: Users, key: "employees" },
     { name: "Users", href: "/users", icon: User, key: "users" },
   ];
+
+  const navigation = import.meta.env.PROD 
+    ? allNavigation.filter(item => !('devOnly' in item && item.devOnly))
+    : allNavigation;
 
   const isActive = (key: string) => {
     if (key === "dashboard") return location === "/";
