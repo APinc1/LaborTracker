@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +32,7 @@ export default function ActualHoursModal({
   const queryClient = useQueryClient();
   const [editingHours, setEditingHours] = useState<Record<number, string>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
 
   const taskId = task?.id || task?.taskId;
   const taskAssignments = assignments.filter(a => 
@@ -111,12 +113,37 @@ export default function ActualHoursModal({
     }
   });
 
+  const hasEmptyHours = () => {
+    return taskAssignments.some(a => {
+      const hours = editingHours[a.id];
+      return hours === '' || hours === undefined;
+    });
+  };
+
   const handleSave = () => {
-    const updates = Object.entries(editingHours)
+    if (hasEmptyHours()) {
+      setShowCompleteConfirm(true);
+      return;
+    }
+    performSave(false);
+  };
+
+  const performSave = (fillEmptyWithZero: boolean) => {
+    const hoursToSave = { ...editingHours };
+    
+    if (fillEmptyWithZero) {
+      taskAssignments.forEach(a => {
+        if (hoursToSave[a.id] === '' || hoursToSave[a.id] === undefined) {
+          hoursToSave[a.id] = '0';
+        }
+      });
+    }
+
+    const updates = Object.entries(hoursToSave)
       .filter(([id, hours]) => {
         const assignment = taskAssignments.find(a => a.id === parseInt(id));
         const originalHours = assignment?.actualHours?.toString() || '';
-        return hours !== originalHours;
+        return hours !== originalHours && hours !== '';
       })
       .map(([id, hours]) => ({
         id: parseInt(id),
@@ -154,6 +181,7 @@ export default function ActualHoursModal({
   }, 0);
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
@@ -261,5 +289,31 @@ export default function ActualHoursModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Mark Task as Complete?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Some employees don't have actual hours entered. Would you like to mark them as 0 hours and complete the task?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => {
+            setShowCompleteConfirm(false);
+            performSave(false);
+          }}>
+            No, just save entered hours
+          </AlertDialogCancel>
+          <AlertDialogAction onClick={() => {
+            setShowCompleteConfirm(false);
+            performSave(true);
+          }}>
+            Yes, mark as complete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
