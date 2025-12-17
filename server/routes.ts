@@ -1615,10 +1615,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/assignments', async (req, res) => {
     try {
       const storage = await getStorage();
-      // Add cache headers to reduce repeated calls
+      // Disable caching to ensure fresh data after updates
       res.set({
-        'Cache-Control': 'public, max-age=30',
-        'ETag': `assignments-${Date.now()}`
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
       });
       
       const assignments = await storage.getAllEmployeeAssignments();
