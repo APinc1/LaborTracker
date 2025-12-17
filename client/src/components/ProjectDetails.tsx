@@ -863,7 +863,17 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                                 <span className="text-gray-800 font-medium">
                                   {(() => {
                                     const tasks = locationTaskQueries.data?.[location.locationId] || [];
-                                    const completedTasks = tasks.filter((task: any) => task.status === 'complete').length;
+                                    const completedTasks = tasks.filter((task: any) => {
+                                      const taskAssignments = (assignments as any[]).filter((a: any) => 
+                                        a.taskId === task.id && !a.isDriverHours
+                                      );
+                                      if (taskAssignments.length > 0) {
+                                        return taskAssignments.every((a: any) => 
+                                          a.actualHours !== null && a.actualHours !== undefined
+                                        );
+                                      }
+                                      return task.status === 'complete';
+                                    }).length;
                                     const progressPercentage = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
                                     return `${progressPercentage}%`;
                                   })()}
@@ -871,7 +881,17 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               </div>
                               <Progress value={(() => {
                                 const tasks = locationTaskQueries.data?.[location.locationId] || [];
-                                const completedTasks = tasks.filter((task: any) => task.status === 'complete').length;
+                                const completedTasks = tasks.filter((task: any) => {
+                                  const taskAssignments = (assignments as any[]).filter((a: any) => 
+                                    a.taskId === task.id && !a.isDriverHours
+                                  );
+                                  if (taskAssignments.length > 0) {
+                                    return taskAssignments.every((a: any) => 
+                                      a.actualHours !== null && a.actualHours !== undefined
+                                    );
+                                  }
+                                  return task.status === 'complete';
+                                }).length;
                                 return tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
                               })()} className="h-2" />
                               <p className="text-xs text-gray-500">Based on completed tasks</p>
