@@ -90,12 +90,14 @@ export default function ActualHoursModal({
       );
       return results;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: "Success", description: "Actual hours saved successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/locations"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] })
+      ]);
       setHasChanges(false);
       onUpdate?.();
       onClose();
