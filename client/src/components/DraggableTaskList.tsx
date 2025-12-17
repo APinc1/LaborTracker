@@ -411,9 +411,9 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
             </div>
 
             {/* Status badge */}
-            <Badge className={`text-xs ${getStatusColor(getTaskStatus(task))}`}>
-              {getTaskStatus(task) === 'in_progress' ? 'In Progress' : 
-               getTaskStatus(task) === 'complete' ? 'Complete' : 'Upcoming'}
+            <Badge className={`text-xs ${getStatusColor(getTaskStatus(task, assignments))}`}>
+              {getTaskStatus(task, assignments) === 'in_progress' ? 'In Progress' : 
+               getTaskStatus(task, assignments) === 'complete' ? 'Complete' : 'Upcoming'}
             </Badge>
 
             {/* Action buttons */}
