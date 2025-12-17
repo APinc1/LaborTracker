@@ -675,6 +675,11 @@ export function getTaskStatus(task: any, assignments: any[] = []): string {
     assignment.taskId === task?.id || assignment.taskId === task?.taskId
   );
   
+  // Check if there are any actual hours recorded
+  const hasAnyActualHours = taskAssignments.some((assignment: any) => 
+    assignment.actualHours !== null && assignment.actualHours !== undefined && parseFloat(assignment.actualHours) > 0
+  ) || (task?.actualHours && parseFloat(task.actualHours) > 0);
+  
   // Task is complete if ALL assignments have actual hours recorded (including 0)
   if (taskAssignments.length > 0) {
     const allAssignmentsHaveActualHours = taskAssignments.every((assignment: any) => 
@@ -686,14 +691,24 @@ export function getTaskStatus(task: any, assignments: any[] = []): string {
     }
   }
   
-  // Fallback logic for backwards compatibility
   const currentDate = new Date().toISOString().split('T')[0];
+  const taskDate = task?.taskDate;
   
-  if (task?.actualHours && parseFloat(task.actualHours) > 0) {
-    return 'complete';
-  } else if (task?.taskDate === currentDate) {
+  // If task date is in the past
+  if (taskDate && taskDate < currentDate) {
+    // Past tasks with any actual hours are complete
+    if (hasAnyActualHours) {
+      return 'complete';
+    }
+    // Past tasks without actual hours are still in progress (overdue)
     return 'in_progress';
-  } else {
-    return 'upcoming';
   }
+  
+  // Task is in progress if it's today
+  if (taskDate === currentDate) {
+    return 'in_progress';
+  }
+  
+  // Future tasks are upcoming
+  return 'upcoming';
 }
