@@ -61,6 +61,20 @@ export default function ActualHoursModal({
     setHasChanges(true);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, currentIndex: number) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const nextIndex = currentIndex + 1;
+      if (nextIndex < taskAssignments.length) {
+        const nextInput = document.querySelector(`[data-testid="input-actual-hours-${taskAssignments[nextIndex].id}"]`) as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select();
+        }
+      }
+    }
+  };
+
   const saveActualHoursMutation = useMutation({
     mutationFn: async (updates: { id: number; actualHours: string }[]) => {
       const results = await Promise.all(
@@ -168,7 +182,7 @@ export default function ActualHoursModal({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {taskAssignments.map(assignment => (
+                  {taskAssignments.map((assignment, index) => (
                     <TableRow key={assignment.id}>
                       <TableCell className="font-medium">
                         {getEmployeeName(assignment.employeeId)}
@@ -187,6 +201,7 @@ export default function ActualHoursModal({
                           max="24"
                           value={editingHours[assignment.id] || ''}
                           onChange={(e) => handleHoursChange(assignment.id, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, index)}
                           className="w-20 text-right"
                           placeholder="0.0"
                           data-testid={`input-actual-hours-${assignment.id}`}
