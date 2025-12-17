@@ -1506,6 +1506,7 @@ export default function DraggableTaskList({
         task={selectedTaskForHours}
         assignments={assignments as any[]}
         employees={employees as any[]}
+        locationId={locationId}
         onUpdate={onTaskUpdate}
       />
     </div>

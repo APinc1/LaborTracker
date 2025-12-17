@@ -14,6 +14,7 @@ interface ActualHoursModalProps {
   task: any;
   assignments: any[];
   employees: any[];
+  locationId?: string;
   onUpdate?: () => void;
 }
 
@@ -23,6 +24,7 @@ export default function ActualHoursModal({
   task,
   assignments,
   employees,
+  locationId,
   onUpdate
 }: ActualHoursModalProps) {
   const { toast } = useToast();
@@ -92,12 +94,14 @@ export default function ActualHoursModal({
     },
     onSuccess: async () => {
       toast({ title: "Success", description: "Actual hours saved successfully" });
-      await Promise.all([
+      const invalidations = [
         queryClient.invalidateQueries({ queryKey: ["/api/assignments"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/locations"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/tasks"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] })
-      ]);
+      ];
+      if (locationId) {
+        invalidations.push(queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] }));
+      }
+      await Promise.all(invalidations);
       setHasChanges(false);
       onUpdate?.();
       onClose();
