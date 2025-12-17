@@ -275,16 +275,47 @@ export default function ScheduleManagement() {
       }
     }
     
-    // Fallback logic for backwards compatibility
-    const currentDate = new Date().toISOString().split('T')[0];
+    // Get all assignments for this task
+    const taskId = task.id || task.taskId;
+    const taskAssignments = assignments.filter((assignment: any) => 
+      assignment.taskId === taskId
+    );
     
-    if (task.actualHours && parseFloat(task.actualHours) > 0) {
-      return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
-    } else if (task.taskDate === currentDate) {
-      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
-    } else {
-      return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
+    // Check if there are any actual hours recorded
+    const hasAnyActualHours = taskAssignments.some((assignment: any) => 
+      assignment.actualHours !== null && assignment.actualHours !== undefined && parseFloat(assignment.actualHours) > 0
+    ) || (task.actualHours && parseFloat(task.actualHours) > 0);
+    
+    // Task is complete if ALL assignments have actual hours recorded
+    if (taskAssignments.length > 0) {
+      const allAssignmentsHaveActualHours = taskAssignments.every((assignment: any) => 
+        assignment.actualHours !== null && assignment.actualHours !== undefined
+      );
+      if (allAssignmentsHaveActualHours) {
+        return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+      }
     }
+    
+    const currentDate = new Date().toISOString().split('T')[0];
+    const taskDate = task.taskDate;
+    
+    // If task date is in the past
+    if (taskDate && taskDate < currentDate) {
+      // Past tasks with any actual hours are complete
+      if (hasAnyActualHours) {
+        return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+      }
+      // Past tasks without actual hours are still in progress (overdue)
+      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+    }
+    
+    // Task is in progress if it's today
+    if (taskDate === currentDate) {
+      return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+    }
+    
+    // Future tasks are upcoming
+    return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
   };
 
   // Calculate total scheduled hours from assignments
