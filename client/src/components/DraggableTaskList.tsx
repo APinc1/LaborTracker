@@ -38,6 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import ActualHoursModal from './ActualHoursModal';
 
 interface DraggableTaskListProps {
   tasks: any[];
@@ -58,6 +59,7 @@ interface SortableTaskItemProps {
   onEditTask: (task: any) => void;
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
+  onActualHoursClick?: (task: any) => void;
   onTaskUpdate?: () => void;
   employees: any[];
   assignments: any[];
@@ -117,7 +119,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, onTaskUpdate, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, onActualHoursClick, onTaskUpdate, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -447,8 +449,21 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   size="sm"
                   onClick={() => onAssignTask(task)}
                   className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
+                  data-testid={`button-assign-task-${task.id}`}
                 >
                   <User className="w-3 h-3" />
+                </Button>
+              )}
+              {onActualHoursClick && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onActualHoursClick(task)}
+                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                  title="Edit Actual Hours"
+                  data-testid={`button-actual-hours-${task.id}`}
+                >
+                  <Clock className="w-3 h-3" />
                 </Button>
               )}
               <Button
