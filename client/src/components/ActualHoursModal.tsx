@@ -30,8 +30,9 @@ export default function ActualHoursModal({
   const [editingHours, setEditingHours] = useState<Record<number, string>>({});
   const [hasChanges, setHasChanges] = useState(false);
 
+  const taskId = task?.id || task?.taskId;
   const taskAssignments = assignments.filter(a => 
-    a.taskId === task?.id && !a.isDriverHours
+    a.taskId === taskId && !a.isDriverHours
   );
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export default function ActualHoursModal({
       setEditingHours(initialHours);
       setHasChanges(false);
     }
-  }, [isOpen, task?.id]);
+  }, [isOpen, taskId]);
 
   const getEmployeeName = (employeeId: number) => {
     const employee = employees.find(e => e.id === employeeId);
