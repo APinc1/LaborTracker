@@ -208,24 +208,12 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     }
   };
 
-  // Helper function to determine task status
+  // Helper function to determine task status - prioritizes assignment-based calculation
   const getTaskStatus = (task: any) => {
-    // Use the actual status from the database if available
-    if (task.status) {
-      switch (task.status) {
-        case 'complete':
-          return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
-        case 'in_progress':
-          return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
-        default:
-          return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
-      }
-    }
-    
-    // Get all assignments for this task
+    // Get all assignments for this task (excluding driver hours)
     const taskId = task.id || task.taskId;
     const taskAssignments = (assignments as any[]).filter((assignment: any) => 
-      assignment.taskId === taskId
+      assignment.taskId === taskId && !assignment.isDriverHours
     );
     
     // Check if there are any actual hours recorded
@@ -233,13 +221,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
       assignment.actualHours !== null && assignment.actualHours !== undefined && parseFloat(assignment.actualHours) > 0
     ) || (task.actualHours && parseFloat(task.actualHours) > 0);
     
-    // Task is complete if ALL assignments have actual hours recorded
+    // Task is complete if it has assignments and ALL of them have actual hours recorded
     if (taskAssignments.length > 0) {
       const allAssignmentsHaveActualHours = taskAssignments.every((assignment: any) => 
         assignment.actualHours !== null && assignment.actualHours !== undefined
       );
       if (allAssignmentsHaveActualHours) {
         return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+      }
+    }
+    
+    // Fallback to database status if no assignments to evaluate
+    if (taskAssignments.length === 0 && task.status) {
+      switch (task.status) {
+        case 'complete':
+          return { status: 'complete', label: 'Complete', color: 'bg-green-100 text-green-800' };
+        case 'in_progress':
+          return { status: 'in_progress', label: 'In Progress', color: 'bg-blue-100 text-blue-800' };
+        default:
+          return { status: 'upcoming', label: 'Upcoming', color: 'bg-gray-100 text-gray-800' };
       }
     }
     

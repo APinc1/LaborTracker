@@ -68,14 +68,9 @@ interface SortableTaskItemProps {
 
 // Helper function to determine task status - checks if all assignments have actual hours recorded
 const getTaskStatus = (task: any, assignments: any[] = []) => {
-  // Use the actual status from the database if available
-  if (task.status) {
-    return task.status;
-  }
-  
-  // Get all assignments for this task
+  // Get all assignments for this task (excluding driver hours)
   const taskAssignments = assignments.filter(assignment => 
-    assignment.taskId === task.id || assignment.taskId === task.taskId
+    (assignment.taskId === task.id || assignment.taskId === task.taskId) && !assignment.isDriverHours
   );
   
   // Check if there are any actual hours recorded
@@ -83,7 +78,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
     assignment.actualHours !== null && assignment.actualHours !== undefined && parseFloat(assignment.actualHours) > 0
   ) || (task.actualHours && parseFloat(task.actualHours) > 0);
   
-  // Task is complete if ALL assignments have actual hours recorded (including 0)
+  // Task is complete if it has assignments and ALL of them have actual hours recorded (including 0)
   if (taskAssignments.length > 0) {
     const allAssignmentsHaveActualHours = taskAssignments.every(assignment => 
       assignment.actualHours !== null && assignment.actualHours !== undefined
@@ -92,6 +87,11 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
     if (allAssignmentsHaveActualHours) {
       return 'complete';
     }
+  }
+  
+  // Fallback to database status if no assignments to evaluate
+  if (taskAssignments.length === 0 && task.status) {
+    return task.status;
   }
   
   const currentDate = new Date().toISOString().split('T')[0];
