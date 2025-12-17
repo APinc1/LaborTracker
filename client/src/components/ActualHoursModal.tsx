@@ -94,14 +94,14 @@ export default function ActualHoursModal({
     },
     onSuccess: async () => {
       toast({ title: "Success", description: "Actual hours saved successfully" });
-      const invalidations = [
-        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] }),
+      const refetches = [
+        queryClient.refetchQueries({ queryKey: ["/api/assignments"] }),
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] })
       ];
       if (locationId) {
-        invalidations.push(queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] }));
+        refetches.push(queryClient.refetchQueries({ queryKey: ["/api/locations", locationId, "tasks"] }));
       }
-      await Promise.all(invalidations);
+      await Promise.all(refetches);
       setHasChanges(false);
       onUpdate?.();
       onClose();
