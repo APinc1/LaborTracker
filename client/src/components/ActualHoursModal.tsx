@@ -44,7 +44,7 @@ export default function ActualHoursModal({
       setEditingHours(initialHours);
       setHasChanges(false);
     }
-  }, [isOpen, taskId]);
+  }, [isOpen, taskId, JSON.stringify(taskAssignments.map(a => ({ id: a.id, actualHours: a.actualHours })))]);
 
   const getEmployeeName = (employeeId: number) => {
     const employee = employees.find(e => e.id === employeeId);
@@ -93,6 +93,9 @@ export default function ActualHoursModal({
     onSuccess: () => {
       toast({ title: "Success", description: "Actual hours saved successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/locations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
       setHasChanges(false);
       onUpdate?.();
       onClose();
