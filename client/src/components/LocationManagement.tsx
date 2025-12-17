@@ -46,6 +46,18 @@ export default function LocationManagement() {
     staleTime: 30000,
   });
 
+  const { data: assignments = [] } = useQuery<any[]>({
+    queryKey: ["/api/assignments"],
+    enabled: !!selectedProject,
+    staleTime: 30000,
+  });
+
+  const { data: allTasks = [] } = useQuery<any[]>({
+    queryKey: ["/api/tasks"],
+    enabled: !!selectedProject,
+    staleTime: 30000,
+  });
+
   const createLocationMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest(`/api/projects/${selectedProject}/locations`, {
@@ -133,8 +145,27 @@ export default function LocationManagement() {
   };
 
   const getCompletionPercentage = (location: any) => {
-    // Mock calculation - in real app, this would be based on tasks/budget completion
-    return Math.floor(Math.random() * 100);
+    // Get tasks for this location
+    const locationTasks = allTasks.filter((task: any) => 
+      task.locationId === location.id || task.locationId === location.locationId
+    );
+    
+    if (locationTasks.length === 0) return 0;
+    
+    // Count completed tasks (all non-driver assignments have actual hours recorded)
+    const completedTasks = locationTasks.filter((task: any) => {
+      const taskAssignments = assignments.filter((a: any) => 
+        a.taskId === task.id && !a.isDriverHours
+      );
+      if (taskAssignments.length > 0) {
+        return taskAssignments.every((a: any) => 
+          a.actualHours !== null && a.actualHours !== undefined
+        );
+      }
+      return task.status === 'complete';
+    }).length;
+    
+    return Math.round((completedTasks / locationTasks.length) * 100);
   };
 
   const getStatusColor = (isComplete: boolean) => {
