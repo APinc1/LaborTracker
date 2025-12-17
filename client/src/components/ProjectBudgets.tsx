@@ -198,7 +198,7 @@ export default function ProjectBudgets() {
               </CardTitle>
               <Button variant="outline" size="sm" className="flex items-center gap-2">
                 <Upload className="w-4 h-4" />
-                Upload SW62
+                Upload Master Budget
               </Button>
             </div>
           </CardHeader>
