@@ -641,6 +641,15 @@ export default function DraggableTaskList({
     newPosition: -1
   });
 
+  // State for actual hours modal
+  const [showActualHoursModal, setShowActualHoursModal] = useState(false);
+  const [selectedTaskForHours, setSelectedTaskForHours] = useState<any>(null);
+
+  const handleActualHoursClick = (task: any) => {
+    setSelectedTaskForHours(task);
+    setShowActualHoursModal(true);
+  };
+
   // Data is now passed as props from parent component
 
   const sensors = useSensors(
@@ -1440,6 +1449,7 @@ export default function DraggableTaskList({
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
+                onActualHoursClick={handleActualHoursClick}
                 onTaskUpdate={onTaskUpdate || (() => {})}
                 employees={employees as any[]}
                 assignments={assignments as any[]}
@@ -1485,6 +1495,19 @@ export default function DraggableTaskList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Actual Hours Modal */}
+      <ActualHoursModal
+        isOpen={showActualHoursModal}
+        onClose={() => {
+          setShowActualHoursModal(false);
+          setSelectedTaskForHours(null);
+        }}
+        task={selectedTaskForHours}
+        assignments={assignments as any[]}
+        employees={employees as any[]}
+        onUpdate={onTaskUpdate}
+      />
     </div>
   );
 }
