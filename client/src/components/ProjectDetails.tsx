@@ -21,7 +21,7 @@ import { DialogDescription } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
-import { downloadBudgetTemplate, FORMAT_REQUIREMENTS } from "@/lib/budgetTemplateUtils";
+import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData, ValidationResult } from "@/lib/budgetTemplateUtils";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -42,6 +42,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [costCodeFilter, setCostCodeFilter] = useState<string>("all");
   const [showExpandedBudgetDialog, setShowExpandedBudgetDialog] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const { toast } = useToast();
 
   const toggleGroupCollapse = (lineItemNumber: string) => {
@@ -344,6 +345,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       if (!file) return;
 
       setIsUploadingBudget(true);
+      setValidationResult(null);
 
       try {
         const arrayBuffer = await file.arrayBuffer();
@@ -359,7 +361,29 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         const worksheet = workbook.Sheets[sheetName];
         
         // Convert to JSON array
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        
+        // Validate the data before processing
+        const validation = validateBudgetData(jsonData);
+        setValidationResult(validation);
+        
+        if (!validation.isValid) {
+          toast({
+            title: "Validation Failed",
+            description: `Found ${validation.errors.length} error(s) in the file. Please fix them and try again.`,
+            variant: "destructive",
+          });
+          setIsUploadingBudget(false);
+          return;
+        }
+        
+        // Show warnings if any
+        if (validation.warnings.length > 0) {
+          toast({
+            title: "Warning",
+            description: validation.warnings[0],
+          });
+        }
         
         // Skip header row and process data (same as location budget)
         const parsedItems: any[] = [];
@@ -418,6 +442,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
         queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "budget"] });
         setShowBudgetUploadDialog(false);
+        setValidationResult(null);
         
         toast({
           title: "Budget imported",
@@ -1050,7 +1075,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         </AlertDialog>
 
         {/* Budget Upload Dialog */}
-        <Dialog open={showBudgetUploadDialog} onOpenChange={setShowBudgetUploadDialog}>
+        <Dialog open={showBudgetUploadDialog} onOpenChange={(open) => { setShowBudgetUploadDialog(open); if (!open) setValidationResult(null); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Upload Master Budget</DialogTitle>
@@ -1094,6 +1119,24 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   </Button>
                 </div>
               </div>
+              
+              {validationResult && !validationResult.isValid && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-red-800 mb-2">Validation Errors ({validationResult.errors.length})</h4>
+                  <div className="max-h-40 overflow-y-auto">
+                    <ul className="text-sm text-red-700 space-y-1">
+                      {validationResult.errors.slice(0, 10).map((error, idx) => (
+                        <li key={idx}>
+                          {error.row > 0 ? `Row ${error.row}: ` : ''}{error.column} - {error.message}
+                        </li>
+                      ))}
+                      {validationResult.errors.length > 10 && (
+                        <li className="font-medium">...and {validationResult.errors.length - 10} more errors</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              )}
               
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-3">Format Requirements</h4>
