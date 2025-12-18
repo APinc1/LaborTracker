@@ -148,6 +148,7 @@ export interface GroupedError {
   messageTemplate: string;
   count: number;
   sampleRows: number[];
+  allRows: number[];
   sampleValue?: string;
 }
 
@@ -345,6 +346,7 @@ export function validateBudgetData(data: any[][]): ValidationResult {
         messageTemplate: group.messageTemplate,
         count: group.rows.length,
         sampleRows: group.rows.slice(0, 5),
+        allRows: group.rows,
         sampleValue: group.sampleValue,
       });
     }
