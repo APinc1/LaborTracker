@@ -1210,25 +1210,30 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       <thead>
                         <tr className="bg-blue-100">
                           <th className="px-2 py-1 border-r border-blue-300 text-left">Line Item</th>
-                          <th className="px-2 py-1 text-left">Description</th>
+                          <th className="px-2 py-1 border-r border-blue-300 text-left">Description</th>
+                          <th className="px-2 py-1 text-left">Unit</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr className="bg-amber-50">
                           <td className="px-2 py-1 border-r border-blue-300 font-medium">26</td>
-                          <td className="px-2 py-1">Crushed Miscellaneous Base </td>
+                          <td className="px-2 py-1 border-r border-blue-300">Crushed Miscellaneous Base</td>
+                          <td className="px-2 py-1">CY</td>
                         </tr>
                         <tr>
                           <td className="px-2 py-1 border-r border-blue-300">26.1</td>
-                          <td className="px-2 py-1">Concrete Curb Type A</td>
+                          <td className="px-2 py-1 border-r border-blue-300">Concrete Curb Type A</td>
+                          <td className="px-2 py-1">LF</td>
                         </tr>
                         <tr>
                           <td className="px-2 py-1 border-r border-blue-300">26.2</td>
-                          <td className="px-2 py-1">Concrete Driveway (t=6")</td>
+                          <td className="px-2 py-1 border-r border-blue-300">Concrete Driveway (t=6")</td>
+                          <td className="px-2 py-1">SF</td>
                         </tr>
                         <tr>
                           <td className="px-2 py-1 border-r border-blue-300">26.3</td>
-                          <td className="px-2 py-1">Concrete Sidewalk (t=4")</td>
+                          <td className="px-2 py-1 border-r border-blue-300">Concrete Sidewalk (t=4")</td>
+                          <td className="px-2 py-1">SF</td>
                         </tr>
                       </tbody>
                     </table>
