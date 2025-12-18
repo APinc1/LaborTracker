@@ -1124,24 +1124,43 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <h4 className="font-semibold text-red-800 mb-2">Validation Errors ({validationResult.errors.length})</h4>
                   <div className="max-h-48 overflow-y-auto space-y-3">
-                    {validationResult.groupedErrors.length > 0 && (
-                      <div>
-                        <p className="text-sm font-medium text-red-800 mb-1">Column Issues:</p>
-                        <ul className="text-sm text-red-700 space-y-1">
-                          {validationResult.groupedErrors.map((group, idx) => (
-                            <li key={idx}>
-                              <span className="font-medium">{group.column}</span>: {group.count} rows have errors
-                              {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
-                              <br />
-                              <span className="text-red-600 text-xs">
-                                Rows: {group.sampleRows.join(', ')}{group.count > group.sampleRows.length && `, ...and ${group.count - group.sampleRows.length} more`}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
                     {(() => {
+                      const columnOrder = ['Line Item Number', 'Level', 'Master Code', 'Code', 'Description', 'Crew', 
+                        'Unconverted Unit', 'Unconverted Qty', 'Conv Factor', 'Conv UM', 'Converted Unit', 'Converted Qty',
+                        'UM', 'Unit Cost', 'PX', 'Labor %', 'Material %', 'Equipment %', 'Subs %', 'Other %'];
+                      const getColumnIndex = (col: string) => {
+                        const idx = columnOrder.indexOf(col);
+                        return idx >= 0 ? idx : 999;
+                      };
+                      const sortedGroupedErrors = [...validationResult.groupedErrors].sort((a, b) => 
+                        getColumnIndex(a.column) - getColumnIndex(b.column)
+                      );
+                      return sortedGroupedErrors.length > 0 ? (
+                        <div className="bg-red-100 rounded p-3">
+                          <p className="text-sm font-semibold text-red-900 mb-2 border-b border-red-300 pb-1">Column Issues (repeated errors)</p>
+                          <ul className="text-sm text-red-700 space-y-1">
+                            {sortedGroupedErrors.map((group, idx) => (
+                              <li key={idx}>
+                                <span className="font-medium">{group.column}</span>: {group.count} rows have errors
+                                {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                                <br />
+                                <span className="text-red-600 text-xs">
+                                  Rows: {group.sampleRows.join(', ')}{group.count > group.sampleRows.length && `, ...and ${group.count - group.sampleRows.length} more`}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null;
+                    })()}
+                    {(() => {
+                      const columnOrder = ['Line Item Number', 'Level', 'Master Code', 'Code', 'Description', 'Crew', 
+                        'Unconverted Unit', 'Unconverted Qty', 'Conv Factor', 'Conv UM', 'Converted Unit', 'Converted Qty',
+                        'UM', 'Unit Cost', 'PX', 'Labor %', 'Material %', 'Equipment %', 'Subs %', 'Other %'];
+                      const getColumnIndex = (col: string) => {
+                        const idx = columnOrder.indexOf(col);
+                        return idx >= 0 ? idx : 999;
+                      };
                       const groupedColumns = new Set(validationResult.groupedErrors.map(g => `${g.column}|${g.messageTemplate}`));
                       const ungroupedErrors = validationResult.errors.filter(e => {
                         const normalized = e.message.replace(/: "[^"]*"/g, '').replace(/: \$[^\s.]*/g, '').replace(/\d+/g, 'N');
@@ -1153,21 +1172,22 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           if (!byColumn[err.column]) byColumn[err.column] = [];
                           byColumn[err.column].push(err);
                         });
+                        const sortedColumns = Object.keys(byColumn).sort((a, b) => getColumnIndex(a) - getColumnIndex(b));
                         return (
-                          <div>
-                            <p className="text-sm font-medium text-red-800 mb-1">Individual Errors:</p>
+                          <div className="bg-orange-50 rounded p-3">
+                            <p className="text-sm font-semibold text-orange-900 mb-2 border-b border-orange-300 pb-1">Individual Errors</p>
                             <div className="text-sm text-red-700 space-y-2">
-                              {Object.entries(byColumn).map(([column, errors]) => (
+                              {sortedColumns.map(column => (
                                 <div key={column}>
                                   <span className="font-medium">{column}:</span>
                                   <ul className="ml-3 space-y-0.5">
-                                    {errors.slice(0, 5).map((error, idx) => (
+                                    {byColumn[column].slice(0, 5).map((error, idx) => (
                                       <li key={idx}>
                                         Row {error.row}: {error.message}
                                       </li>
                                     ))}
-                                    {errors.length > 5 && (
-                                      <li className="text-xs">...and {errors.length - 5} more in this column</li>
+                                    {byColumn[column].length > 5 && (
+                                      <li className="text-xs">...and {byColumn[column].length - 5} more in this column</li>
                                     )}
                                   </ul>
                                 </div>
