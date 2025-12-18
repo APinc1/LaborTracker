@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, FolderOpen, ChevronDown, ChevronRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, Download, FolderOpen, ChevronDown, ChevronRight, Maximize2 } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { DialogDescription } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
+import { downloadBudgetTemplate, FORMAT_REQUIREMENTS } from "@/lib/budgetTemplateUtils";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -591,6 +592,16 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </CardTitle>
               <div className="flex gap-2">
                 <Button 
+                  onClick={() => downloadBudgetTemplate()}
+                  size="sm"
+                  variant="ghost"
+                  className="flex items-center gap-2"
+                  data-testid="button-download-budget-template"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template
+                </Button>
+                <Button 
                   onClick={() => setShowBudgetUploadDialog(true)}
                   size="sm"
                   variant="outline"
@@ -1049,32 +1060,59 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 The file should follow the SW62 Excel format (21 columns).
               </DialogDescription>
             </DialogHeader>
-            <div className="py-4">
+            <div className="py-4 space-y-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                 <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-600 mb-4">
                   Click the button below to select an Excel file
                 </p>
-                <Button 
-                  onClick={handleProjectBudgetUpload}
-                  disabled={isUploadingBudget}
-                  data-testid="button-select-budget-file"
-                >
-                  {isUploadingBudget ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4 mr-2" />
-                      Select Excel File
-                    </>
-                  )}
-                </Button>
+                <div className="flex gap-2 justify-center">
+                  <Button 
+                    variant="outline"
+                    onClick={() => downloadBudgetTemplate()}
+                    data-testid="button-download-template-dialog"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Template
+                  </Button>
+                  <Button 
+                    onClick={handleProjectBudgetUpload}
+                    disabled={isUploadingBudget}
+                    data-testid="button-select-budget-file"
+                  >
+                    {isUploadingBudget ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mr-2" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Select Excel File
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
+              
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Format Requirements</h4>
+                <div className="space-y-3">
+                  {FORMAT_REQUIREMENTS.map((req, idx) => (
+                    <div key={idx}>
+                      <p className="text-sm font-medium text-gray-700">{req.title}:</p>
+                      <ul className="text-sm text-gray-600 ml-4 list-disc">
+                        {req.items.map((item, itemIdx) => (
+                          <li key={itemIdx}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
               {projectBudgetItems.length > 0 && (
-                <p className="text-sm text-amber-600 mt-4">
+                <p className="text-sm text-amber-600">
                   Note: Uploading a new budget will replace the existing {projectBudgetItems.length} items.
                 </p>
               )}
