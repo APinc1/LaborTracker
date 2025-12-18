@@ -209,7 +209,7 @@ export default function ProjectBudgets() {
               <div className="text-center py-8">
                 <Calculator className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500">No budget items found for this project</p>
-                <p className="text-sm text-gray-400 mt-2">Upload an SW62 file to import budget data</p>
+                <p className="text-sm text-gray-400 mt-2">Upload an excel file to import budget data</p>
               </div>
             ) : (
               <div>
