@@ -3,14 +3,14 @@ import ExcelJS from 'exceljs';
 export const BUDGET_COLUMNS = [
   { header: 'Line Item Number', key: 'lineItemNumber', required: true, description: 'Unique identifier for the line item (required)' },
   { header: 'Line Item Name', key: 'lineItemName', required: false, description: 'Description of the work item' },
-  { header: 'Unconverted Unit', key: 'unconvertedUnit', required: false, description: 'Unit of measure (e.g., SF, CY, LF)' },
-  { header: 'Unconverted Qty', key: 'unconvertedQty', required: false, description: 'Original quantity' },
+  { header: 'Unconverted Unit', key: 'unconvertedUnit', required: true, description: 'Unit of measure (e.g., SF, CY, LF)' },
+  { header: 'Unconverted Qty', key: 'unconvertedQty', required: true, description: 'Original quantity' },
   { header: 'Actual Qty', key: 'actualQty', required: false, description: 'Actual quantity used' },
   { header: 'Unit Cost', key: 'unitCost', required: false, description: 'Cost per unit (number format)' },
   { header: 'Unit Total', key: 'unitTotal', required: false, description: 'Formula: Unit Cost × Unconverted Qty' },
   { header: 'Cost Code', key: 'costCode', required: true, description: 'Project cost code (see valid codes below)' },
-  { header: 'Converted Unit', key: 'convertedUnit', required: false, description: 'Converted unit of measure' },
-  { header: 'Converted Qty', key: 'convertedQty', required: false, description: 'Formula: Unconverted Qty × Conversion Factor' },
+  { header: 'Converted Unit', key: 'convertedUnit', required: true, description: 'Converted unit of measure' },
+  { header: 'Converted Qty', key: 'convertedQty', required: true, description: 'Formula: Unconverted Qty × Conversion Factor' },
   { header: 'Production Rate', key: 'productionRate', required: false, description: 'Work rate per unit' },
   { header: 'Hours', key: 'hours', required: false, description: 'Formula: Converted Qty × Production Rate' },
   { header: 'Labor Cost', key: 'laborCost', required: false, description: 'Formula: Hours × $80' },
@@ -132,7 +132,7 @@ export async function downloadBudgetTemplate() {
 }
 
 export const FORMAT_REQUIREMENTS = [
-  { title: 'Required Columns', items: ['Line Item Number (Column A) - must be unique', 'Cost Code (Column H) - must match valid codes'] },
+  { title: 'Required Columns', items: ['Line Item Number (Column A) - must be unique', 'Unconverted Unit (Column C)', 'Unconverted Qty (Column D)', 'Cost Code (Column H) - must match valid codes', 'Converted Unit (Column I)', 'Converted Qty (Column J)'] },
   { title: 'Number Format', items: ['No $ signs or commas in cost fields', 'Use decimals for cents (e.g., 1234.56)'] },
   { title: 'File Format', items: ['Excel file (.xlsx or .xls)', '20 columns in SW62 format'] },
 ];
@@ -222,6 +222,43 @@ export function validateBudgetData(data: any[][]): ValidationResult {
         row: i + 1,
         column: 'Cost Code',
         message: `Invalid cost code: "${costCode}". Must be one of: ${VALID_COST_CODES.join(', ')}`,
+      });
+    }
+    
+    const unconvertedUnit = row[2]?.toString().trim() || '';
+    const unconvertedQty = row[3]?.toString().trim() || '';
+    const convertedUnit = row[8]?.toString().trim() || '';
+    const convertedQty = row[9]?.toString().trim() || '';
+    
+    if (!unconvertedUnit) {
+      errors.push({
+        row: i + 1,
+        column: 'Unconverted Unit',
+        message: 'Unconverted Unit is required but missing',
+      });
+    }
+    
+    if (!unconvertedQty) {
+      errors.push({
+        row: i + 1,
+        column: 'Unconverted Qty',
+        message: 'Unconverted Qty is required but missing',
+      });
+    }
+    
+    if (!convertedUnit) {
+      errors.push({
+        row: i + 1,
+        column: 'Converted Unit',
+        message: 'Converted Unit is required but missing',
+      });
+    }
+    
+    if (!convertedQty) {
+      errors.push({
+        row: i + 1,
+        column: 'Converted Qty',
+        message: 'Converted Qty is required but missing',
       });
     }
     
