@@ -8,7 +8,6 @@ export const BUDGET_COLUMNS = [
   { header: 'Actual Qty', key: 'actualQty', required: false, description: 'Actual quantity used' },
   { header: 'Unit Cost', key: 'unitCost', required: false, description: 'Cost per unit (number format)' },
   { header: 'Unit Total', key: 'unitTotal', required: false, description: 'Formula: Unit Cost × Unconverted Qty' },
-  { header: '[Blank]', key: 'blank', required: false, description: 'Leave this column empty' },
   { header: 'Cost Code', key: 'costCode', required: true, description: 'Project cost code (see valid codes below)' },
   { header: 'Converted Unit', key: 'convertedUnit', required: false, description: 'Converted unit of measure' },
   { header: 'Converted Qty', key: 'convertedQty', required: false, description: 'Formula: Unconverted Qty × Conversion Factor' },
@@ -76,7 +75,7 @@ export function downloadBudgetTemplate() {
     [''],
     ['REQUIRED COLUMNS:'],
     ['- Line Item Number (Column A): Must be unique and not blank'],
-    ['- Cost Code (Column I): Must be a valid cost code from the list below'],
+    ['- Cost Code (Column H): Must be a valid cost code from the list below'],
     [''],
     ['NUMBER FORMAT:'],
     ['- All cost columns should be numbers without $ signs or commas'],
@@ -93,7 +92,7 @@ export function downloadBudgetTemplate() {
     ['VALID COST CODES:'],
     ...VALID_COST_CODES.map(code => [`  • ${code}`]),
     [''],
-    ['COLUMN STRUCTURE (21 columns total):'],
+    ['COLUMN STRUCTURE (20 columns total):'],
     ...BUDGET_COLUMNS.map((col, i) => [`  ${i + 1}. ${col.header}${col.required ? ' (Required)' : ''} - ${col.description}`]),
   ];
   
@@ -105,7 +104,7 @@ export function downloadBudgetTemplate() {
 }
 
 export const FORMAT_REQUIREMENTS = [
-  { title: 'Required Columns', items: ['Line Item Number (Column A) - must be unique', 'Cost Code (Column I) - must match valid codes'] },
+  { title: 'Required Columns', items: ['Line Item Number (Column A) - must be unique', 'Cost Code (Column H) - must match valid codes'] },
   { title: 'Number Format', items: ['No $ signs or commas in cost fields', 'Use decimals for cents (e.g., 1234.56)'] },
-  { title: 'File Format', items: ['Excel file (.xlsx or .xls)', '21 columns in SW62 format'] },
+  { title: 'File Format', items: ['Excel file (.xlsx or .xls)', '20 columns in SW62 format'] },
 ];
