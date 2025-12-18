@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calculator, ChevronDown, ChevronRight, Upload, Home, FolderOpen } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Upload, Download, Home, FolderOpen } from "lucide-react";
+import { downloadBudgetTemplate, FORMAT_REQUIREMENTS } from "@/lib/budgetTemplateUtils";
 
 export default function ProjectBudgets() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
@@ -196,10 +197,22 @@ export default function ProjectBudgets() {
                 <Calculator className="w-5 h-5" />
                 Master Budget - {selectedProject.name}
               </CardTitle>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                Upload Master Budget
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={() => downloadBudgetTemplate()}
+                  data-testid="button-download-budget-template"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template
+                </Button>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Upload Master Budget
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -210,6 +223,22 @@ export default function ProjectBudgets() {
                 <Calculator className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                 <p className="text-gray-500">No budget items found for this project</p>
                 <p className="text-sm text-gray-400 mt-2">Upload an excel file to import budget data</p>
+                
+                <div className="mt-6 max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-gray-900 mb-3 text-sm">Format Requirements</h4>
+                  <div className="space-y-2">
+                    {FORMAT_REQUIREMENTS.map((req, idx) => (
+                      <div key={idx}>
+                        <p className="text-xs font-medium text-gray-700">{req.title}:</p>
+                        <ul className="text-xs text-gray-600 ml-3 list-disc">
+                          {req.items.map((item, itemIdx) => (
+                            <li key={itemIdx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div>
