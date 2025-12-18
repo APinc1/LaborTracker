@@ -134,7 +134,7 @@ export async function downloadBudgetTemplate() {
 export const FORMAT_REQUIREMENTS = [
   { title: 'Required Columns', items: ['Line Item Number (Column A) - must be unique', 'Unconverted Unit (Column C)', 'Unconverted Qty (Column D)', 'Cost Code (Column H) - must match valid codes', 'Converted Unit (Column I)', 'Converted Qty (Column J)'] },
   { title: 'Number Format', items: ['No $ signs or commas in cost fields', 'Use decimals for cents (e.g., 1234.56)'] },
-  { title: 'File Format', items: ['Excel file (.xlsx or .xls)', '20 columns in SW62 format'] },
+  { title: 'File Format', items: ['Excel file (.xlsx or .xls)', '20 columns in Master Budget format'] },
 ];
 
 export interface ValidationError {
