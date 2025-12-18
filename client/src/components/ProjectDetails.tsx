@@ -1148,19 +1148,31 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                         return !groupedColumns.has(`${e.column}|${normalized}`);
                       });
                       if (ungroupedErrors.length > 0) {
+                        const byColumn: Record<string, typeof ungroupedErrors> = {};
+                        ungroupedErrors.forEach(err => {
+                          if (!byColumn[err.column]) byColumn[err.column] = [];
+                          byColumn[err.column].push(err);
+                        });
                         return (
                           <div>
                             <p className="text-sm font-medium text-red-800 mb-1">Individual Errors:</p>
-                            <ul className="text-sm text-red-700 space-y-1">
-                              {ungroupedErrors.slice(0, 10).map((error, idx) => (
-                                <li key={idx}>
-                                  {error.row > 0 ? `Row ${error.row}: ` : ''}{error.column} - {error.message}
-                                </li>
+                            <div className="text-sm text-red-700 space-y-2">
+                              {Object.entries(byColumn).map(([column, errors]) => (
+                                <div key={column}>
+                                  <span className="font-medium">{column}:</span>
+                                  <ul className="ml-3 space-y-0.5">
+                                    {errors.slice(0, 5).map((error, idx) => (
+                                      <li key={idx}>
+                                        Row {error.row}: {error.message}
+                                      </li>
+                                    ))}
+                                    {errors.length > 5 && (
+                                      <li className="text-xs">...and {errors.length - 5} more in this column</li>
+                                    )}
+                                  </ul>
+                                </div>
                               ))}
-                              {ungroupedErrors.length > 10 && (
-                                <li className="font-medium">...and {ungroupedErrors.length - 10} more errors</li>
-                              )}
-                            </ul>
+                            </div>
                           </div>
                         );
                       }
