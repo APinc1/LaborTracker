@@ -1205,7 +1205,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                  <li>Break down line items where necessary to match expected work scope</li>
+                  <li>Break down line items where necessary to match expected work scope (e.g., split "Concrete" into "Concrete - Building A" and "Concrete - Building B")</li>
                   <li>Ensure cost codes are assigned to each line item</li>
                   <li>Review quantities and units before uploading</li>
                 </ul>
