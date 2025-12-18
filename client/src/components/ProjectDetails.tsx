@@ -594,7 +594,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <Button 
                   onClick={() => downloadBudgetTemplate()}
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   className="flex items-center gap-2"
                   data-testid="button-download-budget-template"
                 >

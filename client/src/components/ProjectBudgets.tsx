@@ -199,7 +199,7 @@ export default function ProjectBudgets() {
               </CardTitle>
               <div className="flex gap-2">
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm" 
                   className="flex items-center gap-2"
                   onClick={() => downloadBudgetTemplate()}
