@@ -1233,6 +1233,30 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       </tbody>
                     </table>
                   </li>
+                  <li>
+                    Break down line items when you want to measure differently:
+                    <table className="mt-2 text-xs border border-blue-300 rounded">
+                      <thead>
+                        <tr className="bg-blue-100">
+                          <th className="px-2 py-1 border-r border-blue-300 text-left">Line Item</th>
+                          <th className="px-2 py-1 border-r border-blue-300 text-left">Description</th>
+                          <th className="px-2 py-1 text-left">Unit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-amber-50">
+                          <td className="px-2 py-1 border-r border-blue-300 font-medium">25</td>
+                          <td className="px-2 py-1 border-r border-blue-300">Asphalt Concrete Pavement</td>
+                          <td className="px-2 py-1">TON</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1 border-r border-blue-300">25.1</td>
+                          <td className="px-2 py-1 border-r border-blue-300">Asphalt Concrete Pavement</td>
+                          <td className="px-2 py-1">SF</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </li>
                   <li>Ensure cost codes are assigned to each line item</li>
                   <li>Review quantities and units before uploading</li>
                 </ul>
