@@ -21,7 +21,7 @@ import { DialogDescription } from "@/components/ui/dialog";
 import * as XLSX from 'xlsx';
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
-import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData, ValidationResult } from "@/lib/budgetTemplateUtils";
+import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData, ValidationResult, GroupedError } from "@/lib/budgetTemplateUtils";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -1123,17 +1123,45 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               {validationResult && !validationResult.isValid && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <h4 className="font-semibold text-red-800 mb-2">Validation Errors ({validationResult.errors.length})</h4>
-                  <div className="max-h-40 overflow-y-auto">
-                    <ul className="text-sm text-red-700 space-y-1">
-                      {validationResult.errors.slice(0, 10).map((error, idx) => (
-                        <li key={idx}>
-                          {error.row > 0 ? `Row ${error.row}: ` : ''}{error.column} - {error.message}
-                        </li>
-                      ))}
-                      {validationResult.errors.length > 10 && (
-                        <li className="font-medium">...and {validationResult.errors.length - 10} more errors</li>
-                      )}
-                    </ul>
+                  <div className="max-h-48 overflow-y-auto space-y-3">
+                    {validationResult.groupedErrors.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-red-800 mb-1">Column Issues:</p>
+                        <ul className="text-sm text-red-700 space-y-1">
+                          {validationResult.groupedErrors.map((group, idx) => (
+                            <li key={idx}>
+                              <span className="font-medium">{group.column}</span>: {group.count} rows have errors
+                              {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {(() => {
+                      const groupedColumns = new Set(validationResult.groupedErrors.map(g => `${g.column}|${g.messageTemplate}`));
+                      const ungroupedErrors = validationResult.errors.filter(e => {
+                        const normalized = e.message.replace(/: "[^"]*"/g, '').replace(/: \$[^\s.]*/g, '').replace(/\d+/g, 'N');
+                        return !groupedColumns.has(`${e.column}|${normalized}`);
+                      });
+                      if (ungroupedErrors.length > 0) {
+                        return (
+                          <div>
+                            <p className="text-sm font-medium text-red-800 mb-1">Individual Errors:</p>
+                            <ul className="text-sm text-red-700 space-y-1">
+                              {ungroupedErrors.slice(0, 10).map((error, idx) => (
+                                <li key={idx}>
+                                  {error.row > 0 ? `Row ${error.row}: ` : ''}{error.column} - {error.message}
+                                </li>
+                              ))}
+                              {ungroupedErrors.length > 10 && (
+                                <li className="font-medium">...and {ungroupedErrors.length - 10} more errors</li>
+                              )}
+                            </ul>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
                 </div>
               )}

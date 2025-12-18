@@ -143,11 +143,27 @@ export interface ValidationError {
   message: string;
 }
 
+export interface GroupedError {
+  column: string;
+  messageTemplate: string;
+  count: number;
+  sampleRows: number[];
+  sampleValue?: string;
+}
+
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
+  groupedErrors: GroupedError[];
   warnings: string[];
   rowCount: number;
+}
+
+function normalizeErrorMessage(message: string): string {
+  return message
+    .replace(/: "[^"]*"/g, '')
+    .replace(/: \$[^\s.]*/g, '')
+    .replace(/\d+/g, 'N');
 }
 
 export function validateBudgetData(data: any[][]): ValidationResult {
@@ -159,6 +175,7 @@ export function validateBudgetData(data: any[][]): ValidationResult {
     return {
       isValid: false,
       errors: [{ row: 0, column: 'File', message: 'The file is empty or could not be read' }],
+      groupedErrors: [],
       warnings: [],
       rowCount: 0,
     };
@@ -302,9 +319,43 @@ export function validateBudgetData(data: any[][]): ValidationResult {
     });
   }
   
+  const errorGroups = new Map<string, { column: string; messageTemplate: string; rows: number[]; sampleValue?: string }>();
+  
+  for (const error of errors) {
+    const normalized = normalizeErrorMessage(error.message);
+    const key = `${error.column}|${normalized}`;
+    
+    if (!errorGroups.has(key)) {
+      const valueMatch = error.message.match(/: "([^"]*)"/);
+      errorGroups.set(key, {
+        column: error.column,
+        messageTemplate: normalized,
+        rows: [],
+        sampleValue: valueMatch ? valueMatch[1] : undefined,
+      });
+    }
+    errorGroups.get(key)!.rows.push(error.row);
+  }
+  
+  const groupedErrors: GroupedError[] = [];
+  Array.from(errorGroups.values()).forEach(group => {
+    if (group.rows.length >= 3) {
+      groupedErrors.push({
+        column: group.column,
+        messageTemplate: group.messageTemplate,
+        count: group.rows.length,
+        sampleRows: group.rows.slice(0, 5),
+        sampleValue: group.sampleValue,
+      });
+    }
+  });
+  
+  groupedErrors.sort((a, b) => b.count - a.count);
+  
   return {
     isValid: errors.length === 0,
     errors,
+    groupedErrors,
     warnings,
     rowCount: dataRowCount,
   };
