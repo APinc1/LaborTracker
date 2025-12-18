@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 export const BUDGET_COLUMNS = [
   { header: 'Line Item Number', key: 'lineItemNumber', required: true, description: 'Unique identifier for the line item (required)' },
@@ -64,6 +64,25 @@ export function downloadBudgetTemplate() {
   const templateData = [headers];
   
   const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+  
+  const headerStyle = {
+    font: { bold: true, color: { rgb: 'FFFFFF' } },
+    fill: { fgColor: { rgb: '4472C4' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top: { style: 'thin', color: { rgb: '000000' } },
+      bottom: { style: 'thin', color: { rgb: '000000' } },
+      left: { style: 'thin', color: { rgb: '000000' } },
+      right: { style: 'thin', color: { rgb: '000000' } },
+    },
+  };
+  
+  BUDGET_COLUMNS.forEach((_, colIndex) => {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+    if (worksheet[cellRef]) {
+      worksheet[cellRef].s = headerStyle;
+    }
+  });
   
   const columnWidths = BUDGET_COLUMNS.map(col => ({ wch: Math.max(col.header.length + 2, 15) }));
   worksheet['!cols'] = columnWidths;
