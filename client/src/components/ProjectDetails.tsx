@@ -408,6 +408,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               unconvertedQty: budgetItem.unconvertedQty,
               unitCost: budgetItem.unitCost,
               unitTotal: budgetItem.unitTotal,
+              conversionFactor: budgetItem.conversionFactor || "1",
               convertedUnitOfMeasure: budgetItem.convertedUnitOfMeasure,
               convertedQty: budgetItem.convertedQty,
               productionRate: budgetItem.productionRate,
