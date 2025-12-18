@@ -1205,7 +1205,35 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                  <li>Break down line items where necessary to match expected work scope (e.g., line item "26 - Crushed Miscellaneous Base" becomes 26.1, 26.2, 26.3, etc. for specific items like "Concrete Curb Type A", "Concrete Driveway", "Concrete Sidewalk")</li>
+                  <li>
+                    Break down line items where necessary to match expected work scope:
+                    <table className="mt-2 text-xs border border-blue-300 rounded">
+                      <thead>
+                        <tr className="bg-blue-100">
+                          <th className="px-2 py-1 border-r border-blue-300 text-left">Line Item</th>
+                          <th className="px-2 py-1 text-left">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-amber-50">
+                          <td className="px-2 py-1 border-r border-blue-300 font-medium">26</td>
+                          <td className="px-2 py-1">Crushed Miscellaneous Base (parent)</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1 border-r border-blue-300">26.1</td>
+                          <td className="px-2 py-1">Concrete Curb Type A</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1 border-r border-blue-300">26.2</td>
+                          <td className="px-2 py-1">Concrete Driveway (t=6")</td>
+                        </tr>
+                        <tr>
+                          <td className="px-2 py-1 border-r border-blue-300">26.3</td>
+                          <td className="px-2 py-1">Concrete Sidewalk (t=4")</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </li>
                   <li>Ensure cost codes are assigned to each line item</li>
                   <li>Review quantities and units before uploading</li>
                 </ul>
