@@ -1202,6 +1202,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 </div>
               )}
               
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
+                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+                  <li>Break down line items where necessary to match expected work scope</li>
+                  <li>Ensure cost codes are assigned to each line item</li>
+                  <li>Review quantities and units before uploading</li>
+                </ul>
+              </div>
+
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 mb-3">Format Requirements</h4>
                 <div className="space-y-3">
