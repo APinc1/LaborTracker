@@ -1614,10 +1614,27 @@ class DatabaseStorage implements IStorage {
   }
 
   async deleteProjectBudgetLineItem(id: number): Promise<void> {
+    // First unlink any location budget items that reference this project budget item
+    await this.db.update(budgetLineItems)
+      .set({ projectBudgetItemId: null })
+      .where(eq(budgetLineItems.projectBudgetItemId, id));
     await this.db.delete(projectBudgetLineItems).where(eq(projectBudgetLineItems.id, id));
   }
 
   async deleteAllProjectBudgetLineItems(projectId: number): Promise<void> {
+    // Get all project budget item IDs for this project
+    const projectItems = await this.db.select({ id: projectBudgetLineItems.id })
+      .from(projectBudgetLineItems)
+      .where(eq(projectBudgetLineItems.projectId, projectId));
+    
+    // Unlink all location budget items that reference these project budget items
+    for (const item of projectItems) {
+      await this.db.update(budgetLineItems)
+        .set({ projectBudgetItemId: null })
+        .where(eq(budgetLineItems.projectBudgetItemId, item.id));
+    }
+    
+    // Now delete the project budget items
     await this.db.delete(projectBudgetLineItems).where(eq(projectBudgetLineItems.projectId, projectId));
   }
 
