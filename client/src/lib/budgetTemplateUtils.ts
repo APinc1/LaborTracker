@@ -87,6 +87,23 @@ export function downloadBudgetTemplate() {
   const columnWidths = BUDGET_COLUMNS.map(col => ({ wch: Math.max(col.header.length + 2, 15) }));
   worksheet['!cols'] = columnWidths;
   
+  const costCodeColIndex = BUDGET_COLUMNS.findIndex(col => col.key === 'costCode');
+  if (costCodeColIndex !== -1) {
+    const costCodeList = VALID_COST_CODES.filter((code, index, arr) => 
+      arr.findIndex(c => c.toUpperCase() === code.toUpperCase()) === index
+    ).slice(0, 20);
+    
+    worksheet['!dataValidation'] = [{
+      sqref: `${XLSX.utils.encode_col(costCodeColIndex)}2:${XLSX.utils.encode_col(costCodeColIndex)}1000`,
+      type: 'list',
+      formula1: `"${costCodeList.join(',')}"`,
+      showDropDown: true,
+      showErrorMessage: true,
+      errorTitle: 'Invalid Cost Code',
+      error: 'Please select a valid cost code from the dropdown list.',
+    }];
+  }
+  
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Budget Template');
   
   const instructionsData = [
