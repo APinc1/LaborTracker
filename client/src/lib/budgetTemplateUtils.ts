@@ -119,7 +119,7 @@ export function downloadBudgetTemplate() {
   instructionsSheet['!cols'] = [{ wch: 80 }];
   XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
   
-  XLSX.writeFile(workbook, 'Budget_Template_SW62.xlsx');
+  XLSX.writeFile(workbook, 'Master_Budget_Template.xlsx');
 }
 
 export const FORMAT_REQUIREMENTS = [
