@@ -361,8 +361,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         }
         const worksheet = workbook.Sheets[sheetName];
         
-        // Convert to JSON array
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        // Convert to JSON array, using raw:false to preserve cell formatting (e.g., 15.10 vs 15.1)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' }) as any[][];
         
         // Validate the data before processing
         const validation = validateBudgetData(jsonData);
