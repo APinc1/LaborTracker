@@ -1,5 +1,14 @@
 // Custom Excel parser for the specific SW62 format
 import { BudgetLineItem } from './budgetCalculations';
+import { VALID_COST_CODES } from './budgetTemplateUtils';
+
+// Normalize cost code to standard capitalization
+const normalizeCostCode = (costCode: string): string => {
+  if (!costCode) return "";
+  const lowerCode = costCode.toLowerCase().trim();
+  const match = VALID_COST_CODES.find(c => c.toLowerCase() === lowerCode);
+  return match || costCode.trim();
+};
 
 // Custom column mapping for SW62 format
 export const SW62_COLUMN_MAPPING = {
@@ -80,7 +89,7 @@ const parseRowToProjectBudgetItem = (row: any[]): ProjectBudgetItem | null => {
   return {
     lineItemNumber,
     lineItemName: getRawValue(SW62_COLUMN_MAPPING.lineItemName),
-    costCode: getRawValue(SW62_COLUMN_MAPPING.costCode),
+    costCode: normalizeCostCode(getRawValue(SW62_COLUMN_MAPPING.costCode)),
     unconvertedUnitOfMeasure: getRawValue(SW62_COLUMN_MAPPING.unconvertedUnit),
     unconvertedQty: getNumericValue(SW62_COLUMN_MAPPING.unconvertedQty),
     unitCost: getNumericValue(SW62_COLUMN_MAPPING.unitCost),

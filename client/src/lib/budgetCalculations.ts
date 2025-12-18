@@ -1,4 +1,14 @@
 // Budget calculation utilities for handling Excel formulas
+import { VALID_COST_CODES } from "./budgetTemplateUtils";
+
+// Normalize cost code to standard capitalization
+const normalizeCostCode = (costCode: string): string => {
+  if (!costCode) return "";
+  const lowerCode = costCode.toLowerCase().trim();
+  const match = VALID_COST_CODES.find(c => c.toLowerCase() === lowerCode);
+  return match || costCode.trim();
+};
+
 export interface BudgetLineItem {
   id?: number;
   locationId: number;
@@ -117,7 +127,7 @@ export const parseExcelRowToBudgetItem = (row: any[], locationId: number): Budge
     actualQty: row[EXCEL_COLUMN_MAPPING.actualQty]?.toString() || "0",
     unitCost: row[EXCEL_COLUMN_MAPPING.unitCost]?.toString() || "0",
     convertedUnitOfMeasure: row[EXCEL_COLUMN_MAPPING.convertedUnit]?.toString() || "",
-    costCode: row[EXCEL_COLUMN_MAPPING.costCode]?.toString() || "",
+    costCode: normalizeCostCode(row[EXCEL_COLUMN_MAPPING.costCode]?.toString() || ""),
     productionRate: row[EXCEL_COLUMN_MAPPING.productionRate]?.toString() || "0",
     equipmentCost: row[EXCEL_COLUMN_MAPPING.equipmentCost]?.toString() || "0",
     truckingCost: row[EXCEL_COLUMN_MAPPING.truckingCost]?.toString() || "0",
