@@ -24,22 +24,26 @@ export const BUDGET_COLUMNS = [
 ];
 
 export const VALID_COST_CODES = [
-  'General Labor',
-  'Demo/Ex',
-  'Base/Grading',
-  'Demo/Ex + Base/Grading',
-  'Concrete',
-  'Form',
-  'Pour',
-  'Form + Pour',
+  'Allowance',
   'Asphalt',
-  'Traffic Control',
+  'Base/Grading',
+  'Concrete',
+  'Demo/Ex',
+  'Demo/Ex + Base/Grading',
+  'Form',
+  'Form + Pour',
+  'General Labor',
+  'General Requirement',
   'Landscaping',
-  'Utility Adj',
+  'Mobilization',
+  'Pour',
   'Punchlist',
   'Punchlist Concrete',
   'Punchlist Demo',
   'Punchlist General Labor',
+  'Sub',
+  'Traffic Control',
+  'Utility Adj',
 ];
 
 export async function downloadBudgetTemplate() {
