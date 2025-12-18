@@ -565,7 +565,6 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           </div>
         </div>
       </header>
-
       <main className="p-6">
         {/* Project Overview */}
         <Card className="mb-6">
@@ -1206,7 +1205,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
                   <li>
-                    Break down line items where necessary to match expected work scope:
+                    Break down line items where vague:
                     <table className="mt-2 text-xs border border-blue-300 rounded">
                       <thead>
                         <tr className="bg-blue-100">
@@ -1217,7 +1216,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       <tbody>
                         <tr className="bg-amber-50">
                           <td className="px-2 py-1 border-r border-blue-300 font-medium">26</td>
-                          <td className="px-2 py-1">Crushed Miscellaneous Base (parent)</td>
+                          <td className="px-2 py-1">Crushed Miscellaneous Base </td>
                         </tr>
                         <tr>
                           <td className="px-2 py-1 border-r border-blue-300">26.1</td>
