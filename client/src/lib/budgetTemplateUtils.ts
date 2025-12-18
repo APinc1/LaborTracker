@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx-js-style';
+import ExcelJS from 'exceljs';
 
 export const BUDGET_COLUMNS = [
   { header: 'Line Item Number', key: 'lineItemNumber', required: true, description: 'Unique identifier for the line item (required)' },
@@ -24,94 +24,75 @@ export const BUDGET_COLUMNS = [
 ];
 
 export const VALID_COST_CODES = [
-  'GENERAL LABOR',
   'General Labor',
-  'DEMO/EX',
   'Demo/Ex',
-  'BASE/GRADING',
   'Base/Grading',
   'Demo/Ex + Base/Grading',
-  'CONCRETE',
   'Concrete',
-  'FORM',
   'Form',
-  'POUR',
   'Pour',
   'Form + Pour',
-  'ASPHALT',
   'Asphalt',
-  'TRAFFIC CONTROL',
   'Traffic Control',
-  'TRAFFIC',
-  'LANDSCAPE',
   'Landscaping',
-  'UTILITY ADJ',
   'Utility Adj',
-  'PUNCHLIST',
   'Punchlist',
-  'PUNCHLIST CONCRETE',
   'Punchlist Concrete',
-  'PUNCHLIST DEMO',
   'Punchlist Demo',
-  'PUNCHLIST GENERAL LABOR',
   'Punchlist General Labor',
 ];
 
-export function downloadBudgetTemplate() {
-  const workbook = XLSX.utils.book_new();
+export async function downloadBudgetTemplate() {
+  const workbook = new ExcelJS.Workbook();
   
-  const headers = BUDGET_COLUMNS.map(col => col.header);
-  const templateData = [headers];
+  const worksheet = workbook.addWorksheet('Budget Template');
   
-  const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+  worksheet.columns = BUDGET_COLUMNS.map(col => ({
+    header: col.header,
+    key: col.key,
+    width: Math.max(col.header.length + 2, 15),
+  }));
   
-  const headerStyle = {
-    font: { bold: true, color: { rgb: 'FFFFFF' } },
-    fill: { fgColor: { rgb: '4472C4' } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border: {
-      top: { style: 'thin', color: { rgb: '000000' } },
-      bottom: { style: 'thin', color: { rgb: '000000' } },
-      left: { style: 'thin', color: { rgb: '000000' } },
-      right: { style: 'thin', color: { rgb: '000000' } },
-    },
-  };
-  
-  BUDGET_COLUMNS.forEach((_, colIndex) => {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
-    if (worksheet[cellRef]) {
-      worksheet[cellRef].s = headerStyle;
-    }
+  const headerRow = worksheet.getRow(1);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' },
+    };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
+    };
   });
   
-  const columnWidths = BUDGET_COLUMNS.map(col => ({ wch: Math.max(col.header.length + 2, 15) }));
-  worksheet['!cols'] = columnWidths;
+  const costCodeColIndex = BUDGET_COLUMNS.findIndex(col => col.key === 'costCode') + 1;
+  const costCodeFormula = `"${VALID_COST_CODES.join(',')}"`;
   
-  const costCodeColIndex = BUDGET_COLUMNS.findIndex(col => col.key === 'costCode');
-  if (costCodeColIndex !== -1) {
-    const costCodeList = VALID_COST_CODES.filter((code, index, arr) => 
-      arr.findIndex(c => c.toUpperCase() === code.toUpperCase()) === index
-    ).slice(0, 20);
-    
-    worksheet['!dataValidation'] = [{
-      sqref: `${XLSX.utils.encode_col(costCodeColIndex)}2:${XLSX.utils.encode_col(costCodeColIndex)}1000`,
+  for (let row = 2; row <= 500; row++) {
+    const cell = worksheet.getCell(row, costCodeColIndex);
+    cell.dataValidation = {
       type: 'list',
-      formula1: `"${costCodeList.join(',')}"`,
-      showDropDown: true,
+      allowBlank: true,
+      formulae: [costCodeFormula],
       showErrorMessage: true,
       errorTitle: 'Invalid Cost Code',
       error: 'Please select a valid cost code from the dropdown list.',
-    }];
+    };
   }
   
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Budget Template');
+  const instructionsSheet = workbook.addWorksheet('Instructions');
   
-  const instructionsData = [
+  const instructions = [
     ['SW62 Budget Template Instructions'],
     [''],
     ['REQUIRED COLUMNS:'],
     ['- Line Item Number (Column A): Must be unique and not blank'],
-    ['- Cost Code (Column H): Must be a valid cost code from the list below'],
+    ['- Cost Code (Column H): Must be a valid cost code from the dropdown list'],
     [''],
     ['NUMBER FORMAT:'],
     ['- All cost columns should be numbers without $ signs or commas'],
@@ -132,11 +113,22 @@ export function downloadBudgetTemplate() {
     ...BUDGET_COLUMNS.map((col, i) => [`  ${i + 1}. ${col.header}${col.required ? ' (Required)' : ''} - ${col.description}`]),
   ];
   
-  const instructionsSheet = XLSX.utils.aoa_to_sheet(instructionsData);
-  instructionsSheet['!cols'] = [{ wch: 80 }];
-  XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
+  instructions.forEach((row, index) => {
+    instructionsSheet.getCell(index + 1, 1).value = row[0];
+  });
   
-  XLSX.writeFile(workbook, 'Master_Budget_Template.xlsx');
+  instructionsSheet.getColumn(1).width = 80;
+  
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Master_Budget_Template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export const FORMAT_REQUIREMENTS = [
