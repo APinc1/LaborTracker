@@ -970,6 +970,11 @@ export default function BudgetManagement() {
     const items = budgetItems as any[];
     const visibleItems = [];
     
+    // Get all parent IDs that exist in the current budget
+    const existingParentIds = new Set(
+      items.filter(item => isParentItem(item)).map(item => item.lineItemNumber)
+    );
+    
     for (const item of items) {
       if (isParentItem(item)) {
         // Check if parent should be shown based on cost code filter
@@ -985,7 +990,18 @@ export default function BudgetManagement() {
             visibleItems.push(...children);
           }
         }
-      } else if (!isChildItem(item)) {
+      } else if (isChildItem(item)) {
+        // Child item - check if its parent exists in the budget
+        const parentId = getParentId(item);
+        if (!existingParentIds.has(parentId)) {
+          // Orphan child - parent doesn't exist, show as standalone
+          const shouldShowOrphan = selectedCostCodeFilter === 'all' || item.costCode === selectedCostCodeFilter;
+          if (shouldShowOrphan) {
+            visibleItems.push(item);
+          }
+        }
+        // If parent exists, it will be shown when parent is expanded (handled above)
+      } else {
         // Items that are neither parent nor child (standalone items)
         const shouldShowStandalone = selectedCostCodeFilter === 'all' || item.costCode === selectedCostCodeFilter;
         if (shouldShowStandalone) {
