@@ -1132,6 +1132,10 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             <li key={idx}>
                               <span className="font-medium">{group.column}</span>: {group.count} rows have errors
                               {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                              <br />
+                              <span className="text-red-600 text-xs">
+                                Rows: {group.sampleRows.join(', ')}{group.count > group.sampleRows.length && `, ...and ${group.count - group.sampleRows.length} more`}
+                              </span>
                             </li>
                           ))}
                         </ul>
