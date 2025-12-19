@@ -1460,7 +1460,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
         {/* Example Master Budget Dialog */}
         <Dialog open={showExampleBudgetDialog} onOpenChange={setShowExampleBudgetDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Example Master Budget</DialogTitle>
               <DialogDescription>
@@ -1471,105 +1471,102 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               <table className="min-w-full text-xs border border-gray-300">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th className="px-2 py-1 border text-left">Line Item</th>
-                    <th className="px-2 py-1 border text-left">Description</th>
-                    <th className="px-2 py-1 border text-left">Cost Code</th>
-                    <th className="px-2 py-1 border text-center">Unit</th>
-                    <th className="px-2 py-1 border text-right">Qty</th>
-                    <th className="px-2 py-1 border text-center">Conv UM</th>
-                    <th className="px-2 py-1 border text-right">Conv Qty</th>
+                    <th className="px-2 py-1 border text-left">Line Item Number</th>
+                    <th className="px-2 py-1 border text-left">Line Item Name</th>
+                    <th className="px-2 py-1 border text-center">Unconverted Unit</th>
+                    <th className="px-2 py-1 border text-right">Unconverted Qty</th>
                     <th className="px-2 py-1 border text-right">Unit Cost</th>
+                    <th className="px-2 py-1 border text-right">Unit Total</th>
+                    <th className="px-2 py-1 border text-left">Cost Code</th>
+                    <th className="px-2 py-1 border text-center">Converted Unit</th>
+                    <th className="px-2 py-1 border text-right">Converted Qty</th>
                     <th className="px-2 py-1 border text-right">PX</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="bg-amber-50 font-semibold">
-                    <td className="px-2 py-1 border">15</td>
-                    <td className="px-2 py-1 border">Unclassified Excavation</td>
-                    <td className="px-2 py-1 border">Demo/Ex</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">1,500</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">1,500</td>
-                    <td className="px-2 py-1 border text-right">$12.50</td>
-                    <td className="px-2 py-1 border text-right">25</td>
+                    <td className="px-2 py-1 border">25</td>
+                    <td className="px-2 py-1 border">Asphalt Concrete Pavement</td>
+                    <td className="px-2 py-1 border text-center">TON</td>
+                    <td className="px-2 py-1 border text-right">158</td>
+                    <td className="px-2 py-1 border text-right">$400.00</td>
+                    <td className="px-2 py-1 border text-right">$63,200.00</td>
+                    <td className="px-2 py-1 border">Asphalt</td>
+                    <td className="px-2 py-1 border text-center">TON</td>
+                    <td className="px-2 py-1 border text-right">158</td>
+                    <td className="px-2 py-1 border text-right">1</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 border pl-4">15.1</td>
-                    <td className="px-2 py-1 border">Rock Excavation</td>
-                    <td className="px-2 py-1 border">Demo/Ex</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">200</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">200</td>
-                    <td className="px-2 py-1 border text-right">$45.00</td>
-                    <td className="px-2 py-1 border text-right">15</td>
-                  </tr>
-                  <tr>
-                    <td className="px-2 py-1 border pl-4">15.2</td>
-                    <td className="px-2 py-1 border">Soft Excavation</td>
-                    <td className="px-2 py-1 border">Demo/Ex</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">800</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">800</td>
-                    <td className="px-2 py-1 border text-right">$8.00</td>
-                    <td className="px-2 py-1 border text-right">35</td>
-                  </tr>
-                  <tr>
-                    <td className="px-2 py-1 border pl-4">15.3</td>
-                    <td className="px-2 py-1 border">Concrete Intersection Gutter</td>
-                    <td className="px-2 py-1 border">Demo/Ex</td>
+                    <td className="px-2 py-1 border pl-4">25.1</td>
+                    <td className="px-2 py-1 border">Asphalt Concrete Pavement</td>
                     <td className="px-2 py-1 border text-center">SF</td>
-                    <td className="px-2 py-1 border text-right">500</td>
-                    <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">18.52</td>
-                    <td className="px-2 py-1 border text-right">$15.00</td>
-                    <td className="px-2 py-1 border text-right">20</td>
+                    <td className="px-2 py-1 border text-right">4,160.54</td>
+                    <td className="px-2 py-1 border text-right">-</td>
+                    <td className="px-2 py-1 border text-right">-</td>
+                    <td className="px-2 py-1 border">Asphalt</td>
+                    <td className="px-2 py-1 border text-center">TON</td>
+                    <td className="px-2 py-1 border text-right">154.09</td>
+                    <td className="px-2 py-1 border text-right">1</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border">2</td>
+                    <td className="px-2 py-1 border">Allowance for Differing Site Conditions per General Requirements</td>
+                    <td className="px-2 py-1 border text-center">LS</td>
+                    <td className="px-2 py-1 border text-right">1</td>
+                    <td className="px-2 py-1 border text-right">$10,000.00</td>
+                    <td className="px-2 py-1 border text-right">$10,000.00</td>
+                    <td className="px-2 py-1 border">Allowance</td>
+                    <td className="px-2 py-1 border text-center">LS</td>
+                    <td className="px-2 py-1 border text-right">1</td>
+                    <td className="px-2 py-1 border text-right">-</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border">3</td>
+                    <td className="px-2 py-1 border">Allowance for Grading in Temporary Construction Easement</td>
+                    <td className="px-2 py-1 border text-center">LS</td>
+                    <td className="px-2 py-1 border text-right">1</td>
+                    <td className="px-2 py-1 border text-right">$15,000.00</td>
+                    <td className="px-2 py-1 border text-right">$15,000.00</td>
+                    <td className="px-2 py-1 border">Allowance</td>
+                    <td className="px-2 py-1 border text-center">LS</td>
+                    <td className="px-2 py-1 border text-right">1</td>
+                    <td className="px-2 py-1 border text-right">-</td>
                   </tr>
                   <tr className="bg-amber-50 font-semibold">
                     <td className="px-2 py-1 border">26</td>
                     <td className="px-2 py-1 border">Crushed Miscellaneous Base</td>
-                    <td className="px-2 py-1 border">Paving</td>
                     <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">2,000</td>
+                    <td className="px-2 py-1 border text-right">101.34</td>
+                    <td className="px-2 py-1 border text-right">$250.00</td>
+                    <td className="px-2 py-1 border text-right">$36,250.00</td>
+                    <td className="px-2 py-1 border">Base/Grading</td>
                     <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">2,000</td>
-                    <td className="px-2 py-1 border text-right">$35.00</td>
-                    <td className="px-2 py-1 border text-right">50</td>
+                    <td className="px-2 py-1 border text-right">101.34</td>
+                    <td className="px-2 py-1 border text-right">1</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 border pl-4">26.1</td>
-                    <td className="px-2 py-1 border">Concrete Curb Type A</td>
-                    <td className="px-2 py-1 border">Paving</td>
-                    <td className="px-2 py-1 border text-center">LF</td>
-                    <td className="px-2 py-1 border text-right">3,500</td>
-                    <td className="px-2 py-1 border text-center">LF</td>
-                    <td className="px-2 py-1 border text-right">3,500</td>
-                    <td className="px-2 py-1 border text-right">$22.00</td>
-                    <td className="px-2 py-1 border text-right">100</td>
-                  </tr>
-                  <tr>
-                    <td className="px-2 py-1 border pl-4">26.2</td>
-                    <td className="px-2 py-1 border">Concrete Driveway (t=6")</td>
-                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border">10</td>
+                    <td className="px-2 py-1 border">Concrete Driveway</td>
                     <td className="px-2 py-1 border text-center">SF</td>
-                    <td className="px-2 py-1 border text-right">8,000</td>
+                    <td className="px-2 py-1 border text-right">250</td>
+                    <td className="px-2 py-1 border text-right">$15.00</td>
+                    <td className="px-2 py-1 border text-right">$3,750.00</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
                     <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">148.15</td>
-                    <td className="px-2 py-1 border text-right">$8.50</td>
-                    <td className="px-2 py-1 border text-right">40</td>
+                    <td className="px-2 py-1 border text-right">4.63</td>
+                    <td className="px-2 py-1 border text-right">1</td>
                   </tr>
                   <tr>
-                    <td className="px-2 py-1 border pl-4">26.3</td>
-                    <td className="px-2 py-1 border">Concrete Sidewalk (t=4")</td>
-                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border">11</td>
+                    <td className="px-2 py-1 border">Concrete Sidewalk, including Curb Ramps</td>
                     <td className="px-2 py-1 border text-center">SF</td>
-                    <td className="px-2 py-1 border text-right">12,000</td>
+                    <td className="px-2 py-1 border text-right">1,601</td>
+                    <td className="px-2 py-1 border text-right">$10.00</td>
+                    <td className="px-2 py-1 border text-right">$16,010.00</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
                     <td className="px-2 py-1 border text-center">CY</td>
-                    <td className="px-2 py-1 border text-right">148.15</td>
-                    <td className="px-2 py-1 border text-right">$6.00</td>
-                    <td className="px-2 py-1 border text-right">60</td>
+                    <td className="px-2 py-1 border text-right">20.01</td>
+                    <td className="px-2 py-1 border text-right">1</td>
                   </tr>
                 </tbody>
               </table>
@@ -1577,10 +1574,11 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             <div className="mt-4 space-y-2 text-sm text-gray-600">
               <p><strong>Key Points:</strong></p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Parent items (e.g., 15, 26) are shown with <span className="bg-amber-100 px-1 rounded">yellow highlighting</span></li>
-                <li>Child items use decimal notation (e.g., 15.1, 15.2, 26.1)</li>
-                <li>Each line item must have a valid Cost Code</li>
-                <li>Unit and Conv UM define the measurement units</li>
+                <li>Parent items (e.g., 25, 26) are shown with <span className="bg-amber-100 px-1 rounded">yellow highlighting</span></li>
+                <li>Child items use decimal notation (e.g., 25.1)</li>
+                <li>Each line item must have a valid Cost Code (Asphalt, Allowance, Base/Grading, Demo/Ex, etc.)</li>
+                <li>Unconverted Unit/Qty is the measurement from the contract</li>
+                <li>Converted Unit/Qty is what you'll actually track in the field</li>
                 <li>PX is the production rate (units per hour)</li>
               </ul>
             </div>
