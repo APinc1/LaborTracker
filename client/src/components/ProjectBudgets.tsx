@@ -1,17 +1,25 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Calculator, ChevronDown, ChevronRight, Upload, Download, Home, FolderOpen } from "lucide-react";
-import { downloadBudgetTemplate, FORMAT_REQUIREMENTS } from "@/lib/budgetTemplateUtils";
+import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData } from "@/lib/budgetTemplateUtils";
+import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
+import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 export default function ProjectBudgets() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [costCodeFilter, setCostCodeFilter] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: projects = [], isLoading: projectsLoading } = useQuery<any[]>({
     queryKey: ["/api/projects"],
@@ -122,6 +130,69 @@ export default function ProjectBudgets() {
       .map(([code, data]) => ({ code, ...data }));
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedProjectId) return;
+
+    setIsUploading(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }) as any[][];
+
+      const validation = validateBudgetData(jsonData);
+
+      if (!validation.isValid) {
+        toast({
+          title: "Validation Error",
+          description: `Found ${validation.errors.length} errors in the file. Please fix and re-upload.`,
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      const dataRows = jsonData.slice(1).filter((row: any[]) => row.some(cell => cell !== ''));
+      const budgetItems: any[] = [];
+      
+      for (const row of dataRows) {
+        const budgetItem = parseSW62ExcelRowForProject(row);
+        if (budgetItem) {
+          budgetItems.push(budgetItem);
+        }
+      }
+
+      const response = await fetch(`/api/projects/${selectedProjectId}/budget/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: budgetItems }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload budget');
+      }
+
+      toast({
+        title: "Success",
+        description: `Successfully uploaded ${budgetItems.length} budget items.`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProjectId, "budget"] });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload budget file",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Breadcrumb */}
@@ -208,10 +279,25 @@ export default function ProjectBudgets() {
                   <Download className="w-4 h-4" />
                   Download Template
                 </Button>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex items-center gap-2"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  data-testid="button-upload-master-budget"
+                >
                   <Upload className="w-4 h-4" />
-                  Upload Master Budget
+                  {isUploading ? "Uploading..." : "Upload Master Budget"}
                 </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  data-testid="input-budget-file"
+                />
               </div>
             </div>
           </CardHeader>
