@@ -1089,9 +1089,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 mb-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <FileSpreadsheet className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600 text-sm mb-3">
                   Click the button below to select an Excel file
                 </p>
                 <div className="flex gap-2 justify-center">
