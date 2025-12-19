@@ -684,6 +684,62 @@ export default function BudgetManagement() {
   });
 
   const handleDeleteBudgetItem = async (id: number) => {
+    const items = budgetItems as any[];
+    const itemToDelete = items.find((item: any) => item.id === id);
+    if (!itemToDelete) return;
+
+    const isParent = isParentItem(itemToDelete);
+    
+    if (isParent) {
+      // Check if this parent has children
+      const children = items.filter((child: any) => 
+        isChildItem(child) && getParentId(child) === itemToDelete.lineItemNumber
+      );
+      
+      if (children.length > 0) {
+        // Parent has children - ask to confirm deleting all
+        const confirmMessage = `This is a parent item with ${children.length} breakdown item(s) (${children.map((c: any) => c.lineItemNumber).join(', ')}). Do you want to delete the parent and all its breakdown items?`;
+        
+        if (!window.confirm(confirmMessage)) {
+          // User said no - don't delete anything
+          return;
+        }
+        
+        // Delete all children first, then parent
+        try {
+          for (const child of children) {
+            const response = await fetch(`/api/budget/${child.id}`, {
+              method: "DELETE",
+            });
+            if (!response.ok) {
+              throw new Error(`Failed to delete child ${child.lineItemNumber}`);
+            }
+          }
+          
+          const response = await fetch(`/api/budget/${id}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+          toast({
+            title: "Success",
+            description: `Deleted parent and ${children.length} breakdown item(s)`,
+          });
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to delete budget items",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+    }
+    
+    // Regular delete for standalone items, children, or parents without children
     if (window.confirm('Are you sure you want to delete this budget item?')) {
       try {
         const response = await fetch(`/api/budget/${id}`, {
