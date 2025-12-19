@@ -1467,8 +1467,8 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 This is an example of how your master budget Excel file should be structured. (62 line items)
               </DialogDescription>
             </DialogHeader>
-            <div className="overflow-auto flex-1 border rounded">
-              <table className="min-w-full text-xs border-collapse">
+            <div className="overflow-auto flex-1 border rounded" style={{ maxHeight: '60vh' }}>
+              <table className="text-xs border-collapse" style={{ minWidth: '1200px' }}>
                 <thead className="sticky top-0 bg-gray-100 z-10">
                   <tr>
                     <th className="px-2 py-1 border text-left whitespace-nowrap">Line Item</th>
