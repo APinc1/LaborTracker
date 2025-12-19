@@ -1468,92 +1468,100 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="overflow-auto flex-1 border rounded" style={{ maxHeight: '60vh' }}>
-              <table className="text-xs border-collapse" style={{ minWidth: '1200px' }}>
+              <table className="text-xs border-collapse" style={{ minWidth: '2200px' }}>
                 <thead className="sticky top-0 bg-gray-100 z-10">
                   <tr>
-                    <th className="px-2 py-1 border text-left whitespace-nowrap">Line Item</th>
-                    <th className="px-2 py-1 border text-left">Line Item Name</th>
-                    <th className="px-2 py-1 border text-center whitespace-nowrap">Unit</th>
-                    <th className="px-2 py-1 border text-right whitespace-nowrap">Qty</th>
+                    <th className="px-2 py-1 border text-left whitespace-nowrap">Line Item Number</th>
+                    <th className="px-2 py-1 border text-left whitespace-nowrap">Line Item Name</th>
+                    <th className="px-2 py-1 border text-center whitespace-nowrap">Unconverted Unit</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Unconverted Qty</th>
                     <th className="px-2 py-1 border text-right whitespace-nowrap">Unit Cost</th>
                     <th className="px-2 py-1 border text-right whitespace-nowrap">Unit Total</th>
                     <th className="px-2 py-1 border text-left whitespace-nowrap">Cost Code</th>
-                    <th className="px-2 py-1 border text-center whitespace-nowrap">Conv Unit</th>
-                    <th className="px-2 py-1 border text-right whitespace-nowrap">Conv Qty</th>
-                    <th className="px-2 py-1 border text-right whitespace-nowrap">PX</th>
+                    <th className="px-2 py-1 border text-center whitespace-nowrap">Converted Unit</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Converted Qty</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Production Rate</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Hours</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Labor Cost</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Equipment Cost</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Trucking Cost</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Dump Fees</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Material Cost</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Subcontractor Cost</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Budget Total</th>
+                    <th className="px-2 py-1 border text-right whitespace-nowrap">Billing</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    {li:"1",name:"Mobilization per General Requirements, Sections 01292 & 01721",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Mobilization",cu:"LS",cq:"1",px:"1"},
-                    {li:"2",name:"Allowance for Differing Site Conditions per General Requirements, Sections 01212 & 01253",unit:"LS",qty:"1",cost:"$10,000",total:"$10,000",cc:"Allowance",cu:"LS",cq:"1",px:"-"},
-                    {li:"3",name:"Allowance for Grading in Temporary Construction Easement per General Requirements, Section 01212",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Allowance",cu:"LS",cq:"1",px:"-"},
-                    {li:"4",name:"Allowance for Railroad Requirements for Safety Plan, Permitting, Flagging, and Inspection",unit:"LS",qty:"1",cost:"$35,000",total:"$35,000",cc:"Allowance",cu:"LS",cq:"1",px:"-"},
-                    {li:"5",name:"Traffic Control (Includes plan, preparation, implementation, and permitting for all detour and construction stages)",unit:"LS",qty:"1",cost:"$70,000",total:"$70,000",cc:"Traffic Control",cu:"LS",cq:"4",px:"-"},
-                    {li:"6",name:"Clearing and Grubbing per Contract Plans and Documents",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Demo/Ex",cu:"LS",cq:"1",px:"1"},
-                    {li:"7",name:"Unclassified Excavation",unit:"CY",qty:"175",cost:"$50",total:"$8,750",cc:"Demo/Ex",cu:"CY",cq:"175",px:"10"},
-                    {li:"8",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"$10",total:"$790",cc:"Demo/Ex",cu:"CY",cq:"1.46",px:"6"},
-                    {li:"9",name:"Concrete Integral Curb and Gutter, Type To Be Specified Per Plan (a=2', b=6\")",unit:"LF",qty:"80",cost:"$10",total:"$800",cc:"Demo/Ex",cu:"CY",cq:"11.43",px:"6"},
-                    {li:"10",name:"Concrete Driveway",unit:"SF",qty:"250",cost:"$15",total:"$3,750",cc:"Demo/Ex",cu:"CY",cq:"4.63",px:"1"},
-                    {li:"11",name:"Concrete Sidewalk, including Curb Ramps",unit:"SF",qty:"1,601",cost:"$10",total:"$16,010",cc:"Demo/Ex",cu:"CY",cq:"20.01",px:"1"},
-                    {li:"12",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"2",cost:"$500",total:"$1,000",cc:"Demo/Ex",cu:"CY",cq:"4",px:"1"},
-                    {li:"13",name:"Asphalt Concrete Pavement",unit:"SF",qty:"4,161",cost:"$6",total:"$24,966",cc:"Demo/Ex",cu:"CY",cq:"770.56",px:"10"},
-                    {li:"14",name:"Crushed Miscellaneous Base",unit:"SF",qty:"1",cost:"$4",total:"$4",cc:"Demo/Ex",cu:"CY",cq:"0.02",px:"10"},
-                    {li:"15",name:"Unclassified Excavation",unit:"CY",qty:"3,500",cost:"$20",total:"$70,000",cc:"Demo/Ex",cu:"CY",cq:"3,500",px:"10"},
-                    {li:"15.1",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"1.46",px:"6"},
-                    {li:"15.2",name:"Concrete Integral Curb and Gutter",unit:"LF",qty:"317",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"45.29",px:"6"},
-                    {li:"15.3",name:"Concrete Intersection Gutter (b=6\", g=4', v=varies)",unit:"SF",qty:"384",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"7.11",px:"6"},
-                    {li:"15.4",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"6.28",px:"6"},
-                    {li:"15.5",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"31.34",px:"6"},
-                    {li:"15.6",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"4",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"8",px:"6"},
-                    {li:"15.7",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"0.29",px:"6"},
-                    {li:"15.8",name:"Asphalt Concrete Pavement",unit:"SF",qty:"10",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"10",px:"1"},
-                    {li:"15.9",name:"Remove Tree and Stump",unit:"EA",qty:"1",cost:"-",total:"-",cc:"Demo/Ex",cu:"EA",cq:"1",px:"1"},
-                    {li:"15.10",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"1.57",px:"6"},
-                    {li:"15.11",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"35",cost:"-",total:"-",cc:"Demo/Ex",cu:"LF",cq:"35",px:"0.25"},
-                    {li:"16",name:"Remove Tree and Stump",unit:"EA",qty:"1",cost:"$2,000",total:"$2,000",cc:"Demo/Ex",cu:"EA",cq:"1",px:"1"},
-                    {li:"17",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"$100",total:"$8,500",cc:"Demo/Ex",cu:"CY",cq:"1.57",px:"6"},
-                    {li:"18",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"35",cost:"$20",total:"$700",cc:"Demo/Ex",cu:"LF",cq:"35",px:"0.25"},
-                    {li:"19",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"$80",total:"$6,320",cc:"Concrete",cu:"CY",cq:"1.46",px:"6"},
-                    {li:"20",name:"Concrete Integral Curb and Gutter, Type To Be Specified Per Plan (a=2', b=6\")",unit:"LF",qty:"317",cost:"$150",total:"$47,550",cc:"Concrete",cu:"CY",cq:"45.29",px:"6"},
-                    {li:"21",name:"Concrete Intersection Gutter (b=6\", g=4', v=varies)",unit:"SF",qty:"384",cost:"$25",total:"$9,600",cc:"Concrete",cu:"CY",cq:"7.11",px:"6"},
-                    {li:"22",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"$20",total:"$6,780",cc:"Concrete",cu:"CY",cq:"6.28",px:"6"},
-                    {li:"23",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"$20",total:"$50,140",cc:"Concrete",cu:"CY",cq:"31.34",px:"6"},
-                    {li:"24",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"4",cost:"$12,000",total:"$48,000",cc:"Concrete",cu:"CY",cq:"8",px:"6"},
-                    {li:"25",name:"Asphalt Concrete Pavement",unit:"TON",qty:"158",cost:"$400",total:"$63,200",cc:"Asphalt",cu:"TON",cq:"158",px:"1"},
-                    {li:"25.1",name:"Asphalt Concrete Pavement",unit:"SF",qty:"4,161",cost:"-",total:"-",cc:"Asphalt",cu:"TON",cq:"154.09",px:"1"},
-                    {li:"26",name:"Crushed Miscellaneous Base",unit:"CY",qty:"101.34",cost:"$250",total:"$36,250",cc:"Base/Grading",cu:"CY",cq:"101.34",px:"1"},
-                    {li:"26.1",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"1.46",px:"1"},
-                    {li:"26.2",name:"Concrete Integral Curb and Gutter, Type To Be Specified Per Plan (a=2', b=6\")",unit:"LF",qty:"317",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"45.29",px:"1"},
-                    {li:"26.3",name:"Concrete Intersection Gutter (b=6\", g=4', v=varies)",unit:"SF",qty:"384",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"7.11",px:"1"},
-                    {li:"26.4",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"6.28",px:"1"},
-                    {li:"26.5",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"31.34",px:"1"},
-                    {li:"26.6",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"4",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"8",px:"1"},
-                    {li:"26.7",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"0.29",px:"1"},
-                    {li:"26.8",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"1.57",px:"1"},
-                    {li:"26.9",name:"Asphalt Concrete Pavement",unit:"SF",qty:"10",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"10",px:"1"},
-                    {li:"27",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"$50",total:"$1,150",cc:"Concrete",cu:"CY",cq:"0.29",px:"6"},
-                    {li:"28",name:"Pedestrian Barricade",unit:"EA",qty:"3",cost:"$2,500",total:"$7,500",cc:"Sub",cu:"EA",cq:"3",px:"-"},
-                    {li:"29",name:"Chain Link Fencing, including Gates",unit:"LF",qty:"63",cost:"$250",total:"$15,750",cc:"Sub",cu:"LF",cq:"63",px:"-"},
-                    {li:"30",name:"Detectable Warning Surface Tile",unit:"EA",qty:"2",cost:"$1,000",total:"$2,000",cc:"General Labor",cu:"EA",cq:"2",px:"4"},
-                    {li:"31",name:"Grade Only or Landscaping",unit:"SF",qty:"163",cost:"$5",total:"$815",cc:"General Labor",cu:"SF",cq:"163",px:"8"},
-                    {li:"32",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"$300",total:"$25,500",cc:"Concrete",cu:"CY",cq:"1.57",px:"6"},
-                    {li:"33",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"25",cost:"$300",total:"$7,500",cc:"Sub",cu:"LF",cq:"25",px:"-"},
-                    {li:"34",name:"Signage and Striping per Contract Plans and Documents",unit:"LS",qty:"1",cost:"$18,000",total:"$18,000",cc:"Sub",cu:"LS",cq:"1",px:"-"},
-                    {li:"35",name:"Adjust Street Lighting Pullbox to Grade",unit:"EA",qty:"2",cost:"$2,500",total:"$5,000",cc:"General Labor",cu:"EA",cq:"2",px:"4"},
-                    {li:"36",name:"Adjust Street Light Pole to Grade",unit:"EA",qty:"2",cost:"$2,500",total:"$5,000",cc:"General Labor",cu:"EA",cq:"2",px:"16"},
-                    {li:"37",name:"Street Lighting per Contract Plans and Documents",unit:"LS",qty:"1",cost:"$30,000",total:"$30,000",cc:"Sub",cu:"LS",cq:"1",px:"-"},
-                    {li:"38",name:"Adjust Water Valve to Grade",unit:"EA",qty:"1",cost:"$1,500",total:"$1,500",cc:"General Labor",cu:"EA",cq:"1",px:"4"},
-                    {li:"39",name:"Adjust Sewer Maintenance Hole to Grade",unit:"EA",qty:"3",cost:"$1,500",total:"$4,500",cc:"General Labor",cu:"EA",cq:"3",px:"4"},
-                    {li:"40",name:"Street Sign (Remove and Reinstall)",unit:"EA",qty:"2",cost:"$1,000",total:"$2,000",cc:"General Labor",cu:"EA",cq:"2",px:"4"},
-                    {li:"41",name:"SAWCUT",unit:"LF",qty:"1",cost:"-",total:"-",cc:"Demo/Ex",cu:"LF",cq:"1",px:"20"},
+                    {li:"1",name:"Mobilization per General Requirements",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Mobilization",cu:"LS",cq:"1",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:"$15,000"},
+                    {li:"2",name:"Allowance for Differing Site Conditions",unit:"LS",qty:"1",cost:"$10,000",total:"$10,000",cc:"Allowance",cu:"LS",cq:"1",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:"$10,000"},
+                    {li:"3",name:"Allowance for Grading in Temporary Construction Easement",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Allowance",cu:"LS",cq:"1",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:"$15,000"},
+                    {li:"4",name:"Allowance for Railroad Requirements",unit:"LS",qty:"1",cost:"$35,000",total:"$35,000",cc:"Allowance",cu:"LS",cq:"1",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:"$35,000"},
+                    {li:"5",name:"Traffic Control",unit:"LS",qty:"1",cost:"$70,000",total:"$70,000",cc:"Traffic Control",cu:"LS",cq:"4",px:"-",hrs:"192",lc:"$15,360",ec:"",tc:"",df:"",mc:"$15,000",sc:"",bt:"$30,360",bl:"$70,000"},
+                    {li:"6",name:"Clearing and Grubbing",unit:"LS",qty:"1",cost:"$15,000",total:"$15,000",cc:"Demo/Ex",cu:"LS",cq:"1",px:"1",hrs:"1",lc:"$800",ec:"",tc:"",df:"",mc:"",sc:"",bt:"$800",bl:"$15,000"},
+                    {li:"7",name:"Unclassified Excavation",unit:"CY",qty:"175",cost:"$50",total:"$8,750",cc:"Demo/Ex",cu:"CY",cq:"175",px:"10",hrs:"18",lc:"$1,400",ec:"",tc:"$612.50",df:"$612.50",mc:"",sc:"",bt:"$2,625",bl:"$8,750"},
+                    {li:"8",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"$10",total:"$790",cc:"Demo/Ex",cu:"CY",cq:"1.46",px:"6",hrs:"9",lc:"$711.43",ec:"",tc:"$51.30",df:"$51.30",mc:"",sc:"",bt:"$814.03",bl:"$790"},
+                    {li:"9",name:"Concrete Integral Curb and Gutter",unit:"LF",qty:"80",cost:"$10",total:"$800",cc:"Demo/Ex",cu:"CY",cq:"11.43",px:"6",hrs:"69",lc:"$5,485.71",ec:"",tc:"$400",df:"$400",mc:"",sc:"",bt:"$6,285.71",bl:"$800"},
+                    {li:"10",name:"Concrete Driveway",unit:"SF",qty:"250",cost:"$15",total:"$3,750",cc:"Demo/Ex",cu:"CY",cq:"4.63",px:"1",hrs:"5",lc:"$370.37",ec:"",tc:"$162.04",df:"$162.04",mc:"",sc:"",bt:"$694.44",bl:"$3,750"},
+                    {li:"11",name:"Concrete Sidewalk, including Curb Ramps",unit:"SF",qty:"1,601",cost:"$10",total:"$16,010",cc:"Demo/Ex",cu:"CY",cq:"20.01",px:"1",hrs:"20",lc:"$1,601",ec:"",tc:"$700.44",df:"$700.44",mc:"",sc:"",bt:"$3,001.88",bl:"$16,010"},
+                    {li:"12",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"2",cost:"$500",total:"$1,000",cc:"Demo/Ex",cu:"CY",cq:"4",px:"1",hrs:"4",lc:"$320",ec:"",tc:"$140",df:"$140",mc:"",sc:"",bt:"$600",bl:"$1,000"},
+                    {li:"13",name:"Asphalt Concrete Pavement",unit:"SF",qty:"4,161",cost:"$6",total:"$24,966",cc:"Demo/Ex",cu:"CY",cq:"770.56",px:"10",hrs:"77",lc:"$6,165",ec:"",tc:"$26,970",df:"$26,970",mc:"",sc:"",bt:"$60,105",bl:"$24,966"},
+                    {li:"14",name:"Crushed Miscellaneous Base",unit:"SF",qty:"1",cost:"$4",total:"$4",cc:"Demo/Ex",cu:"CY",cq:"0.02",px:"10",hrs:"0",lc:"$0.15",ec:"",tc:"$0.65",df:"$0.65",mc:"",sc:"",bt:"$1.44",bl:"$4"},
+                    {li:"15",name:"Unclassified Excavation",unit:"CY",qty:"3,500",cost:"$20",total:"$70,000",cc:"Demo/Ex",cu:"CY",cq:"3,500",px:"10",hrs:"350",lc:"$28,000",ec:"",tc:"$12,250",df:"$12,250",mc:"",sc:"",bt:"$52,500",bl:"$70,000"},
+                    {li:"15.1",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"1.46",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.2",name:"Concrete Integral Curb and Gutter",unit:"LF",qty:"317",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"45.29",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.3",name:"Concrete Intersection Gutter",unit:"SF",qty:"384",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"7.11",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.4",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"6.28",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.5",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"31.34",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.6",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"4",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"8",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.7",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"0.29",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.8",name:"Asphalt Concrete Pavement",unit:"SF",qty:"10",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"10",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.9",name:"Remove Tree and Stump",unit:"EA",qty:"1",cost:"-",total:"-",cc:"Demo/Ex",cu:"EA",cq:"1",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.10",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"-",total:"-",cc:"Demo/Ex",cu:"CY",cq:"1.57",px:"6",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"15.11",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"35",cost:"-",total:"-",cc:"Demo/Ex",cu:"LF",cq:"35",px:"0.25",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"16",name:"Remove Tree and Stump",unit:"EA",qty:"1",cost:"$2,000",total:"$2,000",cc:"Demo/Ex",cu:"EA",cq:"1",px:"1",hrs:"1",lc:"$80",ec:"",tc:"",df:"",mc:"$500",sc:"",bt:"$580",bl:"$2,000"},
+                    {li:"17",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"$100",total:"$8,500",cc:"Demo/Ex",cu:"CY",cq:"1.57",px:"6",hrs:"9",lc:"$755.56",ec:"",tc:"$55.09",df:"$55.09",mc:"",sc:"",bt:"$865.73",bl:"$8,500"},
+                    {li:"18",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"35",cost:"$20",total:"$700",cc:"Demo/Ex",cu:"LF",cq:"35",px:"0.25",hrs:"140",lc:"$11,200",ec:"",tc:"",df:"",mc:"",sc:"",bt:"$11,200",bl:"$700"},
+                    {li:"19",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"$80",total:"$6,320",cc:"Concrete",cu:"CY",cq:"1.46",px:"6",hrs:"9",lc:"$711.43",ec:"",tc:"",df:"",mc:"$329.17",sc:"",bt:"$1,040.60",bl:"$6,320"},
+                    {li:"20",name:"Concrete Integral Curb and Gutter",unit:"LF",qty:"317",cost:"$150",total:"$47,550",cc:"Concrete",cu:"CY",cq:"45.29",px:"6",hrs:"272",lc:"$21,737",ec:"",tc:"",df:"",mc:"$10,189",sc:"",bt:"$31,926",bl:"$47,550"},
+                    {li:"21",name:"Concrete Intersection Gutter",unit:"SF",qty:"384",cost:"$25",total:"$9,600",cc:"Concrete",cu:"CY",cq:"7.11",px:"6",hrs:"29",lc:"$2,304",ec:"",tc:"",df:"",mc:"$1,080",sc:"",bt:"$3,384",bl:"$9,600"},
+                    {li:"22",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"$20",total:"$6,780",cc:"Concrete",cu:"CY",cq:"6.28",px:"6",hrs:"38",lc:"$3,013",ec:"",tc:"",df:"",mc:"$1,413",sc:"",bt:"$4,426",bl:"$6,780"},
+                    {li:"23",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"$20",total:"$50,140",cc:"Concrete",cu:"CY",cq:"31.34",px:"6",hrs:"188",lc:"$15,042",ec:"",tc:"",df:"",mc:"$7,051",sc:"",bt:"$22,093",bl:"$50,140"},
+                    {li:"24",name:"Curb Ramp, including Detectable Warning Surface",unit:"EA",qty:"4",cost:"$12,000",total:"$48,000",cc:"Concrete",cu:"CY",cq:"8",px:"6",hrs:"48",lc:"$3,840",ec:"",tc:"",df:"",mc:"$1,800",sc:"",bt:"$5,640",bl:"$48,000"},
+                    {li:"25",name:"Asphalt Concrete Pavement",unit:"TON",qty:"158",cost:"$400",total:"$63,200",cc:"Asphalt",cu:"TON",cq:"158",px:"1",hrs:"158",lc:"$14,220",ec:"",tc:"",df:"",mc:"$15,010",sc:"",bt:"$29,230",bl:"$63,200"},
+                    {li:"25.1",name:"Asphalt Concrete Pavement",unit:"SF",qty:"4,161",cost:"-",total:"-",cc:"Asphalt",cu:"TON",cq:"154.09",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26",name:"Crushed Miscellaneous Base",unit:"CY",qty:"101.34",cost:"$250",total:"$36,250",cc:"Base/Grading",cu:"CY",cq:"101.34",px:"1",hrs:"145",lc:"$13,050",ec:"",tc:"",df:"",mc:"$10,134",sc:"",bt:"$23,184",bl:"$36,250"},
+                    {li:"26.1",name:"Concrete Curb Type A",unit:"LF",qty:"79",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"1.46",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.2",name:"Concrete Integral Curb and Gutter",unit:"LF",qty:"317",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"45.29",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.3",name:"Concrete Intersection Gutter",unit:"SF",qty:"384",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"7.11",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.4",name:"Concrete Driveway (t=6\")",unit:"SF",qty:"339",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"6.28",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.5",name:"Concrete Sidewalk (t=4\")",unit:"SF",qty:"2,507",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"31.34",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.6",name:"Curb Ramp",unit:"EA",qty:"4",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"8",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.7",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"0.29",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.8",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"1.57",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"26.9",name:"Asphalt Concrete Pavement",unit:"SF",qty:"10",cost:"-",total:"-",cc:"Base/Grading",cu:"CY",cq:"10",px:"1",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
+                    {li:"27",name:"Nonwalkable Surface",unit:"SF",qty:"23",cost:"$50",total:"$1,150",cc:"Concrete",cu:"CY",cq:"0.29",px:"6",hrs:"2",lc:"$138",ec:"",tc:"",df:"",mc:"$65",sc:"",bt:"$203",bl:"$1,150"},
+                    {li:"28",name:"Pedestrian Barricade",unit:"EA",qty:"3",cost:"$2,500",total:"$7,500",cc:"Sub",cu:"EA",cq:"3",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"$6,375",bt:"$6,375",bl:"$7,500"},
+                    {li:"29",name:"Chain Link Fencing, including Gates",unit:"LF",qty:"63",cost:"$250",total:"$15,750",cc:"Sub",cu:"LF",cq:"63",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"$13,388",bt:"$13,388",bl:"$15,750"},
+                    {li:"30",name:"Detectable Warning Surface Tile",unit:"EA",qty:"2",cost:"$1,000",total:"$2,000",cc:"General Labor",cu:"EA",cq:"2",px:"4",hrs:"8",lc:"$640",ec:"",tc:"",df:"",mc:"$400",sc:"",bt:"$1,040",bl:"$2,000"},
+                    {li:"31",name:"Grade Only or Landscaping",unit:"SF",qty:"163",cost:"$5",total:"$815",cc:"General Labor",cu:"SF",cq:"163",px:"8",hrs:"20",lc:"$1,630",ec:"",tc:"",df:"",mc:"",sc:"",bt:"$1,630",bl:"$815"},
+                    {li:"32",name:"Concrete Wall, including Chain Link Fence",unit:"LF",qty:"85",cost:"$300",total:"$25,500",cc:"Concrete",cu:"CY",cq:"1.57",px:"6",hrs:"9",lc:"$755.56",ec:"",tc:"",df:"",mc:"$353.52",sc:"",bt:"$1,109.07",bl:"$25,500"},
+                    {li:"33",name:"Wrought Iron Fence, including Gates",unit:"LF",qty:"25",cost:"$300",total:"$7,500",cc:"Sub",cu:"LF",cq:"25",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"$6,375",bt:"$6,375",bl:"$7,500"},
+                    {li:"34",name:"Signage and Striping",unit:"LS",qty:"1",cost:"$18,000",total:"$18,000",cc:"Sub",cu:"LS",cq:"1",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"$15,300",bt:"$15,300",bl:"$18,000"},
+                    {li:"35",name:"Adjust Street Lighting Pullbox to Grade",unit:"EA",qty:"2",cost:"$2,500",total:"$5,000",cc:"General Labor",cu:"EA",cq:"2",px:"4",hrs:"8",lc:"$640",ec:"",tc:"",df:"",mc:"$400",sc:"",bt:"$1,040",bl:"$5,000"},
+                    {li:"36",name:"Adjust Street Light Pole to Grade",unit:"EA",qty:"2",cost:"$2,500",total:"$5,000",cc:"General Labor",cu:"EA",cq:"2",px:"16",hrs:"32",lc:"$2,560",ec:"",tc:"",df:"",mc:"$400",sc:"",bt:"$2,960",bl:"$5,000"},
+                    {li:"37",name:"Street Lighting per Contract Plans",unit:"LS",qty:"1",cost:"$30,000",total:"$30,000",cc:"Sub",cu:"LS",cq:"1",px:"-",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"$25,500",bt:"$25,500",bl:"$30,000"},
+                    {li:"38",name:"Adjust Water Valve to Grade",unit:"EA",qty:"1",cost:"$1,500",total:"$1,500",cc:"General Labor",cu:"EA",cq:"1",px:"4",hrs:"4",lc:"$320",ec:"",tc:"",df:"",mc:"$200",sc:"",bt:"$520",bl:"$1,500"},
+                    {li:"39",name:"Adjust Sewer Maintenance Hole to Grade",unit:"EA",qty:"3",cost:"$1,500",total:"$4,500",cc:"General Labor",cu:"EA",cq:"3",px:"4",hrs:"12",lc:"$960",ec:"",tc:"",df:"",mc:"$600",sc:"",bt:"$1,560",bl:"$4,500"},
+                    {li:"40",name:"Street Sign (Remove and Reinstall)",unit:"EA",qty:"2",cost:"$1,000",total:"$2,000",cc:"General Labor",cu:"EA",cq:"2",px:"4",hrs:"8",lc:"$640",ec:"",tc:"",df:"",mc:"$200",sc:"",bt:"$840",bl:"$2,000"},
+                    {li:"41",name:"SAWCUT",unit:"LF",qty:"1",cost:"-",total:"-",cc:"Demo/Ex",cu:"LF",cq:"1",px:"20",hrs:"",lc:"",ec:"",tc:"",df:"",mc:"",sc:"",bt:"",bl:""},
                   ].map((row, idx) => {
-                    const isParent = !row.li.includes('.');
                     const hasChildren = ['15','25','26'].includes(row.li);
                     return (
                       <tr key={idx} className={hasChildren ? 'bg-amber-50 font-semibold' : ''}>
-                        <td className={`px-2 py-1 border ${row.li.includes('.') ? 'pl-4' : ''}`}>{row.li}</td>
-                        <td className="px-2 py-1 border max-w-xs truncate" title={row.name}>{row.name}</td>
+                        <td className={`px-2 py-1 border whitespace-nowrap ${row.li.includes('.') ? 'pl-4' : ''}`}>{row.li}</td>
+                        <td className="px-2 py-1 border whitespace-nowrap" title={row.name}>{row.name}</td>
                         <td className="px-2 py-1 border text-center">{row.unit}</td>
                         <td className="px-2 py-1 border text-right">{row.qty}</td>
                         <td className="px-2 py-1 border text-right">{row.cost}</td>
@@ -1562,6 +1570,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                         <td className="px-2 py-1 border text-center">{row.cu}</td>
                         <td className="px-2 py-1 border text-right">{row.cq}</td>
                         <td className="px-2 py-1 border text-right">{row.px}</td>
+                        <td className="px-2 py-1 border text-right">{row.hrs}</td>
+                        <td className="px-2 py-1 border text-right">{row.lc}</td>
+                        <td className="px-2 py-1 border text-right">{row.ec}</td>
+                        <td className="px-2 py-1 border text-right">{row.tc}</td>
+                        <td className="px-2 py-1 border text-right">{row.df}</td>
+                        <td className="px-2 py-1 border text-right">{row.mc}</td>
+                        <td className="px-2 py-1 border text-right">{row.sc}</td>
+                        <td className="px-2 py-1 border text-right">{row.bt}</td>
+                        <td className="px-2 py-1 border text-right">{row.bl}</td>
                       </tr>
                     );
                   })}
