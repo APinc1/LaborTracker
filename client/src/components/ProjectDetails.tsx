@@ -44,6 +44,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [showExpandedBudgetDialog, setShowExpandedBudgetDialog] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [expandedErrorGroups, setExpandedErrorGroups] = useState<Set<string>>(new Set());
+  const [showExampleBudgetDialog, setShowExampleBudgetDialog] = useState(false);
   const { toast } = useToast();
 
   const toggleGroupCollapse = (lineItemNumber: string) => {
@@ -1248,6 +1249,17 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 </div>
               )}
               
+              <div className="flex justify-center mb-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowExampleBudgetDialog(true)}
+                  data-testid="button-view-example-budget"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  View Example Master Budget
+                </Button>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
@@ -1442,6 +1454,140 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Example Master Budget Dialog */}
+        <Dialog open={showExampleBudgetDialog} onOpenChange={setShowExampleBudgetDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Example Master Budget</DialogTitle>
+              <DialogDescription>
+                This is an example of how your master budget Excel file should be structured.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-xs border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-2 py-1 border text-left">Line Item</th>
+                    <th className="px-2 py-1 border text-left">Description</th>
+                    <th className="px-2 py-1 border text-left">Cost Code</th>
+                    <th className="px-2 py-1 border text-center">Unit</th>
+                    <th className="px-2 py-1 border text-right">Qty</th>
+                    <th className="px-2 py-1 border text-center">Conv UM</th>
+                    <th className="px-2 py-1 border text-right">Conv Qty</th>
+                    <th className="px-2 py-1 border text-right">Unit Cost</th>
+                    <th className="px-2 py-1 border text-right">PX</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-amber-50 font-semibold">
+                    <td className="px-2 py-1 border">15</td>
+                    <td className="px-2 py-1 border">Unclassified Excavation</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">1,500</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">1,500</td>
+                    <td className="px-2 py-1 border text-right">$12.50</td>
+                    <td className="px-2 py-1 border text-right">25</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">15.1</td>
+                    <td className="px-2 py-1 border">Rock Excavation</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">200</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">200</td>
+                    <td className="px-2 py-1 border text-right">$45.00</td>
+                    <td className="px-2 py-1 border text-right">15</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">15.2</td>
+                    <td className="px-2 py-1 border">Soft Excavation</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">800</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">800</td>
+                    <td className="px-2 py-1 border text-right">$8.00</td>
+                    <td className="px-2 py-1 border text-right">35</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">15.3</td>
+                    <td className="px-2 py-1 border">Concrete Intersection Gutter</td>
+                    <td className="px-2 py-1 border">Demo/Ex</td>
+                    <td className="px-2 py-1 border text-center">SF</td>
+                    <td className="px-2 py-1 border text-right">500</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">18.52</td>
+                    <td className="px-2 py-1 border text-right">$15.00</td>
+                    <td className="px-2 py-1 border text-right">20</td>
+                  </tr>
+                  <tr className="bg-amber-50 font-semibold">
+                    <td className="px-2 py-1 border">26</td>
+                    <td className="px-2 py-1 border">Crushed Miscellaneous Base</td>
+                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">2,000</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">2,000</td>
+                    <td className="px-2 py-1 border text-right">$35.00</td>
+                    <td className="px-2 py-1 border text-right">50</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">26.1</td>
+                    <td className="px-2 py-1 border">Concrete Curb Type A</td>
+                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border text-center">LF</td>
+                    <td className="px-2 py-1 border text-right">3,500</td>
+                    <td className="px-2 py-1 border text-center">LF</td>
+                    <td className="px-2 py-1 border text-right">3,500</td>
+                    <td className="px-2 py-1 border text-right">$22.00</td>
+                    <td className="px-2 py-1 border text-right">100</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">26.2</td>
+                    <td className="px-2 py-1 border">Concrete Driveway (t=6")</td>
+                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border text-center">SF</td>
+                    <td className="px-2 py-1 border text-right">8,000</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">148.15</td>
+                    <td className="px-2 py-1 border text-right">$8.50</td>
+                    <td className="px-2 py-1 border text-right">40</td>
+                  </tr>
+                  <tr>
+                    <td className="px-2 py-1 border pl-4">26.3</td>
+                    <td className="px-2 py-1 border">Concrete Sidewalk (t=4")</td>
+                    <td className="px-2 py-1 border">Paving</td>
+                    <td className="px-2 py-1 border text-center">SF</td>
+                    <td className="px-2 py-1 border text-right">12,000</td>
+                    <td className="px-2 py-1 border text-center">CY</td>
+                    <td className="px-2 py-1 border text-right">148.15</td>
+                    <td className="px-2 py-1 border text-right">$6.00</td>
+                    <td className="px-2 py-1 border text-right">60</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 space-y-2 text-sm text-gray-600">
+              <p><strong>Key Points:</strong></p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Parent items (e.g., 15, 26) are shown with <span className="bg-amber-100 px-1 rounded">yellow highlighting</span></li>
+                <li>Child items use decimal notation (e.g., 15.1, 15.2, 26.1)</li>
+                <li>Each line item must have a valid Cost Code</li>
+                <li>Unit and Conv UM define the measurement units</li>
+                <li>PX is the production rate (units per hour)</li>
+              </ul>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button onClick={() => setShowExampleBudgetDialog(false)}>
+                Close
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
