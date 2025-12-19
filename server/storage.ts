@@ -1684,9 +1684,26 @@ class DatabaseStorage implements IStorage {
   async createLocationBudgetFromProjectItems(locationId: number, projectBudgetItemIds: number[]): Promise<BudgetLineItem[]> {
     const createdItems: BudgetLineItem[] = [];
     
+    // Get existing items in this location to avoid duplicates
+    const existingItems = await this.getBudgetLineItems(locationId);
+    const existingLineNumbers = new Set(existingItems.map(item => item.lineItemNumber));
+    const existingProjectBudgetItemIds = new Set(
+      existingItems.filter(item => item.projectBudgetItemId).map(item => item.projectBudgetItemId)
+    );
+    
     for (const projectBudgetItemId of projectBudgetItemIds) {
+      // Skip if this project budget item was already derived to this location
+      if (existingProjectBudgetItemIds.has(projectBudgetItemId)) {
+        continue;
+      }
+      
       const projectItem = await this.getProjectBudgetLineItem(projectBudgetItemId);
       if (!projectItem) continue;
+      
+      // Skip if this line item number already exists in the location
+      if (existingLineNumbers.has(projectItem.lineItemNumber)) {
+        continue;
+      }
       
       // Create location budget item with inherited fields and default QTY = 0
       const newItem: InsertBudgetLineItem = {
