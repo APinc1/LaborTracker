@@ -1260,7 +1260,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 </Button>
               </div>
 
-              <div className="max-h-48 overflow-y-auto border rounded-lg">
+              <div className="max-h-64 overflow-y-auto border rounded-lg">
                 <div className="bg-blue-50 border-b border-blue-200 p-3">
                   <h4 className="font-semibold text-blue-800 mb-2 text-sm">Reminders</h4>
                   <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
