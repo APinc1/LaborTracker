@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown } from "lucide-react";
@@ -90,6 +91,9 @@ export default function BudgetManagement() {
   const [selectedMasterItems, setSelectedMasterItems] = useState<Set<number>>(new Set());
   const [showProjectImportConfirmDialog, setShowProjectImportConfirmDialog] = useState(false);
   const [showExpandedTableDialog, setShowExpandedTableDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [deleteChildren, setDeleteChildren] = useState<any[]>([]);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -683,83 +687,72 @@ export default function BudgetManagement() {
     },
   });
 
-  const handleDeleteBudgetItem = async (id: number) => {
+  const handleDeleteBudgetItem = (id: number) => {
     const items = budgetItems as any[];
-    const itemToDelete = items.find((item: any) => item.id === id);
-    if (!itemToDelete) return;
+    const item = items.find((item: any) => item.id === id);
+    if (!item) return;
 
-    const isParent = isParentItem(itemToDelete);
+    const isParent = isParentItem(item);
     
     if (isParent) {
       // Check if this parent has children
       const children = items.filter((child: any) => 
-        isChildItem(child) && getParentId(child) === itemToDelete.lineItemNumber
+        isChildItem(child) && getParentId(child) === item.lineItemNumber
       );
       
-      if (children.length > 0) {
-        // Parent has children - ask to confirm deleting all
-        const confirmMessage = `This is a parent item with ${children.length} breakdown item(s) (${children.map((c: any) => c.lineItemNumber).join(', ')}). Do you want to delete the parent and all its breakdown items?`;
-        
-        if (!window.confirm(confirmMessage)) {
-          // User said no - don't delete anything
-          return;
-        }
-        
-        // Delete all children first, then parent
-        try {
-          for (const child of children) {
-            const response = await fetch(`/api/budget/${child.id}`, {
-              method: "DELETE",
-            });
-            if (!response.ok) {
-              throw new Error(`Failed to delete child ${child.lineItemNumber}`);
-            }
-          }
-          
-          const response = await fetch(`/api/budget/${id}`, {
-            method: "DELETE",
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-          toast({
-            title: "Success",
-            description: `Deleted parent and ${children.length} breakdown item(s)`,
-          });
-        } catch (error) {
-          toast({
-            title: "Error",
-            description: "Failed to delete budget items",
-            variant: "destructive",
-          });
-        }
-        return;
-      }
+      setItemToDelete(item);
+      setDeleteChildren(children);
+      setShowDeleteDialog(true);
+    } else {
+      // Regular item (child or standalone)
+      setItemToDelete(item);
+      setDeleteChildren([]);
+      setShowDeleteDialog(true);
     }
+  };
+
+  const executeDelete = async () => {
+    if (!itemToDelete) return;
     
-    // Regular delete for standalone items, children, or parents without children
-    if (window.confirm('Are you sure you want to delete this budget item?')) {
-      try {
-        const response = await fetch(`/api/budget/${id}`, {
+    try {
+      // Delete children first if any
+      for (const child of deleteChildren) {
+        const response = await fetch(`/api/budget/${child.id}`, {
           method: "DELETE",
         });
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`Failed to delete child ${child.lineItemNumber}`);
         }
-        queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
-        toast({
-          title: "Success",
-          description: "Budget item deleted successfully",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete budget item",
-          variant: "destructive",
-        });
       }
+      
+      // Delete the main item
+      const response = await fetch(`/api/budget/${itemToDelete.id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", selectedLocation, "budget"] });
+      
+      const message = deleteChildren.length > 0 
+        ? `Deleted parent and ${deleteChildren.length} breakdown item(s)`
+        : "Budget item deleted successfully";
+      
+      toast({
+        title: "Success",
+        description: message,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete budget item",
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeleteDialog(false);
+      setItemToDelete(null);
+      setDeleteChildren([]);
     }
   };
 
@@ -2774,6 +2767,39 @@ export default function BudgetManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Budget Item Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteChildren.length > 0 
+                ? "Are you sure you want to delete this parent item?"
+                : "Are you sure you want to delete this budget item?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteChildren.length > 0 
+                ? `This action cannot be undone. This will permanently delete "${itemToDelete?.lineItemName}" and all ${deleteChildren.length} breakdown item(s): ${deleteChildren.map((c: any) => c.lineItemNumber).join(', ')}.`
+                : `This action cannot be undone. This will permanently delete "${itemToDelete?.lineItemName}".`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteDialog(false);
+              setItemToDelete(null);
+              setDeleteChildren([]);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
