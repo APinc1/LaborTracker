@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Calculator, ChevronDown, ChevronRight, Upload, Download, Home, FolderOpen } from "lucide-react";
+import { Calculator, ChevronDown, ChevronRight, Upload, Download, Home, FolderOpen, DollarSign, FileSpreadsheet } from "lucide-react";
 import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData } from "@/lib/budgetTemplateUtils";
 import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
 import { useToast } from "@/hooks/use-toast";
@@ -265,8 +265,8 @@ export default function ProjectBudgets() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
-                <Calculator className="w-5 h-5" />
-                Master Budget - {selectedProject.name}
+                <DollarSign className="w-5 h-5" />
+                Master Budget
               </CardTitle>
               <div className="flex gap-2">
                 <Button 
@@ -288,7 +288,7 @@ export default function ProjectBudgets() {
                   data-testid="button-upload-master-budget"
                 >
                   <Upload className="w-4 h-4" />
-                  {isUploading ? "Uploading..." : "Upload Master Budget"}
+                  {isUploading ? "Uploading..." : "Upload Budget"}
                 </Button>
                 <input
                   type="file"
@@ -306,25 +306,9 @@ export default function ProjectBudgets() {
               <Skeleton className="h-64" />
             ) : (budgetItems as any[]).length === 0 ? (
               <div className="text-center py-8">
-                <Calculator className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500">No budget items found for this project</p>
-                <p className="text-sm text-gray-400 mt-2">Upload an excel file to import budget data</p>
-                
-                <div className="mt-6 max-w-md mx-auto text-left bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-semibold text-gray-900 mb-3 text-sm">Format Requirements</h4>
-                  <div className="space-y-2">
-                    {FORMAT_REQUIREMENTS.map((req, idx) => (
-                      <div key={idx}>
-                        <p className="text-xs font-medium text-gray-700">{req.title}:</p>
-                        <ul className="text-xs text-gray-600 ml-3 list-disc">
-                          {req.items.map((item, itemIdx) => (
-                            <li key={itemIdx}>{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                <p className="text-gray-500">No master budget uploaded</p>
+                <p className="text-sm text-gray-400 mt-2">Upload an Excel file to set up the project's master budget</p>
               </div>
             ) : (
               <div>
