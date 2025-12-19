@@ -214,37 +214,42 @@ export default function ProjectBudgets() {
   };
 
   return (
-    <div className="p-6">
-      {/* Breadcrumb */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-        <Link href="/">
-          <span className="flex items-center hover:text-gray-900 cursor-pointer">
-            <Home className="w-4 h-4" />
-          </span>
-        </Link>
-        <span>/</span>
-        {selectedProject ? (
-          <>
-            <Link href={`/projects/${selectedProjectId}`}>
-              <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer text-[#1e40af]">
-                <FolderOpen className="w-4 h-4" />
-                {selectedProject.name}
+    <div className="flex flex-col h-full">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
+        {/* Breadcrumb */}
+        <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
+          <Link href="/">
+            <span className="flex items-center hover:text-gray-900 cursor-pointer">
+              <Home className="w-4 h-4" />
+            </span>
+          </Link>
+          <span>/</span>
+          {selectedProject ? (
+            <>
+              <Link href={`/projects/${selectedProjectId}`}>
+                <span className="flex items-center gap-1 hover:text-gray-900 cursor-pointer text-[#1e40af]">
+                  <FolderOpen className="w-4 h-4" />
+                  {selectedProject.name}
+                </span>
+              </Link>
+              <span>/</span>
+              <span className="flex items-center gap-1 font-medium text-gray-900">
+                <Calculator className="w-4 h-4" />
+                Budget
               </span>
-            </Link>
-            <span>/</span>
+            </>
+          ) : (
             <span className="flex items-center gap-1 font-medium text-gray-900">
               <Calculator className="w-4 h-4" />
               Budget
             </span>
-          </>
-        ) : (
-          <span className="flex items-center gap-1 font-medium text-gray-900">
-            <Calculator className="w-4 h-4" />
-            Budget
-          </span>
-        )}
-      </nav>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Project Budget Management</h1>
+          )}
+        </nav>
+        <h1 className="text-2xl font-bold text-gray-900">Project Budget Management</h1>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto p-6">
       {/* Project Selector */}
       <Card className="mb-6">
         <CardHeader className="pb-3">
@@ -468,6 +473,7 @@ export default function ProjectBudgets() {
           </CardContent>
         </Card>
       )}
+      </div>
 
       {/* Upload Master Budget Dialog */}
       <Dialog open={showBudgetUploadDialog} onOpenChange={setShowBudgetUploadDialog}>

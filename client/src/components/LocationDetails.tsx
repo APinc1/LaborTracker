@@ -1139,10 +1139,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
         {/* Breadcrumb Navigation */}
-        <div className="mb-4">
+        <div className="mb-2">
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
             <Button
               variant="ghost"
@@ -1190,6 +1190,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         </div>
       </header>
 
+      <div className="flex-1 overflow-y-auto">
       <main className="p-6">
         {/* Location Overview */}
         <Card className="mb-6">
@@ -1511,6 +1512,7 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </CardContent>
         </Card>
       </main>
+      </div>
 
       {/* Cost Code Dialog */}
       <Dialog open={showCostCodeDialog} onOpenChange={setShowCostCodeDialog}>
