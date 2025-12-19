@@ -1260,85 +1260,53 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                 </Button>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">Reminders</h4>
-                <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                  <li>
-                    Break down line items where vague:
-                    <table className="mt-2 text-xs border border-blue-300 rounded">
-                      <thead>
-                        <tr className="bg-blue-100">
-                          <th className="px-2 py-1 border-r border-blue-300 text-left">Line Item</th>
-                          <th className="px-2 py-1 border-r border-blue-300 text-left">Description</th>
-                          <th className="px-2 py-1 text-left">Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="bg-amber-50">
-                          <td className="px-2 py-1 border-r border-blue-300 font-medium">26</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Crushed Miscellaneous Base</td>
-                          <td className="px-2 py-1">CY</td>
-                        </tr>
-                        <tr>
-                          <td className="px-2 py-1 border-r border-blue-300">26.1</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Concrete Curb Type A</td>
-                          <td className="px-2 py-1">LF</td>
-                        </tr>
-                        <tr>
-                          <td className="px-2 py-1 border-r border-blue-300">26.2</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Concrete Driveway (t=6")</td>
-                          <td className="px-2 py-1">SF</td>
-                        </tr>
-                        <tr>
-                          <td className="px-2 py-1 border-r border-blue-300">26.3</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Concrete Sidewalk (t=4")</td>
-                          <td className="px-2 py-1">SF</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </li>
-                  <li>
-                    Break down line items when you want to measure differently:
-                    <table className="mt-2 text-xs border border-blue-300 rounded">
-                      <thead>
-                        <tr className="bg-blue-100">
-                          <th className="px-2 py-1 border-r border-blue-300 text-left">Line Item</th>
-                          <th className="px-2 py-1 border-r border-blue-300 text-left">Description</th>
-                          <th className="px-2 py-1 text-left">Unit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="bg-amber-50">
-                          <td className="px-2 py-1 border-r border-blue-300 font-medium">25</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Asphalt Concrete Pavement</td>
-                          <td className="px-2 py-1">TON</td>
-                        </tr>
-                        <tr>
-                          <td className="px-2 py-1 border-r border-blue-300">25.1</td>
-                          <td className="px-2 py-1 border-r border-blue-300">Asphalt Concrete Pavement</td>
-                          <td className="px-2 py-1">SF</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </li>
-                  <li>Ensure cost codes are assigned to each line item</li>
-                  <li>Review quantities and units before uploading</li>
-                </ul>
-              </div>
+              <div className="max-h-48 overflow-y-auto border rounded-lg">
+                <div className="bg-blue-50 border-b border-blue-200 p-3">
+                  <h4 className="font-semibold text-blue-800 mb-2 text-sm">Reminders</h4>
+                  <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                    <li>
+                      Break down line items where vague:
+                      <table className="mt-1 text-xs border border-blue-300 rounded">
+                        <thead>
+                          <tr className="bg-blue-100">
+                            <th className="px-1 py-0.5 border-r border-blue-300 text-left">Line Item</th>
+                            <th className="px-1 py-0.5 border-r border-blue-300 text-left">Description</th>
+                            <th className="px-1 py-0.5 text-left">Unit</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="bg-amber-50">
+                            <td className="px-1 py-0.5 border-r border-blue-300 font-medium">26</td>
+                            <td className="px-1 py-0.5 border-r border-blue-300">Crushed Miscellaneous Base</td>
+                            <td className="px-1 py-0.5">CY</td>
+                          </tr>
+                          <tr>
+                            <td className="px-1 py-0.5 border-r border-blue-300">26.1</td>
+                            <td className="px-1 py-0.5 border-r border-blue-300">Concrete Curb Type A</td>
+                            <td className="px-1 py-0.5">LF</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </li>
+                    <li>Ensure cost codes are assigned to each line item</li>
+                    <li>Review quantities and units before uploading</li>
+                  </ul>
+                </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Format Requirements</h4>
-                <div className="space-y-3">
-                  {FORMAT_REQUIREMENTS.map((req, idx) => (
-                    <div key={idx}>
-                      <p className="text-sm font-medium text-gray-700">{req.title}:</p>
-                      <ul className="text-sm text-gray-600 ml-4 list-disc">
-                        {req.items.map((item, itemIdx) => (
-                          <li key={itemIdx}>{item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+                <div className="bg-gray-50 p-3">
+                  <h4 className="font-semibold text-gray-900 mb-2 text-sm">Format Requirements</h4>
+                  <div className="space-y-1 text-xs">
+                    {FORMAT_REQUIREMENTS.map((req, idx) => (
+                      <div key={idx}>
+                        <p className="font-medium text-gray-700">{req.title}:</p>
+                        <ul className="text-gray-600 ml-3 list-disc">
+                          {req.items.map((item, itemIdx) => (
+                            <li key={itemIdx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               
