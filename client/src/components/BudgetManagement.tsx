@@ -1280,10 +1280,10 @@ export default function BudgetManagement() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="bg-card border-b border-border px-6 py-4">
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-card border-b border-border px-6 py-4">
         {/* Breadcrumb Navigation - Always Visible */}
-        <div className="mb-4">
+        <div className="mb-2">
           <nav className="flex items-center space-x-2 text-sm text-gray-600">
             <button
               onClick={() => {
@@ -1752,6 +1752,7 @@ export default function BudgetManagement() {
           </div>
         </div>
       </header>
+      <div className="flex-1 overflow-y-auto">
       <main className="p-6 relative">
         {/* Loading Overlay - positioned absolutely within the main container */}
         {isImporting && (
@@ -2391,6 +2392,7 @@ export default function BudgetManagement() {
           )}
         </div>
       </main>
+      </div>
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-w-2xl">

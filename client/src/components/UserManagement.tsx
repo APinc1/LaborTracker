@@ -217,9 +217,13 @@ export default function UserManagement() {
   }, {});
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">User Management</h1>
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">User Management</h2>
+            <p className="text-gray-600 mt-1">Manage system users and access</p>
+          </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button
@@ -365,7 +369,9 @@ export default function UserManagement() {
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
+        </div>
+      </header>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* Role Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(roleStats).map(([role, count]) => (
@@ -458,6 +464,7 @@ export default function UserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

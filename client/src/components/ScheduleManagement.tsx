@@ -660,8 +660,8 @@ export default function ScheduleManagement() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Schedule Management</h2>
@@ -676,7 +676,7 @@ export default function ScheduleManagement() {
           </Button>
         </div>
       </header>
-
+      <div className="flex-1 overflow-y-auto">
       <main className="p-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
@@ -1102,6 +1102,7 @@ export default function ScheduleManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

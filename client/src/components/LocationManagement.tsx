@@ -181,8 +181,8 @@ export default function LocationManagement() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="bg-card border-b border-border px-6 py-4">
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-strong">Location Management</h2>
@@ -285,7 +285,7 @@ export default function LocationManagement() {
           </Dialog>
         </div>
       </header>
-
+      <div className="flex-1 overflow-y-auto">
       <main className="p-6">
         <div className="space-y-6">
           {/* Project and Location Selection */}
@@ -592,6 +592,7 @@ export default function LocationManagement() {
           </Form>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }

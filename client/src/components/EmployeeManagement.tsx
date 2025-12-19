@@ -553,8 +553,8 @@ export default function EmployeeManagement() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Employee Management</h2>
@@ -947,6 +947,7 @@ export default function EmployeeManagement() {
           </div>
         </div>
       </header>
+      <div className="flex-1 overflow-y-auto">
       {/* Create User Dialog */}
       <Dialog open={isCreateUserOpen} onOpenChange={(open) => {
         if (!open) {
@@ -1261,6 +1262,7 @@ export default function EmployeeManagement() {
           </Card>
         )}
       </main>
+      </div>
       {/* Delete Employee Confirmation Dialog */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>

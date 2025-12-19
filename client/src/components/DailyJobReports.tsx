@@ -351,22 +351,25 @@ export default function DailyJobReports() {
   };
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
-      {/* Breadcrumb */}
-      <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-        <Link href="/">
-          <span className="flex items-center hover:text-gray-900 cursor-pointer">
-            <Home className="w-4 h-4" />
+    <div className="flex flex-col h-full">
+      <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4">
+        {/* Breadcrumb */}
+        <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
+          <Link href="/">
+            <span className="flex items-center hover:text-gray-900 cursor-pointer">
+              <Home className="w-4 h-4" />
+            </span>
+          </Link>
+          <span>/</span>
+          <span className="flex items-center gap-1 font-medium text-gray-900">
+            <ClipboardList className="w-4 h-4" />
+            Daily Job Reports
           </span>
-        </Link>
-        <span>/</span>
-        <span className="flex items-center gap-1 font-medium text-gray-900">
-          <ClipboardList className="w-4 h-4" />
-          Daily Job Reports
-        </span>
-      </nav>
-
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Daily Job Reports</h1>
+        </nav>
+        <h2 className="text-2xl font-bold text-gray-800">Daily Job Reports</h2>
+        <p className="text-gray-600 mt-1">Track and submit daily work reports</p>
+      </header>
+      <div className="flex-1 overflow-y-auto p-6">
 
       <Card>
         <CardHeader>
@@ -717,6 +720,7 @@ export default function DailyJobReports() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
