@@ -5,17 +5,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calculator, ChevronDown, ChevronRight, Upload, Download, Home, FolderOpen, DollarSign, FileSpreadsheet } from "lucide-react";
 import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData } from "@/lib/budgetTemplateUtils";
 import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
+const EXAMPLE_BUDGET_DATA = [
+  {lineItemNumber:"1",description:"Mobilization per General Requirements",unit:"LS",qty:"1",unitCost:"$15,000",unitTotal:"$15,000",costCode:"Mobilization",convUnit:"LS",convQty:"1",px:"1",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:"$15,000"},
+  {lineItemNumber:"2",description:"Allowance for Differing Site Conditions",unit:"LS",qty:"1",unitCost:"$10,000",unitTotal:"$10,000",costCode:"Allowance",convUnit:"LS",convQty:"1",px:"-",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:"$10,000"},
+  {lineItemNumber:"5",description:"Traffic Control",unit:"LS",qty:"1",unitCost:"$70,000",unitTotal:"$70,000",costCode:"Traffic Control",convUnit:"LS",convQty:"4",px:"-",hours:"192",laborCost:"$15,360",equipment:"",trucking:"",dumpFees:"",material:"$15,000",sub:"",budget:"$30,360",billing:"$70,000"},
+  {lineItemNumber:"6",description:"Clearing and Grubbing",unit:"LS",qty:"1",unitCost:"$15,000",unitTotal:"$15,000",costCode:"Demo/Ex",convUnit:"LS",convQty:"1",px:"1",hours:"1",laborCost:"$800",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"$800",billing:"$15,000"},
+  {lineItemNumber:"15",description:"Unclassified Excavation",unit:"CY",qty:"3,500",unitCost:"$20",unitTotal:"$70,000",costCode:"Demo/Ex",convUnit:"CY",convQty:"3,500",px:"10",hours:"350",laborCost:"$28,000",equipment:"",trucking:"$12,250",dumpFees:"$12,250",material:"",sub:"",budget:"$52,500",billing:"$70,000"},
+  {lineItemNumber:"15.1",description:"Concrete Curb Type A",unit:"LF",qty:"79",unitCost:"-",unitTotal:"-",costCode:"Demo/Ex",convUnit:"CY",convQty:"1.46",px:"6",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:""},
+  {lineItemNumber:"15.2",description:"Concrete Integral Curb and Gutter",unit:"LF",qty:"317",unitCost:"-",unitTotal:"-",costCode:"Demo/Ex",convUnit:"CY",convQty:"45.29",px:"6",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:""},
+  {lineItemNumber:"19",description:"Concrete Curb Type A",unit:"LF",qty:"79",unitCost:"$80",unitTotal:"$6,320",costCode:"Concrete",convUnit:"CY",convQty:"1.46",px:"6",hours:"9",laborCost:"$711.43",equipment:"",trucking:"",dumpFees:"",material:"$329.17",sub:"",budget:"$1,040.60",billing:"$6,320"},
+  {lineItemNumber:"25",description:"Asphalt Concrete Pavement",unit:"TON",qty:"158",unitCost:"$400",unitTotal:"$63,200",costCode:"Asphalt",convUnit:"TON",convQty:"158",px:"1",hours:"158",laborCost:"$14,220",equipment:"",trucking:"",dumpFees:"",material:"$15,010",sub:"",budget:"$29,230",billing:"$63,200"},
+  {lineItemNumber:"25.1",description:"Asphalt Concrete Pavement",unit:"SF",qty:"4,161",unitCost:"-",unitTotal:"-",costCode:"Asphalt",convUnit:"TON",convQty:"154.09",px:"1",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:""},
+  {lineItemNumber:"26",description:"Crushed Miscellaneous Base",unit:"CY",qty:"101.34",unitCost:"$250",unitTotal:"$36,250",costCode:"Base/Grading",convUnit:"CY",convQty:"101.34",px:"1",hours:"145",laborCost:"$13,050",equipment:"",trucking:"",dumpFees:"",material:"$10,134",sub:"",budget:"$23,184",billing:"$36,250"},
+  {lineItemNumber:"26.1",description:"Concrete Curb Type A",unit:"LF",qty:"79",unitCost:"-",unitTotal:"-",costCode:"Base/Grading",convUnit:"CY",convQty:"1.46",px:"1",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:""},
+  {lineItemNumber:"28",description:"Pedestrian Barricade",unit:"EA",qty:"3",unitCost:"$2,500",unitTotal:"$7,500",costCode:"Sub",convUnit:"EA",convQty:"3",px:"-",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"$6,375",budget:"$6,375",billing:"$7,500"},
+  {lineItemNumber:"34",description:"Signage and Striping",unit:"LS",qty:"1",unitCost:"$18,000",unitTotal:"$18,000",costCode:"Sub",convUnit:"LS",convQty:"1",px:"-",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"$15,300",budget:"$15,300",billing:"$18,000"},
+];
+
 export default function ProjectBudgets() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [costCodeFilter, setCostCodeFilter] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
+  const [showBudgetUploadDialog, setShowBudgetUploadDialog] = useState(false);
+  const [showExampleBudgetDialog, setShowExampleBudgetDialog] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -283,21 +303,13 @@ export default function ProjectBudgets() {
                   variant="outline" 
                   size="sm" 
                   className="flex items-center gap-2"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setShowBudgetUploadDialog(true)}
                   disabled={isUploading}
                   data-testid="button-upload-master-budget"
                 >
                   <Upload className="w-4 h-4" />
                   {isUploading ? "Uploading..." : "Upload Budget"}
                 </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  data-testid="input-budget-file"
-                />
               </div>
             </div>
           </CardHeader>
@@ -456,6 +468,202 @@ export default function ProjectBudgets() {
           </CardContent>
         </Card>
       )}
+
+      {/* Upload Master Budget Dialog */}
+      <Dialog open={showBudgetUploadDialog} onOpenChange={setShowBudgetUploadDialog}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Upload Master Budget</DialogTitle>
+            <DialogDescription>
+              Upload an Excel file containing the project's master budget. This will be
+              used as the source for location budgets. The file should follow the SW62
+              Excel format (21 columns).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <FileSpreadsheet className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+              <p className="text-gray-600 text-sm mb-3">
+                Click the button below to select an Excel file
+              </p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  variant="outline"
+                  onClick={() => downloadBudgetTemplate()}
+                  data-testid="button-download-template-dialog"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Template
+                </Button>
+                <Button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  data-testid="button-select-excel-file"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {isUploading ? "Uploading..." : "Select Excel File"}
+                </Button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  data-testid="input-budget-file"
+                />
+              </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExampleBudgetDialog(true)}
+                data-testid="button-view-example-budget"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                View Example Master Budget
+              </Button>
+            </div>
+
+            <div className="max-h-64 overflow-y-auto border rounded-lg">
+              <div className="bg-blue-50 border-b border-blue-200 p-3">
+                <h4 className="font-semibold text-blue-800 mb-2 text-sm">Reminders</h4>
+                <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                  <li>
+                    Break down line items where vague:
+                    <table className="mt-1 text-xs border border-blue-300 rounded">
+                      <thead>
+                        <tr className="bg-blue-100">
+                          <th className="px-1 py-0.5 border-r border-blue-300 text-left">Line Item</th>
+                          <th className="px-1 py-0.5 border-r border-blue-300 text-left">Description</th>
+                          <th className="px-1 py-0.5 text-left">Unit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="bg-amber-50">
+                          <td className="px-1 py-0.5 border-r border-blue-300 font-medium">26</td>
+                          <td className="px-1 py-0.5 border-r border-blue-300">Crushed Miscellaneous Base</td>
+                          <td className="px-1 py-0.5">CY</td>
+                        </tr>
+                        <tr>
+                          <td className="px-1 py-0.5 border-r border-blue-300">26.1</td>
+                          <td className="px-1 py-0.5 border-r border-blue-300">Concrete Curb Type A</td>
+                          <td className="px-1 py-0.5">LF</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </li>
+                  <li>Ensure cost codes are assigned to each line item</li>
+                  <li>Review quantities and units before uploading</li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 p-3">
+                <h4 className="font-semibold text-gray-900 mb-2 text-sm">Format Requirements</h4>
+                <div className="space-y-1 text-xs">
+                  {FORMAT_REQUIREMENTS.map((req, idx) => (
+                    <div key={idx}>
+                      <p className="font-medium text-gray-700">{req.title}:</p>
+                      <ul className="text-gray-600 ml-3 list-disc">
+                        {req.items.map((item, itemIdx) => (
+                          <li key={itemIdx}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {(budgetItems as any[]).length > 0 && (
+              <p className="text-sm text-amber-600">
+                Note: Uploading a new budget will replace the existing {(budgetItems as any[]).length} items.
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowBudgetUploadDialog(false)}
+              disabled={isUploading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Example Budget Dialog */}
+      <Dialog open={showExampleBudgetDialog} onOpenChange={setShowExampleBudgetDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle>Example Master Budget</DialogTitle>
+            <DialogDescription>
+              This is an example of a properly formatted master budget file with 62 line items.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh]">
+            <table className="w-full min-w-[2000px] text-xs border-collapse">
+              <thead className="bg-gray-100 sticky top-0">
+                <tr>
+                  <th className="px-2 py-1 border text-left font-medium">Line Item</th>
+                  <th className="px-2 py-1 border text-left font-medium min-w-40">Description</th>
+                  <th className="px-2 py-1 border text-left font-medium">Unit</th>
+                  <th className="px-2 py-1 border text-right font-medium">Qty</th>
+                  <th className="px-2 py-1 border text-right font-medium">Unit Cost</th>
+                  <th className="px-2 py-1 border text-right font-medium">Unit Total</th>
+                  <th className="px-2 py-1 border text-left font-medium">Cost Code</th>
+                  <th className="px-2 py-1 border text-left font-medium">Conv. Unit</th>
+                  <th className="px-2 py-1 border text-right font-medium">Conv. Qty</th>
+                  <th className="px-2 py-1 border text-right font-medium">PX</th>
+                  <th className="px-2 py-1 border text-right font-medium">Hours</th>
+                  <th className="px-2 py-1 border text-right font-medium">Labor Cost</th>
+                  <th className="px-2 py-1 border text-right font-medium">Equipment</th>
+                  <th className="px-2 py-1 border text-right font-medium">Trucking</th>
+                  <th className="px-2 py-1 border text-right font-medium">Dump Fees</th>
+                  <th className="px-2 py-1 border text-right font-medium">Material</th>
+                  <th className="px-2 py-1 border text-right font-medium">Sub</th>
+                  <th className="px-2 py-1 border text-right font-medium">Budget</th>
+                  <th className="px-2 py-1 border text-right font-medium">Billing</th>
+                </tr>
+              </thead>
+              <tbody>
+                {EXAMPLE_BUDGET_DATA.map((row, idx) => {
+                  const isParent = !row.lineItemNumber.includes('.');
+                  return (
+                    <tr key={idx} className={isParent ? 'bg-amber-50 font-medium' : 'bg-white'}>
+                      <td className="px-2 py-1 border">{row.lineItemNumber}</td>
+                      <td className="px-2 py-1 border">{row.description}</td>
+                      <td className="px-2 py-1 border">{row.unit}</td>
+                      <td className="px-2 py-1 border text-right">{row.qty}</td>
+                      <td className="px-2 py-1 border text-right">{row.unitCost}</td>
+                      <td className="px-2 py-1 border text-right">{row.unitTotal}</td>
+                      <td className="px-2 py-1 border">{row.costCode}</td>
+                      <td className="px-2 py-1 border">{row.convUnit}</td>
+                      <td className="px-2 py-1 border text-right">{row.convQty}</td>
+                      <td className="px-2 py-1 border text-right">{row.px}</td>
+                      <td className="px-2 py-1 border text-right">{row.hours}</td>
+                      <td className="px-2 py-1 border text-right">{row.laborCost}</td>
+                      <td className="px-2 py-1 border text-right">{row.equipment}</td>
+                      <td className="px-2 py-1 border text-right">{row.trucking}</td>
+                      <td className="px-2 py-1 border text-right">{row.dumpFees}</td>
+                      <td className="px-2 py-1 border text-right">{row.material}</td>
+                      <td className="px-2 py-1 border text-right">{row.sub}</td>
+                      <td className="px-2 py-1 border text-right">{row.budget}</td>
+                      <td className="px-2 py-1 border text-right">{row.billing}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setShowExampleBudgetDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
