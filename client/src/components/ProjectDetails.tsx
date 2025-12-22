@@ -45,6 +45,12 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [expandedErrorGroups, setExpandedErrorGroups] = useState<Set<string>>(new Set());
   const [showExampleBudgetDialog, setShowExampleBudgetDialog] = useState(false);
+  const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
+  const [editProjectName, setEditProjectName] = useState("");
+  const [editProjectId, setEditProjectId] = useState("");
+  const [editProjectAddress, setEditProjectAddress] = useState("");
+  const [editProjectStartDate, setEditProjectStartDate] = useState("");
+  const [editProjectEndDate, setEditProjectEndDate] = useState("");
   const { toast } = useToast();
 
   const toggleGroupCollapse = (lineItemNumber: string) => {
@@ -317,6 +323,52 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     },
   });
 
+  // Update project mutation
+  const updateProjectMutation = useMutation({
+    mutationFn: (data: any) =>
+      apiRequest(`/api/projects/${projectId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      setShowEditProjectDialog(false);
+      toast({
+        title: "Project updated",
+        description: "Project has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update project",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditProject = () => {
+    if (project) {
+      setEditProjectName(project.name || "");
+      setEditProjectId(project.projectId || "");
+      setEditProjectAddress(project.address || "");
+      setEditProjectStartDate(project.startDate || "");
+      setEditProjectEndDate(project.endDate || "");
+      setShowEditProjectDialog(true);
+    }
+  };
+
+  const handleSaveProject = () => {
+    updateProjectMutation.mutate({
+      name: editProjectName,
+      projectId: editProjectId,
+      address: editProjectAddress,
+      startDate: editProjectStartDate || null,
+      endDate: editProjectEndDate || null,
+    });
+  };
+
   const handleEditLocation = (location: any) => {
     setEditingLocation(location);
     setNewLocationName(location.name);
@@ -574,10 +626,21 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         {/* Project Overview */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Project Overview
-              <Badge variant="outline">{project.projectId}</Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                Project Overview
+                <Badge variant="outline">{project.projectId}</Badge>
+              </CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditProject}
+                data-testid="button-edit-project"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Project
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1077,6 +1140,83 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Edit Project Dialog */}
+        <Dialog open={showEditProjectDialog} onOpenChange={(open) => {
+          if (!open) {
+            setShowEditProjectDialog(false);
+          }
+        }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Project</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="editProjectId">Project ID</Label>
+                <Input
+                  id="editProjectId"
+                  placeholder="Enter project ID"
+                  value={editProjectId}
+                  onChange={(e) => setEditProjectId(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editProjectName">Project Name</Label>
+                <Input
+                  id="editProjectName"
+                  placeholder="Enter project name"
+                  value={editProjectName}
+                  onChange={(e) => setEditProjectName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editProjectAddress">Address</Label>
+                <Input
+                  id="editProjectAddress"
+                  placeholder="Enter project address"
+                  value={editProjectAddress}
+                  onChange={(e) => setEditProjectAddress(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editProjectStartDate">Start Date</Label>
+                  <Input
+                    id="editProjectStartDate"
+                    type="date"
+                    value={editProjectStartDate}
+                    onChange={(e) => setEditProjectStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editProjectEndDate">End Date</Label>
+                  <Input
+                    id="editProjectEndDate"
+                    type="date"
+                    value={editProjectEndDate}
+                    onChange={(e) => setEditProjectEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowEditProjectDialog(false)}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveProject}
+                  disabled={updateProjectMutation.isPending}
+                >
+                  {updateProjectMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Budget Upload Dialog */}
         <Dialog open={showBudgetUploadDialog} onOpenChange={(open) => { setShowBudgetUploadDialog(open); if (!open) { setValidationResult(null); setExpandedErrorGroups(new Set()); } }}>
