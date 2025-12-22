@@ -54,8 +54,8 @@ const costCodes = [
   "PUNCHLIST GENERAL LABOR"
 ];
 
-// Unit of measure options for quantity tracking
-const unitOfMeasureOptions = [
+// Default unit of measure options (fallback if no budget items)
+const defaultUnitOfMeasureOptions = [
   { value: "CY", label: "CY (Cubic Yards)" },
   { value: "Ton", label: "Ton" },
   { value: "LF", label: "LF (Linear Feet)" },
@@ -123,6 +123,66 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     enabled: isOpen,
     staleTime: 30000,
   });
+
+  // Fetch location budget items to filter unit of measure options by cost code
+  const { data: locationBudgetItems = [] } = useQuery({
+    queryKey: ["/api/locations", task?.locationId, "budget"],
+    enabled: !!task?.locationId && isOpen,
+    staleTime: 30000,
+  });
+
+  // Get unit of measure options filtered by cost code from location budget
+  const getFilteredUnitOfMeasureOptions = () => {
+    if (!task?.costCode || locationBudgetItems.length === 0) {
+      return defaultUnitOfMeasureOptions;
+    }
+
+    // Filter budget items by the task's cost code
+    const matchingItems = locationBudgetItems.filter((item: any) => {
+      // Handle combined cost codes like "Demo/Ex + Base/Grading"
+      const itemCostCode = (item.costCode || '').toUpperCase().replace(/\s+/g, '');
+      const taskCostCode = (task.costCode || '').toUpperCase().replace(/\s+/g, '');
+      
+      // Direct match
+      if (itemCostCode === taskCostCode) return true;
+      
+      // Handle combined "Demo/Ex + Base/Grading" matching "DEMO/EX" or "BASE/GRADING"
+      if (taskCostCode === 'DEMO/EX+BASE/GRADING') {
+        return itemCostCode === 'DEMO/EX' || 
+               itemCostCode === 'BASE/GRADING' ||
+               itemCostCode === 'DEMO/EX+BASE/GRADING';
+      }
+      
+      return false;
+    });
+
+    if (matchingItems.length === 0) {
+      return defaultUnitOfMeasureOptions;
+    }
+
+    // Extract unique unit of measure values from matching budget items
+    const uniqueUnits = new Set<string>();
+    matchingItems.forEach((item: any) => {
+      if (item.unconvertedUnitOfMeasure) {
+        uniqueUnits.add(item.unconvertedUnitOfMeasure);
+      }
+      if (item.convertedUnitOfMeasure) {
+        uniqueUnits.add(item.convertedUnitOfMeasure);
+      }
+    });
+
+    if (uniqueUnits.size === 0) {
+      return defaultUnitOfMeasureOptions;
+    }
+
+    // Convert to options format
+    return Array.from(uniqueUnits).sort().map(unit => ({
+      value: unit,
+      label: unit,
+    }));
+  };
+
+  const unitOfMeasureOptions = getFilteredUnitOfMeasureOptions();
 
   // Filter assignments for the current task
   const taskAssignments = allAssignments.filter((assignment: any) => 
