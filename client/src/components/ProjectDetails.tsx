@@ -1059,7 +1059,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="locationName">Location Name</Label>
+                <Label htmlFor="locationName">Location Name *</Label>
                 <Input
                   id="locationName"
                   placeholder="Enter location name"
