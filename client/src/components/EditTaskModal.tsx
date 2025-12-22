@@ -2496,7 +2496,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 .filter((item: any) => !selectedIds.includes(item.id))
                                 .map((item: any) => (
                                   <SelectItem key={item.id} value={item.id.toString()}>
-                                    {item.lineItemName || item.description || 'Unknown'} ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
+                                    {item.lineItemNumber} - {item.lineItemName || item.description || 'Unknown'} ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
                                   </SelectItem>
                                 ))}
                             </SelectContent>
@@ -2511,6 +2511,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                                 return (
                                   <div key={liq.budgetLineItemId} className="flex items-center gap-2">
                                     <div className="flex-1 text-sm">
+                                      <span className="text-gray-600 mr-1">{item.lineItemNumber} -</span>
                                       <span className="font-medium">{item.lineItemName || item.description || 'Unknown'}</span>
                                       <span className="text-gray-500 ml-2">
                                         ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
