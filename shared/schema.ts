@@ -151,6 +151,8 @@ export const tasks = pgTable("tasks", {
   linkedTaskGroup: text("linked_task_group"), // Tasks with same group ID occur on same date
   qty: decimal("qty", { precision: 10, scale: 2 }), // Quantity for cost code tracking
   unitOfMeasure: text("unit_of_measure"), // CY, Ton, LF, SF, Hours
+  useLineItemQuantities: boolean("use_line_item_quantities").default(false), // Toggle for line item qty method
+  lineItemQuantities: jsonb("line_item_quantities").default([]), // Array of {budgetLineItemId, qty}
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
@@ -339,7 +341,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
     z.null(),
     z.undefined()
   ]).optional(),
-  unitOfMeasure: z.string().optional().nullable()
+  unitOfMeasure: z.string().optional().nullable(),
+  useLineItemQuantities: z.boolean().optional().default(false),
+  lineItemQuantities: z.array(z.object({
+    budgetLineItemId: z.number(),
+    qty: z.string()
+  })).optional().default([])
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true }).extend({
   assignmentId: z.string().optional(),
