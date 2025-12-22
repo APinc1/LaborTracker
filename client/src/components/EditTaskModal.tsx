@@ -2476,6 +2476,52 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   // Get item details by ID
                   const getItemById = (id: number) => matchingBudgetItems.find((item: any) => item.id === id);
 
+                  // Determine parent items - items that have children with matching prefix
+                  const getParentNumber = (lineItemNumber: string) => {
+                    const parts = lineItemNumber.split('.');
+                    return parts.length > 1 ? parts[0] : null;
+                  };
+                  
+                  // Find all parent line item numbers (items that have children)
+                  const childParentNumbers = new Set<string>();
+                  matchingBudgetItems.forEach((item: any) => {
+                    const parentNum = getParentNumber(item.lineItemNumber);
+                    if (parentNum) {
+                      childParentNumbers.add(parentNum);
+                    }
+                  });
+                  
+                  // Check if an item is a parent (has children or is marked as isGroup)
+                  const isParentItem = (item: any) => {
+                    // Check if this item's lineItemNumber is a parent of other items
+                    const itemNum = item.lineItemNumber;
+                    // It's a parent if: it has no dot AND there are items with this number as prefix
+                    if (!itemNum.includes('.') && childParentNumbers.has(itemNum)) {
+                      return true;
+                    }
+                    // Also check isGroup flag if present
+                    if (item.isGroup) {
+                      return true;
+                    }
+                    return false;
+                  };
+                  
+                  // Sort items by lineItemNumber for proper display
+                  const sortedItems = [...matchingBudgetItems].sort((a: any, b: any) => {
+                    const aNum = a.lineItemNumber;
+                    const bNum = b.lineItemNumber;
+                    // Parse as numbers or keep as strings for comparison
+                    const aParts = aNum.split('.').map((p: string) => parseFloat(p) || p);
+                    const bParts = bNum.split('.').map((p: string) => parseFloat(p) || p);
+                    for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+                      const aVal = aParts[i] ?? 0;
+                      const bVal = bParts[i] ?? 0;
+                      if (aVal < bVal) return -1;
+                      if (aVal > bVal) return 1;
+                    }
+                    return 0;
+                  });
+
                   return (
                     <FormItem className="space-y-3">
                       <FormLabel>Budget Line Items</FormLabel>
@@ -2492,13 +2538,31 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                               <SelectValue placeholder="Add a budget line item..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {matchingBudgetItems
+                              {sortedItems
                                 .filter((item: any) => !selectedIds.includes(item.id))
-                                .map((item: any) => (
-                                  <SelectItem key={item.id} value={item.id.toString()}>
-                                    {item.lineItemNumber} - {item.lineItemName || item.description || 'Unknown'} ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
-                                  </SelectItem>
-                                ))}
+                                .map((item: any) => {
+                                  const isParent = isParentItem(item);
+                                  if (isParent) {
+                                    // Parent items shown as disabled headers
+                                    return (
+                                      <SelectItem 
+                                        key={item.id} 
+                                        value={item.id.toString()} 
+                                        disabled
+                                        className="font-semibold bg-gray-100 text-gray-700"
+                                      >
+                                        {item.lineItemNumber} - {item.lineItemName || item.description || 'Unknown'}
+                                      </SelectItem>
+                                    );
+                                  }
+                                  // Selectable items (children or standalone)
+                                  const isChild = item.lineItemNumber.includes('.');
+                                  return (
+                                    <SelectItem key={item.id} value={item.id.toString()} className={isChild ? "pl-6" : ""}>
+                                      {item.lineItemNumber} - {item.lineItemName || item.description || 'Unknown'} ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
+                                    </SelectItem>
+                                  );
+                                })}
                             </SelectContent>
                           </Select>
 

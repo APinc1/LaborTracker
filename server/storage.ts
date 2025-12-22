@@ -1955,7 +1955,9 @@ class DatabaseStorage implements IStorage {
       dependentOnPrevious: tasks.dependentOnPrevious,
       linkedTaskGroup: tasks.linkedTaskGroup,
       qty: tasks.qty,
-      unitOfMeasure: tasks.unitOfMeasure
+      unitOfMeasure: tasks.unitOfMeasure,
+      useLineItemQuantities: tasks.useLineItemQuantities,
+      lineItemQuantities: tasks.lineItemQuantities
     }).from(tasks)
       .where(whereCondition)
       .orderBy(tasks.order) // Remove ::numeric cast for better performance
