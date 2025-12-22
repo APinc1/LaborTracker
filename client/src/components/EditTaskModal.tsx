@@ -63,6 +63,12 @@ const defaultUnitOfMeasureOptions = [
   { value: "Hours", label: "Hours" },
 ];
 
+// Line item quantity entry type
+interface LineItemQuantity {
+  budgetLineItemId: number;
+  qty: string;
+}
+
 // Simplified schema for editing only the editable fields
 const editTaskSchema = z.object({
   name: z.string().min(1, "Task name is required"),
@@ -77,6 +83,11 @@ const editTaskSchema = z.object({
   linkedTaskIds: z.array(z.string()).optional(),
   qty: z.string().optional(),
   unitOfMeasure: z.string().optional(),
+  useLineItemQuantities: z.boolean().default(false),
+  lineItemQuantities: z.array(z.object({
+    budgetLineItemId: z.number(),
+    qty: z.string()
+  })).optional().default([]),
 }).refine((data) => {
   // If linking is enabled, linkedTaskIds must have at least one item
   if (data.linkToExistingTask && (!data.linkedTaskIds || data.linkedTaskIds.length === 0)) {
@@ -118,14 +129,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   });
 
   // Fetch assignments to check task completion status
-  const { data: allAssignments = [] } = useQuery({
+  const { data: allAssignments = [] } = useQuery<any[]>({
     queryKey: ["/api/assignments"],
     enabled: isOpen,
     staleTime: 30000,
   });
 
   // Fetch location budget items to filter unit of measure options by cost code
-  const { data: locationBudgetItems = [] } = useQuery({
+  const { data: locationBudgetItems = [] } = useQuery<any[]>({
     queryKey: ["/api/locations", task?.locationId, "budget"],
     enabled: !!task?.locationId && isOpen,
     staleTime: 30000,
@@ -243,6 +254,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
       linkedTaskIds: [],
       qty: "",
       unitOfMeasure: "",
+      useLineItemQuantities: false,
+      lineItemQuantities: [] as LineItemQuantity[],
     },
   });
 
@@ -286,6 +299,8 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         linkedTaskIds: currentLinkedTasks.map((t: any) => (t.taskId || t.id?.toString())),
         qty: task.qty || "",
         unitOfMeasure: task.unitOfMeasure || "",
+        useLineItemQuantities: task.useLineItemQuantities ?? false,
+        lineItemQuantities: (task.lineItemQuantities || []) as LineItemQuantity[],
       });
     }
   }, [task, form, existingTasks]);
@@ -2326,56 +2341,221 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               <p className="text-xs text-gray-500">Assigned based on task type</p>
             </div>
 
-            {/* Quantity and Unit of Measure */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="qty"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Quantity</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="Enter quantity"
-                        {...field} 
-                        data-testid="input-qty"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="unitOfMeasure"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit of Measure</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      value={field.value || ""}
+            {/* Quantity Tracking Method Toggle */}
+            <FormField
+              control={form.control}
+              name="useLineItemQuantities"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel>Quantity Tracking Method</FormLabel>
+                  <div className="flex items-center gap-4">
+                    <Button
+                      type="button"
+                      variant={!field.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => field.onChange(false)}
+                      data-testid="btn-single-qty"
                     >
+                      Single Quantity
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={field.value ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => field.onChange(true)}
+                      data-testid="btn-line-item-qty"
+                    >
+                      Line Item Quantities
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    {field.value 
+                      ? "Track quantities for specific budget line items" 
+                      : "Track a single quantity for this task"}
+                  </p>
+                </FormItem>
+              )}
+            />
+
+            {/* Single Quantity Mode */}
+            {!form.watch("useLineItemQuantities") && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="qty"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantity</FormLabel>
                       <FormControl>
-                        <SelectTrigger data-testid="select-unit-of-measure">
-                          <SelectValue placeholder="Select unit" />
-                        </SelectTrigger>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="Enter quantity"
+                          {...field} 
+                          data-testid="input-qty"
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {unitOfMeasureOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unitOfMeasure"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit of Measure</FormLabel>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value || ""}
+                      >
+                        <FormControl>
+                          <SelectTrigger data-testid="select-unit-of-measure">
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {unitOfMeasureOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {/* Line Item Quantities Mode */}
+            {form.watch("useLineItemQuantities") && (
+              <FormField
+                control={form.control}
+                name="lineItemQuantities"
+                render={({ field }) => {
+                  // Get budget items matching this task's cost code
+                  const matchingBudgetItems = locationBudgetItems.filter((item: any) => {
+                    const itemCostCode = (item.costCode || '').toUpperCase().replace(/\s+/g, '');
+                    const taskCostCode = (task?.costCode || '').toUpperCase().replace(/\s+/g, '');
+                    if (itemCostCode === taskCostCode) return true;
+                    if (taskCostCode === 'DEMO/EX+BASE/GRADING') {
+                      return itemCostCode === 'DEMO/EX' || 
+                             itemCostCode === 'BASE/GRADING' ||
+                             itemCostCode === 'DEMO/EX+BASE/GRADING';
+                    }
+                    return false;
+                  });
+
+                  // Get selected line item IDs
+                  const selectedIds = (field.value || []).map((liq: LineItemQuantity) => liq.budgetLineItemId);
+
+                  // Handle adding a line item
+                  const addLineItem = (itemId: number) => {
+                    if (!selectedIds.includes(itemId)) {
+                      field.onChange([...field.value || [], { budgetLineItemId: itemId, qty: "" }]);
+                    }
+                  };
+
+                  // Handle removing a line item
+                  const removeLineItem = (itemId: number) => {
+                    field.onChange((field.value || []).filter((liq: LineItemQuantity) => liq.budgetLineItemId !== itemId));
+                  };
+
+                  // Handle updating quantity for a line item
+                  const updateLineItemQty = (itemId: number, qty: string) => {
+                    field.onChange(
+                      (field.value || []).map((liq: LineItemQuantity) => 
+                        liq.budgetLineItemId === itemId ? { ...liq, qty } : liq
+                      )
+                    );
+                  };
+
+                  // Get item details by ID
+                  const getItemById = (id: number) => matchingBudgetItems.find((item: any) => item.id === id);
+
+                  return (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Budget Line Items</FormLabel>
+                      
+                      {/* Available line items to add */}
+                      {matchingBudgetItems.length > 0 ? (
+                        <div className="space-y-3">
+                          {/* Dropdown to select line items */}
+                          <Select
+                            onValueChange={(val) => addLineItem(parseInt(val))}
+                            value=""
+                          >
+                            <SelectTrigger data-testid="select-add-line-item">
+                              <SelectValue placeholder="Add a budget line item..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {matchingBudgetItems
+                                .filter((item: any) => !selectedIds.includes(item.id))
+                                .map((item: any) => (
+                                  <SelectItem key={item.id} value={item.id.toString()}>
+                                    {item.description} ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* Selected line items with qty inputs */}
+                          {(field.value || []).length > 0 && (
+                            <div className="space-y-2 border rounded-md p-3 bg-gray-50">
+                              {(field.value || []).map((liq: LineItemQuantity) => {
+                                const item = getItemById(liq.budgetLineItemId);
+                                if (!item) return null;
+                                return (
+                                  <div key={liq.budgetLineItemId} className="flex items-center gap-2">
+                                    <div className="flex-1 text-sm">
+                                      <span className="font-medium">{item.description}</span>
+                                      <span className="text-gray-500 ml-2">
+                                        ({item.unconvertedUnitOfMeasure || item.convertedUnitOfMeasure || 'N/A'})
+                                      </span>
+                                    </div>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="Qty"
+                                      value={liq.qty}
+                                      onChange={(e) => updateLineItemQty(liq.budgetLineItemId, e.target.value)}
+                                      className="w-24"
+                                      data-testid={`input-line-item-qty-${liq.budgetLineItemId}`}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeLineItem(liq.budgetLineItemId)}
+                                      data-testid={`btn-remove-line-item-${liq.budgetLineItemId}`}
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {(field.value || []).length === 0 && (
+                            <p className="text-sm text-gray-500">No line items selected. Use the dropdown above to add budget line items.</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-amber-600">
+                          No budget line items found for cost code "{task?.costCode}". 
+                          Please add budget items to this location first.
+                        </p>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
-            </div>
+            )}
 
             {/* Time */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
