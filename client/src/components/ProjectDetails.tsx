@@ -1078,7 +1078,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="locationStartDate">Start Date</Label>
+                  <Label htmlFor="locationStartDate">Start Date *</Label>
                   <Input
                     id="locationStartDate"
                     type="date"
