@@ -22,7 +22,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link, Users } from 'lucide-react';
+import { Calendar, Clock, GripVertical, Edit, CheckCircle, Play, AlertCircle, Trash2, User, Link, Users, FileText, History } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { ForemanSelectionModal } from '@/components/ForemanSelectionModal';
 import { useForemanLogic } from '@/hooks/useForemanLogic';
@@ -47,6 +47,8 @@ interface DraggableTaskListProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   onTaskUpdate: () => void;
+  onDailyJobReport?: (task: any) => void;
+  onEditHistory?: (task: any) => void;
   assignments?: any[];
   employees?: any[];
   users?: any[];
@@ -60,6 +62,8 @@ interface SortableTaskItemProps {
   onDeleteTask: (task: any) => void;
   onAssignTask?: (task: any) => void;
   onActualHoursClick?: (task: any) => void;
+  onDailyJobReport?: (task: any) => void;
+  onEditHistory?: (task: any) => void;
   onTaskUpdate?: () => void;
   employees: any[];
   assignments: any[];
@@ -119,7 +123,7 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
 };
 
 // Individual sortable task item component
-function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, onActualHoursClick, onTaskUpdate, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
+function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask, onActualHoursClick, onDailyJobReport, onEditHistory, onTaskUpdate, employees, assignments, users, remainingHours, remainingHoursColor }: SortableTaskItemProps) {
   // Disable drag and drop for completed tasks
   const isTaskComplete = getTaskStatus(task, assignments) === 'complete';
   
@@ -466,6 +470,30 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   <Clock className="w-3 h-3" />
                 </Button>
               )}
+              {onDailyJobReport && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDailyJobReport(task)}
+                  className="h-8 w-8 p-0 text-purple-600 hover:text-purple-700"
+                  title="Daily Job Report"
+                  data-testid={`button-djr-${task.id}`}
+                >
+                  <FileText className="w-3 h-3" />
+                </Button>
+              )}
+              {onEditHistory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEditHistory(task)}
+                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                  title="Edit History"
+                  data-testid={`button-edit-history-${task.id}`}
+                >
+                  <History className="w-3 h-3" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="sm"
@@ -500,6 +528,8 @@ export default function DraggableTaskList({
   onDeleteTask,
   onAssignTask,
   onTaskUpdate,
+  onDailyJobReport,
+  onEditHistory,
   assignments = [],
   employees = [],
   users = [],
@@ -1450,6 +1480,8 @@ export default function DraggableTaskList({
                 onDeleteTask={onDeleteTask}
                 onAssignTask={onAssignTask}
                 onActualHoursClick={handleActualHoursClick}
+                onDailyJobReport={onDailyJobReport}
+                onEditHistory={onEditHistory}
                 onTaskUpdate={onTaskUpdate || (() => {})}
                 employees={employees as any[]}
                 assignments={assignments as any[]}

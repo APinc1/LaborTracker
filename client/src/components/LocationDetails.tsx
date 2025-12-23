@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2, FileText, History } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -71,6 +71,10 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<any>(null);
   const [deleteAllTasksOpen, setDeleteAllTasksOpen] = useState(false);
   const [isDeletingAllTasks, setIsDeletingAllTasks] = useState(false);
+  const [djrModalOpen, setDjrModalOpen] = useState(false);
+  const [selectedTaskForDjr, setSelectedTaskForDjr] = useState<any>(null);
+  const [editHistoryModalOpen, setEditHistoryModalOpen] = useState(false);
+  const [selectedTaskForEditHistory, setSelectedTaskForEditHistory] = useState<any>(null);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -87,6 +91,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const handleAssignTaskClick = (task: any) => {
     setSelectedTaskForAssignment(task);
     setAssignmentModalOpen(true);
+  };
+
+  const handleDailyJobReport = (task: any) => {
+    setSelectedTaskForDjr(task);
+    setDjrModalOpen(true);
+  };
+
+  const handleEditHistory = (task: any) => {
+    setSelectedTaskForEditHistory(task);
+    setEditHistoryModalOpen(true);
   };
 
   // Check if Delete All Tasks button should be enabled
@@ -1490,6 +1504,8 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTaskClick}
                 onAssignTask={handleAssignTaskClick}
+                onDailyJobReport={handleDailyJobReport}
+                onEditHistory={handleEditHistory}
                 onTaskUpdate={() => {
                   queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId, "tasks"] });
                 }}
@@ -1843,6 +1859,72 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit History Modal */}
+      <Dialog open={editHistoryModalOpen} onOpenChange={setEditHistoryModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-orange-600" />
+              Edit History - {selectedTaskForEditHistory?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+            {selectedTaskForEditHistory?.editHistory && 
+             Array.isArray(selectedTaskForEditHistory.editHistory) && 
+             selectedTaskForEditHistory.editHistory.length > 0 ? (
+              selectedTaskForEditHistory.editHistory
+                .slice()
+                .reverse()
+                .map((entry: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="font-medium text-sm">{entry.userName}</span>
+                      <span className="text-xs text-gray-500">
+                        {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown date'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700">{entry.changes}</p>
+                  </div>
+                ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <History className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No edit history available</p>
+                <p className="text-sm mt-1">Changes to this task will be tracked here</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setEditHistoryModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Daily Job Report Modal - Placeholder for now */}
+      <Dialog open={djrModalOpen} onOpenChange={setDjrModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-600" />
+              Daily Job Report - {selectedTaskForDjr?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-8 text-center text-gray-500">
+            <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p>Daily Job Report feature coming soon</p>
+            <p className="text-sm mt-1">Task Date: {selectedTaskForDjr?.taskDate}</p>
+            <p className="text-sm">Cost Code: {selectedTaskForDjr?.costCode}</p>
+          </div>
+          <div className="flex justify-end pt-4">
+            <Button variant="outline" onClick={() => setDjrModalOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
