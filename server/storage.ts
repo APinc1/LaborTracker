@@ -2044,7 +2044,7 @@ class DatabaseStorage implements IStorage {
         INSERT INTO tasks (
           location_id, name, "order", start_date, finish_date, task_date,
           task_id, task_type, cost_code, status, dependent_on_previous, scheduled_hours,
-          linked_task_group, work_description, notes
+          linked_task_group, work_description, notes, edit_history
         )
         SELECT
           ${locationId},
@@ -2081,7 +2081,8 @@ class DatabaseStorage implements IStorage {
           ${candidate.scheduledHours},
           ${candidate.linkedTaskGroup},
           ${candidate.workDescription},
-          ${candidate.notes}
+          ${candidate.notes},
+          ${JSON.stringify(candidate.editHistory || [])}::jsonb
         RETURNING id
       )
       SELECT id FROM ins
