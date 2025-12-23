@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
+import { Users, User, Clock, CheckCircle, X, History } from 'lucide-react';
+import EditHistoryModal from './EditHistoryModal';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,6 +38,7 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -484,10 +486,24 @@ export default function EnhancedAssignmentModal({
   };
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[95vh] h-[750px] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Assign Employees to {taskName}</DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle>Assign Employees to {taskName}</DialogTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHistoryModal(true)}
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              title="View Edit History"
+              data-testid="button-view-history"
+            >
+              <History className="h-4 w-4 mr-1" />
+              History
+            </Button>
+          </div>
           <div className="text-sm text-gray-500">
             Date: {taskDate}
             {existingAssignments.length > 0 && (
@@ -1034,5 +1050,15 @@ export default function EnhancedAssignmentModal({
         </div>
       </DialogContent>
     </Dialog>
+    
+    {/* Edit History Modal */}
+    {currentTask && (
+      <EditHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        task={currentTask}
+      />
+    )}
+  </>
   );
 }
