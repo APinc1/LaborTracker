@@ -153,6 +153,7 @@ export const tasks = pgTable("tasks", {
   unitOfMeasure: text("unit_of_measure"), // CY, Ton, LF, SF, Hours
   useLineItemQuantities: boolean("use_line_item_quantities").default(false), // Toggle for line item qty method
   lineItemQuantities: jsonb("line_item_quantities").default([]), // Array of {budgetLineItemId, qty}
+  editHistory: jsonb("edit_history").default([]), // JSON array of edit entries {userId, userName, timestamp, changes}
 });
 
 export const employeeAssignments = pgTable("employee_assignments", {
@@ -346,6 +347,12 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true }).ext
   lineItemQuantities: z.array(z.object({
     budgetLineItemId: z.number(),
     qty: z.string()
+  })).optional().default([]),
+  editHistory: z.array(z.object({
+    userId: z.number().nullable(),
+    userName: z.string(),
+    timestamp: z.string(),
+    changes: z.string()
   })).optional().default([])
 });
 export const insertEmployeeAssignmentSchema = createInsertSchema(employeeAssignments).omit({ id: true }).extend({

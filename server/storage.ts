@@ -1957,7 +1957,8 @@ class DatabaseStorage implements IStorage {
       qty: tasks.qty,
       unitOfMeasure: tasks.unitOfMeasure,
       useLineItemQuantities: tasks.useLineItemQuantities,
-      lineItemQuantities: tasks.lineItemQuantities
+      lineItemQuantities: tasks.lineItemQuantities,
+      editHistory: tasks.editHistory
     }).from(tasks)
       .where(whereCondition)
       .orderBy(tasks.order) // Remove ::numeric cast for better performance
