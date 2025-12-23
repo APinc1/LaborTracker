@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Edit, Save, X } from "lucide-react";
+import { Calendar, Clock, Edit, Loader2, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
@@ -2731,7 +2731,11 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 Cancel
               </Button>
               <Button type="submit" disabled={updateTaskMutation.isPending}>
-                <Save className="w-4 h-4 mr-2" />
+                {updateTaskMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
                 {updateTaskMutation.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
