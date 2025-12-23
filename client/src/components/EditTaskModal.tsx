@@ -309,7 +309,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     mutationFn: async (data: any) => {
       const response = await apiRequest(`/api/tasks/${task.id}`, {
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          editedBy: 'User' // TODO: Replace with actual user name from auth context
+        }),
         headers: { 'Content-Type': 'application/json' }
       });
       return response.json();
@@ -332,11 +335,14 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     mutationFn: async (tasksToUpdate: any[]) => {
       console.log('Batch updating tasks:', tasksToUpdate.map(t => ({ name: t.name, linkedTaskGroup: t.linkedTaskGroup })));
       
-      // Update each task individually
+      // Update each task individually with editedBy
       const promises = tasksToUpdate.map(taskData => 
         apiRequest(`/api/tasks/${taskData.id}`, {
           method: 'PUT',
-          body: JSON.stringify(taskData),
+          body: JSON.stringify({
+            ...taskData,
+            editedBy: 'User' // TODO: Replace with actual user name from auth context
+          }),
           headers: { 'Content-Type': 'application/json' }
         })
       );

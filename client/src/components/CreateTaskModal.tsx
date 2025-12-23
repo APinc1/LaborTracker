@@ -165,7 +165,11 @@ export default function CreateTaskModal({
       console.log('Creating task for location:', locationIdString);
       const createResponse = await apiRequest(`/api/locations/${locationIdString}/tasks`, {
         method: 'POST',
-        body: JSON.stringify(data.newTask),
+        body: JSON.stringify({
+          ...data.newTask,
+          creationSource: 'add_task',
+          createdBy: 'User' // TODO: Replace with actual user name from auth context
+        }),
         headers: { 'Content-Type': 'application/json' }
       });
       

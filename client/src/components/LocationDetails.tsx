@@ -1111,7 +1111,11 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         const response = await fetch(`/api/locations/${locationId}/tasks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(task)
+          body: JSON.stringify({
+            ...task,
+            creationSource: 'generate_tasks',
+            createdBy: 'System'
+          })
         });
         
         if (!response.ok) {

@@ -1253,6 +1253,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate (sync)
       mark('v0');
+      
+      // Determine the creation source
+      const creationSource = body.creationSource || 'add_task';
+      const createdBy = body.createdBy || 'System';
+      
+      // Create initial edit history entry
+      const initialEditHistory = [{
+        userId: null,
+        userName: createdBy,
+        timestamp: new Date().toISOString(),
+        changes: `Task created via ${creationSource === 'generate_tasks' ? 'Generate Tasks' : 'Add Task'}`
+      }];
+      
       const candidate = {
         name: String(body.name || 'Task'),
         startDate: body.startDate || startDate || todayISO,
@@ -1266,7 +1279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         order: orderValue,
         linkedTaskGroup: body.linkedTaskGroup || null,
         workDescription: body.workDescription || null,
-        notes: body.notes || null
+        notes: body.notes || null,
+        editHistory: initialEditHistory
       };
       mark('v1');
 
@@ -1311,6 +1325,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if the task date is changing
       const dateChanged = validated.taskDate && currentTask && validated.taskDate !== currentTask.taskDate;
+      
+      // Track edit history - build list of changes (skip internal/system fields)
+      const skipFields = ['editHistory', 'order', 'id', 'taskId', 'locationId', 'creationSource', 'createdBy'];
+      const changes: string[] = [];
+      
+      if (currentTask) {
+        for (const [key, newValue] of Object.entries(validated)) {
+          if (skipFields.includes(key)) continue;
+          const oldValue = (currentTask as any)[key];
+          // Only track if value actually changed
+          if (oldValue !== newValue && newValue !== undefined) {
+            const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+            changes.push(`${fieldName}: "${oldValue || '(empty)'}" → "${newValue || '(empty)'}"`);
+          }
+        }
+      }
+      
+      // If there are meaningful changes, add to edit history
+      if (changes.length > 0 && currentTask) {
+        const editedBy = req.body.editedBy || 'System';
+        const existingHistory = Array.isArray(currentTask.editHistory) ? currentTask.editHistory : [];
+        const newHistoryEntry = {
+          userId: null,
+          userName: editedBy,
+          timestamp: new Date().toISOString(),
+          changes: changes.join('; ')
+        };
+        validated.editHistory = [...existingHistory, newHistoryEntry];
+      }
       
       const task = await storage.updateTask(parseInt(req.params.id), validated);
       
