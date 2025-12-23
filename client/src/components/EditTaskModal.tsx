@@ -2730,13 +2730,13 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                 <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateTaskMutation.isPending}>
-                {updateTaskMutation.isPending ? (
+              <Button type="submit" disabled={updateTaskMutation.isPending || batchUpdateTasksMutation.isPending}>
+                {(updateTaskMutation.isPending || batchUpdateTasksMutation.isPending) ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                {updateTaskMutation.isPending ? 'Saving...' : 'Save Changes'}
+                {(updateTaskMutation.isPending || batchUpdateTasksMutation.isPending) ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>
