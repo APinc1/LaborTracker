@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Edit, Loader2, Save, X } from "lucide-react";
+import { Calendar, Clock, Edit, History, Loader2, Save, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertTaskSchema } from "@shared/schema";
@@ -120,6 +120,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   const [showUnlinkDialog, setShowUnlinkDialog] = useState(false);
   const [unlinkingGroupSize, setUnlinkingGroupSize] = useState(0);
   const [skipUnlinkDialog, setSkipUnlinkDialog] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   // Fetch existing tasks for linking
   const { data: existingTasks = [] } = useQuery({
@@ -1798,45 +1799,59 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
   if (!isOpen || !task) return null;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3">
-            <Edit className="w-5 h-5" />
-            Edit Task: {getTaskDisplayName(task.name)}
-            {getTaskStatus(task, taskAssignments) === 'complete' && (
-              <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
-                Limited Editing: Only Notes & Status
-              </Badge>
-            )}
-            {/* Day indicator badge */}
-            {(() => {
-              if (locationTasks) {
-                // Get all tasks with the same cost code at this location, sorted by date then order
-                const sameCostCodeTasks = locationTasks
-                  .filter(t => t.costCode === task.costCode && t.locationId === task.locationId)
-                  .sort((a, b) => {
-                    if (a.taskDate !== b.taskDate) {
-                      return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
-                    }
-                    return (a.order || 0) - (b.order || 0);
-                  });
-                
-                const currentTaskIndex = sameCostCodeTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
-                
-                if (currentTaskIndex >= 0 && sameCostCodeTasks.length > 1) {
-                  const currentDay = currentTaskIndex + 1;
-                  const totalDays = sameCostCodeTasks.length;
-                  return (
-                    <Badge variant="outline" className="text-xs">
-                      Day {currentDay} of {totalDays}
-                    </Badge>
-                  );
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-3">
+              <Edit className="w-5 h-5" />
+              Edit Task: {getTaskDisplayName(task.name)}
+              {getTaskStatus(task, taskAssignments) === 'complete' && (
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 text-xs">
+                  Limited Editing: Only Notes & Status
+                </Badge>
+              )}
+              {/* Day indicator badge */}
+              {(() => {
+                if (locationTasks) {
+                  // Get all tasks with the same cost code at this location, sorted by date then order
+                  const sameCostCodeTasks = locationTasks
+                    .filter(t => t.costCode === task.costCode && t.locationId === task.locationId)
+                    .sort((a, b) => {
+                      if (a.taskDate !== b.taskDate) {
+                        return new Date(a.taskDate).getTime() - new Date(b.taskDate).getTime();
+                      }
+                      return (a.order || 0) - (b.order || 0);
+                    });
+                  
+                  const currentTaskIndex = sameCostCodeTasks.findIndex(t => (t.taskId || t.id) === (task.taskId || task.id));
+                  
+                  if (currentTaskIndex >= 0 && sameCostCodeTasks.length > 1) {
+                    const currentDay = currentTaskIndex + 1;
+                    const totalDays = sameCostCodeTasks.length;
+                    return (
+                      <Badge variant="outline" className="text-xs">
+                        Day {currentDay} of {totalDays}
+                      </Badge>
+                    );
+                  }
                 }
-              }
-              return null;
-            })()}
-          </DialogTitle>
+                return null;
+              })()}
+            </DialogTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHistoryModal(true)}
+              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+              title="View Edit History"
+              data-testid="button-view-edit-history"
+            >
+              <History className="h-5 w-5 mr-1" />
+              View Edit History
+            </Button>
+          </div>
           <DialogDescription>
             Edit task name, date, schedule, description, and status. Other fields are based on cost code settings.
           </DialogDescription>
@@ -3416,5 +3431,44 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
         </AlertDialogContent>
       </AlertDialog>
     </Dialog>
+    
+    {/* Edit History Modal */}
+    <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="w-5 h-5 text-green-600" />
+            Edit History - {task?.name}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {task?.editHistory && 
+           Array.isArray(task.editHistory) && 
+           task.editHistory.length > 0 ? (
+            (task.editHistory as any[])
+              .slice()
+              .reverse()
+              .map((entry: any, index: number) => (
+                <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-medium text-sm">{entry.userName}</span>
+                    <span className="text-xs text-gray-500">
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown date'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{entry.changes}</p>
+                </div>
+              ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <History className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>No edit history available</p>
+              <p className="text-sm mt-1">Changes to this task will be tracked here</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
