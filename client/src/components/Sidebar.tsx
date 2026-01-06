@@ -101,7 +101,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
         </div>
       </div>
       {/* Navigation */}
-      <nav className="p-4 space-y-2">
+      <nav className="p-4 space-y-2 pt-[10px] pb-[10px]">
         {navigation.map((item) => {
           const Icon = item.icon;
           return (
