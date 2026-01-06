@@ -157,7 +157,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
         </div>
       </div>
       {/* User Profile */}
-      <div className="p-4 border-t border-sidebar-border flex-shrink-0">
+      <div className="p-4 border-t border-sidebar-border flex-shrink-0 pt-[10px] pb-[10px]">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-sidebar-accent rounded-full flex items-center justify-center">
             <User className="text-sidebar-foreground" />

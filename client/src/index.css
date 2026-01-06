@@ -77,7 +77,7 @@
 /* Uses font-size scaling which properly scales all rem-based Tailwind utilities */
 @media (max-width: 1600px) {
   html {
-    font-size: 14.4px; /* 90% of default 16px */
+    font-size: 14.08px; /* 88% of default 16px */
   }
 }
 
