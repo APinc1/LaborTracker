@@ -495,12 +495,11 @@ export default function EnhancedAssignmentModal({
               variant="ghost"
               size="sm"
               onClick={() => setShowHistoryModal(true)}
-              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+              className="text-green-600 hover:text-green-700 hover:bg-green-50 p-2"
               title="View Edit History"
               data-testid="button-view-history"
             >
-              <History className="h-4 w-4 mr-1" />
-              History
+              <History className="h-5 w-5" />
             </Button>
           </div>
           <div className="text-sm text-gray-500">
@@ -1055,7 +1054,7 @@ export default function EnhancedAssignmentModal({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <History className="w-5 h-5 text-orange-600" />
+            <History className="w-5 h-5 text-green-600" />
             Edit History - {taskName}
           </DialogTitle>
         </DialogHeader>
