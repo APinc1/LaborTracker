@@ -70,7 +70,14 @@
   }
   body {
     @apply bg-background text-foreground;
-    zoom: 0.9; /* Global scaling for smaller screens - adjust as needed (0.85-0.95) */
+    min-height: 100vh;
+  }
+}
+
+/* Global scaling only for smaller screens (15" laptops and smaller) */
+@media (max-width: 1600px) {
+  body {
+    zoom: 0.9;
   }
 }
 
