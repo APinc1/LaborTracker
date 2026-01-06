@@ -86,7 +86,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
   return (
     <div className="w-64 bg-sidebar-background text-sidebar-foreground flex flex-col">
       {/* Logo & Company */}
-      <div className="p-6 border-b border-sidebar-border">
+      <div className="p-6 border-b border-sidebar-border pt-[10px] pb-[10px]">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
             <HardHat className="text-white text-lg" />
@@ -122,7 +122,6 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
           );
         })}
       </nav>
-
       {/* Current Projects - Scrollable */}
       <div className="flex-1 border-t border-sidebar-border flex flex-col min-h-0">
         <div className="p-4 pb-2 flex-shrink-0">
