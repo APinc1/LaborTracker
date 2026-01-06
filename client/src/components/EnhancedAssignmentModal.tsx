@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, User, Clock, CheckCircle, X, History } from 'lucide-react';
+import { Users, User, Clock, CheckCircle, X } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import ActualHoursModal from './ActualHoursModal';
 
 interface EnhancedAssignmentModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export default function EnhancedAssignmentModal({
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [showCrewDropdown, setShowCrewDropdown] = useState(false);
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState<string | null>(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showActualHoursModal, setShowActualHoursModal] = useState(false);
   const { toast } = useToast();
 
   // Refs for handling dropdown focus
@@ -494,12 +495,12 @@ export default function EnhancedAssignmentModal({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowHistoryModal(true)}
+              onClick={() => setShowActualHoursModal(true)}
               className="text-green-600 hover:text-green-700 hover:bg-green-50 p-2"
-              title="View Edit History"
-              data-testid="button-view-history"
+              title="View Actual Hours"
+              data-testid="button-view-actual-hours"
             >
-              <History className="h-5 w-5" />
+              <Clock className="h-5 w-5" />
             </Button>
           </div>
           <div className="text-sm text-gray-500">
@@ -1049,43 +1050,18 @@ export default function EnhancedAssignmentModal({
       </DialogContent>
     </Dialog>
     
-    {/* Edit History Modal */}
-    <Dialog open={showHistoryModal} onOpenChange={setShowHistoryModal}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <History className="w-5 h-5 text-green-600" />
-            Edit History - {taskName}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-          {currentTask?.editHistory && 
-           Array.isArray(currentTask.editHistory) && 
-           currentTask.editHistory.length > 0 ? (
-            (currentTask.editHistory as any[])
-              .slice()
-              .reverse()
-              .map((entry: any, index: number) => (
-                <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-medium text-sm">{entry.userName}</span>
-                    <span className="text-xs text-gray-500">
-                      {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown date'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700">{entry.changes}</p>
-                </div>
-              ))
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <History className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>No edit history available</p>
-              <p className="text-sm mt-1">Changes to this task will be tracked here</p>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+    {/* Actual Hours Modal */}
+    <ActualHoursModal
+      isOpen={showActualHoursModal}
+      onClose={() => setShowActualHoursModal(false)}
+      task={currentTask}
+      assignments={existingAssignments as any[]}
+      employees={employees as any[]}
+      onUpdate={() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/tasks", taskId, "assignments"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/assignments"] });
+      }}
+    />
   </>
   );
 }
