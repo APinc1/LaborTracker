@@ -470,18 +470,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   <FileText className="w-3 h-3" />
                 </Button>
               )}
-              {onEditHistory && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onEditHistory(task)}
-                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
-                  title="Edit History"
-                  data-testid={`button-edit-history-${task.id}`}
-                >
-                  <History className="w-3 h-3" />
-                </Button>
-              )}
               <Button
                 variant="ghost"
                 size="sm"
