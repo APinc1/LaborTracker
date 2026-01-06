@@ -458,18 +458,6 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                   <User className="w-3 h-3" />
                 </Button>
               )}
-              {onActualHoursClick && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onActualHoursClick(task)}
-                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                  title="Edit Actual Hours"
-                  data-testid={`button-actual-hours-${task.id}`}
-                >
-                  <Clock className="w-3 h-3" />
-                </Button>
-              )}
               {onDailyJobReport && (
                 <Button
                   variant="ghost"
