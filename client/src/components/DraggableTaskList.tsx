@@ -443,7 +443,7 @@ function SortableTaskItem({ task, tasks, onEditTask, onDeleteTask, onAssignTask,
                 variant="ghost"
                 size="sm"
                 onClick={() => onEditTask(task)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-[#15803d]"
               >
                 <Edit className="w-3 h-3" />
               </Button>
