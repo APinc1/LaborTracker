@@ -496,11 +496,12 @@ export default function EnhancedAssignmentModal({
               variant="ghost"
               size="sm"
               onClick={() => setShowActualHoursModal(true)}
-              className="text-green-600 hover:text-green-700 hover:bg-green-50 p-2"
+              className="text-green-600 hover:text-green-700 hover:bg-green-50"
               title="View Actual Hours"
               data-testid="button-view-actual-hours"
             >
-              <Clock className="h-5 w-5" />
+              <Clock className="h-5 w-5 mr-1" />
+              View Actual Hours
             </Button>
           </div>
           <div className="text-sm text-gray-500">
