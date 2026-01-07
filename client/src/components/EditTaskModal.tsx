@@ -1802,7 +1802,7 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="sticky top-0 z-10 bg-background pb-4 border-b">
+        <DialogHeader className="sticky -top-6 z-10 bg-background pt-6 pb-4 -mx-6 px-6 border-b">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3">
               <Edit className="w-5 h-5" />
