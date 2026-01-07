@@ -166,16 +166,22 @@ export default function ScheduleManagement() {
   });
 
   // Dynamic date range based on view mode
+  // Use Sunday as the first day of the week (weekStartsOn: 0)
   const getDateRange = () => {
     if (viewMode === 'week') {
       return {
-        start: startOfWeek(selectedDate),
-        end: endOfWeek(selectedDate)
+        start: startOfWeek(selectedDate, { weekStartsOn: 0 }),
+        end: endOfWeek(selectedDate, { weekStartsOn: 0 })
       };
     } else {
+      // For month view, get the full weeks that contain the month
+      // Start from Sunday of the week containing the 1st of the month
+      // End on Saturday of the week containing the last day of the month
+      const monthStart = startOfMonth(selectedDate);
+      const monthEnd = endOfMonth(selectedDate);
       return {
-        start: startOfMonth(selectedDate),
-        end: endOfMonth(selectedDate)
+        start: startOfWeek(monthStart, { weekStartsOn: 0 }),
+        end: endOfWeek(monthEnd, { weekStartsOn: 0 })
       };
     }
   };
