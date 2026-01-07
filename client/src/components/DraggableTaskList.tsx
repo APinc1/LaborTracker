@@ -542,6 +542,10 @@ export default function DraggableTaskList({
           upper === 'DEMO/EX + BASE/GRADING' || upper === 'DEMO/EX+BASE/GRADING') {
         return 'DEMO/EX + BASE/GRADING';
       }
+      // Handle AC/Asphalt equivalence
+      if (upper === 'AC' || upper === 'ASPHALT') {
+        return 'AC';
+      }
       return upper;
     };
 
