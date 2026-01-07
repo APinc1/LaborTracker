@@ -54,13 +54,10 @@ const costCodes = [
   "PUNCHLIST GENERAL LABOR"
 ];
 
-// Default unit of measure options (fallback if no budget items)
+// Default unit of measure options (CY and TONS only for production)
 const defaultUnitOfMeasureOptions = [
   { value: "CY", label: "CY (Cubic Yards)" },
-  { value: "Ton", label: "Ton" },
-  { value: "LF", label: "LF (Linear Feet)" },
-  { value: "SF", label: "SF (Square Feet)" },
-  { value: "Hours", label: "Hours" },
+  { value: "TONS", label: "TONS" },
 ];
 
 // Line item quantity entry type
@@ -2362,45 +2359,10 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
               <p className="text-xs text-gray-500">Assigned based on task type</p>
             </div>
 
-            {/* Quantity Tracking Method Toggle */}
-            <FormField
-              control={form.control}
-              name="useLineItemQuantities"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Quantity Tracking Method</FormLabel>
-                  <div className="flex items-center gap-4">
-                    <Button
-                      type="button"
-                      variant={!field.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => field.onChange(false)}
-                      data-testid="btn-single-qty"
-                    >
-                      Single Quantity
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={field.value ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => field.onChange(true)}
-                      data-testid="btn-line-item-qty"
-                    >
-                      Line Item Quantities
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {field.value 
-                      ? "Track quantities for specific budget line items" 
-                      : "Track a single quantity for this task"}
-                  </p>
-                </FormItem>
-              )}
-            />
+            {/* Single Quantity Mode Only - Line Item Quantities disabled for production */}
 
-            {/* Single Quantity Mode */}
-            {!form.watch("useLineItemQuantities") && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Single Quantity Mode - Always shown (Line Item Quantities disabled for production) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="qty"
@@ -2449,10 +2411,9 @@ export default function EditTaskModal({ isOpen, onClose, task, onTaskUpdate, loc
                   )}
                 />
               </div>
-            )}
 
-            {/* Line Item Quantities Mode */}
-            {form.watch("useLineItemQuantities") && (
+            {/* Line Item Quantities Mode - Disabled for production */}
+            {false && (
               <FormField
                 control={form.control}
                 name="lineItemQuantities"
