@@ -427,32 +427,33 @@ export default function ScheduleManagement() {
     const costCode = task.costCode;
     if (!costCode) return { remainingHours: null, totalBudgetHours: 0 };
 
+    // Helper to normalize cost codes for comparison
+    const normalizeCostCode = (code: string) => {
+      const upper = (code || '').toUpperCase().trim();
+      // Handle combined cost codes (Demo/Ex + Base/Grading)
+      if (upper === 'DEMO/EX' || upper === 'BASE/GRADING' || 
+          upper === 'DEMO/EX + BASE/GRADING' || upper === 'DEMO/EX+BASE/GRADING') {
+        return 'DEMO/EX + BASE/GRADING';
+      }
+      // Handle AC/Asphalt equivalence
+      if (upper === 'AC' || upper === 'ASPHALT') {
+        return 'AC';
+      }
+      return upper;
+    };
+
+    const normalizedTaskCostCode = normalizeCostCode(costCode);
+
     // Filter budget items to only include the current task's location
-    const taskLocation = locations.find((loc: any) => loc.id === task.locationId);
     const locationSpecificBudgetItems = budgetItems.filter((item: any) => 
       item.locationId === task.locationId
     );
 
     // Get total budget hours for this cost code from location-specific budget items
     const costCodeBudgetHours = locationSpecificBudgetItems.reduce((total: number, item: any) => {
-      let itemCostCode = item.costCode || 'UNCATEGORIZED';
+      const normalizedItemCostCode = normalizeCostCode(item.costCode || 'UNCATEGORIZED');
       
-      // Handle combined cost codes (Demo/Ex + Base/Grading)
-      if (itemCostCode === 'DEMO/EX' || itemCostCode === 'Demo/Ex' || 
-          itemCostCode === 'BASE/GRADING' || itemCostCode === 'Base/Grading' || 
-          itemCostCode === 'Demo/Ex + Base/Grading' || itemCostCode === 'DEMO/EX + BASE/GRADING') {
-        itemCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      // Handle current task cost code in the same way
-      let taskCostCode = costCode;
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (itemCostCode === taskCostCode) {
+      if (normalizedItemCostCode === normalizedTaskCostCode) {
         // Only include parent items or standalone items (avoid double counting)
         const isParent = item.lineItemNumber && !item.lineItemNumber.includes('.');
         const isChild = item.lineItemNumber && item.lineItemNumber.includes('.');
@@ -470,33 +471,14 @@ export default function ScheduleManagement() {
 
     if (costCodeBudgetHours === 0) return { remainingHours: null, totalBudgetHours: 0 };
 
-
-
     // Find all tasks for this cost code up to and including the current task date, same location only
-    // Note: allTasks might be filtered by date range, so we need to consider all tasks in this location
     const currentTaskDate = new Date(task.taskDate + 'T00:00:00').getTime();
     const relevantTasks = allTasks.filter((t: any) => {
       if (!t.costCode || t.locationId !== task.locationId) return false;
       
-      // Handle cost code matching with combined codes
-      let tCostCode = t.costCode;
-      let taskCostCode = costCode;
-      
-      if (tCostCode === 'DEMO/EX' || tCostCode === 'Demo/Ex' || 
-          tCostCode === 'BASE/GRADING' || tCostCode === 'Base/Grading' || 
-          tCostCode === 'Demo/Ex + Base/Grading' || tCostCode === 'DEMO/EX + BASE/GRADING') {
-        tCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
-      if (taskCostCode === 'DEMO/EX' || taskCostCode === 'Demo/Ex' || 
-          taskCostCode === 'BASE/GRADING' || taskCostCode === 'Base/Grading' || 
-          taskCostCode === 'Demo/Ex + Base/Grading' || taskCostCode === 'DEMO/EX + BASE/GRADING') {
-        taskCostCode = 'Demo/Ex + Base/Grading';
-      }
-      
+      const normalizedTCostCode = normalizeCostCode(t.costCode);
       const taskDate = new Date(t.taskDate + 'T00:00:00').getTime();
-      const isSameCostCode = tCostCode === taskCostCode;
-      const isCurrentOrBefore = taskDate <= currentTaskDate;
+      const isSameCostCode = normalizedTCostCode === normalizedTaskCostCode;
       
       // For tasks on the same date, include current task and all earlier tasks
       const isBefore = taskDate < currentTaskDate || 
