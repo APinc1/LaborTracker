@@ -174,14 +174,10 @@ export default function ScheduleManagement() {
         end: endOfWeek(selectedDate, { weekStartsOn: 0 })
       };
     } else {
-      // For month view, get the full weeks that contain the month
-      // Start from Sunday of the week containing the 1st of the month
-      // End on Saturday of the week containing the last day of the month
-      const monthStart = startOfMonth(selectedDate);
-      const monthEnd = endOfMonth(selectedDate);
+      // For month view, only show days from the current month
       return {
-        start: startOfWeek(monthStart, { weekStartsOn: 0 }),
-        end: endOfWeek(monthEnd, { weekStartsOn: 0 })
+        start: startOfMonth(selectedDate),
+        end: endOfMonth(selectedDate)
       };
     }
   };
@@ -286,10 +282,25 @@ export default function ScheduleManagement() {
   });
 
   const getViewDays = () => {
-    return eachDayOfInterval({
+    const days = eachDayOfInterval({
       start: dateRange.start,
       end: dateRange.end,
     });
+    return days;
+  };
+
+  // Get empty cells needed before the first day of the month (to align to Sunday)
+  const getLeadingEmptyCells = () => {
+    if (viewMode !== 'month') return 0;
+    const firstDayOfMonth = startOfMonth(selectedDate);
+    return firstDayOfMonth.getDay(); // 0 = Sunday, 6 = Saturday
+  };
+
+  // Get empty cells needed after the last day of the month (to complete the week)
+  const getTrailingEmptyCells = () => {
+    if (viewMode !== 'month') return 0;
+    const lastDayOfMonth = endOfMonth(selectedDate);
+    return 6 - lastDayOfMonth.getDay(); // Complete the week to Saturday
   };
 
   const getTasksForDay = (day: Date) => {
@@ -879,6 +890,16 @@ export default function ScheduleManagement() {
                   <Skeleton className="h-96" />
                 ) : (
                   <div className={`grid gap-1 ${viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-7'}`}>
+                    {/* Leading empty cells for month view */}
+                    {viewMode === 'month' && Array.from({ length: getLeadingEmptyCells() }).map((_, idx) => (
+                      <div key={`empty-start-${idx}`} className="border rounded-lg p-2 min-h-[120px] bg-gray-50 border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm text-gray-300">
+                            {format(new Date(dateRange.start.getTime() - (getLeadingEmptyCells() - idx) * 24 * 60 * 60 * 1000), 'EEE')}
+                          </h3>
+                        </div>
+                      </div>
+                    ))}
                     {getViewDays().map((day) => {
                       const dayTasks = getTasksForDay(day);
                       const isToday = isSameDay(day, new Date());
@@ -951,6 +972,16 @@ export default function ScheduleManagement() {
                         </div>
                       );
                     })}
+                    {/* Trailing empty cells for month view */}
+                    {viewMode === 'month' && Array.from({ length: getTrailingEmptyCells() }).map((_, idx) => (
+                      <div key={`empty-end-${idx}`} className="border rounded-lg p-2 min-h-[120px] bg-gray-50 border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-medium text-sm text-gray-300">
+                            {format(new Date(dateRange.end.getTime() + (idx + 1) * 24 * 60 * 60 * 1000), 'EEE')}
+                          </h3>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
