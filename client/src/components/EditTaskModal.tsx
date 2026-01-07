@@ -56,7 +56,7 @@ const costCodes = [
 
 // Default unit of measure options (CY and TONS only for production)
 const defaultUnitOfMeasureOptions = [
-  { value: "CY", label: "CY (Cubic Yards)" },
+  { value: "CY", label: "CY" },
   { value: "TONS", label: "TONS" },
 ];
 
