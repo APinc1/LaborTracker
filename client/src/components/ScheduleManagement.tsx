@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import CreateTaskModal from "./CreateTaskModal";
 import EditTaskModal from "./EditTaskModal";
 import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
+import { ForemanSelectionModal } from "./ForemanSelectionModal";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function ScheduleManagement() {
@@ -27,6 +28,11 @@ export default function ScheduleManagement() {
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
+  
+  // Foreman selection modal state
+  const [showForemanModal, setShowForemanModal] = useState(false);
+  const [foremanSelectionType, setForemanSelectionType] = useState<'overall' | 'responsible'>('overall');
+  const [taskForForemanSelection, setTaskForForemanSelection] = useState<any>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -74,6 +80,57 @@ export default function ScheduleManagement() {
       handleDeleteTask.mutate((taskToDelete as any).id.toString());
     }
   };
+
+  // Mutation to update task foreman
+  const updateTaskForemanMutation = useMutation({
+    mutationFn: async ({ taskId, foremanId }: { taskId: number; foremanId: number }) => {
+      return apiRequest(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ foremanId }),
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/tasks/date-range'] });
+      setShowForemanModal(false);
+      setTaskForForemanSelection(null);
+    },
+    onError: (error) => {
+      console.error('Failed to update task foreman:', error);
+    }
+  });
+
+  // Handle foreman selection from modal
+  const handleForemanSelection = (foremanId: number) => {
+    if (taskForForemanSelection) {
+      updateTaskForemanMutation.mutate({ 
+        taskId: taskForForemanSelection.id, 
+        foremanId 
+      });
+    }
+  };
+
+  // Listen for foreman selection events from EnhancedAssignmentModal
+  useEffect(() => {
+    const handleForemanTrigger = (event: CustomEvent) => {
+      const { taskId: eventTaskId, type = 'overall' } = event.detail;
+      
+      // Find the task in current tasks
+      const task = (tasks as any[]).find(t => t.id == eventTaskId);
+      if (task) {
+        setTaskForForemanSelection(task);
+        setForemanSelectionType(type);
+        setShowForemanModal(true);
+      }
+    };
+
+    window.addEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
+    
+    return () => {
+      window.removeEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
+    };
+  }, [tasks]);
 
   // Navigation functions for week/month view
   const navigatePrevious = () => {
@@ -1056,6 +1113,30 @@ export default function ScheduleManagement() {
           taskId={selectedTaskForAssignment.id}
           taskDate={selectedTaskForAssignment.taskDate}
           taskName={selectedTaskForAssignment.name}
+        />
+      )}
+
+      {/* Foreman Selection Modal */}
+      {taskForForemanSelection && (
+        <ForemanSelectionModal
+          isOpen={showForemanModal}
+          onClose={() => {
+            setShowForemanModal(false);
+            setTaskForForemanSelection(null);
+          }}
+          onSelectForeman={handleForemanSelection}
+          assignedForemen={(() => {
+            const taskAssignments = assignments.filter((a: any) => 
+              a.taskId === taskForForemanSelection.id
+            );
+            const allForemen = employees.filter((emp: any) => emp.isForeman && !emp.isInactive);
+            return allForemen.filter((foreman: any) => 
+              taskAssignments.some((a: any) => a.employeeId === foreman.id)
+            );
+          })()}
+          allForemen={employees.filter((emp: any) => emp.isForeman && !emp.isInactive)}
+          selectionType={foremanSelectionType}
+          taskName={taskForForemanSelection.name || 'Task'}
         />
       )}
 
