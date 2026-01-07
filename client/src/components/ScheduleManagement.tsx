@@ -111,27 +111,6 @@ export default function ScheduleManagement() {
     }
   };
 
-  // Listen for foreman selection events from EnhancedAssignmentModal
-  useEffect(() => {
-    const handleForemanTrigger = (event: CustomEvent) => {
-      const { taskId: eventTaskId, type = 'overall' } = event.detail;
-      
-      // Find the task in current tasks
-      const task = (tasks as any[]).find(t => t.id == eventTaskId);
-      if (task) {
-        setTaskForForemanSelection(task);
-        setForemanSelectionType(type);
-        setShowForemanModal(true);
-      }
-    };
-
-    window.addEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
-    
-    return () => {
-      window.removeEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
-    };
-  }, [tasks]);
-
   // Navigation functions for week/month view
   const navigatePrevious = () => {
     if (viewMode === 'week') {
@@ -207,6 +186,27 @@ export default function ScheduleManagement() {
     queryKey: ["/api/tasks/date-range", format(dateRange.start, 'yyyy-MM-dd'), format(dateRange.end, 'yyyy-MM-dd')],
     staleTime: 30000,
   });
+
+  // Listen for foreman selection events from EnhancedAssignmentModal
+  useEffect(() => {
+    const handleForemanTrigger = (event: CustomEvent) => {
+      const { taskId: eventTaskId, type = 'overall' } = event.detail;
+      
+      // Find the task in current tasks
+      const task = (tasks as any[]).find(t => t.id == eventTaskId);
+      if (task) {
+        setTaskForForemanSelection(task);
+        setForemanSelectionType(type);
+        setShowForemanModal(true);
+      }
+    };
+
+    window.addEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
+    
+    return () => {
+      window.removeEventListener('triggerForemanSelection', handleForemanTrigger as EventListener);
+    };
+  }, [tasks]);
 
   // Fetch tasks for budget calculation (extended range around current month for better context)
   const budgetDateRange = {
