@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2, FileText, History } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2, FileText, History, Loader2 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -1760,10 +1760,17 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
               </Button>
               <Button
                 onClick={generateTasks}
-                disabled={costCodeArray.length === 0}
+                disabled={costCodeArray.length === 0 || isGeneratingTasks}
                 className="flex-1"
               >
-                Generate Tasks
+                {isGeneratingTasks ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  'Generate Tasks'
+                )}
               </Button>
             </div>
           </div>
