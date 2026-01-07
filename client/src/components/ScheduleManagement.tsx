@@ -236,53 +236,21 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
-  // Fetch all budget items for remaining hours calculation
+  // Fetch all budget items for remaining hours calculation using bulk endpoint
   // Include location IDs in queryKey to refetch when locations change
   const locationIds = (locations as any[]).map((loc: any) => loc.id).sort().join(',');
   const { data: allBudgetItems = [] } = useQuery({
-    queryKey: ["/api/budget/all", selectedProject, locationIds],
+    queryKey: ["/api/budget/bulk", locationIds],
     queryFn: async () => {
-      // Get budget items for all relevant locations
-      let locationsToFetch = [];
-      
-      if (selectedProject === "ALL_PROJECTS") {
-        // When viewing all projects, get locations from all projects
-        const projectPromises = (projects as any[]).map(async (project: any) => {
-          try {
-            const response = await fetch(`/api/projects/${project.id}/locations`);
-            if (response.ok) {
-              return await response.json();
-            }
-          } catch (error) {
-            console.error(`Failed to fetch locations for project ${project.id}:`, error);
-          }
-          return [];
-        });
-        const locationArrays = await Promise.all(projectPromises);
-        locationsToFetch = locationArrays.flat();
-      } else {
-        // When viewing a specific project, use its locations
-        locationsToFetch = locations;
+      if (!locationIds) return [];
+      const response = await fetch(`/api/budget/bulk?locationIds=${locationIds}`);
+      if (response.ok) {
+        return await response.json();
       }
-
-      const budgetPromises = locationsToFetch.map(async (location: any) => {
-        try {
-          const response = await fetch(`/api/locations/${location.locationId}/budget`);
-          if (response.ok) {
-            return await response.json();
-          }
-        } catch (error) {
-          console.error(`Failed to fetch budget for location ${location.locationId}:`, error);
-        }
-        return [];
-      });
-      const budgetArrays = await Promise.all(budgetPromises);
-      return budgetArrays.flat();
+      return [];
     },
-    // Wait for locations when filtering by project, or projects when viewing all
-    enabled: selectedProject === "ALL_PROJECTS" 
-      ? (projects as any[]).length > 0 
-      : (locations as any[]).length > 0,
+    // Wait for locations to be loaded
+    enabled: (locations as any[]).length > 0,
     staleTime: 30000,
   });
 

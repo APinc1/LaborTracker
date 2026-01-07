@@ -550,6 +550,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk budget endpoint - fetch budget items for multiple locations in one call
+  app.get('/api/budget/bulk', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const locationIdsParam = req.query.locationIds as string;
+      
+      if (!locationIdsParam) {
+        return res.json([]);
+      }
+      
+      const locationIds = locationIdsParam.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+      
+      if (locationIds.length === 0) {
+        return res.json([]);
+      }
+      
+      // Fetch budget items for all locations in parallel
+      const budgetPromises = locationIds.map(locationId => storage.getBudgetLineItems(locationId));
+      const budgetArrays = await Promise.all(budgetPromises);
+      const allBudgetItems = budgetArrays.flat();
+      
+      res.json(allBudgetItems);
+    } catch (error) {
+      console.error('Bulk budget fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch budget items' });
+    }
+  });
+
   app.post('/api/locations/:locationId/budget', async (req, res) => {
     try {
       const storage = await getStorage();
