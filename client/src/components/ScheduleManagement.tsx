@@ -237,8 +237,10 @@ export default function ScheduleManagement() {
   });
 
   // Fetch all budget items for remaining hours calculation
+  // Include location IDs in queryKey to refetch when locations change
+  const locationIds = (locations as any[]).map((loc: any) => loc.id).sort().join(',');
   const { data: allBudgetItems = [] } = useQuery({
-    queryKey: ["/api/budget/all", selectedProject],
+    queryKey: ["/api/budget/all", selectedProject, locationIds],
     queryFn: async () => {
       // Get budget items for all relevant locations
       let locationsToFetch = [];
@@ -277,7 +279,10 @@ export default function ScheduleManagement() {
       const budgetArrays = await Promise.all(budgetPromises);
       return budgetArrays.flat();
     },
-    enabled: (projects as any[]).length > 0,
+    // Wait for locations when filtering by project, or projects when viewing all
+    enabled: selectedProject === "ALL_PROJECTS" 
+      ? (projects as any[]).length > 0 
+      : (locations as any[]).length > 0,
     staleTime: 30000,
   });
 
