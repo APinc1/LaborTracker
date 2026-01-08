@@ -343,7 +343,9 @@ export default function ScheduleManagement() {
       }
     }
     
-    const currentDate = new Date().toISOString().split('T')[0];
+    // Use Pacific time for date comparison
+    const pacificDate = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
+    const currentDate = new Date(pacificDate).toISOString().split('T')[0];
     const taskDate = task.taskDate;
     
     // If task date is in the past
