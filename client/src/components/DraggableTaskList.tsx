@@ -100,9 +100,13 @@ const getTaskStatus = (task: any, assignments: any[] = []) => {
     return task.status;
   }
   
-  // Use Pacific time for date comparison
-  const pacificDate = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' });
-  const currentDate = new Date(pacificDate).toISOString().split('T')[0];
+  // Use Pacific time for date comparison (en-CA locale gives YYYY-MM-DD format)
+  const currentDate = new Intl.DateTimeFormat('en-CA', { 
+    timeZone: 'America/Los_Angeles', 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  }).format(new Date());
   const taskDate = task.taskDate;
   
   // If task date is in the past
