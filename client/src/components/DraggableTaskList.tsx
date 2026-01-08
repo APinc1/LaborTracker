@@ -596,8 +596,9 @@ export default function DraggableTaskList({
     // Sum hours from all relevant tasks (actual hours if available, otherwise scheduled hours)
     const usedHours = relevantTasks.reduce((total: number, t: any) => {
       const taskId = t.id || t.taskId;
+      // Exclude driver hours - they use hauling cost code, not task cost code
       const taskAssignmentsList = taskAssignments.filter((assignment: any) => 
-        assignment.taskId === taskId
+        assignment.taskId === taskId && !assignment.isDriverHours
       );
       
       // Try to get actual hours first
