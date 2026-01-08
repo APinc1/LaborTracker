@@ -545,28 +545,19 @@ export default function ScheduleManagement() {
         assignment.taskId === taskId
       );
       
-      // Try to get actual hours first
+      // Get actual hours for this task
       const taskActualHours = taskAssignments.reduce((sum: number, assignment: any) => {
         return sum + (parseFloat(assignment.actualHours) || 0);
       }, 0);
       
-      // Check if task is complete to determine which hours to use
-      const isComplete = t.isComplete === 1 || t.isComplete === true;
-      let taskHours = 0;
+      // Get assigned hours for this task
+      const taskAssignedHours = taskAssignments.reduce((sum: number, assignment: any) => {
+        return sum + (parseFloat(assignment.assignedHours) || 0);
+      }, 0);
       
-      if (isComplete) {
-        // For completed tasks, use actual hours if available, otherwise use assigned hours  
-        taskHours = taskActualHours > 0 ? taskActualHours : taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.assignedHours) || 0);
-        }, 0);
-      } else {
-        // For incomplete tasks, only use assigned hours (don't count actual hours)
-        taskHours = taskAssignments.reduce((sum: number, assignment: any) => {
-          return sum + (parseFloat(assignment.assignedHours) || 0);
-        }, 0);
-      }
-
-
+      // Use actual hours if any have been entered, otherwise use assigned hours
+      // This makes remaining hours update immediately when actual hours are logged
+      const taskHours = taskActualHours > 0 ? taskActualHours : taskAssignedHours;
       
       return total + taskHours;
     }, 0);
