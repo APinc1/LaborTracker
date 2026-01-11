@@ -286,11 +286,14 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects", projectId, "locations"] });
+      setShowAddLocationDialog(false);
       setEditingLocation(null);
       setNewLocationName("");
       setNewLocationDescription("");
       setNewLocationStartDate("");
       setNewLocationEndDate("");
+      setNewLocationStatus("active");
+      setNewLocationSuspensionReason("");
       toast({
         title: "Location updated",
         description: "Location has been updated successfully",
