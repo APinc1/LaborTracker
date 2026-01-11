@@ -182,8 +182,11 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
   };
 
   const hasUnenteredActuals = () => {
-    return budgetItems.some(item => {
-      if (isParentItem(item) && hasChildren(item)) return false;
+    // Only show warning if ALL editable items have zero actuals (none were entered)
+    const editableItems = budgetItems.filter(item => !(isParentItem(item) && hasChildren(item)));
+    if (editableItems.length === 0) return false;
+    
+    return editableItems.every(item => {
       const entry = actualsData[item.id];
       if (!entry) return true;
       return parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
@@ -246,17 +249,16 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                   const isParent = isParentItem(item);
                   const parentHasChildren = isParent && hasChildren(item);
                   const canEdit = isEditable(item);
-                  const hasNoActuals = canEdit && parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
                   
                   return (
                     <tr 
                       key={item.id} 
-                      className={`border-b ${isChild ? 'bg-gray-50' : parentHasChildren ? 'bg-blue-50' : 'bg-white'} ${hasNoActuals ? '!bg-yellow-50' : ''}`}
+                      className={`border-b ${isChild ? 'bg-slate-100' : parentHasChildren ? 'bg-blue-50' : 'bg-white'}`}
                     >
-                      <td className={`px-3 py-2 font-medium ${isChild ? 'pl-8' : ''}`}>
+                      <td className={`px-3 py-2 font-medium ${isChild ? 'pl-8 text-gray-600' : ''}`}>
                         {item.lineItemNumber}
                       </td>
-                      <td className={`px-3 py-2 ${isChild ? 'pl-6' : ''} ${parentHasChildren ? 'font-semibold' : ''}`}>
+                      <td className={`px-3 py-2 ${isChild ? 'pl-6 text-gray-600' : ''} ${parentHasChildren ? 'font-semibold' : ''}`}>
                         {item.lineItemName}
                       </td>
                       <td className="px-3 py-2">{item.costCode}</td>
@@ -264,19 +266,14 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                       <td className="px-3 py-2 text-right">{parseFloat(item.unconvertedQty).toLocaleString()}</td>
                       <td className="px-3 py-2">
                         {canEdit ? (
-                          <div className="flex items-center gap-1">
-                            {hasNoActuals && (
-                              <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                            )}
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={entry.actualQty}
-                              onChange={(e) => handleActualQtyChange(item, e.target.value)}
-                              onFocus={(e) => e.target.select()}
-                              className="w-24"
-                            />
-                          </div>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={entry.actualQty}
+                            onChange={(e) => handleActualQtyChange(item, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className="w-24"
+                          />
                         ) : (
                           <span className="font-semibold text-blue-700">
                             {parseFloat(entry.actualQty).toLocaleString()}
