@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +19,7 @@ interface BudgetLineItem {
   lineItemName: string;
   unconvertedUnitOfMeasure: string;
   unconvertedQty: string;
+  convertedQty: string;
   actualQty: string;
   actualConvQty: string;
   convertedUnitOfMeasure: string | null;
@@ -133,6 +133,16 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
     return item.lineItemNumber && item.lineItemNumber.includes('.');
   };
 
+  const isParentItem = (item: BudgetLineItem) => {
+    return item.lineItemNumber && !item.lineItemNumber.includes('.');
+  };
+
+  const hasChildren = (parentItem: BudgetLineItem) => {
+    return budgetItems.some(child => 
+      isChildItem(child) && child.lineItemNumber.split('.')[0] === parentItem.lineItemNumber
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
@@ -151,49 +161,56 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
         )}
 
         <div className="flex-1 overflow-auto min-h-0">
-          <Table>
-            <TableHeader className="sticky top-0 bg-white z-10">
-              <TableRow>
-                <TableHead className="w-20">Line Item</TableHead>
-                <TableHead className="w-48">Description</TableHead>
-                <TableHead className="w-24">Cost Code</TableHead>
-                <TableHead className="w-16">Unit</TableHead>
-                <TableHead className="w-20">Conv UM</TableHead>
-                <TableHead className="w-20">Conv Factor</TableHead>
-                <TableHead className="w-24">Budgeted Qty</TableHead>
-                <TableHead className="w-28">Actual Qty</TableHead>
-                <TableHead className="w-28">Actual Conv Qty</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <table className="w-full border-collapse">
+            <thead className="sticky top-0 bg-gray-100 z-10">
+              <tr className="border-b">
+                <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-20">Line Item</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-48">Description</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-24">Cost Code</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-16">Unit</th>
+                <th className="text-right px-3 py-2 text-sm font-medium text-gray-700 w-24">Budgeted Qty</th>
+                <th className="text-center px-3 py-2 text-sm font-medium text-gray-700 w-28">Actual Qty</th>
+                <th className="text-left px-3 py-2 text-sm font-medium text-gray-700 w-20">Conv UM</th>
+                <th className="text-right px-3 py-2 text-sm font-medium text-gray-700 w-24">Budgeted Conv Qty</th>
+                <th className="text-center px-3 py-2 text-sm font-medium text-gray-700 w-28">Actual Conv Qty</th>
+              </tr>
+            </thead>
+            <tbody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">
+                <tr>
+                  <td colSpan={9} className="text-center py-8">
                     Loading budget items...
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : budgetItems.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                <tr>
+                  <td colSpan={9} className="text-center py-8 text-gray-500">
                     No budget items found for this location.
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : (
                 budgetItems.map((item: BudgetLineItem) => {
                   const entry = actualsData[item.id] || { actualQty: "0", actualConvQty: "0" };
                   const hasNoActuals = parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
                   const isChild = isChildItem(item);
+                  const isParent = isParentItem(item);
+                  const parentHasChildren = isParent && hasChildren(item);
                   
                   return (
-                    <TableRow key={item.id} className={hasNoActuals ? "bg-yellow-50" : ""}>
-                      <TableCell className={`font-medium ${isChild ? "pl-8" : ""}`}>{item.lineItemNumber}</TableCell>
-                      <TableCell className={isChild ? "pl-4" : ""}>{item.lineItemName}</TableCell>
-                      <TableCell>{item.costCode}</TableCell>
-                      <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
-                      <TableCell>{item.convertedUnitOfMeasure || "-"}</TableCell>
-                      <TableCell>{parseFloat(item.conversionFactor).toFixed(4)}</TableCell>
-                      <TableCell>{parseFloat(item.unconvertedQty).toLocaleString()}</TableCell>
-                      <TableCell>
+                    <tr 
+                      key={item.id} 
+                      className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'} ${hasNoActuals ? 'bg-yellow-50' : ''}`}
+                    >
+                      <td className={`px-3 py-2 font-medium ${isChild ? 'pl-8' : ''}`}>
+                        {item.lineItemNumber}
+                      </td>
+                      <td className={`px-3 py-2 ${isChild ? 'pl-6' : ''} ${parentHasChildren ? 'font-semibold' : ''}`}>
+                        {item.lineItemName}
+                      </td>
+                      <td className="px-3 py-2">{item.costCode}</td>
+                      <td className="px-3 py-2">{item.unconvertedUnitOfMeasure}</td>
+                      <td className="px-3 py-2 text-right">{parseFloat(item.unconvertedQty).toLocaleString()}</td>
+                      <td className="px-3 py-2">
                         <div className="flex items-center gap-1">
                           {hasNoActuals && (
                             <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
@@ -207,8 +224,10 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                             className="w-24"
                           />
                         </div>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-3 py-2">{item.convertedUnitOfMeasure || "-"}</td>
+                      <td className="px-3 py-2 text-right">{parseFloat(item.convertedQty || "0").toLocaleString()}</td>
+                      <td className="px-3 py-2">
                         <Input
                           type="text"
                           inputMode="decimal"
@@ -217,13 +236,13 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                           onFocus={(e) => e.target.select()}
                           className="w-24"
                         />
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   );
                 })
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
 
         <div className="flex justify-between items-center pt-4 border-t flex-shrink-0">
