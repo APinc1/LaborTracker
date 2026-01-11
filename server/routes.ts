@@ -674,6 +674,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update actuals for location budget items
+  app.post('/api/locations/:locationId/budget/actuals', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const locationId = parseInt(req.params.locationId);
+      const { items } = req.body;
+      
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ error: 'Items must be an array' });
+      }
+      
+      // Update each budget item's actual quantities
+      const updatePromises = items.map(async (item: { id: number; actualQty: string; actualConvQty: string }) => {
+        return storage.updateBudgetLineItem(item.id, {
+          actualQty: item.actualQty,
+          actualConvQty: item.actualConvQty,
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      
+      res.json({ success: true, updatedCount: items.length });
+    } catch (error) {
+      console.error('Update actuals error:', error);
+      res.status(500).json({ error: 'Failed to update actuals' });
+    }
+  });
+
   // Location routes
   app.get('/api/projects/:projectId/locations', async (req, res) => {
     try {

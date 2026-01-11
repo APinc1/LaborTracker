@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, Download, FolderOpen, ChevronDown, ChevronRight, Maximize2 } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, Home, Building2, Plus, Edit, Trash2, Clock, FileSpreadsheet, Upload, Download, FolderOpen, ChevronDown, ChevronRight, Maximize2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ import * as XLSX from 'xlsx';
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
 import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData, ValidationResult, GroupedError } from "@/lib/budgetTemplateUtils";
+import LocationActualsModal from "./LocationActualsModal";
 
 interface ProjectDetailsProps {
   projectId: string;
@@ -34,7 +35,12 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [newLocationDescription, setNewLocationDescription] = useState("");
   const [newLocationStartDate, setNewLocationStartDate] = useState("");
   const [newLocationEndDate, setNewLocationEndDate] = useState("");
+  const [newLocationStatus, setNewLocationStatus] = useState<string>("active");
+  const [newLocationSuspensionReason, setNewLocationSuspensionReason] = useState("");
   const [editingLocation, setEditingLocation] = useState<any>(null);
+  const [showActualsModal, setShowActualsModal] = useState(false);
+  const [actualsLocationId, setActualsLocationId] = useState<number | null>(null);
+  const [previousLocationStatus, setPreviousLocationStatus] = useState<string>("active");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
   const [showBudgetUploadDialog, setShowBudgetUploadDialog] = useState(false);
@@ -375,6 +381,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     setNewLocationDescription(location.description || "");
     setNewLocationStartDate(location.startDate || "");
     setNewLocationEndDate(location.endDate || "");
+    setNewLocationStatus(location.status || "active");
+    setNewLocationSuspensionReason(location.suspensionReason || "");
+    setPreviousLocationStatus(location.status || "active");
     setShowAddLocationDialog(true);
   };
 
@@ -528,10 +537,22 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       return;
     }
 
+    // Validate suspension reason if status is suspended
+    if (newLocationStatus === "suspended" && !newLocationSuspensionReason.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide a reason for suspending this location",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const locationData: any = {
       name: newLocationName.trim(),
       description: newLocationDescription.trim(),
       projectId: parseInt(projectId),
+      status: newLocationStatus,
+      suspensionReason: newLocationStatus === "suspended" ? newLocationSuspensionReason.trim() : null,
     };
 
     // Add start and end dates if provided
@@ -542,10 +563,23 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       locationData.endDate = newLocationEndDate;
     }
 
+    // Check if status changed to completed or suspended - need to prompt for actuals
+    const statusChangedToCompletedOrSuspended = 
+      editingLocation && 
+      previousLocationStatus === "active" && 
+      (newLocationStatus === "completed" || newLocationStatus === "suspended");
+
     if (editingLocation) {
       editLocationMutation.mutate({
         locationId: editingLocation.locationId,
         data: locationData,
+      }, {
+        onSuccess: () => {
+          if (statusChangedToCompletedOrSuspended) {
+            setActualsLocationId(editingLocation.id);
+            setShowActualsModal(true);
+          }
+        }
       });
     } else {
       addLocationMutation.mutate(locationData);
@@ -1051,6 +1085,9 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             setNewLocationDescription("");
             setNewLocationStartDate("");
             setNewLocationEndDate("");
+            setNewLocationStatus("active");
+            setNewLocationSuspensionReason("");
+            setPreviousLocationStatus("active");
           }
         }}>
           <DialogContent>
@@ -1096,6 +1133,40 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                   />
                 </div>
               </div>
+              {editingLocation && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="locationStatus">Status</Label>
+                    <Select value={newLocationStatus} onValueChange={setNewLocationStatus}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {newLocationStatus === "suspended" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="suspensionReason">Suspension Reason *</Label>
+                      <Textarea
+                        id="suspensionReason"
+                        placeholder="Enter reason for suspending this location"
+                        value={newLocationSuspensionReason}
+                        onChange={(e) => setNewLocationSuspensionReason(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  {(newLocationStatus === "completed" || newLocationStatus === "suspended") && 
+                   previousLocationStatus === "active" && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                      <strong>Note:</strong> After updating, you will be prompted to enter actual quantities for the budget line items.
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex justify-end gap-2">
                 <Button 
                   variant="outline" 
@@ -1710,6 +1781,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Location Actuals Modal */}
+        <LocationActualsModal
+          open={showActualsModal}
+          onOpenChange={setShowActualsModal}
+          locationId={actualsLocationId}
+        />
       </main>
       </div>
     </div>

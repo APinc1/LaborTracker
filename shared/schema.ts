@@ -64,6 +64,7 @@ export const budgetLineItems = pgTable("budget_line_items", {
   unconvertedUnitOfMeasure: text("unconverted_unit_of_measure").notNull(),
   unconvertedQty: decimal("unconverted_qty", { precision: 10, scale: 2 }).notNull(),
   actualQty: decimal("actual_qty", { precision: 10, scale: 2 }).default("0"),
+  actualConvQty: decimal("actual_conv_qty", { precision: 10, scale: 2 }).default("0"),
   unitCost: decimal("unit_cost", { precision: 10, scale: 2 }).notNull(),
   unitTotal: decimal("unit_total", { precision: 10, scale: 2 }).notNull(),
   convertedQty: decimal("converted_qty", { precision: 10, scale: 2 }),
@@ -94,6 +95,8 @@ export const locations = pgTable("locations", {
   estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }),
   actualCost: decimal("actual_cost", { precision: 10, scale: 2 }),
   isComplete: boolean("is_complete").default(false),
+  status: text("status").default("active"), // active, completed, suspended
+  suspensionReason: text("suspension_reason"),
 });
 
 export const locationBudgets = pgTable("location_budgets", {
