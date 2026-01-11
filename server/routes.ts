@@ -726,15 +726,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ).then(results => results.flat());
       
       // Build map of locationId -> hasMissingActuals
+      // Only show warning if ALL items have zero actuals (none were entered)
       const missingActualsMap = new Map<number, boolean>();
       for (const location of locationsNeedingCheck) {
         const locationBudgetItems = allBudgetItems.filter(item => item.locationId === location.id);
-        const hasMissing = locationBudgetItems.some(item => {
+        if (locationBudgetItems.length === 0) {
+          missingActualsMap.set(location.id, false);
+          continue;
+        }
+        const allZero = locationBudgetItems.every(item => {
           const actualQty = item.actualQty ? parseFloat(item.actualQty as string) : 0;
           const actualConvQty = item.actualConvQty ? parseFloat(item.actualConvQty as string) : 0;
           return actualQty === 0 && actualConvQty === 0;
         });
-        missingActualsMap.set(location.id, hasMissing);
+        missingActualsMap.set(location.id, allZero);
       }
       
       const locationsWithActualsStatus = locations.map(location => ({
