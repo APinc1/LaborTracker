@@ -685,11 +685,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Items must be an array' });
       }
       
-      // Update each budget item's actual quantities
+      // Update each budget item's actual quantities (sanitize empty strings to "0")
       const updatePromises = items.map(async (item: { id: number; actualQty: string; actualConvQty: string }) => {
         return storage.updateBudgetLineItem(item.id, {
-          actualQty: item.actualQty,
-          actualConvQty: item.actualConvQty,
+          actualQty: item.actualQty === "" || item.actualQty === null ? "0" : item.actualQty,
+          actualConvQty: item.actualConvQty === "" || item.actualConvQty === null ? "0" : item.actualConvQty,
         });
       });
       
@@ -707,7 +707,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const storage = await getStorage();
       const locations = await storage.getLocations(parseInt(req.params.projectId));
-      res.json(locations);
+      
+      // Get location IDs that need actuals check (completed or suspended)
+      const locationsNeedingCheck = locations.filter(
+        loc => loc.status === 'completed' || loc.status === 'suspended'
+      );
+      
+      if (locationsNeedingCheck.length === 0) {
+        // No locations need actuals check, return as-is with hasMissingActuals = false
+        res.json(locations.map(loc => ({ ...loc, hasMissingActuals: false })));
+        return;
+      }
+      
+      // Single batch query for all budget items from locations needing check
+      const locationIds = locationsNeedingCheck.map(loc => loc.id);
+      const allBudgetItems = await Promise.all(
+        locationIds.map(id => storage.getBudgetLineItems(id))
+      ).then(results => results.flat());
+      
+      // Build map of locationId -> hasMissingActuals
+      const missingActualsMap = new Map<number, boolean>();
+      for (const location of locationsNeedingCheck) {
+        const locationBudgetItems = allBudgetItems.filter(item => item.locationId === location.id);
+        const hasMissing = locationBudgetItems.some(item => {
+          const actualQty = item.actualQty ? parseFloat(item.actualQty as string) : 0;
+          const actualConvQty = item.actualConvQty ? parseFloat(item.actualConvQty as string) : 0;
+          return actualQty === 0 && actualConvQty === 0;
+        });
+        missingActualsMap.set(location.id, hasMissing);
+      }
+      
+      const locationsWithActualsStatus = locations.map(location => ({
+        ...location,
+        hasMissingActuals: missingActualsMap.get(location.id) ?? false
+      }));
+      
+      res.json(locationsWithActualsStatus);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch locations' });
     }

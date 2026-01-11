@@ -114,8 +114,14 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
   const handleSave = () => {
     if (!locationId) return;
     
-    const items = Object.values(actualsData);
-    saveActualsMutation.mutate({ locationId, items });
+    // Sanitize data - convert empty strings to "0" for decimal columns
+    const sanitizedItems = Object.values(actualsData).map(item => ({
+      id: item.id,
+      actualQty: item.actualQty === "" || item.actualQty === null ? "0" : item.actualQty,
+      actualConvQty: item.actualConvQty === "" || item.actualConvQty === null ? "0" : item.actualConvQty,
+    }));
+    
+    saveActualsMutation.mutate({ locationId, items: sanitizedItems });
   };
 
   const hasUnenteredActuals = () => {

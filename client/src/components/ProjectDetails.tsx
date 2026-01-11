@@ -979,6 +979,17 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
                             </Link>
                             <Badge variant="secondary" className="text-xs">{location.locationId}</Badge>
+                            {location.status === "completed" && (
+                              <Badge variant="default" className="text-xs bg-green-600">Completed</Badge>
+                            )}
+                            {location.status === "suspended" && (
+                              <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>
+                            )}
+                            {(location.status === "completed" || location.status === "suspended") && location.hasMissingActuals && (
+                              <div className="flex items-center gap-1 text-yellow-600" title="Some budget items are missing actual quantities">
+                                <AlertTriangle className="w-4 h-4" />
+                              </div>
+                            )}
                           </div>
                           <p className="text-gray-600 text-sm mt-1">{location.description}</p>
                           <div className="space-y-3 mt-3">
