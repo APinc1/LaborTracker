@@ -3,7 +3,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -130,10 +129,14 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
     );
   };
 
+  const isChildItem = (item: BudgetLineItem) => {
+    return item.lineItemNumber && item.lineItemNumber.includes('.');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[85vh]">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Enter Actual Quantities</DialogTitle>
           <DialogDescription>
             Enter the actual quantities for each budget line item. You can enter either the Actual Qty or Actual Conv Qty - the other will be calculated automatically using the conversion factor.
@@ -141,13 +144,13 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
         </DialogHeader>
         
         {hasUnenteredActuals() && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-center gap-2 text-sm text-yellow-800">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 flex items-center gap-2 text-sm text-yellow-800 flex-shrink-0">
             <AlertTriangle className="h-4 w-4" />
             <span>Some line items still have zero actual quantities. Please review before saving.</span>
           </div>
         )}
 
-        <ScrollArea className="h-[500px]">
+        <div className="flex-1 overflow-auto min-h-0">
           <Table>
             <TableHeader className="sticky top-0 bg-white z-10">
               <TableRow>
@@ -179,11 +182,12 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                 budgetItems.map((item: BudgetLineItem) => {
                   const entry = actualsData[item.id] || { actualQty: "0", actualConvQty: "0" };
                   const hasNoActuals = parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
+                  const isChild = isChildItem(item);
                   
                   return (
                     <TableRow key={item.id} className={hasNoActuals ? "bg-yellow-50" : ""}>
-                      <TableCell className="font-medium">{item.lineItemNumber}</TableCell>
-                      <TableCell>{item.lineItemName}</TableCell>
+                      <TableCell className={`font-medium ${isChild ? "pl-8" : ""}`}>{item.lineItemNumber}</TableCell>
+                      <TableCell className={isChild ? "pl-4" : ""}>{item.lineItemName}</TableCell>
                       <TableCell>{item.costCode}</TableCell>
                       <TableCell>{item.unconvertedUnitOfMeasure}</TableCell>
                       <TableCell>{item.convertedUnitOfMeasure || "-"}</TableCell>
@@ -220,9 +224,9 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
               )}
             </TableBody>
           </Table>
-        </ScrollArea>
+        </div>
 
-        <div className="flex justify-between items-center pt-4 border-t">
+        <div className="flex justify-between items-center pt-4 border-t flex-shrink-0">
           <div className="text-sm text-gray-500">
             {budgetItems.length} line item{budgetItems.length !== 1 ? "s" : ""}
           </div>
