@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,58 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
     enabled: open && locationId !== null,
   });
 
+  const isChildItem = useCallback((item: BudgetLineItem) => {
+    return item.lineItemNumber && item.lineItemNumber.includes('.');
+  }, []);
+
+  const isParentItem = useCallback((item: BudgetLineItem) => {
+    return item.lineItemNumber && !item.lineItemNumber.includes('.');
+  }, []);
+
+  const getChildren = useCallback((parentItem: BudgetLineItem) => {
+    return budgetItems.filter(child => 
+      isChildItem(child) && child.lineItemNumber.split('.')[0] === parentItem.lineItemNumber
+    );
+  }, [budgetItems, isChildItem]);
+
+  const hasChildren = useCallback((parentItem: BudgetLineItem) => {
+    return getChildren(parentItem).length > 0;
+  }, [getChildren]);
+
+  const getParentItem = useCallback((childItem: BudgetLineItem) => {
+    if (!isChildItem(childItem)) return null;
+    const parentLineNumber = childItem.lineItemNumber.split('.')[0];
+    return budgetItems.find(item => item.lineItemNumber === parentLineNumber) || null;
+  }, [budgetItems, isChildItem]);
+
+  const recalculateParentTotals = useCallback((currentData: Record<number, ActualsEntry>) => {
+    const newData = { ...currentData };
+    
+    budgetItems.forEach(item => {
+      if (isParentItem(item) && hasChildren(item)) {
+        const children = getChildren(item);
+        let totalActualQty = 0;
+        let totalActualConvQty = 0;
+        
+        children.forEach(child => {
+          const childEntry = newData[child.id];
+          if (childEntry) {
+            totalActualQty += parseFloat(childEntry.actualQty) || 0;
+            totalActualConvQty += parseFloat(childEntry.actualConvQty) || 0;
+          }
+        });
+        
+        newData[item.id] = {
+          id: item.id,
+          actualQty: totalActualQty.toFixed(2),
+          actualConvQty: totalActualConvQty.toFixed(2),
+        };
+      }
+    });
+    
+    return newData;
+  }, [budgetItems, isParentItem, hasChildren, getChildren]);
+
   useEffect(() => {
     if (budgetItems.length > 0) {
       const initialData: Record<number, ActualsEntry> = {};
@@ -52,9 +104,10 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
           actualConvQty: item.actualConvQty || "0",
         };
       });
-      setActualsData(initialData);
+      const dataWithParentTotals = recalculateParentTotals(initialData);
+      setActualsData(dataWithParentTotals);
     }
-  }, [budgetItems]);
+  }, [budgetItems, recalculateParentTotals]);
 
   const saveActualsMutation = useMutation({
     mutationFn: async (data: { locationId: number; items: ActualsEntry[] }) => {
@@ -85,14 +138,17 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
     const conversionFactor = parseFloat(item.conversionFactor) || 1;
     const calculatedConvQty = (numValue * conversionFactor).toFixed(2);
     
-    setActualsData(prev => ({
-      ...prev,
-      [item.id]: {
-        id: item.id,
-        actualQty: value,
-        actualConvQty: calculatedConvQty,
-      }
-    }));
+    setActualsData(prev => {
+      const newData = {
+        ...prev,
+        [item.id]: {
+          id: item.id,
+          actualQty: value,
+          actualConvQty: calculatedConvQty,
+        }
+      };
+      return recalculateParentTotals(newData);
+    });
   };
 
   const handleActualConvQtyChange = (item: BudgetLineItem, value: string) => {
@@ -100,20 +156,22 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
     const conversionFactor = parseFloat(item.conversionFactor) || 1;
     const calculatedQty = conversionFactor !== 0 ? (numValue / conversionFactor).toFixed(2) : "0";
     
-    setActualsData(prev => ({
-      ...prev,
-      [item.id]: {
-        id: item.id,
-        actualQty: calculatedQty,
-        actualConvQty: value,
-      }
-    }));
+    setActualsData(prev => {
+      const newData = {
+        ...prev,
+        [item.id]: {
+          id: item.id,
+          actualQty: calculatedQty,
+          actualConvQty: value,
+        }
+      };
+      return recalculateParentTotals(newData);
+    });
   };
 
   const handleSave = () => {
     if (!locationId) return;
     
-    // Sanitize data - convert empty strings to "0" for decimal columns
     const sanitizedItems = Object.values(actualsData).map(item => ({
       id: item.id,
       actualQty: item.actualQty === "" || item.actualQty === null ? "0" : item.actualQty,
@@ -124,23 +182,16 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
   };
 
   const hasUnenteredActuals = () => {
-    return Object.values(actualsData).some(
-      entry => parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0
-    );
+    return budgetItems.some(item => {
+      if (isParentItem(item) && hasChildren(item)) return false;
+      const entry = actualsData[item.id];
+      if (!entry) return true;
+      return parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
+    });
   };
 
-  const isChildItem = (item: BudgetLineItem) => {
-    return item.lineItemNumber && item.lineItemNumber.includes('.');
-  };
-
-  const isParentItem = (item: BudgetLineItem) => {
-    return item.lineItemNumber && !item.lineItemNumber.includes('.');
-  };
-
-  const hasChildren = (parentItem: BudgetLineItem) => {
-    return budgetItems.some(child => 
-      isChildItem(child) && child.lineItemNumber.split('.')[0] === parentItem.lineItemNumber
-    );
+  const isEditable = (item: BudgetLineItem) => {
+    return !(isParentItem(item) && hasChildren(item));
   };
 
   return (
@@ -149,7 +200,7 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Enter Actual Quantities</DialogTitle>
           <DialogDescription>
-            Enter the actual quantities for each budget line item. You can enter either the Actual Qty or Actual Conv Qty - the other will be calculated automatically using the conversion factor.
+            Enter the actual quantities for child items. Parent totals are calculated automatically from their children.
           </DialogDescription>
         </DialogHeader>
         
@@ -191,15 +242,16 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
               ) : (
                 budgetItems.map((item: BudgetLineItem) => {
                   const entry = actualsData[item.id] || { actualQty: "0", actualConvQty: "0" };
-                  const hasNoActuals = parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
                   const isChild = isChildItem(item);
                   const isParent = isParentItem(item);
                   const parentHasChildren = isParent && hasChildren(item);
+                  const canEdit = isEditable(item);
+                  const hasNoActuals = canEdit && parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
                   
                   return (
                     <tr 
                       key={item.id} 
-                      className={`border-b ${isChild ? 'bg-gray-50' : 'bg-white'} ${hasNoActuals ? 'bg-yellow-50' : ''}`}
+                      className={`border-b ${isChild ? 'bg-gray-50' : parentHasChildren ? 'bg-blue-50' : 'bg-white'} ${hasNoActuals ? '!bg-yellow-50' : ''}`}
                     >
                       <td className={`px-3 py-2 font-medium ${isChild ? 'pl-8' : ''}`}>
                         {item.lineItemNumber}
@@ -211,31 +263,43 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                       <td className="px-3 py-2">{item.unconvertedUnitOfMeasure}</td>
                       <td className="px-3 py-2 text-right">{parseFloat(item.unconvertedQty).toLocaleString()}</td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-1">
-                          {hasNoActuals && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                          )}
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={entry.actualQty}
-                            onChange={(e) => handleActualQtyChange(item, e.target.value)}
-                            onFocus={(e) => e.target.select()}
-                            className="w-24"
-                          />
-                        </div>
+                        {canEdit ? (
+                          <div className="flex items-center gap-1">
+                            {hasNoActuals && (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                            )}
+                            <Input
+                              type="text"
+                              inputMode="decimal"
+                              value={entry.actualQty}
+                              onChange={(e) => handleActualQtyChange(item, e.target.value)}
+                              onFocus={(e) => e.target.select()}
+                              className="w-24"
+                            />
+                          </div>
+                        ) : (
+                          <span className="font-semibold text-blue-700">
+                            {parseFloat(entry.actualQty).toLocaleString()}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2">{item.convertedUnitOfMeasure || "-"}</td>
                       <td className="px-3 py-2 text-right">{parseFloat(item.convertedQty || "0").toLocaleString()}</td>
                       <td className="px-3 py-2">
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          value={entry.actualConvQty}
-                          onChange={(e) => handleActualConvQtyChange(item, e.target.value)}
-                          onFocus={(e) => e.target.select()}
-                          className="w-24"
-                        />
+                        {canEdit ? (
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={entry.actualConvQty}
+                            onChange={(e) => handleActualConvQtyChange(item, e.target.value)}
+                            onFocus={(e) => e.target.select()}
+                            className="w-24"
+                          />
+                        ) : (
+                          <span className="font-semibold text-blue-700">
+                            {parseFloat(entry.actualConvQty).toLocaleString()}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
