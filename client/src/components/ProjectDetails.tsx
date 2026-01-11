@@ -567,9 +567,10 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
     }
 
     // Check if status changed to completed or suspended - need to prompt for actuals
+    // This should trigger when changing TO completed/suspended from any other status
     const statusChangedToCompletedOrSuspended = 
       editingLocation && 
-      previousLocationStatus === "active" && 
+      previousLocationStatus !== newLocationStatus &&
       (newLocationStatus === "completed" || newLocationStatus === "suspended");
 
     if (editingLocation) {
