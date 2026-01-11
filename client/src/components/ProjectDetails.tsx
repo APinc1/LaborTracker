@@ -1065,6 +1065,18 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               View Budget
                             </Button>
                           </Link>
+                          {(location.status === 'completed' || location.status === 'suspended') && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => {
+                                setActualsLocationId(location.id);
+                                setShowActualsModal(true);
+                              }}
+                            >
+                              View Actuals
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
