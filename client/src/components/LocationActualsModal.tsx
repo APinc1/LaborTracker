@@ -195,20 +195,22 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                             <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />
                           )}
                           <Input
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={entry.actualQty}
                             onChange={(e) => handleActualQtyChange(item, e.target.value)}
+                            onFocus={(e) => e.target.select()}
                             className="w-24"
                           />
                         </div>
                       </TableCell>
                       <TableCell>
                         <Input
-                          type="number"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           value={entry.actualConvQty}
                           onChange={(e) => handleActualConvQtyChange(item, e.target.value)}
+                          onFocus={(e) => e.target.select()}
                           className="w-24"
                         />
                       </TableCell>
