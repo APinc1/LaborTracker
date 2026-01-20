@@ -479,6 +479,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get aggregated actuals for project (comparing project budget vs location budgets vs actuals)
+  app.get('/api/projects/:projectId/budget/actuals-summary', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const projectId = parseInt(req.params.projectId);
+      
+      // Get project budget items
+      const projectBudgetItems = await storage.getProjectBudgetLineItems(projectId);
+      
+      // Get all locations for this project
+      const locations = await storage.getLocations(projectId);
+      
+      // Get all location budget items for all locations
+      const allLocationBudgets: any[] = [];
+      for (const location of locations) {
+        const budgetItems = await storage.getBudgetLineItems(location.id);
+        allLocationBudgets.push(...budgetItems.map((item: any) => ({
+          ...item,
+          locationName: location.locationName || location.locationId
+        })));
+      }
+      
+      // Aggregate by project budget item (using lineItemNumber as key)
+      const aggregatedData = projectBudgetItems.map((projectItem: any) => {
+        // Find all location budget items that match this line item
+        const matchingLocationItems = allLocationBudgets.filter(
+          (locItem: any) => locItem.lineItemNumber === projectItem.lineItemNumber
+        );
+        
+        // Sum up location quantities and actuals
+        const locationQtySum = matchingLocationItems.reduce(
+          (sum: number, item: any) => sum + (parseFloat(item.unconvertedQty) || 0), 0
+        );
+        const locationConvQtySum = matchingLocationItems.reduce(
+          (sum: number, item: any) => sum + (parseFloat(item.convertedQty) || 0), 0
+        );
+        const actualQtySum = matchingLocationItems.reduce(
+          (sum: number, item: any) => sum + (parseFloat(item.actualQty) || 0), 0
+        );
+        const actualConvQtySum = matchingLocationItems.reduce(
+          (sum: number, item: any) => sum + (parseFloat(item.actualConvQty) || 0), 0
+        );
+        
+        return {
+          lineItemNumber: projectItem.lineItemNumber,
+          lineItemName: projectItem.lineItemName,
+          costCode: projectItem.costCode,
+          unit: projectItem.unconvertedUnitOfMeasure,
+          projectQty: parseFloat(projectItem.unconvertedQty) || 0,
+          convUnit: projectItem.convertedUnitOfMeasure,
+          projectConvQty: parseFloat(projectItem.convertedQty) || 0,
+          locationQtySum,
+          locationConvQtySum,
+          actualQtySum,
+          actualConvQtySum,
+          locationCount: matchingLocationItems.length
+        };
+      });
+      
+      res.json({
+        projectBudgetItems: aggregatedData,
+        locationCount: locations.length
+      });
+    } catch (error) {
+      console.error('Error fetching project actuals summary:', error);
+      res.status(500).json({ error: 'Failed to fetch actuals summary' });
+    }
+  });
+
   // Derive location budget from project budget
   app.post('/api/locations/:locationId/budget/derive', async (req, res) => {
     try {

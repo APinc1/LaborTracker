@@ -18,6 +18,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DialogDescription } from "@/components/ui/dialog";
+import ProjectActualsModal from "./ProjectActualsModal";
 import * as XLSX from 'xlsx';
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
 import { parseExcelRowToBudgetItem } from "@/lib/budgetCalculations";
@@ -52,6 +53,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [expandedErrorGroups, setExpandedErrorGroups] = useState<Set<string>>(new Set());
   const [showExampleBudgetDialog, setShowExampleBudgetDialog] = useState(false);
   const [showEditProjectDialog, setShowEditProjectDialog] = useState(false);
+  const [showProjectActualsModal, setShowProjectActualsModal] = useState(false);
   const [editProjectName, setEditProjectName] = useState("");
   const [editProjectId, setEditProjectId] = useState("");
   const [editProjectAddress, setEditProjectAddress] = useState("");
@@ -841,6 +843,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           ))}
                         </SelectContent>
                       </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowProjectActualsModal(true)}
+                        className="flex items-center gap-1"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        View Actuals
+                      </Button>
                     </div>
                     <Button
                       variant="outline"
@@ -1827,6 +1838,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           onOpenChange={setShowActualsModal}
           locationId={actualsLocationId}
         />
+
+        {/* Project Actuals Modal */}
+        {project && (
+          <ProjectActualsModal
+            open={showProjectActualsModal}
+            onOpenChange={setShowProjectActualsModal}
+            projectId={project.id}
+          />
+        )}
       </main>
       </div>
     </div>
