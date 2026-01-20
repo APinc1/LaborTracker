@@ -10,13 +10,36 @@ interface ChatMessage {
   content: string;
 }
 
+const ALLOWED_USERNAMES = ["emilyalameddine", "ttorres"];
+const ALLOWED_NAMES = ["emily alameddine", "tomas torres"];
+
+function isUserAllowed(): boolean {
+  try {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) return false;
+    
+    const user = JSON.parse(savedUser);
+    const username = (user.username || '').toLowerCase();
+    const name = (user.name || '').toLowerCase();
+    
+    return ALLOWED_USERNAMES.includes(username) || ALLOWED_NAMES.includes(name);
+  } catch {
+    return false;
+  }
+}
+
 export default function ChatAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    setHasAccess(isUserAllowed());
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -144,6 +167,10 @@ export default function ChatAssistant() {
     setMessages([]);
     setConversationId(null);
   };
+
+  if (!hasAccess) {
+    return null;
+  }
 
   if (!isOpen) {
     return (
