@@ -119,12 +119,12 @@ export default function ProjectBudgets() {
 
   // Calculate cost code summaries
   const getCostCodeSummaries = () => {
-    const summaries: { [key: string]: { convQty: number; medianPx: number; hours: number; budget: number; pxValues: number[] } } = {};
+    const summaries: { [key: string]: { convQty: number; convUnit: string; medianPx: number; hours: number; budget: number; pxValues: number[]; unitCounts: { [unit: string]: number } } } = {};
     
     (budgetItems as any[]).forEach((item: any) => {
       const code = item.costCode || 'No Code';
       if (!summaries[code]) {
-        summaries[code] = { convQty: 0, medianPx: 0, hours: 0, budget: 0, pxValues: [] };
+        summaries[code] = { convQty: 0, convUnit: '', medianPx: 0, hours: 0, budget: 0, pxValues: [], unitCounts: {} };
       }
       summaries[code].convQty += parseFloat(item.convertedQty || 0);
       summaries[code].hours += parseFloat(item.hours || 0);
@@ -132,9 +132,14 @@ export default function ProjectBudgets() {
       if (item.productionRate) {
         summaries[code].pxValues.push(parseFloat(item.productionRate));
       }
+      // Track converted unit of measure (find most common)
+      const unit = item.convertedUnitOfMeasure || '';
+      if (unit) {
+        summaries[code].unitCounts[unit] = (summaries[code].unitCounts[unit] || 0) + 1;
+      }
     });
 
-    // Calculate median PX for each cost code
+    // Calculate median PX and determine most common unit for each cost code
     Object.keys(summaries).forEach(code => {
       const pxValues = summaries[code].pxValues.sort((a, b) => a - b);
       if (pxValues.length > 0) {
@@ -143,11 +148,22 @@ export default function ProjectBudgets() {
           ? pxValues[mid] 
           : (pxValues[mid - 1] + pxValues[mid]) / 2;
       }
+      // Find most common unit
+      const unitCounts = summaries[code].unitCounts;
+      let maxCount = 0;
+      let mostCommonUnit = '';
+      Object.entries(unitCounts).forEach(([unit, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          mostCommonUnit = unit;
+        }
+      });
+      summaries[code].convUnit = mostCommonUnit;
     });
 
     return Object.entries(summaries)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([code, data]) => ({ code, ...data }));
+      .map(([code, data]) => ({ code, convQty: data.convQty, convUnit: data.convUnit, medianPx: data.medianPx, hours: data.hours, budget: data.budget }));
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,7 +354,7 @@ export default function ProjectBudgets() {
                         <div className="font-medium text-gray-900 mb-2">{summary.code}</div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
-                            <p className="text-xs text-gray-500">Conv. Qty</p>
+                            <p className="text-xs text-gray-500">Conv. Qty{summary.convUnit ? ` (${summary.convUnit})` : ''}</p>
                             <p className="font-medium text-gray-900">{summary.convQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           </div>
                           <div>
