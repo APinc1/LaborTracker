@@ -101,11 +101,11 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   };
 
   const getCostCodeSummary = () => {
-    const summary: Record<string, { hours: number; budget: number; lineItems: number; convQty: number; pxValues: number[] }> = {};
+    const summary: Record<string, { hours: number; budget: number; lineItems: number; convQty: number; pxValues: number[]; unitCounts: Record<string, number> }> = {};
     projectBudgetItems.forEach((item: any) => {
       const costCode = item.costCode || 'Uncategorized';
       if (!summary[costCode]) {
-        summary[costCode] = { hours: 0, budget: 0, lineItems: 0, convQty: 0, pxValues: [] };
+        summary[costCode] = { hours: 0, budget: 0, lineItems: 0, convQty: 0, pxValues: [], unitCounts: {} };
       }
       summary[costCode].hours += parseFloat(item.hours) || 0;
       summary[costCode].budget += parseFloat(item.budgetTotal) || 0;
@@ -114,6 +114,10 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       const px = parseFloat(item.productionRate);
       if (!isNaN(px) && px > 0) {
         summary[costCode].pxValues.push(px);
+      }
+      const unit = item.convertedUnitOfMeasure || '';
+      if (unit) {
+        summary[costCode].unitCounts[unit] = (summary[costCode].unitCounts[unit] || 0) + 1;
       }
     });
     return Object.entries(summary)
@@ -124,7 +128,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
             ? (sortedPx[sortedPx.length / 2 - 1] + sortedPx[sortedPx.length / 2]) / 2
             : sortedPx[Math.floor(sortedPx.length / 2)]
           : 0;
-        return { code, ...data, medianPx };
+        let maxCount = 0;
+        let convUnit = '';
+        Object.entries(data.unitCounts).forEach(([unit, count]) => {
+          if (count > maxCount) {
+            maxCount = count;
+            convUnit = unit;
+          }
+        });
+        return { code, hours: data.hours, budget: data.budget, lineItems: data.lineItems, convQty: data.convQty, medianPx, convUnit };
       })
       .sort((a, b) => b.budget - a.budget);
   };
@@ -791,7 +803,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                         </div>
                         <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                           <div>
-                            <p className="text-xs text-gray-500">Conv. Qty</p>
+                            <p className="text-xs text-gray-500">Conv. Qty{summary.convUnit ? ` (${summary.convUnit})` : ''}</p>
                             <p className="font-medium text-gray-900">{summary.convQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                           </div>
                           <div>
