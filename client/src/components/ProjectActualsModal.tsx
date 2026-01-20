@@ -76,18 +76,18 @@ export default function ProjectActualsModal({ open, onOpenChange, projectId }: P
                   <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
                     <span className="text-blue-600">Budget Qty</span>
                   </th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
+                    <span className="text-green-600">Loc Qty</span>
+                  </th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
+                    <span className="text-orange-600">Actual Qty</span>
+                  </th>
                   <th className="px-2 py-2 text-center font-medium text-gray-700 w-16">Conv UM</th>
                   <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
                     <span className="text-blue-600">Budget Conv</span>
                   </th>
                   <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
-                    <span className="text-green-600">Loc Qty</span>
-                  </th>
-                  <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
                     <span className="text-green-600">Loc Conv</span>
-                  </th>
-                  <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
-                    <span className="text-orange-600">Actual Qty</span>
                   </th>
                   <th className="px-2 py-2 text-right font-medium text-gray-700 w-20">
                     <span className="text-orange-600">Actual Conv</span>
@@ -113,18 +113,18 @@ export default function ProjectActualsModal({ open, onOpenChange, projectId }: P
                       <td className="px-2 py-2 text-right text-blue-700 font-medium">
                         {item.projectQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
+                      <td className="px-2 py-2 text-right text-green-700">
+                        {item.locationQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-2 py-2 text-right text-orange-700 font-medium">
+                        {item.actualQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
                       <td className="px-2 py-2 text-center text-gray-600">{item.convUnit || '-'}</td>
                       <td className="px-2 py-2 text-right text-blue-700 font-medium">
                         {item.projectConvQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-2 py-2 text-right text-green-700">
-                        {item.locationQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-2 py-2 text-right text-green-700">
                         {item.locationConvQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-2 py-2 text-right text-orange-700 font-medium">
-                        {item.actualQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-2 py-2 text-right text-orange-700 font-medium">
                         {item.actualConvQtySum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
