@@ -57,15 +57,23 @@ async function getRelevantContext(userMessage: string): Promise<string> {
     const todayTasks = tasks.filter((t: any) => t.taskDate === today);
     const tomorrowTasks = tasks.filter((t: any) => t.taskDate === tomorrow);
     
+    // Get all locations for name lookup
+    const allLocations = await storage.getAllLocations();
+    const locationMap = new Map(allLocations.map((l: any) => [l.id, l.name]));
+    
     context += `\n## Today's Tasks (${today}): ${todayTasks.length} tasks\n`;
     for (const task of todayTasks.slice(0, 10)) {
-      context += `- ${task.taskName} at Location ID ${task.locationId}: ${task.status || 'scheduled'}\n`;
+      const locationName = locationMap.get(task.locationId) || `Location ${task.locationId}`;
+      const taskName = task.name || task.taskType || 'Unnamed task';
+      context += `- ${taskName} at ${locationName}: ${task.status || 'scheduled'}\n`;
     }
     
     if (messageLower.includes('tomorrow')) {
       context += `\n## Tomorrow's Tasks (${tomorrow}): ${tomorrowTasks.length} tasks\n`;
       for (const task of tomorrowTasks.slice(0, 10)) {
-        context += `- ${task.taskName} at Location ID ${task.locationId}: ${task.status || 'scheduled'}\n`;
+        const locationName = locationMap.get(task.locationId) || `Location ${task.locationId}`;
+        const taskName = task.name || task.taskType || 'Unnamed task';
+        context += `- ${taskName} at ${locationName}: ${task.status || 'scheduled'}\n`;
       }
     }
     
