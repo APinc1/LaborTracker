@@ -843,15 +843,6 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowProjectActualsModal(true)}
-                        className="flex items-center gap-1"
-                      >
-                        <FileSpreadsheet className="w-4 h-4" />
-                        View Actuals
-                      </Button>
                     </div>
                     <Button
                       variant="outline"
@@ -861,6 +852,15 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       title="Expand table"
                     >
                       <Maximize2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowProjectActualsModal(true)}
+                      className="flex items-center gap-1"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      View Actuals
                     </Button>
                   </div>
                 </div>
