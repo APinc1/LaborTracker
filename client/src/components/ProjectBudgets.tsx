@@ -161,9 +161,11 @@ export default function ProjectBudgets() {
       summaries[code].convUnit = mostCommonUnit;
     });
 
-    return Object.entries(summaries)
+    const result = Object.entries(summaries)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([code, data]) => ({ code, convQty: data.convQty, convUnit: data.convUnit, medianPx: data.medianPx, hours: data.hours, budget: data.budget }));
+    console.log('Cost code summaries:', result);
+    return result;
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
