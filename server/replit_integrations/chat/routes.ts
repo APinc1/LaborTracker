@@ -48,7 +48,8 @@ async function getRelevantContext(userMessage: string): Promise<string> {
   // If asking about tasks or schedules
   if (messageLower.includes('task') || messageLower.includes('schedule') || messageLower.includes('today') || 
       messageLower.includes('tomorrow') || messageLower.includes('week') || messageLower.includes('concrete') ||
-      messageLower.includes('demo') || messageLower.includes('grading') || messageLower.includes('labor')) {
+      messageLower.includes('demo') || messageLower.includes('grading') || messageLower.includes('labor') ||
+      messageLower.includes('pour') || messageLower.includes('how much') || messageLower.includes('quantity')) {
     const today = new Date().toISOString().split('T')[0];
     const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
     const weekEnd = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
@@ -62,17 +63,27 @@ async function getRelevantContext(userMessage: string): Promise<string> {
     const allLocations = await storage.getAllLocations();
     const locationMap = new Map(allLocations.map((l: any) => [l.id, l.name]));
     
-    // Group tasks by type for summary
-    const tasksByType: Record<string, number> = {};
+    // Group tasks by type for summary with quantities
+    const tasksByType: Record<string, { count: number, totalQty: number, unit: string }> = {};
     for (const task of tasks) {
       const taskType = task.taskType || 'Other';
-      tasksByType[taskType] = (tasksByType[taskType] || 0) + 1;
+      if (!tasksByType[taskType]) {
+        tasksByType[taskType] = { count: 0, totalQty: 0, unit: task.unitOfMeasure || '' };
+      }
+      tasksByType[taskType].count++;
+      if (task.qty) {
+        tasksByType[taskType].totalQty += parseFloat(task.qty) || 0;
+      }
     }
     
     context += `\n## This Week's Tasks (${today} to ${weekEnd}): ${tasks.length} total\n`;
     context += `Task breakdown by type:\n`;
-    for (const [type, count] of Object.entries(tasksByType)) {
-      context += `- ${type}: ${count} tasks\n`;
+    for (const [type, data] of Object.entries(tasksByType)) {
+      if (data.totalQty > 0 && data.unit) {
+        context += `- ${type}: ${data.count} tasks, Total quantity: ${data.totalQty} ${data.unit}\n`;
+      } else {
+        context += `- ${type}: ${data.count} tasks\n`;
+      }
     }
     
     context += `\n## Today's Tasks (${today}): ${todayTasks.length} tasks\n`;
@@ -80,7 +91,8 @@ async function getRelevantContext(userMessage: string): Promise<string> {
       const locationName = locationMap.get(task.locationId) || `Location ${task.locationId}`;
       const taskName = task.name || 'Unnamed task';
       const taskType = task.taskType || '';
-      context += `- [${taskType}] ${taskName} at ${locationName}: ${task.status || 'scheduled'}\n`;
+      const qtyInfo = task.qty && task.unitOfMeasure ? ` - Qty: ${task.qty} ${task.unitOfMeasure}` : '';
+      context += `- [${taskType}] ${taskName} at ${locationName}: ${task.status || 'scheduled'}${qtyInfo}\n`;
     }
     
     if (messageLower.includes('tomorrow')) {
@@ -89,19 +101,22 @@ async function getRelevantContext(userMessage: string): Promise<string> {
         const locationName = locationMap.get(task.locationId) || `Location ${task.locationId}`;
         const taskName = task.name || 'Unnamed task';
         const taskType = task.taskType || '';
-        context += `- [${taskType}] ${taskName} at ${locationName}: ${task.status || 'scheduled'}\n`;
+        const qtyInfo = task.qty && task.unitOfMeasure ? ` - Qty: ${task.qty} ${task.unitOfMeasure}` : '';
+        context += `- [${taskType}] ${taskName} at ${locationName}: ${task.status || 'scheduled'}${qtyInfo}\n`;
       }
     }
     
-    // Show all week's tasks with types when asking about specific task types
+    // Show all week's tasks with types and quantities when asking about specific work
     if (messageLower.includes('concrete') || messageLower.includes('demo') || 
-        messageLower.includes('grading') || messageLower.includes('labor') || messageLower.includes('week')) {
-      context += `\n## All Tasks This Week (detailed):\n`;
+        messageLower.includes('grading') || messageLower.includes('labor') || messageLower.includes('week') ||
+        messageLower.includes('pour') || messageLower.includes('how much') || messageLower.includes('quantity')) {
+      context += `\n## All Tasks This Week (with quantities):\n`;
       for (const task of tasks.slice(0, 50)) {
         const locationName = locationMap.get(task.locationId) || `Location ${task.locationId}`;
         const taskName = task.name || 'Unnamed task';
         const taskType = task.taskType || '';
-        context += `- [${taskType}] ${taskName} on ${task.taskDate} at ${locationName}: ${task.status || 'scheduled'}\n`;
+        const qtyInfo = task.qty && task.unitOfMeasure ? ` - Qty: ${task.qty} ${task.unitOfMeasure}` : '';
+        context += `- [${taskType}] ${taskName} on ${task.taskDate} at ${locationName}: ${task.status || 'scheduled'}${qtyInfo}\n`;
       }
     }
   }
