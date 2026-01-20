@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import ExportButtons from "./ExportButtons";
 import { TaskCardWithForeman } from '@/components/TaskCardWithForeman';
+import ChatAssistant from "./ChatAssistant";
 
 export default function Dashboard() {
   const today = new Date();
@@ -1196,6 +1197,7 @@ export default function Dashboard() {
         </Card>
       </main>
       </div>
+      <ChatAssistant />
     </div>
   );
 }

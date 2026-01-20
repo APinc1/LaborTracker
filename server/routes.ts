@@ -11,6 +11,7 @@ import {
 import { handleLinkedTaskDeletion } from "@shared/taskUtils";
 import { timing, validateLimit } from "./middleware/timing";
 import { nextWeekday } from "./lib/dates";
+import { registerChatRoutes } from "./replit_integrations/chat";
 
 // Aggressive timeout for better performance
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 8000): Promise<T> {
@@ -2505,6 +2506,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to geocode address' });
     }
   });
+
+  // Register chat routes for AI assistant
+  registerChatRoutes(app);
 
   return httpServer;
 }
