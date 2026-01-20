@@ -182,15 +182,11 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
   };
 
   const hasUnenteredActuals = () => {
-    // Only show warning if ALL editable items have zero actuals (none were entered)
+    // Show warning if ANY editable item has actualsEntered = false (user hasn't entered a value yet)
     const editableItems = budgetItems.filter(item => !(isParentItem(item) && hasChildren(item)));
     if (editableItems.length === 0) return false;
     
-    return editableItems.every(item => {
-      const entry = actualsData[item.id];
-      if (!entry) return true;
-      return parseFloat(entry.actualQty) === 0 && parseFloat(entry.actualConvQty) === 0;
-    });
+    return editableItems.some(item => !item.actualsEntered);
   };
 
   const isEditable = (item: BudgetLineItem) => {
@@ -249,14 +245,18 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
                   const isParent = isParentItem(item);
                   const parentHasChildren = isParent && hasChildren(item);
                   const canEdit = isEditable(item);
+                  const needsActuals = canEdit && !item.actualsEntered;
                   
                   return (
                     <tr 
                       key={item.id} 
-                      className={`border-b ${isChild ? 'bg-slate-100' : parentHasChildren ? 'bg-blue-50' : 'bg-white'}`}
+                      className={`border-b ${needsActuals ? 'bg-yellow-50' : isChild ? 'bg-slate-100' : parentHasChildren ? 'bg-blue-50' : 'bg-white'}`}
                     >
                       <td className={`px-3 py-2 font-medium ${isChild ? 'pl-8 text-gray-600' : ''}`}>
-                        {item.lineItemNumber}
+                        <div className="flex items-center gap-1">
+                          {needsActuals && <AlertTriangle className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
+                          {item.lineItemNumber}
+                        </div>
                       </td>
                       <td className={`px-3 py-2 ${isChild ? 'pl-6 text-gray-600' : ''} ${parentHasChildren ? 'font-semibold' : ''}`}>
                         {item.lineItemName}

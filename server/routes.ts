@@ -686,10 +686,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update each budget item's actual quantities (sanitize empty strings to "0")
+      // Mark actualsEntered = true when user saves any value (including 0)
       const updatePromises = items.map(async (item: { id: number; actualQty: string; actualConvQty: string }) => {
         return storage.updateBudgetLineItem(item.id, {
           actualQty: item.actualQty === "" || item.actualQty === null ? "0" : item.actualQty,
           actualConvQty: item.actualConvQty === "" || item.actualConvQty === null ? "0" : item.actualConvQty,
+          actualsEntered: true,
         });
       });
       
@@ -726,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ).then(results => results.flat());
       
       // Build map of locationId -> hasMissingActuals
-      // Only show warning if ALL items have zero actuals (none were entered)
+      // Show warning if ANY item has actualsEntered = false (user hasn't entered a value yet)
       const missingActualsMap = new Map<number, boolean>();
       for (const location of locationsNeedingCheck) {
         const locationBudgetItems = allBudgetItems.filter(item => item.locationId === location.id);
@@ -734,12 +736,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           missingActualsMap.set(location.id, false);
           continue;
         }
-        const allZero = locationBudgetItems.every(item => {
-          const actualQty = item.actualQty ? parseFloat(item.actualQty as string) : 0;
-          const actualConvQty = item.actualConvQty ? parseFloat(item.actualConvQty as string) : 0;
-          return actualQty === 0 && actualConvQty === 0;
-        });
-        missingActualsMap.set(location.id, allZero);
+        const hasMissing = locationBudgetItems.some(item => !item.actualsEntered);
+        missingActualsMap.set(location.id, hasMissing);
       }
       
       const locationsWithActualsStatus = locations.map(location => ({
