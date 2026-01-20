@@ -11,6 +11,7 @@ import { downloadBudgetTemplate, FORMAT_REQUIREMENTS, validateBudgetData } from 
 import { parseSW62ExcelRowForProject } from "@/lib/customExcelParser";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
+import ProjectActualsModal from "./ProjectActualsModal";
 
 const EXAMPLE_BUDGET_DATA = [
   {lineItemNumber:"1",description:"Mobilization per General Requirements",unit:"LS",qty:"1",unitCost:"$15,000",unitTotal:"$15,000",costCode:"Mobilization",convUnit:"LS",convQty:"1",px:"1",hours:"",laborCost:"",equipment:"",trucking:"",dumpFees:"",material:"",sub:"",budget:"",billing:"$15,000"},
@@ -36,6 +37,7 @@ export default function ProjectBudgets() {
   const [isUploading, setIsUploading] = useState(false);
   const [showBudgetUploadDialog, setShowBudgetUploadDialog] = useState(false);
   const [showExampleBudgetDialog, setShowExampleBudgetDialog] = useState(false);
+  const [showProjectActualsModal, setShowProjectActualsModal] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -378,19 +380,30 @@ export default function ProjectBudgets() {
                 {/* Filter */}
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="font-semibold text-gray-900 text-lg">Budget Line Items</h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Filter by Cost Code:</span>
-                    <Select value={costCodeFilter} onValueChange={setCostCodeFilter}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="All Cost Codes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Cost Codes</SelectItem>
-                        {getUniqueCostCodes().map((code) => (
-                          <SelectItem key={code} value={code}>{code}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">Filter by Cost Code:</span>
+                      <Select value={costCodeFilter} onValueChange={setCostCodeFilter}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="All Cost Codes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Cost Codes</SelectItem>
+                          {getUniqueCostCodes().map((code) => (
+                            <SelectItem key={code} value={code}>{code}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowProjectActualsModal(true)}
+                      className="flex items-center gap-1"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      View Actuals
+                    </Button>
                   </div>
                 </div>
 
@@ -686,6 +699,15 @@ export default function ProjectBudgets() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Project Actuals Modal */}
+      {selectedProject && (
+        <ProjectActualsModal
+          open={showProjectActualsModal}
+          onOpenChange={setShowProjectActualsModal}
+          projectId={selectedProject.id}
+        />
+      )}
     </div>
   );
 }
