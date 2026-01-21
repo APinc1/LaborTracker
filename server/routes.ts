@@ -2126,7 +2126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Password reset routes
+  // Password reset routes (using Resend integration)
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {
       const storage = await getStorage();
@@ -2150,44 +2150,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.setPasswordResetToken(user.id, resetToken, expiresAt);
 
-      // Send email with reset link
+      // Send email with reset link using Resend
       const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
       
-      // Check if SMTP is configured
-      const smtpUser = process.env.SMTP_USER;
-      const smtpPass = process.env.SMTP_PASS;
-      
-      if (smtpUser && smtpPass) {
-        const nodemailer = await import('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
-          port: parseInt(process.env.SMTP_PORT || '587'),
-          secure: false,
-          auth: {
-            user: smtpUser,
-            pass: smtpPass,
-          },
-        });
-
-        await transporter.sendMail({
-          from: smtpUser,
-          to: user.email,
-          subject: 'Password Reset - Construction Management System',
-          html: `
-            <h2>Password Reset Request</h2>
-            <p>Hello ${user.name},</p>
-            <p>You requested to reset your password. Click the link below to set a new password:</p>
-            <p><a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
-            <p>This link will expire in 1 hour.</p>
-            <p>If you didn't request this, please ignore this email.</p>
-            <p>Best regards,<br>Construction Management System</p>
-          `,
-        });
-        
+      try {
+        const { sendPasswordResetEmail } = await import('./resend-client');
+        await sendPasswordResetEmail(user.email, user.name, resetUrl);
         console.log(`Password reset email sent to ${user.email}`);
-      } else {
-        console.log(`Password reset requested for ${user.email}. Reset URL: ${resetUrl}`);
-        console.log('Note: SMTP not configured. Set SMTP_USER and SMTP_PASS to enable email sending.');
+      } catch (emailError) {
+        console.error('Failed to send email via Resend:', emailError);
+        // Log the reset URL for debugging/manual reset
+        console.log(`Manual reset URL for ${user.email}: ${resetUrl}`);
       }
 
       res.json({ message: 'If an account exists with this email, a reset link has been sent.' });
