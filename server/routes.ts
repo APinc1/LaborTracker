@@ -2127,6 +2127,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Password reset routes
+  app.post('/api/auth/forgot-password', async (req, res) => {
+    try {
+      const storage = await getStorage();
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success to prevent email enumeration
+      if (!user) {
+        return res.json({ message: 'If an account exists with this email, a reset link has been sent.' });
+      }
+
+      // Generate reset token
+      const crypto = await import('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+
+      await storage.setPasswordResetToken(user.id, resetToken, expiresAt);
+
+      // Send email with reset link
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-password?token=${resetToken}`;
+      
+      // Check if SMTP is configured
+      const smtpUser = process.env.SMTP_USER;
+      const smtpPass = process.env.SMTP_PASS;
+      
+      if (smtpUser && smtpPass) {
+        const nodemailer = await import('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'smtp-mail.outlook.com',
+          port: parseInt(process.env.SMTP_PORT || '587'),
+          secure: false,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+
+        await transporter.sendMail({
+          from: smtpUser,
+          to: user.email,
+          subject: 'Password Reset - Construction Management System',
+          html: `
+            <h2>Password Reset Request</h2>
+            <p>Hello ${user.name},</p>
+            <p>You requested to reset your password. Click the link below to set a new password:</p>
+            <p><a href="${resetUrl}" style="background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
+            <p>This link will expire in 1 hour.</p>
+            <p>If you didn't request this, please ignore this email.</p>
+            <p>Best regards,<br>Construction Management System</p>
+          `,
+        });
+        
+        console.log(`Password reset email sent to ${user.email}`);
+      } else {
+        console.log(`Password reset requested for ${user.email}. Reset URL: ${resetUrl}`);
+        console.log('Note: SMTP not configured. Set SMTP_USER and SMTP_PASS to enable email sending.');
+      }
+
+      res.json({ message: 'If an account exists with this email, a reset link has been sent.' });
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      res.status(500).json({ error: 'Failed to process password reset request' });
+    }
+  });
+
   app.post('/api/auth/reset-password', async (req, res) => {
     try {
       const storage = await getStorage();
