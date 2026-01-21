@@ -4,21 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, User, Eye, EyeOff, Mail, Loader2 } from "lucide-react";
+import { Lock, User } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
-});
-
-const forgotPasswordSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
 });
 
 interface LoginProps {
@@ -27,11 +22,6 @@ interface LoginProps {
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
-  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
-  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -126,18 +116,11 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input 
-                          type={showPassword ? "text" : "password"}
-                          className="pl-10 pr-10" 
+                          type="password" 
+                          className="pl-10" 
                           placeholder="Enter your password" 
                           {...field} 
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -152,107 +135,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               >
                 {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
               </Button>
-              
-              <div className="text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                  Forgot your password?
-                </button>
-              </div>
             </form>
           </Form>
         </CardContent>
       </Card>
-      
-      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reset Password</DialogTitle>
-            <DialogDescription>
-              Enter your email address and we'll send you a link to reset your password.
-            </DialogDescription>
-          </DialogHeader>
-          {forgotPasswordSent ? (
-            <div className="text-center py-4">
-              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-6 h-6 text-green-600" />
-              </div>
-              <p className="text-gray-600">
-                If an account exists with that email, you'll receive a password reset link shortly.
-              </p>
-              <Button 
-                className="mt-4" 
-                onClick={() => {
-                  setShowForgotPassword(false);
-                  setForgotPasswordSent(false);
-                  setForgotPasswordEmail("");
-                }}
-              >
-                Close
-              </Button>
-            </div>
-          ) : (
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setForgotPasswordLoading(true);
-              try {
-                await apiRequest('/api/auth/forgot-password', {
-                  method: 'POST',
-                  body: JSON.stringify({ email: forgotPasswordEmail })
-                });
-                setForgotPasswordSent(true);
-              } catch (error) {
-                toast({
-                  title: "Error",
-                  description: "Failed to send reset email. Please try again.",
-                  variant: "destructive",
-                });
-              } finally {
-                setForgotPasswordLoading(false);
-              }
-            }} className="space-y-4">
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  type="email"
-                  value={forgotPasswordEmail}
-                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                  className="pl-10"
-                  placeholder="Enter your email address"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowForgotPassword(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={forgotPasswordLoading || !forgotPasswordEmail}
-                >
-                  {forgotPasswordLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    'Send Reset Link'
-                  )}
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

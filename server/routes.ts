@@ -2169,57 +2169,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/auth/forgot-password', async (req, res) => {
-    try {
-      const storage = await getStorage();
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ error: 'Email is required' });
-      }
-      
-      const user = await storage.getUserByEmail(email);
-      
-      // Always return success to prevent email enumeration
-      if (!user) {
-        return res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
-      }
-      
-      // Generate a secure reset token
-      const crypto = await import('crypto');
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const resetExpires = new Date(Date.now() + 3600000); // 1 hour
-      
-      // Save the token to the user
-      await storage.updateUser(user.id, {
-        passwordResetToken: resetToken,
-        passwordResetExpires: resetExpires
-      });
-      
-      // Get the domain for the reset link
-      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0] || 'localhost:5000';
-      const protocol = domain.includes('localhost') ? 'http' : 'https';
-      const resetLink = `${protocol}://${domain}/reset-password/${resetToken}`;
-      
-      // Log the reset link (in production, this would send an email)
-      console.log('='.repeat(60));
-      console.log('PASSWORD RESET REQUEST');
-      console.log('='.repeat(60));
-      console.log(`User: ${user.name} (${user.email})`);
-      console.log(`Reset Link: ${resetLink}`);
-      console.log('This link expires in 1 hour.');
-      console.log('='.repeat(60));
-      
-      // TODO: Add email sending here when email service is configured
-      // For now, the reset link is logged to the console
-      
-      res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
-    } catch (error) {
-      console.error('Forgot password error:', error);
-      res.status(500).json({ error: 'Failed to process password reset request' });
-    }
-  });
-
   // Daily Job Report routes
   app.get('/api/daily-job-reports', async (req, res) => {
     try {
