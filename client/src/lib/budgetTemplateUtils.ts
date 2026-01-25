@@ -326,18 +326,24 @@ export function validateBudgetData(data: any[][]): ValidationResult {
       { index: 16, name: 'Material Cost' },
       { index: 17, name: 'Subcontractor Cost' },
       { index: 18, name: 'Budget Total' },
-      { index: 19, name: 'Billing' },
+      { index: 19, name: 'Profit' },
     ];
     
     for (const col of numericColumns) {
       const value = row[col.index];
       if (value !== null && value !== undefined && value !== '') {
-        const strValue = value.toString().trim();
-        if (strValue && isNaN(parseFloat(strValue.replace(/[$,]/g, '')))) {
+        let strValue = value.toString().trim();
+        // Handle accounting format: $(27.30) or (27.30) means negative
+        if (strValue.startsWith('(') && strValue.endsWith(')')) {
+          strValue = strValue.slice(1, -1);
+        }
+        // Remove currency symbols and commas
+        strValue = strValue.replace(/[$,]/g, '');
+        if (strValue && isNaN(parseFloat(strValue))) {
           errors.push({
             row: i + 1,
             column: col.name,
-            message: `Invalid number format: "${strValue}"`,
+            message: `Invalid number format: "${value}"`,
           });
         }
       }
