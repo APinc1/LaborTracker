@@ -56,7 +56,7 @@ export function normalizeCostCode(rawCode: string): string {
   if (codeLower.includes('sub')) {
     return 'Sub';
   }
-  if (codeLower === 'gnrl labor' || codeLower === 'gnrl req' || codeLower === 'general labor') {
+  if (codeLower === 'gnrl labor' || codeLower === 'gnrl lbr' || codeLower === 'gnrl req' || codeLower === 'general labor') {
     return 'General Labor';
   }
   if (codeLower === 'electrical') {
