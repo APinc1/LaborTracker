@@ -889,7 +889,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                           <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Material</th>
                           <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Sub</th>
                           <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Budget</th>
-                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Billings</th>
+                          <th className="w-24 sticky top-0 bg-gray-100 px-4 py-3 text-right font-medium text-gray-600" style={{position: 'sticky', top: '0px'}}>Profit</th>
                         </tr>
                       </thead>
                       <tbody>
