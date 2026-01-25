@@ -1341,7 +1341,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
 
         {/* Budget Upload Dialog */}
         <Dialog open={showBudgetUploadDialog} onOpenChange={(open) => { setShowBudgetUploadDialog(open); if (!open) { setValidationResult(null); setExpandedErrorGroups(new Set()); } }}>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Upload Master Budget</DialogTitle>
               <DialogDescription>
@@ -1388,7 +1388,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
               {validationResult && !validationResult.isValid && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <h4 className="font-semibold text-red-800 mb-2">Validation Errors ({validationResult.errors.length})</h4>
-                  <div className="max-h-48 overflow-y-auto space-y-3">
+                  <div className="max-h-64 overflow-y-auto space-y-3">
                     {(() => {
                       const columnOrder = ['Line Item Number', 'Level', 'Master Code', 'Code', 'Description', 'Crew', 
                         'Unconverted Unit', 'Unconverted Qty', 'Conv Factor', 'Conv UM', 'Converted Unit', 'Converted Qty',

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
@@ -237,16 +237,28 @@ export default function ChatAssistant() {
             )}
           </div>
         </ScrollArea>
-        <div className="flex gap-2 mt-3">
-          <Input
+        <div className="flex gap-2 mt-3 items-end">
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask about your data..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            placeholder="Ask about your data or discuss app features..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 min-h-[40px] max-h-[120px] resize-none overflow-y-auto"
+            rows={1}
+            style={{ height: 'auto' }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+            }}
           />
-          <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon">
+          <Button onClick={sendMessage} disabled={isLoading || !input.trim()} size="icon" className="shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>
