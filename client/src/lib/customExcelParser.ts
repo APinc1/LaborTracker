@@ -23,7 +23,7 @@ export const SW62_COLUMN_MAPPING = {
   materialCost: 16,       // "MATERIAL"
   subcontractorCost: 17,  // "SUB"
   budgetTotal: 18,        // "BUDGET"
-  billing: 19             // "BILLINGS"
+  profit: 19              // "PROFIT"
 };
 
 export interface ProjectBudgetItem {
@@ -45,7 +45,7 @@ export interface ProjectBudgetItem {
   materialCost: string;
   subcontractorCost: string;
   budgetTotal: string;
-  billing: string;
+  profit: string;
   isGroup: boolean;
 }
 
@@ -97,7 +97,7 @@ const parseRowToProjectBudgetItem = (row: any[]): ProjectBudgetItem | null => {
     materialCost: getNumericValue(SW62_COLUMN_MAPPING.materialCost),
     subcontractorCost: getNumericValue(SW62_COLUMN_MAPPING.subcontractorCost),
     budgetTotal: getNumericValue(SW62_COLUMN_MAPPING.budgetTotal),
-    billing: getNumericValue(SW62_COLUMN_MAPPING.billing),
+    profit: getNumericValue(SW62_COLUMN_MAPPING.profit),
     isGroup,
   };
 };
@@ -129,7 +129,7 @@ export const parseSW62ExcelRow = (row: any[], locationId?: number): BudgetLineIt
     productionRate: parsed.productionRate,
     hours: parsed.hours,
     budgetTotal: parsed.budgetTotal,
-    billing: parsed.billing,
+    billing: parsed.profit,
     laborCost: parsed.laborCost,
     equipmentCost: parsed.equipmentCost,
     truckingCost: parsed.truckingCost,

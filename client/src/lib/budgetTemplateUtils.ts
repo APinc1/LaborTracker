@@ -20,7 +20,7 @@ export const BUDGET_COLUMNS = [
   { header: 'Material Cost', key: 'materialCost', required: false, description: 'Material expenses (number format)' },
   { header: 'Subcontractor Cost', key: 'subcontractorCost', required: false, description: 'Subcontractor fees (number format)' },
   { header: 'Budget Total', key: 'budgetTotal', required: false, description: 'Formula: Sum of Labor through Subcontractor costs' },
-  { header: 'Billing', key: 'billing', required: false, description: 'Equal to Unit Total' },
+  { header: 'Profit', key: 'profit', required: false, description: 'Profit margin' },
 ];
 
 export const VALID_COST_CODES = [
