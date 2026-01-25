@@ -67,6 +67,14 @@ export default function Dashboard() {
 
   const previousDayFormatted = format(previousDay, "yyyy-MM-dd");
   const nextDayFormatted = format(nextDay, "yyyy-MM-dd");
+  
+  const actualYesterday = subDays(today, 1);
+  const actualTomorrow = addDays(today, 1);
+  const isPreviousDayActuallyYesterday = format(previousDay, "yyyy-MM-dd") === format(actualYesterday, "yyyy-MM-dd");
+  const isNextDayActuallyTomorrow = format(nextDay, "yyyy-MM-dd") === format(actualTomorrow, "yyyy-MM-dd");
+  
+  const previousDayLabel = isPreviousDayActuallyYesterday ? "Yesterday" : "Previous Work Day";
+  const nextDayLabel = isNextDayActuallyTomorrow ? "Tomorrow" : "Next Work Day";
 
   // Bootstrap endpoint - gets all basic data in one request (parallel loading)
   const { data: bootstrapData, isLoading: bootstrapLoading } = useQuery({
@@ -745,7 +753,7 @@ export default function Dashboard() {
           >
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>Yesterday</CardTitle>
+                <CardTitle>{previousDayLabel}</CardTitle>
                 <Badge variant="outline">
                   {(previousDayTasks as any[]).length} Tasks
                 </Badge>
@@ -795,7 +803,7 @@ export default function Dashboard() {
           >
             <CardHeader className="border-b">
               <div className="flex items-center justify-between">
-                <CardTitle>Tomorrow</CardTitle>
+                <CardTitle>{nextDayLabel}</CardTitle>
                 <Badge variant="secondary">
                   {(nextDayTasks as any[]).length} Tasks
                 </Badge>
