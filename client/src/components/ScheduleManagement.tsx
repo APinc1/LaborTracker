@@ -924,11 +924,26 @@ export default function ScheduleManagement() {
                                   <div className="text-xs text-gray-500 ml-4">
                                     {getLocationName(task)}
                                   </div>
-                                  <div className="flex items-center space-x-1 text-xs text-gray-600">
+                                  <div className="flex items-center space-x-1 text-xs text-gray-600 flex-wrap">
                                     <Clock className="w-3 h-3" />
                                     <span>{calculateScheduledHours(task).toFixed(1)}h scheduled</span>
                                     {calculateActualHours(task) > 0 && (
-                                      <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
+                                      <>
+                                        <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)}h actual</span>
+                                        {(() => {
+                                          const scheduled = calculateScheduledHours(task);
+                                          const actual = calculateActualHours(task);
+                                          const variance = actual - scheduled;
+                                          if (Math.abs(variance) >= 0.1) {
+                                            return (
+                                              <span className={`font-medium ${variance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                ({variance > 0 ? '+' : ''}{variance.toFixed(1)}h)
+                                              </span>
+                                            );
+                                          }
+                                          return null;
+                                        })()}
+                                      </>
                                     )}
                                   </div>
                                   <div className="mt-1">
@@ -1027,11 +1042,26 @@ export default function ScheduleManagement() {
                               <div className="text-gray-500 ml-6">{getLocationName(task)}</div>
                             </div>
                             <div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-2 flex-wrap">
                                 <Clock className="w-4 h-4 text-gray-500" />
                                 <span>{calculateScheduledHours(task).toFixed(1)} hours scheduled</span>
                                 {calculateActualHours(task) > 0 && (
-                                  <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)} actual</span>
+                                  <>
+                                    <span className="text-green-600">/ {calculateActualHours(task).toFixed(1)} actual</span>
+                                    {(() => {
+                                      const scheduled = calculateScheduledHours(task);
+                                      const actual = calculateActualHours(task);
+                                      const variance = actual - scheduled;
+                                      if (Math.abs(variance) >= 0.1) {
+                                        return (
+                                          <span className={`font-medium ${variance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            ({variance > 0 ? '+' : ''}{variance.toFixed(1)}h {variance > 0 ? 'over' : 'under'})
+                                          </span>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
+                                  </>
                                 )}
                               </div>
                               {(() => {
