@@ -65,11 +65,21 @@ const parseRowToProjectBudgetItem = (row: any[]): ProjectBudgetItem | null => {
     return val.toString().trim();
   };
   
-  // Helper to get numeric value as string
+  // Helper to get numeric value as string (handles accounting format with parentheses for negatives)
   const getNumericValue = (index: number): string => {
     const val = row[index];
     if (val === null || val === undefined || val === '') return '0';
-    const num = parseFloat(val.toString());
+    let strVal = val.toString().trim();
+    
+    // Handle accounting format: (123.45) means -123.45
+    if (strVal.startsWith('(') && strVal.endsWith(')')) {
+      strVal = '-' + strVal.slice(1, -1);
+    }
+    
+    // Remove any currency symbols or commas
+    strVal = strVal.replace(/[$,]/g, '');
+    
+    const num = parseFloat(strVal);
     return isNaN(num) ? '0' : num.toString();
   };
 
