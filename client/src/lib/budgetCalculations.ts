@@ -1,13 +1,5 @@
 // Budget calculation utilities for handling Excel formulas
-import { VALID_COST_CODES } from "./budgetTemplateUtils";
-
-// Normalize cost code to standard capitalization
-const normalizeCostCode = (costCode: string): string => {
-  if (!costCode) return "";
-  const lowerCode = costCode.toLowerCase().trim();
-  const match = VALID_COST_CODES.find(c => c.toLowerCase() === lowerCode);
-  return match || costCode.trim();
-};
+import { normalizeCostCode } from "./budgetTemplateUtils";
 
 export interface BudgetLineItem {
   id?: number;

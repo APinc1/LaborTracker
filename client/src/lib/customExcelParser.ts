@@ -1,14 +1,6 @@
 // Custom Excel parser for the specific SW62 format
 import { BudgetLineItem } from './budgetCalculations';
-import { VALID_COST_CODES } from './budgetTemplateUtils';
-
-// Normalize cost code to standard capitalization
-const normalizeCostCode = (costCode: string): string => {
-  if (!costCode) return "";
-  const lowerCode = costCode.toLowerCase().trim();
-  const match = VALID_COST_CODES.find(c => c.toLowerCase() === lowerCode);
-  return match || costCode.trim();
-};
+import { normalizeCostCode } from './budgetTemplateUtils';
 
 // Custom column mapping for SW62 format
 export const SW62_COLUMN_MAPPING = {

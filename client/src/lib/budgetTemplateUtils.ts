@@ -29,6 +29,7 @@ export const VALID_COST_CODES = [
   'Base/Grading',
   'Concrete',
   'Demo/Ex',
+  'Electrical',
   'General Labor',
   'General Requirement',
   'Landscaping',
@@ -41,6 +42,34 @@ export const VALID_COST_CODES = [
   'Traffic Control',
   'Utility Adj',
 ];
+
+export function normalizeCostCode(rawCode: string): string {
+  const code = rawCode.trim();
+  const codeLower = code.toLowerCase();
+  
+  if (codeLower === 'demo' || codeLower === 'demo/ex') {
+    return 'Demo/Ex';
+  }
+  if (codeLower === 'ac' || codeLower === 'asphalt') {
+    return 'Asphalt';
+  }
+  if (codeLower.includes('sub')) {
+    return 'Sub';
+  }
+  if (codeLower === 'gnrl labor' || codeLower === 'gnrl req' || codeLower === 'general labor') {
+    return 'General Labor';
+  }
+  if (codeLower === 'electrical') {
+    return 'Electrical';
+  }
+  
+  const match = VALID_COST_CODES.find(c => c.toLowerCase() === codeLower);
+  if (match) {
+    return match;
+  }
+  
+  return code;
+}
 
 export async function downloadBudgetTemplate() {
   const workbook = new ExcelJS.Workbook();
@@ -235,12 +264,15 @@ export function validateBudgetData(data: any[][]): ValidationResult {
         column: 'Cost Code',
         message: 'Cost code is required but missing',
       });
-    } else if (!validCostCodesLower.includes(costCode.toLowerCase())) {
-      errors.push({
-        row: i + 1,
-        column: 'Cost Code',
-        message: `Invalid cost code: "${costCode}". Must be one of: ${VALID_COST_CODES.join(', ')}`,
-      });
+    } else {
+      const normalizedCostCode = normalizeCostCode(costCode);
+      if (!validCostCodesLower.includes(normalizedCostCode.toLowerCase())) {
+        errors.push({
+          row: i + 1,
+          column: 'Cost Code',
+          message: `Invalid cost code: "${costCode}". Must be one of: ${VALID_COST_CODES.join(', ')}`,
+        });
+      }
     }
     
     const unconvertedUnit = row[2]?.toString().trim() || '';
