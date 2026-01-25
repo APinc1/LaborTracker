@@ -9,8 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, User, Eye, EyeOff } from "lucide-react";
-import ForgotPasswordModal from "./ForgotPasswordModal";
+import { Lock, User } from "lucide-react";
 
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -23,8 +22,6 @@ interface LoginProps {
 
 export default function Login({ onLoginSuccess }: LoginProps) {
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -119,34 +116,17 @@ export default function Login({ onLoginSuccess }: LoginProps) {
                       <div className="relative">
                         <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <Input 
-                          type={showPassword ? "text" : "password"}
-                          className="pl-10 pr-10" 
+                          type="password" 
+                          className="pl-10" 
                           placeholder="Enter your password" 
                           {...field} 
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
                       </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="text-right">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                  Forgot password?
-                </button>
-              </div>
 
               <Button 
                 type="submit" 
@@ -159,11 +139,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </Form>
         </CardContent>
       </Card>
-      
-      <ForgotPasswordModal 
-        isOpen={showForgotPassword} 
-        onClose={() => setShowForgotPassword(false)} 
-      />
     </div>
   );
 }

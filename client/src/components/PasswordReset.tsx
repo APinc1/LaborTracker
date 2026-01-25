@@ -11,7 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, AlertCircle, Lock, Eye, EyeOff } from "lucide-react";
+import { CheckCircle, AlertCircle, Lock } from "lucide-react";
 
 const passwordResetSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
@@ -28,8 +28,6 @@ interface PasswordResetProps {
 export default function PasswordReset({ token }: PasswordResetProps) {
   const { toast } = useToast();
   const [isComplete, setIsComplete] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(passwordResetSchema),
@@ -164,21 +162,11 @@ export default function PasswordReset({ token }: PasswordResetProps) {
                   <FormItem>
                     <FormLabel>New Password</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input 
-                          type={showPassword ? "text" : "password"}
-                          className="pr-10"
-                          placeholder="Enter your new password" 
-                          {...field} 
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
+                      <Input 
+                        type="password" 
+                        placeholder="Enter your new password" 
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -192,21 +180,11 @@ export default function PasswordReset({ token }: PasswordResetProps) {
                   <FormItem>
                     <FormLabel>Confirm Password</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input 
-                          type={showConfirmPassword ? "text" : "password"}
-                          className="pr-10"
-                          placeholder="Confirm your new password" 
-                          {...field} 
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                          className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        >
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
+                      <Input 
+                        type="password" 
+                        placeholder="Confirm your new password" 
+                        {...field} 
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
