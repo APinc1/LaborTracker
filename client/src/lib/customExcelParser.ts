@@ -71,16 +71,19 @@ const parseRowToProjectBudgetItem = (row: any[]): ProjectBudgetItem | null => {
     if (val === null || val === undefined || val === '') return '0';
     let strVal = val.toString().trim();
     
-    // Handle accounting format: (123.45) means -123.45
-    if (strVal.startsWith('(') && strVal.endsWith(')')) {
-      strVal = '-' + strVal.slice(1, -1);
-    }
-    
-    // Remove any currency symbols or commas
+    // Remove any currency symbols and commas first
     strVal = strVal.replace(/[$,]/g, '');
     
+    // Handle accounting format: (123.45) means -123.45
+    let isNegative = false;
+    if (strVal.startsWith('(') && strVal.endsWith(')')) {
+      strVal = strVal.slice(1, -1);
+      isNegative = true;
+    }
+    
     const num = parseFloat(strVal);
-    return isNaN(num) ? '0' : num.toString();
+    if (isNaN(num)) return '0';
+    return isNegative ? (-num).toString() : num.toString();
   };
 
   // Check if this is a group/category row (no quantities)

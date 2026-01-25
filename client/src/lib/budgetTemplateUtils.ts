@@ -333,12 +333,12 @@ export function validateBudgetData(data: any[][]): ValidationResult {
       const value = row[col.index];
       if (value !== null && value !== undefined && value !== '') {
         let strValue = value.toString().trim();
-        // Handle accounting format: $(27.30) or (27.30) means negative
+        // Remove currency symbols and commas first
+        strValue = strValue.replace(/[$,]/g, '');
+        // Handle accounting format: (27.30) means negative
         if (strValue.startsWith('(') && strValue.endsWith(')')) {
           strValue = strValue.slice(1, -1);
         }
-        // Remove currency symbols and commas
-        strValue = strValue.replace(/[$,]/g, '');
         if (strValue && isNaN(parseFloat(strValue))) {
           errors.push({
             row: i + 1,
