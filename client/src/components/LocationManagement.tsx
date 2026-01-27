@@ -367,7 +367,7 @@ export default function LocationManagement() {
                       <SelectValue placeholder="Choose a project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {projects.map((project) => (
+                      {[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((project) => (
                         <SelectItem key={project.id} value={String(project.id)}>
                           {project.name} ({project.projectId})
                         </SelectItem>
@@ -489,8 +489,9 @@ export default function LocationManagement() {
                     </CardContent>
                   </Card>
                 ) : (
-                  locations
+                  [...locations]
                     .filter(location => !selectedLocationId || selectedLocationId === "all" || location.locationId === selectedLocationId)
+                    .sort((a, b) => a.name.localeCompare(b.name))
                     .map((location) => {
                     const completionPercentage = getCompletionPercentage(location);
                     const getStatusBadge = () => {
@@ -520,6 +521,13 @@ export default function LocationManagement() {
                                   View Budget
                                 </Button>
                               </Link>
+                              {(location.status === "completed" || location.status === "suspended") && (
+                                <Link href={`/budgets?locationId=${location.id}&viewActuals=true`}>
+                                  <Button variant="outline" size="sm">
+                                    View Actuals
+                                  </Button>
+                                </Link>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
