@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye, Pencil } from "lucide-react";
+import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye, Pencil, Trash2, Edit } from "lucide-react";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -484,92 +485,68 @@ export default function LocationManagement() {
                     .filter(location => !selectedLocationId || selectedLocationId === "all" || location.locationId === selectedLocationId)
                     .map((location) => {
                     const completionPercentage = getCompletionPercentage(location);
+                    const getStatusBadge = () => {
+                      if (location.status === "completed") {
+                        return <Badge variant="default" className="text-xs bg-green-600">Completed</Badge>;
+                      }
+                      if (location.status === "suspended") {
+                        return <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>;
+                      }
+                      return null;
+                    };
                     return (
                       <Card key={location.id} className="hover:shadow-md transition-shadow">
-                        <CardHeader className="pb-3">
+                        <CardContent className="p-4">
                           <div className="flex items-center justify-between">
-                            <CardTitle 
-                              className="text-lg cursor-pointer hover:text-primary transition-colors"
-                              onClick={() => setLocation(`/locations/${location.locationId}`)}
-                            >
-                              {location.name}
-                            </CardTitle>
-                            <div className="flex items-center space-x-2">
-                              <div className={`w-3 h-3 ${getStatusColor(location.isComplete || false)} rounded-full`}></div>
-                              {location.isComplete ? (
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                              ) : (
-                                <Circle className="w-4 h-4 text-orange-600" />
-                              )}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="w-fit">
-                            {location.locationId}
-                          </Badge>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-4">
-                            <div>
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">Progress</span>
-                                <span className="text-sm text-gray-600">
-                                  {location.isComplete ? "100%" : `${completionPercentage}%`}
-                                </span>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Link href={`/locations/${location.locationId}`}>
+                                  <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
+                                </Link>
+                                <Badge variant="secondary" className="text-xs">{location.locationId}</Badge>
+                                {getStatusBadge()}
                               </div>
-                              <Progress 
-                                value={location.isComplete ? 100 : completionPercentage} 
-                                className="h-2"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              
+                              {/* Date Range */}
+                              <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
                                 <Calendar className="w-4 h-4" />
                                 <span>
-                                  Start: {location.startDate ? format(new Date(location.startDate), 'MMM d, yyyy') : 'Not set'}
+                                  {location.startDate ? format(new Date(location.startDate), 'MMM d, yyyy') : 'Not set'}
+                                  {' - '}
+                                  {location.endDate ? format(new Date(location.endDate), 'MMM d, yyyy') : 'Not set'}
                                 </span>
                               </div>
-                              {location.endDate && (
-                                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>
-                                    End: {format(new Date(location.endDate), 'MMM d, yyyy')}
+                              
+                              {/* Progress Bar */}
+                              <div className="space-y-2 mt-3">
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-gray-600">Progress</span>
+                                  <span className="text-gray-800 font-medium">
+                                    {location.isComplete ? "100%" : `${completionPercentage}%`}
                                   </span>
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Badge variant={location.isComplete ? "default" : "secondary"}>
-                                {location.isComplete ? "Complete" : "In Progress"}
-                              </Badge>
-                              <div className="flex items-center space-x-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => openEditLocation(location)}
-                                >
-                                  <Pencil className="w-4 h-4 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedLocation(location.id);
-                                    setIsCreateBudgetOpen(true);
-                                  }}
-                                >
-                                  <DollarSign className="w-4 h-4 mr-1" />
-                                  Budget
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => setLocation(`/locations/${location.locationId}`)}
-                                >
-                                  <Eye className="w-4 h-4 mr-1" />
-                                  View Details
-                                </Button>
+                                <Progress 
+                                  value={location.isComplete ? 100 : completionPercentage} 
+                                  className="h-2"
+                                />
+                                <p className="text-xs text-gray-500">Based on completed tasks</p>
                               </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex gap-2 ml-4">
+                              <Link href={`/budgets?locationId=${location.id}`}>
+                                <Button variant="outline" size="sm">
+                                  View Budget
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditLocation(location)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
