@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye, Pencil, Trash2, Edit } from "lucide-react";
@@ -153,6 +155,8 @@ export default function LocationManagement() {
       description: '',
       startDate: '',
       endDate: '',
+      status: 'active' as string,
+      suspensionReason: '',
     },
   });
 
@@ -163,6 +167,8 @@ export default function LocationManagement() {
       description: location.description || '',
       startDate: location.startDate || '',
       endDate: location.endDate || '',
+      status: location.status || 'active',
+      suspensionReason: location.suspensionReason || '',
     });
     setIsEditLocationOpen(true);
   };
@@ -173,6 +179,8 @@ export default function LocationManagement() {
       description: data.description || null,
       startDate: data.startDate || null,
       endDate: data.endDate || null,
+      status: data.status,
+      suspensionReason: data.status === 'suspended' ? data.suspensionReason : null,
     };
     updateLocationMutation.mutate(processedData);
   };
@@ -641,7 +649,7 @@ export default function LocationManagement() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Location Name</FormLabel>
+                    <FormLabel>Location Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="Enter location name" {...field} />
                     </FormControl>
@@ -654,46 +662,85 @@ export default function LocationManagement() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Optional description..." {...field} />
+                      <Textarea placeholder="Enter location description" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={editLocationForm.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date *</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={editLocationForm.control}
+                  name="endDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={editLocationForm.control}
-                name="startDate"
+                name="status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField
-                control={editLocationForm.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {editLocationForm.watch('status') === 'suspended' && (
+                <FormField
+                  control={editLocationForm.control}
+                  name="suspensionReason"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Suspension Reason *</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Enter reason for suspending this location" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <div className="flex justify-end space-x-2">
                 <Button type="button" variant="outline" onClick={() => setIsEditLocationOpen(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={updateLocationMutation.isPending}>
-                  {updateLocationMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  {updateLocationMutation.isPending ? 'Updating...' : 'Update Location'}
                 </Button>
               </div>
             </form>
