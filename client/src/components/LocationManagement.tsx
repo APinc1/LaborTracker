@@ -497,44 +497,16 @@ export default function LocationManagement() {
                     return (
                       <Card key={location.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <Link href={`/locations/${location.locationId}`}>
-                                  <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
-                                </Link>
-                                <Badge variant="secondary" className="text-xs">{location.locationId}</Badge>
-                                {getStatusBadge()}
-                              </div>
-                              
-                              {/* Date Range */}
-                              <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
-                                <Calendar className="w-4 h-4" />
-                                <span>
-                                  {location.startDate ? format(new Date(location.startDate), 'MMM d, yyyy') : 'Not set'}
-                                  {' - '}
-                                  {location.endDate ? format(new Date(location.endDate), 'MMM d, yyyy') : 'Not set'}
-                                </span>
-                              </div>
-                              
-                              {/* Progress Bar */}
-                              <div className="space-y-2 mt-3">
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-gray-600">Progress</span>
-                                  <span className="text-gray-800 font-medium">
-                                    {location.isComplete ? "100%" : `${completionPercentage}%`}
-                                  </span>
-                                </div>
-                                <Progress 
-                                  value={location.isComplete ? 100 : completionPercentage} 
-                                  className="h-2"
-                                />
-                                <p className="text-xs text-gray-500">Based on completed tasks</p>
-                              </div>
+                          {/* Header Row: Name + badges + buttons */}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Link href={`/locations/${location.locationId}`}>
+                                <h3 className="font-semibold text-lg hover:text-blue-600 cursor-pointer transition-colors">{location.name}</h3>
+                              </Link>
+                              <Badge variant="secondary" className="text-xs">{location.locationId}</Badge>
+                              {getStatusBadge()}
                             </div>
-                            
-                            {/* Action Buttons */}
-                            <div className="flex gap-2 ml-4">
+                            <div className="flex gap-2 shrink-0">
                               <Link href={`/budgets?locationId=${location.id}`}>
                                 <Button variant="outline" size="sm">
                                   View Budget
@@ -548,6 +520,31 @@ export default function LocationManagement() {
                                 <Edit className="w-4 h-4" />
                               </Button>
                             </div>
+                          </div>
+                          
+                          {/* Date Range */}
+                          <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2">
+                            <Calendar className="w-4 h-4" />
+                            <span>
+                              {location.startDate ? format(new Date(location.startDate), 'MMM d, yyyy') : 'Not set'}
+                              {' - '}
+                              {location.endDate ? format(new Date(location.endDate), 'MMM d, yyyy') : 'Not set'}
+                            </span>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="space-y-2 mt-3">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Progress</span>
+                              <span className="text-gray-800 font-medium">
+                                {location.isComplete ? "100%" : `${completionPercentage}%`}
+                              </span>
+                            </div>
+                            <Progress 
+                              value={location.isComplete ? 100 : completionPercentage} 
+                              className="h-2"
+                            />
+                            <p className="text-xs text-gray-500">Based on completed tasks</p>
                           </div>
                         </CardContent>
                       </Card>
