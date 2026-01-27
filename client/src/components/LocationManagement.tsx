@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye } from "lucide-react";
+import { Plus, MapPin, Calendar, CheckCircle, Circle, DollarSign, Eye, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
@@ -23,7 +23,9 @@ export default function LocationManagement() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>("all");
   const [isCreateLocationOpen, setIsCreateLocationOpen] = useState(false);
   const [isCreateBudgetOpen, setIsCreateBudgetOpen] = useState(false);
+  const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -98,6 +100,27 @@ export default function LocationManagement() {
     },
   });
 
+  const updateLocationMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest(`/api/locations/${editingLocation?.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects", selectedProject, "locations"] });
+      toast({ title: "Success", description: "Location updated successfully" });
+      setIsEditLocationOpen(false);
+      setEditingLocation(null);
+      editLocationForm.reset();
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update location", variant: "destructive" });
+    },
+  });
+
   const locationForm = useForm({
     resolver: zodResolver(insertLocationSchema),
     defaultValues: {
@@ -122,6 +145,36 @@ export default function LocationManagement() {
       notes: '',
     },
   });
+
+  const editLocationForm = useForm({
+    defaultValues: {
+      name: '',
+      description: '',
+      startDate: '',
+      endDate: '',
+    },
+  });
+
+  const openEditLocation = (location: Location) => {
+    setEditingLocation(location);
+    editLocationForm.reset({
+      name: location.name,
+      description: location.description || '',
+      startDate: location.startDate || '',
+      endDate: location.endDate || '',
+    });
+    setIsEditLocationOpen(true);
+  };
+
+  const onSubmitEditLocation = (data: any) => {
+    const processedData = {
+      name: data.name,
+      description: data.description || null,
+      startDate: data.startDate || null,
+      endDate: data.endDate || null,
+    };
+    updateLocationMutation.mutate(processedData);
+  };
 
   const onSubmitLocation = (data: any) => {
     const processedData = {
@@ -492,6 +545,14 @@ export default function LocationManagement() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
+                                  onClick={() => openEditLocation(location)}
+                                >
+                                  <Pencil className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
                                   onClick={() => {
                                     setSelectedLocation(location.id);
                                     setIsCreateBudgetOpen(true);
@@ -586,6 +647,79 @@ export default function LocationManagement() {
                 </Button>
                 <Button type="submit" disabled={createLocationBudgetMutation.isPending}>
                   {createLocationBudgetMutation.isPending ? 'Creating...' : 'Create Budget'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Location Modal */}
+      <Dialog open={isEditLocationOpen} onOpenChange={setIsEditLocationOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Location</DialogTitle>
+          </DialogHeader>
+          <Form {...editLocationForm}>
+            <form onSubmit={editLocationForm.handleSubmit(onSubmitEditLocation)} className="space-y-4">
+              <FormField
+                control={editLocationForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter location name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editLocationForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Optional description..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editLocationForm.control}
+                name="startDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={editLocationForm.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsEditLocationOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateLocationMutation.isPending}>
+                  {updateLocationMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </Button>
               </div>
             </form>
