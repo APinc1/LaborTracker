@@ -275,16 +275,23 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       return;
     }
 
+    if (!newLocationStartDate) {
+      toast({
+        title: "Validation Error",
+        description: "Start date is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const locationData: any = {
       name: newLocationName.trim(),
       description: newLocationDescription.trim(),
       projectId: parseInt(projectId),
+      startDate: newLocationStartDate,
     };
 
-    // Add start and end dates if provided
-    if (newLocationStartDate) {
-      locationData.startDate = newLocationStartDate;
-    }
+    // Add end date if provided
     if (newLocationEndDate) {
       locationData.endDate = newLocationEndDate;
     }
