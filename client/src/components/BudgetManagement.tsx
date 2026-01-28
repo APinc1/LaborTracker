@@ -1880,8 +1880,11 @@ export default function BudgetManagement() {
                     return Object.entries(costCodeGroups).map(([costCode, items]) => {
                       try {
                         const totalConvertedQty = items.reduce((sum, item) => sum + (parseFloat(item.convertedQty) || 0), 0);
+                        const totalActualConvQty = items.reduce((sum, item) => sum + (parseFloat(item.actualConvQty) || 0), 0);
                         const totalHours = items.reduce((sum, item) => sum + (parseFloat(item.hours) || 0), 0);
                         const totalValue = items.reduce((sum, item) => sum + (parseFloat(item.unitTotal) || 0), 0);
+                        const hasActuals = totalActualConvQty > 0;
+                        const variance = totalActualConvQty - totalConvertedQty;
                         
                         // Skip cards where total hours is 0 or no budget value
                         if (totalHours === 0) {
@@ -1923,21 +1926,37 @@ export default function BudgetManagement() {
                                 )}
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                   <div>
-                                    <p className="text-gray-600">Conv. Qty</p>
+                                    <p className="text-gray-600">Budget Qty</p>
                                     <p className="font-medium">{formatNumber(totalConvertedQty.toFixed(2))}</p>
                                   </div>
-                                  <div>
-                                    <p className="text-gray-600">Median PX</p>
-                                    <p className="font-medium">{formatNumber(medianPX.toFixed(2))}</p>
-                                  </div>
+                                  {hasActuals ? (
+                                    <div>
+                                      <p className="text-gray-600">Actual Qty</p>
+                                      <p className="font-medium">{formatNumber(totalActualConvQty.toFixed(2))}</p>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <p className="text-gray-600">Median PX</p>
+                                      <p className="font-medium">{formatNumber(medianPX.toFixed(2))}</p>
+                                    </div>
+                                  )}
                                   <div>
                                     <p className="text-gray-600">Hours</p>
                                     <p className="font-medium">{formatNumber(totalHours.toFixed(2))}</p>
                                   </div>
-                                  <div>
-                                    <p className="text-gray-600">Value</p>
-                                    <p className="font-medium text-blue-600">{formatCurrency(totalValue)}</p>
-                                  </div>
+                                  {hasActuals ? (
+                                    <div>
+                                      <p className="text-gray-600">Variance</p>
+                                      <p className={`font-medium ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : ''}`}>
+                                        {variance > 0 ? '+' : ''}{formatNumber(variance.toFixed(2))}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <p className="text-gray-600">Value</p>
+                                      <p className="font-medium text-blue-600">{formatCurrency(totalValue)}</p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </CardContent>
