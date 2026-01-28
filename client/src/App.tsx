@@ -18,6 +18,7 @@ import DailyJobReports from "@/components/DailyJobReports";
 import EmployeeManagement from "@/components/EmployeeManagement";
 import AssignmentManagement from "@/components/AssignmentManagement";
 import UserManagement from "@/components/UserManagement";
+import Reports from "@/components/Reports";
 import PasswordReset from "@/components/PasswordReset";
 import Login from "@/components/Login";
 import ChangePassword from "@/components/ChangePassword";
@@ -41,6 +42,7 @@ function Router() {
       {!import.meta.env.PROD && <Route path="/daily-reports" component={DailyJobReports} />}
       <Route path="/employees" component={EmployeeManagement} />
       <Route path="/assignments" component={AssignmentManagement} />
+      <Route path="/reports" component={Reports} />
       <Route path="/users" component={UserManagement} />
       <Route path="/reset-password">
         {() => {

@@ -16,6 +16,7 @@ import {
   User,
   LogOut,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 
 // Protected navigation component
@@ -70,6 +71,7 @@ export default function Sidebar({ onLogout, user }: SidebarProps) {
       icon: CheckSquare,
       key: "assignments",
     },
+    { name: "Reports", href: "/reports", icon: FileText, key: "reports" },
     { name: "Employees", href: "/employees", icon: Users, key: "employees" },
     { name: "Users", href: "/users", icon: User, key: "users" },
   ];
