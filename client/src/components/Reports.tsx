@@ -56,15 +56,28 @@ export default function Reports() {
     enabled: reportRun,
   });
 
-  const { data: tasks = [], isLoading: tasksLoading, refetch: refetchTasks } = useQuery({
-    queryKey: ["/api/tasks/date-range", dateRange.start, dateRange.end, "no-limit"],
+  // Always fetch ALL tasks for complete progress calculations
+  const { data: allTasks = [], isLoading: allTasksLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", "2020-01-01", "2030-12-31", "all-tasks"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/date-range/2020-01-01/2030-12-31?limit=10000`);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
+    staleTime: 30000,
+    enabled: reportRun,
+  });
+
+  // Fetch tasks for the selected date range (only used to filter which locations to show)
+  const { data: filteredTasks = [], isLoading: filteredTasksLoading } = useQuery({
+    queryKey: ["/api/tasks/date-range", dateRange.start, dateRange.end, "filter-tasks"],
     queryFn: async () => {
       const response = await fetch(`/api/tasks/date-range/${dateRange.start}/${dateRange.end}?limit=10000`);
       if (!response.ok) throw new Error('Failed to fetch tasks');
       return response.json();
     },
     staleTime: 30000,
-    enabled: reportRun,
+    enabled: reportRun && dateRangeType !== 'all',
   });
 
   const { data: assignments = [], isLoading: assignmentsLoading, refetch: refetchAssignments } = useQuery({
@@ -90,7 +103,7 @@ export default function Reports() {
     staleTime: 30000,
   });
 
-  const isLoading = reportRun && (locationsLoading || tasksLoading || assignmentsLoading || budgetLoading);
+  const isLoading = reportRun && (locationsLoading || allTasksLoading || filteredTasksLoading || assignmentsLoading || budgetLoading);
 
   // Group budget items by location ID
   const budgetsData = useMemo(() => {
@@ -120,7 +133,8 @@ export default function Reports() {
     return trimmed;
   };
 
-  // Filter locations by selected project
+  // Filter locations by selected project and date range
+  // Date range only filters which locations to SHOW, not the data within each location
   const filteredLocations = useMemo(() => {
     if (!reportRun) return [];
     
@@ -130,15 +144,17 @@ export default function Reports() {
       locs = locs.filter((loc: any) => loc.projectId?.toString() === selectedProject);
     }
 
+    // If date filtering is active, only show locations that have tasks on the selected day/range
+    // But we still use allTasks for progress calculations
     if (dateRangeType !== 'all') {
-      const locationDbIdsWithTasks = new Set(
-        (tasks as any[]).map((task: any) => task.locationId)
+      const locationDbIdsWithTasksInRange = new Set(
+        (filteredTasks as any[]).map((task: any) => task.locationId)
       );
-      locs = locs.filter((loc: any) => locationDbIdsWithTasks.has(loc.id));
+      locs = locs.filter((loc: any) => locationDbIdsWithTasksInRange.has(loc.id));
     }
 
     return locs;
-  }, [locations, selectedProject, dateRangeType, tasks, reportRun]);
+  }, [locations, selectedProject, dateRangeType, filteredTasks, reportRun]);
 
   // Calculate location progress data
   const locationProgressData = useMemo(() => {
@@ -152,7 +168,8 @@ export default function Reports() {
       const projectId = location.projectId;
       const project = (projects as any[]).find((p: any) => p.id === projectId);
       
-      const locationTasks = (tasks as any[]).filter((task: any) => 
+      // Use ALL tasks for progress calculation (not filtered by date)
+      const locationTasks = (allTasks as any[]).filter((task: any) => 
         String(task.locationId) === String(locationDbId)
       );
       
@@ -229,7 +246,7 @@ export default function Reports() {
         taskNotes
       };
     });
-  }, [filteredLocations, tasks, assignments, budgetsData, projects, reportRun]);
+  }, [filteredLocations, allTasks, assignments, budgetsData, projects, reportRun]);
 
   // Handle Run Report button
   const handleRunReport = () => {
