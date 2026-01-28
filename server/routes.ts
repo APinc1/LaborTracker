@@ -2024,8 +2024,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = insertEmployeeAssignmentSchema.partial().parse(req.body);
       const assignment = await storage.updateEmployeeAssignment(parseInt(req.params.id), validated);
       
+      // Check if assignment was found and updated
+      if (!assignment) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      
       // If actual hours were assigned, check if we should mark the task as complete
-      if (validated.actualHours !== undefined) {
+      if (validated.actualHours !== undefined && assignment.taskId) {
         // Get all assignments for this task to check if all have actual hours recorded
         const taskAssignments = await storage.getEmployeeAssignments(assignment.taskId);
         const allHaveActualHours = taskAssignments.every(a => 
