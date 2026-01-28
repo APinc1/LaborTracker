@@ -5,12 +5,13 @@ import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle, Save, Pencil } from "lucide-react";
 
 interface LocationActualsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locationId: number | null;
+  startInEditMode?: boolean;
 }
 
 interface BudgetLineItem {
@@ -33,9 +34,16 @@ interface ActualsEntry {
   actualConvQty: string;
 }
 
-export default function LocationActualsModal({ open, onOpenChange, locationId }: LocationActualsModalProps) {
+export default function LocationActualsModal({ open, onOpenChange, locationId, startInEditMode = false }: LocationActualsModalProps) {
   const { toast } = useToast();
   const [actualsData, setActualsData] = useState<Record<number, ActualsEntry>>({});
+  const [isEditMode, setIsEditMode] = useState(startInEditMode);
+
+  useEffect(() => {
+    if (open) {
+      setIsEditMode(startInEditMode);
+    }
+  }, [open, startInEditMode]);
 
   const { data: budgetItems = [], isLoading } = useQuery<BudgetLineItem[]>({
     queryKey: ["/api/locations", locationId, "budget"],
@@ -194,17 +202,30 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
   };
 
   const isEditable = (item: BudgetLineItem) => {
-    return !(isParentItem(item) && hasChildren(item));
+    return isEditMode && !(isParentItem(item) && hasChildren(item));
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Enter Actual Quantities</DialogTitle>
-          <DialogDescription>
-            Enter the actual quantities for child items. Parent totals are calculated automatically from their children.
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <DialogTitle>{isEditMode ? "Edit Actual Quantities" : "View Actual Quantities"}</DialogTitle>
+              <DialogDescription>
+                {isEditMode 
+                  ? "Enter the actual quantities for child items. Parent totals are calculated automatically from their children."
+                  : "Review the actual quantities for this location's budget items."
+                }
+              </DialogDescription>
+            </div>
+            {!isEditMode && (
+              <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} className="flex items-center gap-1">
+                <Pencil className="w-4 h-4" />
+                Edit
+              </Button>
+            )}
+          </div>
         </DialogHeader>
         
         {hasUnenteredActuals() && (
@@ -311,13 +332,21 @@ export default function LocationActualsModal({ open, onOpenChange, locationId }:
             {budgetItems.length} line item{budgetItems.length !== 1 ? "s" : ""}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Skip for Now
-            </Button>
-            <Button onClick={handleSave} disabled={saveActualsMutation.isPending}>
-              <Save className="w-4 h-4 mr-2" />
-              {saveActualsMutation.isPending ? "Saving..." : "Save Actuals"}
-            </Button>
+            {isEditMode ? (
+              <>
+                <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  Skip for Now
+                </Button>
+                <Button onClick={handleSave} disabled={saveActualsMutation.isPending}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {saveActualsMutation.isPending ? "Saving..." : "Save Actuals"}
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>

@@ -501,6 +501,9 @@ export default function LocationManagement() {
                       if (location.status === "suspended") {
                         return <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>;
                       }
+                      if (location.status === "active_with_actuals") {
+                        return <Badge variant="default" className="text-xs bg-blue-600">Active (with actuals)</Badge>;
+                      }
                       return null;
                     };
                     return (
@@ -521,7 +524,7 @@ export default function LocationManagement() {
                                   View Budget
                                 </Button>
                               </Link>
-                              {(location.status === "completed" || location.status === "suspended") && (
+                              {(location.status === "completed" || location.status === "suspended" || location.status === "active_with_actuals") && (
                                 <Link href={`/budgets?locationId=${location.id}&viewActuals=true`}>
                                   <Button variant="outline" size="sm">
                                     View Actuals
@@ -720,6 +723,7 @@ export default function LocationManagement() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="active_with_actuals">Active (with actuals)</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="suspended">Suspended</SelectItem>
                       </SelectContent>

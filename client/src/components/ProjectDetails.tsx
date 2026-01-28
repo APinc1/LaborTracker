@@ -41,6 +41,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
   const [editingLocation, setEditingLocation] = useState<any>(null);
   const [showActualsModal, setShowActualsModal] = useState(false);
   const [actualsLocationId, setActualsLocationId] = useState<number | null>(null);
+  const [actualsStartInEditMode, setActualsStartInEditMode] = useState(false);
   const [previousLocationStatus, setPreviousLocationStatus] = useState<string>("active");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [locationToDelete, setLocationToDelete] = useState<any>(null);
@@ -580,12 +581,12 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       locationData.endDate = newLocationEndDate;
     }
 
-    // Check if status changed to completed or suspended - need to prompt for actuals
-    // This should trigger when changing TO completed/suspended from any other status
+    // Check if status changed to completed, suspended, or active_with_actuals - need to prompt for actuals
+    // This should trigger when changing TO these statuses from any other status
     const statusChangedToCompletedOrSuspended = 
       editingLocation && 
       previousLocationStatus !== newLocationStatus &&
-      (newLocationStatus === "completed" || newLocationStatus === "suspended");
+      (newLocationStatus === "completed" || newLocationStatus === "suspended" || newLocationStatus === "active_with_actuals");
 
     if (editingLocation) {
       editLocationMutation.mutate({
@@ -595,6 +596,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
         onSuccess: () => {
           if (statusChangedToCompletedOrSuspended) {
             setActualsLocationId(editingLocation.id);
+            setActualsStartInEditMode(true);
             setShowActualsModal(true);
           }
         }
@@ -1012,7 +1014,10 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                             {location.status === "suspended" && (
                               <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>
                             )}
-                            {(location.status === "completed" || location.status === "suspended") && location.hasMissingActuals && (
+                            {location.status === "active_with_actuals" && (
+                              <Badge variant="default" className="text-xs bg-blue-600">Active (with actuals)</Badge>
+                            )}
+                            {(location.status === "completed" || location.status === "suspended" || location.status === "active_with_actuals") && location.hasMissingActuals && (
                               <div className="flex items-center gap-1 text-yellow-600" title="Some budget items are missing actual quantities">
                                 <AlertTriangle className="w-4 h-4" />
                               </div>
@@ -1089,12 +1094,13 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               View Budget
                             </Button>
                           </Link>
-                          {(location.status === 'completed' || location.status === 'suspended') && (
+                          {(location.status === 'completed' || location.status === 'suspended' || location.status === 'active_with_actuals') && (
                             <Button 
                               variant="outline" 
                               size="sm"
                               onClick={() => {
                                 setActualsLocationId(location.id);
+                                setActualsStartInEditMode(false);
                                 setShowActualsModal(true);
                               }}
                             >
@@ -1193,6 +1199,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="active_with_actuals">Active (with actuals)</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="suspended">Suspended</SelectItem>
                       </SelectContent>
@@ -1837,6 +1844,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
           open={showActualsModal}
           onOpenChange={setShowActualsModal}
           locationId={actualsLocationId}
+          startInEditMode={actualsStartInEditMode}
         />
 
         {/* Project Actuals Modal */}
