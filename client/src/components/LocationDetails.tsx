@@ -552,7 +552,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         totalBudgetHours: 0,
         totalActualHours: 0,
         totalConvertedQty: 0,
-        totalActualConvQty: 0,
         convertedUnitOfMeasure: '',
         items: [],
         itemCount: 0,
@@ -580,7 +579,6 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
     if (isParent || (!isChild && !hasChildren)) {
       acc[costCode].totalBudgetHours += parseFloat(item.hours) || 0;
       acc[costCode].totalConvertedQty += parseFloat(item.convertedQty) || 0;
-      acc[costCode].totalActualConvQty += parseFloat(item.actualConvQty) || 0;
       // Use the unit of measure from the first item, assuming they're consistent within cost code
       if (!acc[costCode].convertedUnitOfMeasure && item.convertedUnitOfMeasure) {
         acc[costCode].convertedUnitOfMeasure = item.convertedUnitOfMeasure;
@@ -1532,23 +1530,9 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                                 </div>
                               ) : (
                                 <div className="flex justify-between text-sm">
-                                  <span className="text-gray-600">Budget Qty:</span>
+                                  <span className="text-gray-600">Total Qty:</span>
                                   <span className="font-medium">{summary.totalConvertedQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
                                 </div>
-                              )}
-                              {summary.totalActualConvQty > 0 && (
-                                <>
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Actual Qty:</span>
-                                    <span className="font-medium text-blue-600">{summary.totalActualConvQty.toLocaleString()} {summary.convertedUnitOfMeasure}</span>
-                                  </div>
-                                  <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">Qty Difference:</span>
-                                    <span className={`font-medium ${(summary.totalConvertedQty - summary.totalActualConvQty) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                      {(summary.totalConvertedQty - summary.totalActualConvQty).toLocaleString()} {summary.convertedUnitOfMeasure}
-                                    </span>
-                                  </div>
-                                </>
                               )}
                               <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">Budget Hours:</span>
