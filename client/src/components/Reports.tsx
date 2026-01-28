@@ -52,8 +52,14 @@ export default function Reports() {
     }
   }, [selectedDate, dateRangeType]);
 
+  // Fetch all tasks with a high limit to ensure we get all of them
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ["/api/tasks/date-range", dateRange.start, dateRange.end],
+    queryKey: ["/api/tasks/date-range", dateRange.start, dateRange.end, "no-limit"],
+    queryFn: async () => {
+      const response = await fetch(`/api/tasks/date-range/${dateRange.start}/${dateRange.end}?limit=10000`);
+      if (!response.ok) throw new Error('Failed to fetch tasks');
+      return response.json();
+    },
     staleTime: 30000,
   });
 
