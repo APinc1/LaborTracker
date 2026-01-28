@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { useNavigationProtection } from "@/contexts/NavigationProtectionContext";
+import LocationActualsModal from "./LocationActualsModal";
 
 const COST_CODES = [
   "DEMO/EX",
@@ -94,6 +95,7 @@ export default function BudgetManagement() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<any>(null);
   const [deleteChildren, setDeleteChildren] = useState<any[]>([]);
+  const [showActualsModal, setShowActualsModal] = useState(false);
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -2836,6 +2838,15 @@ export default function BudgetManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Location Actuals Modal */}
+      {currentLocation && (
+        <LocationActualsModal
+          open={showActualsModal}
+          onOpenChange={setShowActualsModal}
+          locationId={(currentLocation as any).id}
+        />
+      )}
     </div>
   );
 }
