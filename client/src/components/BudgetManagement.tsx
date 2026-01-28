@@ -16,7 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
-import { validateBudgetData } from "@/lib/budgetTemplateUtils";
+import { validateBudgetData, ValidationResult, GroupedError } from "@/lib/budgetTemplateUtils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -88,6 +88,9 @@ export default function BudgetManagement() {
   const [selectedCostCodeFilter, setSelectedCostCodeFilter] = useState<string>('all');
   const [showImportConfirmDialog, setShowImportConfirmDialog] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [expandedErrorGroups, setExpandedErrorGroups] = useState<Set<string>>(new Set());
+  const [showValidationErrorsDialog, setShowValidationErrorsDialog] = useState(false);
   const [budgetMode, setBudgetMode] = useState<'project' | 'location'>('location');
   const [showDeriveFromMasterDialog, setShowDeriveFromMasterDialog] = useState(false);
   const [selectedMasterItems, setSelectedMasterItems] = useState<Set<number>>(new Set());
@@ -1158,11 +1161,14 @@ export default function BudgetManagement() {
       
       // Validate the budget data (same as master budget import)
       const validation = validateBudgetData(jsonData);
+      setValidationResult(validation);
+      setExpandedErrorGroups(new Set());
       
       if (!validation.isValid) {
+        setShowValidationErrorsDialog(true);
         toast({
-          title: "Validation Error",
-          description: `Found ${validation.errors.length} errors in the file. Please fix and re-upload.`,
+          title: "Validation Failed",
+          description: `Found ${validation.errors.length} error(s) in the file. Please fix them and try again.`,
           variant: "destructive",
         });
         setIsImporting(false);
@@ -2815,6 +2821,148 @@ export default function BudgetManagement() {
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Yes, Replace Budget
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Validation Errors Dialog */}
+      <Dialog open={showValidationErrorsDialog} onOpenChange={setShowValidationErrorsDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Validation Errors</DialogTitle>
+            <DialogDescription>
+              The following errors were found in your Excel file. Please fix them and try again.
+            </DialogDescription>
+          </DialogHeader>
+          {validationResult && !validationResult.isValid && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <h4 className="font-semibold text-red-800 mb-2">Errors Found ({validationResult.errors.length})</h4>
+              <div className="max-h-64 overflow-y-auto space-y-3">
+                {(() => {
+                  const columnOrder = ['Line Item Number', 'Level', 'Master Code', 'Code', 'Description', 'Crew', 
+                    'Unconverted Unit', 'Unconverted Qty', 'Conv Factor', 'Conv UM', 'Converted Unit', 'Converted Qty',
+                    'UM', 'Unit Cost', 'PX', 'Labor %', 'Material %', 'Equipment %', 'Subs %', 'Other %'];
+                  const getColumnIndex = (col: string) => {
+                    const idx = columnOrder.indexOf(col);
+                    return idx >= 0 ? idx : 999;
+                  };
+                  const sortedGroupedErrors = [...validationResult.groupedErrors].sort((a, b) => 
+                    getColumnIndex(a.column) - getColumnIndex(b.column)
+                  );
+                  return sortedGroupedErrors.length > 0 ? (
+                    <div className="bg-red-100 rounded p-3">
+                      <p className="text-sm font-semibold text-red-900 mb-2 border-b border-red-300 pb-1">Column Issues (repeated errors)</p>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        {sortedGroupedErrors.map((group, idx) => {
+                          const groupKey = `grouped-${group.column}-${idx}`;
+                          const isExpanded = expandedErrorGroups.has(groupKey);
+                          const hasMore = group.count > group.sampleRows.length;
+                          return (
+                            <li key={idx}>
+                              <span className="font-medium">{group.column}</span>: {group.count} rows have errors
+                              {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                              <br />
+                              <span className="text-red-600 text-xs">
+                                Rows: {isExpanded ? group.allRows.join(', ') : group.sampleRows.join(', ')}
+                                {hasMore && !isExpanded && (
+                                  <button 
+                                    onClick={() => setExpandedErrorGroups(prev => new Set([...prev, groupKey]))}
+                                    className="ml-1 text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                  >
+                                    ...and {group.count - group.sampleRows.length} more
+                                  </button>
+                                )}
+                                {hasMore && isExpanded && (
+                                  <button 
+                                    onClick={() => setExpandedErrorGroups(prev => { const s = new Set(prev); s.delete(groupKey); return s; })}
+                                    className="ml-1 text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                  >
+                                    (collapse)
+                                  </button>
+                                )}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ) : null;
+                })()}
+                {(() => {
+                  const columnOrder = ['Line Item Number', 'Level', 'Master Code', 'Code', 'Description', 'Crew', 
+                    'Unconverted Unit', 'Unconverted Qty', 'Conv Factor', 'Conv UM', 'Converted Unit', 'Converted Qty',
+                    'UM', 'Unit Cost', 'PX', 'Labor %', 'Material %', 'Equipment %', 'Subs %', 'Other %'];
+                  const getColumnIndex = (col: string) => {
+                    const idx = columnOrder.indexOf(col);
+                    return idx >= 0 ? idx : 999;
+                  };
+                  const groupedColumns = new Set(validationResult.groupedErrors.map(g => `${g.column}|${g.messageTemplate}`));
+                  const ungroupedErrors = validationResult.errors.filter(e => {
+                    const normalized = e.message.replace(/: "[^"]*"/g, '').replace(/: \$[^\s.]*/g, '').replace(/\d+/g, 'N');
+                    return !groupedColumns.has(`${e.column}|${normalized}`);
+                  });
+                  if (ungroupedErrors.length > 0) {
+                    const byColumn: Record<string, typeof ungroupedErrors> = {};
+                    ungroupedErrors.forEach(err => {
+                      if (!byColumn[err.column]) byColumn[err.column] = [];
+                      byColumn[err.column].push(err);
+                    });
+                    const sortedColumns = Object.keys(byColumn).sort((a, b) => getColumnIndex(a) - getColumnIndex(b));
+                    return (
+                      <div className="bg-orange-50 rounded p-3 mt-2">
+                        <p className="text-sm font-semibold text-orange-900 mb-2 border-b border-orange-300 pb-1">Individual Errors</p>
+                        <div className="text-sm text-red-700 space-y-2">
+                          {sortedColumns.map(column => {
+                            const indivKey = `individual-${column}`;
+                            const isExpanded = expandedErrorGroups.has(indivKey);
+                            const hasMore = byColumn[column].length > 5;
+                            const displayErrors = isExpanded ? byColumn[column] : byColumn[column].slice(0, 5);
+                            return (
+                              <div key={column}>
+                                <span className="font-medium">{column}:</span>
+                                <ul className="ml-3 space-y-0.5">
+                                  {displayErrors.map((error, idx) => (
+                                    <li key={idx}>
+                                      Row {error.row}: {error.message}
+                                    </li>
+                                  ))}
+                                  {hasMore && !isExpanded && (
+                                    <li>
+                                      <button 
+                                        onClick={() => setExpandedErrorGroups(prev => new Set([...prev, indivKey]))}
+                                        className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                      >
+                                        ...and {byColumn[column].length - 5} more
+                                      </button>
+                                    </li>
+                                  )}
+                                  {hasMore && isExpanded && (
+                                    <li>
+                                      <button 
+                                        onClick={() => setExpandedErrorGroups(prev => { const s = new Set(prev); s.delete(indivKey); return s; })}
+                                        className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                                      >
+                                        (collapse)
+                                      </button>
+                                    </li>
+                                  )}
+                                </ul>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowValidationErrorsDialog(false)}>
+              Close
             </Button>
           </div>
         </DialogContent>
