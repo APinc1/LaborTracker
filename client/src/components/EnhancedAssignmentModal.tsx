@@ -322,15 +322,24 @@ export default function EnhancedAssignmentModal({
   // Create assignments
   const createAssignmentsMutation = useMutation({
     mutationFn: async () => {
+      // Build a map of existing actual hours by employeeId to preserve them
+      const existingActualHoursMap: Record<number, string | null> = {};
+      existingAssignments.forEach((assignment: any) => {
+        existingActualHoursMap[assignment.employeeId] = assignment.actualHours;
+      });
+      
       // Always clear existing assignments first to avoid conflicts
       if (existingAssignments.length > 0) {
         await clearExistingAssignmentsMutation.mutateAsync();
       }
       
-      // Create new assignments for all selected employees
+      // Create new assignments for all selected employees, preserving actual hours
       const assignments = selectedEmployeeIds.map(employeeIdStr => {
         const employee = (employees as any[]).find(emp => emp.id.toString() === employeeIdStr);
         if (!employee) return null;
+        
+        // Preserve existing actual hours if this employee was already assigned
+        const preservedActualHours = existingActualHoursMap[employee.id] ?? null;
         
         return {
           assignmentId: `${taskId}_${employee.id}`,
@@ -338,7 +347,7 @@ export default function EnhancedAssignmentModal({
           employeeId: employee.id,
           assignmentDate: taskDate,
           assignedHours: employeeHours[employeeIdStr] || defaultHours,
-          actualHours: null
+          actualHours: preservedActualHours
         };
       }).filter(Boolean);
 
