@@ -1998,7 +1998,7 @@ export default function BudgetManagement() {
                   <div className="flex items-center justify-between">
                     <CardTitle>Budget Line Items</CardTitle>
                     <div className="flex gap-2 items-center">
-                      {selectedLocation && selectedLocation.status && selectedLocation.status !== 'active' && (
+                      {selectedLocation && currentLocation && (currentLocation as any).status && (currentLocation as any).status !== 'active' && (
                         <Button
                           variant="outline"
                           onClick={() => setShowActualsModal(true)}
