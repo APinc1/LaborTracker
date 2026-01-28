@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown } from "lucide-react";
+import { Plus, Upload, Edit, Trash2, DollarSign, Calculator, FileSpreadsheet, ChevronDown, ChevronRight, ArrowLeft, Home, Building2, MapPin, FolderDown, Eye } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
@@ -1998,7 +1998,7 @@ export default function BudgetManagement() {
                   <div className="flex items-center justify-between">
                     <CardTitle>Budget Line Items</CardTitle>
                     <div className="flex gap-2 items-center">
-                      {selectedLocation && (
+                      {selectedLocation && selectedLocation.status && selectedLocation.status !== 'active' && (
                         <Button
                           variant="outline"
                           onClick={() => setShowActualsModal(true)}
