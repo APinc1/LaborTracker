@@ -133,7 +133,7 @@ export default function ScheduleManagement() {
     staleTime: 30000,
   });
 
-  const { data: locations = [] } = useQuery({
+  const { data: locations = [], isLoading: locationsLoading } = useQuery({
     queryKey: ["/api/projects", selectedProject, "locations"],
     queryFn: async () => {
       if (selectedProject === "ALL_PROJECTS") {
@@ -420,6 +420,8 @@ export default function ScheduleManagement() {
   // Get project name from task
   const getProjectName = (task: any) => {
     if (!task.locationId) return "Unknown Project";
+    // Show loading if data is still being fetched
+    if (projectsLoading || locationsLoading) return "Loading...";
     // After migration: task.locationId is now the database ID (integer), not the locationId string
     const location = locations.find((loc: any) => loc.id === task.locationId);
     if (!location) return "Unknown Project";
@@ -432,6 +434,8 @@ export default function ScheduleManagement() {
   // Get location name from task
   const getLocationName = (task: any) => {
     if (!task.locationId) return "Unknown Location";
+    // Show loading if data is still being fetched
+    if (locationsLoading) return "Loading...";
     // After migration: task.locationId is now the database ID (integer), not the locationId string
     const location = locations.find((loc: any) => loc.id === task.locationId);
     return location?.name || "Unknown Location";

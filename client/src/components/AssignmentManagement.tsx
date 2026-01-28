@@ -111,7 +111,7 @@ export default function AssignmentManagement() {
     staleTime: 30000,
   });
 
-  const { data: locations = [] } = useQuery({
+  const { data: locations = [], isLoading: locationsLoading } = useQuery({
     queryKey: ["/api/locations"],
     staleTime: 30000,
   });
