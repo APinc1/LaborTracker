@@ -143,8 +143,9 @@ export default function Reports() {
       
       // Get tasks for this location within the date range
       // Tasks use the location's database ID (numeric), not the string locationId
+      // Use == for type coercion since IDs may be strings or numbers from different sources
       const locationTasks = (tasks as any[]).filter((task: any) => 
-        task.locationId === locationDbId
+        String(task.locationId) === String(locationDbId)
       );
       
       // Get budget data for this location using the database ID
