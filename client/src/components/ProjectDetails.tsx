@@ -562,6 +562,16 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
       return;
     }
 
+    // Require start date when creating a new location
+    if (!editingLocation && !newLocationStartDate) {
+      toast({
+        title: "Validation Error",
+        description: "Start date is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate suspension reason if status is suspended
     if (newLocationStatus === "suspended" && !newLocationSuspensionReason.trim()) {
       toast({
