@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -37,13 +38,50 @@ interface ActualsEntry {
 export default function LocationActualsModal({ open, onOpenChange, locationId, startInEditMode = false }: LocationActualsModalProps) {
   const { toast } = useToast();
   const [actualsData, setActualsData] = useState<Record<number, ActualsEntry>>({});
+  const [originalData, setOriginalData] = useState<Record<number, ActualsEntry>>({});
   const [isEditMode, setIsEditMode] = useState(startInEditMode);
+  const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] = useState(false);
 
   useEffect(() => {
     if (open) {
       setIsEditMode(startInEditMode);
     }
   }, [open, startInEditMode]);
+
+  const hasUnsavedChanges = useCallback(() => {
+    if (!isEditMode) return false;
+    const originalKeys = Object.keys(originalData);
+    const currentKeys = Object.keys(actualsData);
+    if (originalKeys.length !== currentKeys.length) return true;
+    
+    for (const key of originalKeys) {
+      const id = parseInt(key);
+      const orig = originalData[id];
+      const curr = actualsData[id];
+      if (!curr) return true;
+      if (orig.actualQty !== curr.actualQty || orig.actualConvQty !== curr.actualConvQty) {
+        return true;
+      }
+    }
+    return false;
+  }, [isEditMode, originalData, actualsData]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen && isEditMode && hasUnsavedChanges()) {
+      setShowUnsavedChangesDialog(true);
+    } else {
+      onOpenChange(newOpen);
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowUnsavedChangesDialog(false);
+    onOpenChange(false);
+  };
+
+  const handleCancelClose = () => {
+    setShowUnsavedChangesDialog(false);
+  };
 
   const { data: budgetItems = [], isLoading } = useQuery<BudgetLineItem[]>({
     queryKey: ["/api/locations", locationId, "budget"],
@@ -114,6 +152,7 @@ export default function LocationActualsModal({ open, onOpenChange, locationId, s
       });
       const dataWithParentTotals = recalculateParentTotals(initialData);
       setActualsData(dataWithParentTotals);
+      setOriginalData(dataWithParentTotals);
     }
   }, [budgetItems, recalculateParentTotals]);
 
@@ -206,7 +245,8 @@ export default function LocationActualsModal({ open, onOpenChange, locationId, s
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -351,5 +391,21 @@ export default function LocationActualsModal({ open, onOpenChange, locationId, s
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showUnsavedChangesDialog} onOpenChange={setShowUnsavedChangesDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have unsaved changes. Are you sure you want to close without saving?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleCancelClose}>Continue Editing</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmClose}>Discard Changes</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
