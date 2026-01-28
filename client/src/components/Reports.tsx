@@ -353,7 +353,6 @@ export default function Reports() {
           )}
         </div>
       </header>
-
       <div className="flex-1 overflow-y-auto">
         <main className="p-6">
           {/* Step 1: Select Report Type */}
@@ -460,7 +459,7 @@ export default function Reports() {
                   {/* Date Range Display */}
                   {dateRangeType !== 'all' && (
                     <div className="flex flex-col gap-1">
-                      <label className="text-sm font-medium text-gray-700">Showing</label>
+                      <label className="text-sm font-medium text-gray-700">Showing Locations On:</label>
                       <div className="px-3 py-2 bg-gray-100 rounded-md text-sm">
                         {dateRange.start === dateRange.end 
                           ? format(parseISO(dateRange.start), 'MMM d, yyyy')
