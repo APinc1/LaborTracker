@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2, FileText, History, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, MapPin, Calendar, User, DollarSign, CheckCircle, Clock, AlertCircle, X, ChevronDown, ChevronRight, Home, Building2, Plus, Edit, Trash2, FileText, History, Loader2, Pencil } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import EditTaskModal from "./EditTaskModal";
 import CreateTaskModal from "./CreateTaskModal";
 import DraggableTaskList from "./DraggableTaskList";
 import TaskDetailModal from "./TaskDetailModal";
 import EnhancedAssignmentModal from "./EnhancedAssignmentModal";
+import LocationActualsModal from "./LocationActualsModal";
 
 interface LocationDetailsProps {
   locationId: string;
@@ -75,6 +78,16 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const [selectedTaskForDjr, setSelectedTaskForDjr] = useState<any>(null);
   const [editHistoryModalOpen, setEditHistoryModalOpen] = useState(false);
   const [selectedTaskForEditHistory, setSelectedTaskForEditHistory] = useState<any>(null);
+  const [showEditLocationDialog, setShowEditLocationDialog] = useState(false);
+  const [editLocationName, setEditLocationName] = useState("");
+  const [editLocationDescription, setEditLocationDescription] = useState("");
+  const [editLocationStartDate, setEditLocationStartDate] = useState("");
+  const [editLocationEndDate, setEditLocationEndDate] = useState("");
+  const [editLocationStatus, setEditLocationStatus] = useState("active");
+  const [editLocationSuspensionReason, setEditLocationSuspensionReason] = useState("");
+  const [previousLocationStatus, setPreviousLocationStatus] = useState("active");
+  const [showActualsModal, setShowActualsModal] = useState(false);
+  const [actualsStartInEditMode, setActualsStartInEditMode] = useState(false);
   const { toast } = useToast();
 
   // Task edit and delete functions
@@ -101,6 +114,70 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
   const handleEditHistory = (task: any) => {
     setSelectedTaskForEditHistory(task);
     setEditHistoryModalOpen(true);
+  };
+
+  // Edit location mutation
+  const editLocationMutation = useMutation({
+    mutationFn: (data: any) =>
+      apiRequest(`/api/locations/${location?.locationId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/locations", locationId] });
+      setShowEditLocationDialog(false);
+      toast({
+        title: "Location Updated",
+        description: "Location details have been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update location",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenEditLocationDialog = () => {
+    if (location) {
+      setEditLocationName(location.name);
+      setEditLocationDescription(location.description || "");
+      setEditLocationStartDate(location.startDate || "");
+      setEditLocationEndDate(location.endDate || "");
+      setEditLocationStatus(location.status || "active");
+      setEditLocationSuspensionReason(location.suspensionReason || "");
+      setPreviousLocationStatus(location.status || "active");
+      setShowEditLocationDialog(true);
+    }
+  };
+
+  const handleSubmitLocationEdit = () => {
+    const locationData: any = {
+      name: editLocationName,
+      description: editLocationDescription,
+      startDate: editLocationStartDate || null,
+      endDate: editLocationEndDate || null,
+      status: editLocationStatus,
+    };
+
+    if (editLocationStatus === "suspended") {
+      locationData.suspensionReason = editLocationSuspensionReason;
+    }
+
+    const statusChangedToActualsRequired = 
+      previousLocationStatus !== editLocationStatus &&
+      (editLocationStatus === "completed" || editLocationStatus === "suspended" || editLocationStatus === "active_with_actuals");
+
+    editLocationMutation.mutate(locationData, {
+      onSuccess: () => {
+        if (statusChangedToActualsRequired) {
+          setActualsStartInEditMode(true);
+          setShowActualsModal(true);
+        }
+      }
+    });
   };
 
   // Check if Delete All Tasks button should be enabled
@@ -1213,11 +1290,22 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
         {/* Location Overview */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Location Overview
-              <Badge variant="outline">{location.locationId}</Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                Location Overview
+                <Badge variant="outline">{location.locationId}</Badge>
+              </CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleOpenEditLocationDialog}
+                className="flex items-center gap-1"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit Location
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -1936,6 +2024,106 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Location Dialog */}
+      <Dialog open={showEditLocationDialog} onOpenChange={setShowEditLocationDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Location</DialogTitle>
+            <DialogDescription>Update the location details below.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-location-name">Name *</Label>
+              <Input
+                id="edit-location-name"
+                value={editLocationName}
+                onChange={(e) => setEditLocationName(e.target.value)}
+                placeholder="Enter location name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-location-description">Description</Label>
+              <Textarea
+                id="edit-location-description"
+                value={editLocationDescription}
+                onChange={(e) => setEditLocationDescription(e.target.value)}
+                placeholder="Enter location description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-location-start-date">Start Date</Label>
+                <Input
+                  id="edit-location-start-date"
+                  type="date"
+                  value={editLocationStartDate}
+                  onChange={(e) => setEditLocationStartDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-location-end-date">End Date</Label>
+                <Input
+                  id="edit-location-end-date"
+                  type="date"
+                  value={editLocationEndDate}
+                  onChange={(e) => setEditLocationEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-location-status">Status</Label>
+              <Select value={editLocationStatus} onValueChange={setEditLocationStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="active_with_actuals">Active (with Qty update)</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editLocationStatus === "suspended" && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-suspension-reason">Suspension Reason *</Label>
+                <Textarea
+                  id="edit-suspension-reason"
+                  value={editLocationSuspensionReason}
+                  onChange={(e) => setEditLocationSuspensionReason(e.target.value)}
+                  placeholder="Enter reason for suspension"
+                  rows={2}
+                />
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEditLocationDialog(false)}
+              disabled={editLocationMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmitLocationEdit}
+              disabled={editLocationMutation.isPending || !editLocationName.trim() || (editLocationStatus === "suspended" && !editLocationSuspensionReason.trim())}
+            >
+              {editLocationMutation.isPending ? "Updating..." : "Update Location"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Actuals Modal */}
+      <LocationActualsModal
+        open={showActualsModal}
+        onOpenChange={setShowActualsModal}
+        locationId={location?.id || null}
+        startInEditMode={actualsStartInEditMode}
+      />
     </div>
   );
 }
