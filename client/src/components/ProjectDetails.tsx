@@ -1435,7 +1435,11 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               return (
                                 <li key={idx}>
                                   <span className="font-medium">{group.column}</span>: {group.count} rows have errors
-                                  {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                                  <br />
+                                  <span className="text-red-700 text-xs italic">
+                                    Reason: {group.messageTemplate || 'Invalid value'}
+                                    {group.sampleValue && ` (e.g., "${group.sampleValue}")`}
+                                  </span>
                                   <br />
                                   <span className="text-red-600 text-xs">
                                     Rows: {isExpanded ? group.allRows.join(', ') : group.sampleRows.join(', ')}
