@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from 'xlsx';
 import { parseExcelRowToBudgetItem, calculateBudgetFormulas, recalculateOnQtyChange } from "@/lib/budgetCalculations";
 import { parseSW62ExcelRow } from "@/lib/customExcelParser";
+import { validateBudgetData } from "@/lib/budgetTemplateUtils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -1153,7 +1154,20 @@ export default function BudgetManagement() {
       const worksheet = workbook.Sheets[sheetName];
       
       // Convert to JSON array, using raw:false to preserve cell formatting (e.g., 15.10 vs 15.1)
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' }) as any[][];
+      
+      // Validate the budget data (same as master budget import)
+      const validation = validateBudgetData(jsonData);
+      
+      if (!validation.isValid) {
+        toast({
+          title: "Validation Error",
+          description: `Found ${validation.errors.length} errors in the file. Please fix and re-upload.`,
+          variant: "destructive",
+        });
+        setIsImporting(false);
+        return;
+      }
       
       // Skip header row and process data
       const budgetItemsToImport = [];
