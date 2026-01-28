@@ -1914,8 +1914,8 @@ export default function BudgetManagement() {
                             }}
                           >
                             <CardContent className="p-4">
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between border-b pb-2">
                                   <h3 className="font-semibold text-sm text-gray-900">{costCode}</h3>
                                   <span className="text-xs text-gray-500">{items.length} items</span>
                                 </div>
@@ -1924,38 +1924,43 @@ export default function BudgetManagement() {
                                     ✓ Filtering table
                                   </div>
                                 )}
+                                
+                                {/* Quantity Section */}
                                 <div className="space-y-1 text-sm">
                                   <div className="flex justify-between">
-                                    <span className="text-gray-600">Budget Qty:</span>
-                                    <span className="font-medium">{formatNumber(totalConvertedQty.toFixed(2))}</span>
+                                    <span className="text-gray-500">Budget Qty:</span>
+                                    <span className="font-medium text-gray-900">{formatNumber(totalConvertedQty.toFixed(2))}</span>
                                   </div>
-                                  {hasActuals && (
+                                  {hasActuals ? (
                                     <>
                                       <div className="flex justify-between">
-                                        <span className="text-gray-600">Actual Qty:</span>
-                                        <span className="font-medium">{formatNumber(totalActualConvQty.toFixed(2))}</span>
+                                        <span className="text-gray-500">Actual Qty:</span>
+                                        <span className="font-medium text-gray-900">{formatNumber(totalActualConvQty.toFixed(2))}</span>
                                       </div>
                                       <div className="flex justify-between">
-                                        <span className="text-gray-600">Variance:</span>
-                                        <span className={`font-medium ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : ''}`}>
+                                        <span className="text-gray-500">Variance:</span>
+                                        <span className={`font-semibold ${variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : 'text-gray-900'}`}>
                                           {variance > 0 ? '+' : ''}{formatNumber(variance.toFixed(2))}
                                         </span>
                                       </div>
                                     </>
-                                  )}
-                                  {!hasActuals && (
+                                  ) : (
                                     <div className="flex justify-between">
-                                      <span className="text-gray-600">Median PX:</span>
-                                      <span className="font-medium">{formatNumber(medianPX.toFixed(2))}</span>
+                                      <span className="text-gray-500">Median PX:</span>
+                                      <span className="font-medium text-gray-900">{formatNumber(medianPX.toFixed(2))}</span>
                                     </div>
                                   )}
+                                </div>
+                                
+                                {/* Hours & Value Section */}
+                                <div className="space-y-1 text-sm border-t pt-2">
                                   <div className="flex justify-between">
-                                    <span className="text-gray-600">Hours:</span>
-                                    <span className="font-medium">{formatNumber(totalHours.toFixed(2))}</span>
+                                    <span className="text-gray-500">Hours:</span>
+                                    <span className="font-medium text-gray-900">{formatNumber(totalHours.toFixed(2))}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-gray-600">Value:</span>
-                                    <span className="font-medium text-blue-600">{formatCurrency(totalValue)}</span>
+                                    <span className="text-gray-500">Value:</span>
+                                    <span className="font-semibold text-blue-600">{formatCurrency(totalValue)}</span>
                                   </div>
                                 </div>
                               </div>
