@@ -1784,7 +1784,7 @@ export default function BudgetManagement() {
                       <SelectValue placeholder="Choose a project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(projects as any[]).map((project: any) => (
+                      {[...(projects as any[])].sort((a, b) => a.name.localeCompare(b.name)).map((project: any) => (
                         <SelectItem key={project.id} value={String(project.id)}>
                           {project.name} ({project.projectId})
                         </SelectItem>

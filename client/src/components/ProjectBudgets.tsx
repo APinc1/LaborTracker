@@ -292,7 +292,7 @@ export default function ProjectBudgets() {
                 <SelectValue placeholder="Choose a project..." />
               </SelectTrigger>
               <SelectContent>
-                {activeProjects.map((project: any) => (
+                {[...activeProjects].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((project: any) => (
                   <SelectItem key={project.id} value={project.id.toString()}>
                     {project.name}
                   </SelectItem>
