@@ -63,16 +63,36 @@ export default function Reports() {
     staleTime: 30000,
   });
 
-  // Fetch dashboard data for budget info
-  const { data: dashboardData, isLoading: dashboardLoading } = useQuery({
-    queryKey: ["/api/dashboard"],
+  // Get location IDs for bulk budget fetch
+  const locationDbIds = useMemo(() => {
+    return (locations as any[]).map((loc: any) => loc.id).filter(Boolean);
+  }, [locations]);
+
+  // Fetch budget data for all locations using bulk endpoint
+  const { data: allBudgetItems = [], isLoading: budgetLoading } = useQuery({
+    queryKey: ["/api/budget/bulk", locationDbIds.join(',')],
+    queryFn: async () => {
+      if (locationDbIds.length === 0) return [];
+      const response = await fetch(`/api/budget/bulk?locationIds=${locationDbIds.join(',')}`);
+      if (!response.ok) throw new Error('Failed to fetch budgets');
+      return response.json();
+    },
+    enabled: locationDbIds.length > 0,
     staleTime: 30000,
   });
 
-  const isLoading = projectsLoading || locationsLoading || tasksLoading || assignmentsLoading || dashboardLoading;
+  const isLoading = projectsLoading || locationsLoading || tasksLoading || assignmentsLoading || budgetLoading;
 
-  // Cast dashboard data to any to access budgets property
-  const budgetsData = (dashboardData as any)?.budgets || {};
+  // Group budget items by location ID
+  const budgetsData = useMemo(() => {
+    const grouped: { [locationId: number]: any[] } = {};
+    (allBudgetItems as any[]).forEach((item: any) => {
+      const locId = item.locationId;
+      if (!grouped[locId]) grouped[locId] = [];
+      grouped[locId].push(item);
+    });
+    return grouped;
+  }, [allBudgetItems]);
 
   // Helper function to normalize cost codes
   const normalizeCostCode = (costCode: string) => {
@@ -127,8 +147,8 @@ export default function Reports() {
         task.locationId === locationDbId
       );
       
-      // Get budget data for this location
-      const locationBudget = budgets[locationId] || [];
+      // Get budget data for this location using the database ID
+      const locationBudget = budgets[locationDbId] || [];
       
       // Calculate task completion
       const totalTasks = locationTasks.length;
