@@ -1327,14 +1327,23 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {location.isComplete ? (
+                {location.status === "completed" ? (
                   <CheckCircle className="w-4 h-4 text-green-600" />
+                ) : location.status === "suspended" ? (
+                  <AlertCircle className="w-4 h-4 text-yellow-600" />
+                ) : location.status === "active_with_actuals" ? (
+                  <Clock className="w-4 h-4 text-blue-600" />
                 ) : (
                   <Clock className="w-4 h-4 text-orange-600" />
                 )}
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
-                  <p className="font-medium">{location.isComplete ? 'Completed' : 'In Progress'}</p>
+                  <p className="font-medium">
+                    {location.status === "completed" && "Completed"}
+                    {location.status === "suspended" && "Suspended"}
+                    {location.status === "active_with_actuals" && "Active (with Qty update)"}
+                    {(location.status === "active" || !location.status) && "Active"}
+                  </p>
                 </div>
               </div>
             </div>
