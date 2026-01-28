@@ -151,9 +151,11 @@ export default function Reports() {
       // Get budget data for this location using the database ID
       const locationBudget = budgets[locationDbId] || [];
       
-      // Calculate task completion
+      // Calculate task completion (using status field like Dashboard)
       const totalTasks = locationTasks.length;
-      const completedTasks = locationTasks.filter((task: any) => task.isComplete).length;
+      const completedTasks = locationTasks.filter((task: any) => 
+        task.status === 'complete' || task.status === 'Completed' || task.status === 'completed'
+      ).length;
       const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
       
       // Calculate cost code data
