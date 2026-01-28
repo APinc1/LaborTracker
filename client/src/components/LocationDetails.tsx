@@ -1373,11 +1373,25 @@ export default function LocationDetails({ locationId }: LocationDetailsProps) {
                 Budget Summary
                 <Badge variant="secondary">{budgetItems.length} items</Badge>
               </CardTitle>
-              <Link href={`/budgets?locationId=${encodeURIComponent(location.locationId)}`}>
-                <Button variant="outline" size="sm">
-                  View Full Budget
-                </Button>
-              </Link>
+              <div className="flex gap-2">
+                {(location.status === "completed" || location.status === "suspended" || location.status === "active_with_actuals") && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setActualsStartInEditMode(false);
+                      setShowActualsModal(true);
+                    }}
+                  >
+                    View Actuals
+                  </Button>
+                )}
+                <Link href={`/budgets?locationId=${encodeURIComponent(location.locationId)}`}>
+                  <Button variant="outline" size="sm">
+                    View Full Budget
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
