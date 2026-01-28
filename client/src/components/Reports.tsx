@@ -100,11 +100,12 @@ export default function Reports() {
     }
 
     // If date filtering is active, only show locations with tasks in the date range
+    // Tasks use the location's database ID (numeric id), not the string locationId
     if (dateRangeType !== 'all') {
-      const locationIdsWithTasks = new Set(
+      const locationDbIdsWithTasks = new Set(
         (tasks as any[]).map((task: any) => task.locationId)
       );
-      locs = locs.filter((loc: any) => locationIdsWithTasks.has(loc.locationId));
+      locs = locs.filter((loc: any) => locationDbIdsWithTasks.has(loc.id));
     }
 
     return locs;
@@ -115,13 +116,15 @@ export default function Reports() {
     const budgets = budgetsData;
     
     return filteredLocations.map((location: any) => {
-      const locationId = location.locationId;
+      const locationId = location.locationId; // String ID like "1240_Barry J."
+      const locationDbId = location.id; // Numeric database ID
       const projectId = location.projectId;
       const project = (projects as any[]).find((p: any) => p.id === projectId);
       
       // Get tasks for this location within the date range
+      // Tasks use the location's database ID (numeric), not the string locationId
       const locationTasks = (tasks as any[]).filter((task: any) => 
-        task.locationId === locationId
+        task.locationId === locationDbId
       );
       
       // Get budget data for this location
