@@ -502,7 +502,7 @@ export default function LocationManagement() {
                         return <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>;
                       }
                       if (location.status === "active_with_actuals") {
-                        return <Badge variant="default" className="text-xs bg-blue-600">Active (with actuals)</Badge>;
+                        return <Badge variant="default" className="text-xs bg-blue-600">Active (with Qty update)</Badge>;
                       }
                       return null;
                     };
@@ -723,7 +723,7 @@ export default function LocationManagement() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="active_with_actuals">Active (with actuals)</SelectItem>
+                        <SelectItem value="active_with_actuals">Active (with Qty update)</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="suspended">Suspended</SelectItem>
                       </SelectContent>

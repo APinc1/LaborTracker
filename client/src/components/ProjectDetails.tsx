@@ -1015,7 +1015,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                               <Badge variant="default" className="text-xs bg-yellow-600">Suspended</Badge>
                             )}
                             {location.status === "active_with_actuals" && (
-                              <Badge variant="default" className="text-xs bg-blue-600">Active (with actuals)</Badge>
+                              <Badge variant="default" className="text-xs bg-blue-600">Active (with Qty update)</Badge>
                             )}
                             {(location.status === "completed" || location.status === "suspended" || location.status === "active_with_actuals") && location.hasMissingActuals && (
                               <div className="flex items-center gap-1 text-yellow-600" title="Some budget items are missing actual quantities">
@@ -1199,7 +1199,7 @@ export default function ProjectDetails({ projectId }: ProjectDetailsProps) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="active_with_actuals">Active (with actuals)</SelectItem>
+                        <SelectItem value="active_with_actuals">Active (with Qty update)</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="suspended">Suspended</SelectItem>
                       </SelectContent>
